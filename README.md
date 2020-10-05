@@ -1,6 +1,6 @@
 # iCLIP
 
-![badge](https://action-badges.now.sh/RBL-NCI/iCLIP?action=Tests)  [![GitHub issues](https://img.shields.io/github/issues/RBL-NCI/iCLIP)](https://github.com/RBL-NCI/iCLIP/issues)  [![GitHub license](https://img.shields.io/github/license/RBL-NCI/iCLIP)](https://github.com/RBL-NCI/iCLIP/blob/main/LICENSE)
+![Build](https://github.com/RBL-NCI/iCLIP/workflows/Tests/badge.svg)  [![GitHub issues](https://img.shields.io/github/issues/RBL-NCI/iCLIP)](https://github.com/RBL-NCI/iCLIP/issues)  [![GitHub license](https://img.shields.io/github/license/RBL-NCI/iCLIP)](https://github.com/RBL-NCI/iCLIP/blob/main/LICENSE)
 
 An RNA Biology pipeline to characterize protein-RNA interactions.
 
