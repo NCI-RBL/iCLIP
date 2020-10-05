@@ -127,3 +127,21 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# Virtual Environments
+.env/
+.venv/
+
+# Pipeline Results or Output
+results/
+output/
+tmp/
+scratch/
+
+# DS_Store
+._*
+.DS_Store
+
+# mkdocs documentation
+site/
