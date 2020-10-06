@@ -1,17 +1,17 @@
 $schema: "http://json-schema.org/draft-04/schema#"
 
-description: an entry in the sample sheet
+description: Sample sheet definition file
 
 # columns that the config/samples.tsv file can have and which type they should be
 properties:
   sample:
     type: string
-    description: sample name/identifier
-  condition:
+    description: Sample name without the following extensions (".R1.fastq.gz", ".R2.fastq.gz")
+  group:
     type: string
-    description: sample condition that will be compared during differential analysis (e.g. a treatment, a tissue time, a disease)
+    description: Sample group or condition that will be compared during differential analysis (e.g. a treatment, a tissue time, a disease)
 
 # columns that the config/samples.tsv file must have to pass schema validation
 required:
   - sample
-  - condition
+  - group
