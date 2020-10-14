@@ -1,3 +1,9 @@
 # Global configuration file for the pipeline
 # Please see sample samples.tsv for sample metadata
-samples: "config/samples.tsv"
+#samples: '/scratch/sevillas2/iCLIP/workflow/config/samples.tsv'
+#fastq_dir: '/scratch/sevillas2/iCLIP/fastq'
+#out_dir: '/scratch/sevillas2/iCLIP/output'
+
+samples: '/home/sevillas2/git/iCLIP/workflow/config/samples_one.tsv'
+fastq_dir: '/data/sevillas2/iCLIP/fastq'
+out_dir: '/data/sevillas2/iCLIP/output'

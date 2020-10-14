@@ -1,18 +1,199 @@
-# The main entry point of your workflow.
-# After configuring, running snakemake -n in a clone of this repository should successfully execute a dry-run of the workflow.
+'''
+Overview
 
+- Multiplexed samples are split based on provided barcodes and named using provide sample id
+- Adaptors are stripped from samples
+- Samples are unzipped and split into smaller fastq files to increase speed
+
+
+'''
 
 report: "report/workflow.rst"
 
 # Allow users to fix the underlying OS via singularity.
 container: "docker://continuumio/miniconda3"
 
+from os.path import join
+import pandas as pd
+from collections import defaultdict
+
+#Config file
+'''
+Config file should have the following headers:
+    - sample (required) - the final sample name; this must be unique
+    - multiplex (required) - the mutliplexed sample name; this will not be unique
+    - barcode (required) - the barcode to identify multiplexed sample; this must be unique per each mutliplex sample name but can repeat between samples
+    - adaptor (required) - the adaptor used, to be removed from sample; this may or may not be unique
+
+Other column headers may be included, such as:
+    - group
+
+An example sample.tsv file:
+    sample  group   multiplex       barcode adaptor
+    Ro_Clip CLIP    SIM_iCLIP_S1    NNNTGGCNN       AGATCGGAAGAGCGGTTCAG
+    Control_Clip    CNTRL   SIM_iCLIP_S1    NNNCGGANN       AGATCGGAAGAGCGGTTCAG
+
+'''
+configfile:'config/config.yaml'
+manifest=config['samples']
+fastq_dir=config['fastq_dir']
+
+out_dir=config['out_dir']
+demux_dir=out_dir + '/demux'
+
+#dict multiplex name (1): sample name (1): barcodes (>1, will vary)
+def CreateSampleDicts(dfin):
+    s_dict={}
+
+    #unique multiplex sample names subset df
+    for multi_name in df_manifest['multiplex'].unique():
+        sub_df = dfin[dfin['multiplex']==multi_name]
+        s_dict[multi_name]={}
+
+        #each row maps to a multiplex: sample: barcode
+        for index,row in sub_df.iterrows():
+            sample_name = row['sample']
+            s_dict[multi_name][sample_name]=row['barcode']
+
+    return(s_dict)
+
+#create lists of multiplex, samples, barcodes
+def CreateSampleLists(dict_in):
+    mp_list = []
+    sp_list = []
+    bc_list = []
+
+    for k,v in dict_in.items():
+      for v,v2 in dict_in[k].items():
+        mp_list.append(k)
+        sp_list.append(v)
+        bc_list.append(v2)
+
+    return(mp_list,sp_list,bc_list)
+
+#create demux command line
+def demux_command(wildcards):
+    #subset dataframe by multiplex name that matehes key
+    sub_df = df_manifest[(df_manifest['multiplex']==wildcards.mp) & (df_manifest['barcode']==wildcards.bc)]
+    sub_df.reset_index(inplace=True)
+
+    #create command
+    cmd_line = fastq_dir + '/' + wildcards.mp +'_R1_001.fastq.gz ' + sub_df.iloc[0]['adaptor'] + ' ' + sub_df.iloc[0]['barcode'] + ' --out_dir ' + demux_dir + '/' + wildcards.mp + '/'
+
+    return(cmd_line)
+
+#list of demux relative paths for renaming input
+def get_rename_inputs(wildcards):
+    bc = mp_dict[wildcards.mp][wildcards.sp]
+    fq = demux_dir + '/' + wildcards.mp + '/demux_' + bc + '.fastq.gz'
+    return(fq)
+
+#command needed to move and rename demux files
+def mv_command(wildcards):
+    bc = mp_dict[wildcards.mp][wildcards.sp]
+
+    cmd_line = demux_dir + '/' + wildcards.mp + '/demux_' + bc + '.fastq.gz' + ' ' + demux_dir + '/' + wildcards.mp + '/' + wildcards.sp + '.fastq.gz'
+
+    return(cmd_line)
+
+#command needed to cut adaptors from demux samples
+def AdaptCommand(wildcards):
+    sub_df = df_manifest[(df_manifest['multiplex']==wildcards.mp) & (df_manifest['sample']==wildcards.sp)]
+
+    base = demux_dir + '/' + wildcards.mp + '/' + wildcards.sp
+    fq_un =  base + '_untrimmed.fastq.gz '
+    fq_t = base + '_trimmed.fastq.gz '
+    fq_o = base + '.fastq.gz '
+
+    command_line = '--untrimmed_output ' + fq_un + '--reads_trimmed' + fq_t + fq_o + sub_df.iloc[0]['adaptor']
+
+    return(command_line)
+
+#read manifest
+df_manifest = pd.read_csv(manifest,sep="\t")
+
+#create sample dict and smaple ilsts
+mp_dict=CreateSampleDicts(df_manifest)
+(mp_list,sp_list,bc_list) = CreateSampleLists(mp_dict)
 
 rule all:
     input:
-        # The first rule should define the default target files
-        # Subsequent target rules can be specified below. They should start with all_*.
-
+        expand(join(fastq_dir,'{mp_sample}_R1_001.fastq.gz'), mp_sample=mp_dict.keys()), #multiplexed sample fastq files exist
+        expand(join(demux_dir,'{mp}/demux_{bc}.fastq.gz'), zip, mp=mp_list, bc=bc_list),
+        expand(join(demux_dir,'{mp}/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list),
+        expand(join(demux_dir,'{mp}/{sp}_trimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list),
+        expand(join(demux_dir,'{mp}/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
+        expand(join(demux_dir,'{mp}/{sp}.split_1.fastq'), zip, mp=mp_list,sp=sp_list), #expand(join(out_dir,'{sample}.fastq.gz'), sample=sample_list), #renamed demux files
+        #expand(join(out_dir,'{unzipped}.fastq'), unzipped=sample_list), #unziped fq
+        #expand(join(out_dir,'splits.{split}_1.fastq'), split=ivd.keys()), #split unzipped fq
 
 include: "rules/common.smk"
 include: "rules/other.smk"
+
+rule demultiplex:
+    input:
+        f1 =join(fastq_dir,'{mp}_R1_001.fastq.gz'),
+    params:
+        ml = 15,
+        p1 = demux_command,
+    output:
+        o1 = join(demux_dir,'{mp}/demux_{bc}.fastq.gz')
+    shell:
+        "iCount demultiplex -ml {params.ml} {params.p1}"
+
+rule rename_files:
+    input:
+        get_rename_inputs
+    params:
+        p1 = mv_command
+    output:
+        o1 = join(demux_dir,'{mp}/{sp}.fastq.gz')
+    shell:
+        'mv {params.p1}'
+
+rule remove_adaptors:
+    input:
+        f1 = join(demux_dir,'{mp}/{sp}.fastq.gz')
+    params:
+        ml = 1,
+        adapt = AdaptCommand
+    output:
+        o1 = join(demux_dir,'{mp}/{sp}_trimmed.fastq.gz')
+    shell:
+        'iCount cutadapt -ml {params.ml} {params.adapt}'
+
+rule gunzip_files:
+    input:
+        f1 = join(demux_dir,'{mp}/{sp}_trimmed.fastq.gz')
+    output:
+        o1 = join(demux_dir,'{mp}/{sp}.fastq')
+    shell:
+        "gunzip -c {input.f1} > {output.o1}"
+
+rule split_files:
+    input:
+        f1 = join(demux_dir,'{mp}/{sp}.fastq')
+    params:
+        p1 = join(demux_dir,'{mp}/{sp}.split')
+    output:
+        o1 = join(demux_dir,'{mp}/{sp}.split_1.fastq')
+    shell:
+        "split --additional-suffix .fastq -l 10000000 {input.f1} {params.p1}"
+
+
+"""
+# TODO:
+- workflow
+    - figure out length of fastq files to determine n files after split
+    - align files
+    - dedup reads
+    - id and count peaks
+
+- maintanence
+    - add controls to config (must be strings, barcodes must be unique per multiple sample, all cols are filled)
+
+- submit jobs to cluster
+
+- check if splitting samples is necessary? also is 10k appropriate? Can we increase?
+
+"""
