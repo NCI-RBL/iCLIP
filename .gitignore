@@ -147,3 +147,9 @@ site/
 
 #snakemake log
 .snakemake.log
+
+#test files
+config/manifest*
+config/samples*
+testing/
+workflow/tmp.py
