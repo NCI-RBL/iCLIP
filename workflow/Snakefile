@@ -17,37 +17,56 @@ from os.path import join
 import pandas as pd
 from collections import defaultdict
 
-#Config file
 '''
-Config file should have the following headers:
-    - sample (required) - the final sample name; this must be unique
-    - multiplex (required) - the mutliplexed sample name; this will not be unique
-    - barcode (required) - the barcode to identify multiplexed sample; this must be unique per each mutliplex sample name but can repeat between samples
-    - adaptor (required) - the adaptor used, to be removed from sample; this may or may not be unique
+Three input files are required for analysis
+1) config.yaml
+2) samples.tsv
+3) multiplex.tsv
+
+1)
+
+2) multiplex.tsv should have the following headers:
+    - file_name: the full file name of the multiplexed sample; this must be unique
+    - multiplex: the basename to reference filename; this must be unique and will match with the multiplex column in the samples.tsv file
+
+file_name                   multiplex
+SIM_iCLIP_S1.R1_001.fastq   SIM_iCLIP_S1
+
+3) samples.tsv should have the following headers:
+    - multiplex: the mutliplexed sample name; this will not be unique
+    - sample: the final sample name; this must be unique
+    - barcode: the barcode to identify multiplexed sample; this must be unique per each mutliplex sample name but can repeat between samples
+    - adaptor: the adaptor used, to be removed from sample; this may or may not be unique
 
 Other column headers may be included, such as:
     - group
 
 An example sample.tsv file:
-    sample  group   multiplex       barcode adaptor
-    Ro_Clip CLIP    SIM_iCLIP_S1    NNNTGGCNN       AGATCGGAAGAGCGGTTCAG
-    Control_Clip    CNTRL   SIM_iCLIP_S1    NNNCGGANN       AGATCGGAAGAGCGGTTCAG
+    multiplex       sample          group       barcode     adaptor
+    SIM_iCLIP_S1    Ro_Clip         CLIP        NNNTGGCNN   AGATCGGAAGAGCGGTTCAG
+    SIM_iCLIP_S1    Control_Clip    CNTRL       NNNCGGANN   AGATCGGAAGAGCGGTTCAG
+
 
 '''
 configfile:'config/config.yaml'
-manifest=config['samples']
+sample_manifest=config['samples']
+multiplex_manifest=config['multiplex']
 fastq_dir=config['fastq_dir']
+nova_index=config['novoalign_index']
+split_number = config['split_number']
 
 out_dir=config['out_dir']
 demux_dir=out_dir + '/demux'
+split_dir=out_dir + '/split'
 
 #dict multiplex name (1): sample name (1): barcodes (>1, will vary)
-def CreateSampleDicts(dfin):
+def CreateSampleDicts(df_m,df_s):
     s_dict={}
+    m_dict={}
 
-    #unique multiplex sample names subset df
-    for multi_name in df_manifest['multiplex'].unique():
-        sub_df = dfin[dfin['multiplex']==multi_name]
+    #create dict that maps multiplex: sampleid : barcode
+    for multi_name in df_s['multiplex'].unique():
+        sub_df = df_s[df_s['multiplex']==multi_name]
         s_dict[multi_name]={}
 
         #each row maps to a multiplex: sample: barcode
@@ -55,26 +74,40 @@ def CreateSampleDicts(dfin):
             sample_name = row['sample']
             s_dict[multi_name][sample_name]=row['barcode']
 
-    return(s_dict)
+    #creat dict that maps mulitplex: filename
+    m_dict = dict(zip(df_m.multiplex, df_m.file_name))
 
-#create lists of multiplex, samples, barcodes
-def CreateSampleLists(dict_in):
+    return(m_dict,s_dict)
+
+#create lists of multiplex ids, sample ids, filenames, barcodes, max n files after split
+def CreateSampleLists(dict_m,dict_s):
     mp_list = []
     sp_list = []
     bc_list = []
+    file_list = []
+    split_list = []
 
-    for k,v in dict_in.items():
-      for v,v2 in dict_in[k].items():
+    #multiplex,sample
+    for k,v in dict_s.items():
+      #barcode,sample
+      for v,v2 in dict_s[k].items():
         mp_list.append(k)
         sp_list.append(v)
         bc_list.append(v2)
+        file_list.append(dict_m[k])
+        split_list.append(split_number)
+    return(mp_list,sp_list,bc_list,file_list,split_list)
 
-    return(mp_list,sp_list,bc_list)
+#get list of fq names based on multiplex name
+#{fastq_dir}/{filename}.fastq.gz
+def get_fq_names(wildcards):
+    fq = fastq_dir + '/' + multiplex_dict[wildcards.mp]
+    return(fq)
 
 #create demux command line
-def demux_command(wildcards):
-    #subset dataframe by multiplex name that matehes key
-    sub_df = df_manifest[(df_manifest['multiplex']==wildcards.mp) & (df_manifest['barcode']==wildcards.bc)]
+def demux_cmd(wildcards):
+    #subset dataframe by multiplex name that matches multiplex and barcode
+    sub_df = df_samples[(df_samples['multiplex']==wildcards.mp) & (df_samples['barcode']==wildcards.bc)]
     sub_df.reset_index(inplace=True)
 
     #create command
@@ -82,23 +115,24 @@ def demux_command(wildcards):
 
     return(cmd_line)
 
-#list of demux relative paths for renaming input
+#get list of demux files
+#{demux_dir}/{multiplex id}/demux_{barcode}.fastq.gz
 def get_rename_inputs(wildcards):
-    bc = mp_dict[wildcards.mp][wildcards.sp]
+    bc = samp_dict[wildcards.mp][wildcards.sp]
     fq = demux_dir + '/' + wildcards.mp + '/demux_' + bc + '.fastq.gz'
     return(fq)
 
 #command needed to move and rename demux files
-def mv_command(wildcards):
-    bc = mp_dict[wildcards.mp][wildcards.sp]
+def rename_cmd(wildcards):
+    bc = samp_dict[wildcards.mp][wildcards.sp]
 
     cmd_line = demux_dir + '/' + wildcards.mp + '/demux_' + bc + '.fastq.gz' + ' ' + demux_dir + '/' + wildcards.mp + '/' + wildcards.sp + '.fastq.gz'
 
     return(cmd_line)
 
 #command needed to cut adaptors from demux samples
-def AdaptCommand(wildcards):
-    sub_df = df_manifest[(df_manifest['multiplex']==wildcards.mp) & (df_manifest['sample']==wildcards.sp)]
+def adapt_cmd(wildcards):
+    sub_df = df_samples[(df_samples['multiplex']==wildcards.mp) & (df_samples['sample']==wildcards.sp)]
 
     base = demux_dir + '/' + wildcards.mp + '/' + wildcards.sp
     fq_un =  base + '_untrimmed.fastq.gz '
@@ -109,91 +143,273 @@ def AdaptCommand(wildcards):
 
     return(command_line)
 
-#read manifest
-df_manifest = pd.read_csv(manifest,sep="\t")
+#get list of file base for trimming
+#{multiplex id}/{sample id}.trimmed
+def get_filebase_trim():
+    base_list = []
+    for k,v in samp_dict.items():
+        for v,v2 in samp_dict[k].items():
+            fq = k + '/' + v + '.trimmed'
+            base_list.append(fq)
+    return(base_list)
 
-#create sample dict and smaple ilsts
-mp_dict=CreateSampleDicts(df_manifest)
-(mp_list,sp_list,bc_list) = CreateSampleLists(mp_dict)
+#get list of file base for file splitting
+#{multiplex id}/{sample id}.trimmed.split_{0 : {split_max}}
+def get_filebase_split(list_in):
+    test=[]
+    for mpsp in list_in:
+        for i in range(1,(split_number+1)):
+            fq = mpsp + '.split.' + str(i)
+            test.append(fq)
+    return(test)
+
+#read manifests
+df_multiplex = pd.read_csv(multiplex_manifest,sep="\t")
+df_samples = pd.read_csv(sample_manifest,sep="\t")
+
+#create dicts and file lists
+(multiplex_dict,samp_dict) = CreateSampleDicts(df_multiplex,df_samples)
+(mp_list,sp_list,bc_list,file_list,split_max) = CreateSampleLists(multiplex_dict,samp_dict)
+
+#generate lists of final filenames after trimming, splitting
+filebase_trimmed = get_filebase_trim()
+filebase_split = get_filebase_split(filebase_trimmed)
 
 rule all:
     input:
-        expand(join(fastq_dir,'{mp_sample}_R1_001.fastq.gz'), mp_sample=mp_dict.keys()), #multiplexed sample fastq files exist
-        expand(join(demux_dir,'{mp}/demux_{bc}.fastq.gz'), zip, mp=mp_list, bc=bc_list),
-        expand(join(demux_dir,'{mp}/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list),
-        expand(join(demux_dir,'{mp}/{sp}_trimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list),
-        expand(join(demux_dir,'{mp}/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
-        expand(join(demux_dir,'{mp}/{sp}.split_1.fastq'), zip, mp=mp_list,sp=sp_list), #expand(join(out_dir,'{sample}.fastq.gz'), sample=sample_list), #renamed demux files
-        #expand(join(out_dir,'{unzipped}.fastq'), unzipped=sample_list), #unziped fq
-        #expand(join(out_dir,'splits.{split}_1.fastq'), split=ivd.keys()), #split unzipped fq
-
+        out_dir + "/manifest_clean.txt",
+        expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
+        expand(join(demux_dir,'{mp}/demux_{bc}.fastq.gz'), zip, mp=mp_list, bc=bc_list), #rule demultiplex
+        expand(join(demux_dir,'{mp}/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rule rename
+        expand(join(demux_dir,'{mp}/{sp}.trimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rule remove adaptors
+        expand(join(demux_dir,'{base_trim}.fastq'),base_trim=filebase_trimmed), #gunzip
+        expand(join(split_dir,'{base_split}.fastq'), zip, base_split=filebase_split), #split
+        expand(join(split_dir,'{base_split}.sam'), zip, base_split=filebase_split), #novoalign
+        expand(join(split_dir,'{base_split}.unique.txt'),base_split=filebase_split), #samtools_view_p1
+        expand(join(split_dir,'{base_split}.MM.txt'),base_split=filebase_split), #samtools_view
+        expand(join(split_dir,'{base_split}.unique.bam'),base_split=filebase_split),#create_bam_unique
+        expand(join(split_dir,'{base_split}.unique.indexed.bam'),base_split=filebase_split),
 include: "rules/common.smk"
 include: "rules/other.smk"
 
-rule demultiplex:
+rule check_manifest:
+    """
+    Read in multiplex manifest and sample manifest - use python script to check for unique filenames, barcodes within samples; matching between files; alpha/numeric stringencies
+
+    outputs a temp file "clean" if there are no error - if there are, outputs a file listing those errors; pipeline will fail
+    """
     input:
-        f1 =join(fastq_dir,'{mp}_R1_001.fastq.gz'),
+        f1 = multiplex_manifest,
+        f2 = sample_manifest
+    output:
+        o1 = out_dir + "/manifest_clean.txt"
+    shell:
+        "module load python; python workflow/scripts/manifest_check.py '{out_dir}/manifest_' {input.f1} {input.f2}"
+
+rule demultiplex:
+    """
+
+    """
+    input:
+        f1 = get_fq_names
     params:
         ml = 15,
-        p1 = demux_command,
+        cmd = demux_cmd,
+        doc = "docker://tomazc/icount",
     output:
         o1 = join(demux_dir,'{mp}/demux_{bc}.fastq.gz')
     shell:
-        "iCount demultiplex -ml {params.ml} {params.p1}"
+        """
+        module load singularity
+        singularity exec -B /data/$USER,/fdb,/scratch \
+        {params.doc} iCount demultiplex -ml {params.ml} {params.cmd}
+        """
 
 rule rename_files:
+    """
+    renames demultiplexed files
+    from: {demux_dir}/multiplex id / demux_{barcode}.fastq.gz
+    to: {demux_dir}/{multiplex id}/demux_{sample id}.fast.gz
+    """
     input:
         get_rename_inputs
     params:
-        p1 = mv_command
+        p1 = rename_cmd
     output:
         o1 = join(demux_dir,'{mp}/{sp}.fastq.gz')
     shell:
         'mv {params.p1}'
 
 rule remove_adaptors:
+    """
+    removes adaptors from files, adds "trimmed" to file name
+    """
     input:
         f1 = join(demux_dir,'{mp}/{sp}.fastq.gz')
     params:
         ml = 1,
-        adapt = AdaptCommand
+        adapt = adapt_cmd
     output:
-        o1 = join(demux_dir,'{mp}/{sp}_trimmed.fastq.gz')
+        o1 = join(demux_dir,'{mp}/{sp}.trimmed.fastq.gz')
     shell:
         'iCount cutadapt -ml {params.ml} {params.adapt}'
 
 rule gunzip_files:
+    """
+    unzips files
+    """
     input:
-        f1 = join(demux_dir,'{mp}/{sp}_trimmed.fastq.gz')
+        f1 = join(demux_dir,'{mp}/{sp}.trimmed.fastq.gz')
     output:
-        o1 = join(demux_dir,'{mp}/{sp}.fastq')
+        o1 = join(demux_dir,'{mp}/{sp}.trimmed.fastq')
     shell:
         "gunzip -c {input.f1} > {output.o1}"
 
 rule split_files:
+    """
+    splits files in N parts, adding ".split.N" to file name
+    """
     input:
-        f1 = join(demux_dir,'{mp}/{sp}.fastq')
+        f1 = join(demux_dir,'{base_trim}.fastq')
     params:
-        p1 = join(demux_dir,'{mp}/{sp}.split')
+        p1 = join(split_dir,'{base_trim}.split.'),
+        n = split_number
     output:
-        o1 = join(demux_dir,'{mp}/{sp}.split_1.fastq')
+        o1 = expand(join(split_dir,'{{base_trim}}.split.{n}.fastq'),n=range(1,(split_number+1)))
     shell:
-        "split --additional-suffix .fastq -l 10000000 {input.f1} {params.p1}"
+        "split --additional-suffix .fastq -n l/{params.n} --numeric-suffixes=1 {input.f1} {params.p1}"
 
+rule novoalign:
+    """
+    aligns files to index given; output is a sam file
+
+    two errors -
+    1) A reporting limit ( -r All limit )should be set with the -r All option. Defaulting to 999.
+    2) Error: Unable to determine file format, test.split01.fastq
+ Format could be one of : SLXFQ STDFQ ILMFQ --> add -F ILMFQ flag
+    """
+    input:
+        f1 = join(split_dir,'{base_split}.fastq')
+    params:
+        n_index = nova_index
+    output:
+        o1 = join(split_dir,'{base_split}.sam')
+    shell:
+        "module load novocraft/4.02.03; novoalign -c 32 \
+        -t 15,3 \
+        -l 20 \
+        -x 4 \
+        -g 20 \
+        -s 1 \
+        -o SAM \
+        -R 0 \
+        -r All \
+        -F ILMFQ \
+        -d {params.n_index} \
+        -f {input.f1} > {output.o1}"
+
+rule samtools_view:
+    """
+    creates two text files from sam file
+    1. unique file without NH:i
+    2. MM file with NH:i
+
+    #grab lines without NH tag - becomes "unique file"
+    samtools view folder1/ad.all.sam | grep -v 'NH:i' >folder2/ad.all.unique.txt
+
+    #grab lines with NH tag - becomes "MM file"
+    samtools view folder1/ad.all.sam | grep 'NH:i' >folder3/ad.all.MM.txt
+    """
+    input:
+        f1 = join(split_dir,'{base_split}.sam')
+    output:
+        o1 = join(split_dir,'{base_split}.unique.txt'),
+        o2 = join(split_dir,'{base_split}.MM.txt')
+    shell:
+        "module load samtools; samtools view {input.f1} | grep -v 'NH:i' > {output.o1}; samtools view {input.f1} | grep 'NH:i' > {output.o2}"
+
+rule create_bam_unique:
+    """
+    add nh:i:1 tag to "unique file", copy to "all header file", create bam file
+
+    split into two steps - if run in parallel multiple 'splits' will
+    be attempting to write to the same file - lead to an error. this way wait
+    until all headers are created.
+    part 1 rule create_bam_unique;
+    part 2. rule create_header
+
+    awk -f '\t' -v ofs='\t' '{ $(nf+1) = "nh:i:1"; print }'
+    folder2/ad.all.unique.txt | cat folder3/all.header.txt - | \
+    samtools sort | samtools view -sb > folder2/ad.all.unique.nh.bam
+
+    1. awk -f '\t' -v ofs='\t' '{ $(nf+1) = "nh:i:1"; print }' folder2/ad.all.unique.txt | samtools sort | samtools view -sb >folder2/ad.all.unique.nh.bam
+    2. cat folder2/ad.all.unique.txt > folder3/all.header.txt
+    """
+    input:
+      f1 = join(split_dir,'{base_split}.unique.txt'),
+    output:
+      o1 = join(split_dir,'{base_split}.unique.bam'),
+    shell:
+      "awk -f '\t' -v ofs='\t' '{{ $(nf+1) = ""nh:i:1""; print }}' {input.f1} | samtools sort | samtools view -sb > {output.o1}"
+
+# rule create_header:
+    #"""
+    #part 2 of create_bam_unique above - cat unique.txt with header to "all header" file
+    #cat folder2/ad.all.unique.txt > folder3/all.header.txt
+    #"""
+    #input:
+    #   file list of all unique.txt
+    #   file list of all bams - need to make sure above process has finished
+    #output:
+    #   o1 = all.header.txt
+    #shell:
+        #"cat {input.list} > output.o1"
+
+rule samtools_index:
+    """
+    #index "unique file"
+    samtools index folder2/ad.all.unique.nh.bam
+    """
+    input:
+       f1 = join(split_dir,'{base_split}.unique.bam'),
+    output:
+      o1 = join(split_dir,'{base_split}.unique.indexed.bam'),
+    shell:
+      "module load samtools; samtools index {input.f1} > {output.o1}"
+
+# rule :
+    #"""
+    #cat "all header" to "MM file"; create bam file
+    #cat folder3/all.header.txt folder3/ad.all.MM.txt | samtools sort | samtools view -Sb >folder3/ad.all.mm.bam
+    #"""
+    #input:
+    #output:
+    #shell:
 
 """
+
+rule :
+    input:
+    output:
+    shell:
+
+# updates
+- new multiplex manifest to take in filenames - flexibility in file naming
+- script to check manifests - ensure concordance and flags errors before pipeline runs
+- add rules after split_files
+
+
 # TODO:
 - workflow
-    - figure out length of fastq files to determine n files after split
-    - align files
     - dedup reads
     - id and count peaks
 
 - maintanence
-    - add controls to config (must be strings, barcodes must be unique per multiple sample, all cols are filled)
+    - incorporate manifest python script
 
 - submit jobs to cluster
 
-- check if splitting samples is necessary? also is 10k appropriate? Can we increase?
-
+- QC metrics
+    - adaptors left over
+    - counts / barcodes, counts / reads not assigned
 """
