@@ -149,7 +149,5 @@ site/
 .snakemake.log
 
 #test files
-config/manifest_*
-config/samples_*
 testing/
 workflow/tmp.py
