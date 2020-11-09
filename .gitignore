@@ -148,6 +148,9 @@ site/
 #snakemake log
 .snakemake.log
 
+#container
+*.sif
+
 #test files
 testing/
 workflow/tmp.py
