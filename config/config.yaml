@@ -1,3 +1,9 @@
 # Global configuration file for the pipeline
-# Please see sample samples.tsv for sample metadata
-samples: "config/samples.tsv"
+
+samples: '/home/sevillas2/git/iCLIP/config/samples_one.tsv'
+multiplex: '/home/sevillas2/git/iCLIP/config/multiplex_one.tsv'
+fastq_dir: '/data/sevillas2/iCLIP/fastq'
+out_dir: '/data/sevillas2/iCLIP/output'
+
+novoalign_index: '/data/sevillas2/iCLIP/index/mm10_gencode_prerRNA/mm10_gencode_prerRNA'
+split_number: 30
