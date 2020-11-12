@@ -146,7 +146,7 @@ scratch/
 site/
 
 #snakemake log
-.snakemake.log
+.snakemake/*
 
 #container
 *.sif
@@ -154,3 +154,6 @@ site/
 #test files
 testing/
 workflow/tmp.py
+.Rproj.user
+.R*
+scripts.Rproj

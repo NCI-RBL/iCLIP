@@ -8,7 +8,6 @@ Overview
 - SAM and BAM files are created
 - Samples are merged
 
-
 '''
 
 report: "report/workflow.rst"
@@ -21,41 +20,63 @@ import pandas as pd
 from collections import defaultdict
 
 '''
-Three input files are required for analysis
-1) config.yaml
-2) samples.tsv
-3) multiplex.tsv
+* Requirements *
+- Three input files are required:
+    1) config.yaml
+    2) multiplex.tsv
+    3) samples.tsv
 
-1)
+    1) config.yaml must include:
+        - multiplex_manifest: '/path/to/multiplex_manifest.tsv' see requirements below
+        - sample_manifest: '/path/to/sample_manifest.tsv' see requirements below
+        - fastq_dir: '/path/to/raw/fastq/files'
+        - out_dir: '/path/to/output/'
+        - source_dir: '/path/to/iCLIP/'
+        - novoalign_index: '/path/to/index/'
+        - minimum_count: minimum number of peaks for count
 
-2) multiplex.tsv should have the following headers:
-    - file_name: the full file name of the multiplexed sample; this must be unique
-    - multiplex: the basename to reference filename; this must be unique and will match with the multiplex column in the samples.tsv file
+    2) multiplex.tsv should have the following headers:
+        - file_name: the full file name of the multiplexed sample; this must be unique
+        - multiplex: the basename to reference filename; this must be unique and will match with the multiplex column in the samples.tsv file
 
-file_name                   multiplex
-SIM_iCLIP_S1.R1_001.fastq   SIM_iCLIP_S1
+        An example multplex.tsv file:
+            file_name                   multiplex
+            SIM_iCLIP_S1.R1_001.fastq   SIM_iCLIP_S1
 
-3) samples.tsv should have the following headers:
-    - multiplex: the mutliplexed sample name; this will not be unique
-    - sample: the final sample name; this must be unique
-    - barcode: the barcode to identify multiplexed sample; this must be unique per each mutliplex sample name but can repeat between samples
-    - adaptor: the adaptor used, to be removed from sample; this may or may not be unique
-    - group: CNTRL must be used for control samples, but any other group designation (alpha numeric) is accepted
+    3) samples.tsv should have the following headers:
+        - multiplex: the mutliplexed sample name; this will not be unique
+        - sample: the final sample name; this must be unique
+        - barcode: the barcode to identify multiplexed sample; this must be unique per each mutliplex sample name but can repeat between samples
+        - adaptor: the adaptor used, to be removed from sample; this may or may not be unique
+        - group: CNTRL must be used for control samples, but any other group designation (alpha numeric) is accepted
 
-An example sample.tsv file:
-    multiplex       sample          group       barcode     adaptor
-    SIM_iCLIP_S1    Ro_Clip         CLIP        NNNTGGCNN   AGATCGGAAGAGCGGTTCAG
-    SIM_iCLIP_S1    Control_Clip    CNTRL       NNNCGGANN   AGATCGGAAGAGCGGTTCAG
+        An example sample.tsv file:
+            multiplex       sample          group       barcode     adaptor
+            SIM_iCLIP_S1    Ro_Clip         CLIP        NNNTGGCNN   AGATCGGAAGAGCGGTTCAG
+            SIM_iCLIP_S1    Control_Clip    CNTRL       NNNCGGANN   AGATCGGAAGAGCGGTTCAG
+- In addition, users must provide a copy of the icount.sif file in  '/{source_dir}/container'.
 
+* Execution *
+To run:
+    - clone https://github.com/RBL-NCI/iCLIP.git; fetch activeDev branch
+    - update required files above
+    - copy icount.sif into /{source_dir}/container/
+    - cd /path/to/iCLIP/
+    - module load snakemake
+    - sh run_snakemake.sh [OPTION]
+        --run for full run
+        --unlock for failed run
+        --test for dryrun
 
 '''
 configfile:'config/config.yaml'
-sample_manifest=config['samples']
-multiplex_manifest=config['multiplex']
-fastq_dir=config['fastq_dir']
-nova_index=config['novoalign_index']
-split_number = config['split_number']
+sample_manifest = config['sample_manifest']
+multiplex_manifest = config['multiplex_manifest']
+fastq_dir = config['fastq_dir']
+nova_index = config['novoalign_index']
+min_count = config['minimum_count']
 
+source_dir=config['source_dir']
 out_dir=config['out_dir']
 split_dir=out_dir + '/split'
 sam_dir=out_dir + '/sam'
@@ -65,26 +86,23 @@ bam=out_dir + '/bam'
 def CreateSampleDicts(df_m,df_s):
     s_dict={}
     m_dict={}
-    g_dict={}
 
     #create dict that maps multiplex: sampleid : barcode
     for multi_name in df_s['multiplex'].unique():
         sub_df = df_s[df_s['multiplex']==multi_name]
         s_dict[multi_name]={}
-        g_dict[multi_name]={}
 
         #each row maps to a sample:barcode and sample:group
         for index,row in sub_df.iterrows():
             sample_name = row['sample']
             s_dict[multi_name][sample_name]=row['barcode']
-            g_dict[multi_name][sample_name]=row['group']
 
     #creat dict that maps mulitplex: filename
     m_dict = dict(zip(df_m.multiplex, df_m.file_name))
 
-    return(m_dict,s_dict,g_dict)
+    return(m_dict,s_dict)
 
-#create lists of multiplex ids, sample ids, filenames, barcodes, max n files after split
+#create lists of multiplex ids, sample ids, filenames
 def CreateProjLists(dict_m,dict_s):
     mp_list = []
     sp_list = []
@@ -142,26 +160,24 @@ def adapt_cmd(wildcards):
 
     return(command_line)
 
-#create study sample lists based on split_number
-def CreateSampleLists(mp_in,sp_in):
-  mp_list_n=[]
-  sp_list_n=[]
-  n_list=[]
+#determine the number of lines to split each file by reading split_params.tsv file
+def get_filechunk_size(wildcards):
+    fq_path=out_dir + '/' + wildcards.mp + '/03_unzip/' + wildcards.sp + '.fastq '
 
-  for mp in range(0,len(mp_in)):
-      if group_dict[mp_in[mp]][sp_in[mp]]!="CNTRL":
-        for i in range(10,(split_number+10)):
-          mp_list_n.append(mp_in[mp])
-          sp_list_n.append(sp_in[mp])
-          n_list.append(i)
-  return(mp_list_n,sp_list_n,n_list)
+    #read in split_params file for chunksize
+    try:
+        split_df=pd.read_csv(join(out_dir,'split_params.tsv'),names=["path","filenum","chunksize"],sep="\t")
+        sub_df=split_df[(split_df['path']==fq_path)]
+    except:
+        return(0)
+    return(sub_df.iloc[0]['chunksize'])
 
 #read manifests
 df_multiplex = pd.read_csv(multiplex_manifest,sep="\t")
 df_samples = pd.read_csv(sample_manifest,sep="\t")
 
 #create dicts
-(multiplex_dict,samp_dict,group_dict) = CreateSampleDicts(df_multiplex,df_samples)
+(multiplex_dict,samp_dict) = CreateSampleDicts(df_multiplex,df_samples)
 
 #create unique filename_list and paired lists, where length = N samples, all samples
 #mp_list    sp_list
@@ -169,36 +185,26 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 #mp1        sample2
 (mp_list,sp_list,file_list) = CreateProjLists(multiplex_dict,samp_dict)
 
-#create paired lists where length = split_number, filtered out controls
-#mp_list    sp_list     #n_list
-#mp1        sample1     1
-#mp1        sample1     2
-(mp_list_n,sp_list_n,n_list) = CreateSampleLists(mp_list,sp_list)
-
 rule all:
     input:
         out_dir + "/manifest_clean.txt",
-        #expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
-        #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()),
-        expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rule rename
-        #expand(join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rule remove adaptors
-        #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #rule gunzip
-        #expand(join(out_dir,'{mp_st}/04_split/{sp_st}.split.{n}.fastq'),zip,mp_st=mp_list_n,sp_st=sp_list_n,n=n_list), #rule split
-        #expand(join(out_dir,'{mp_st}/sam/{sp_st}.split.{n}.sam'),zip,mp_st=mp_list_n,sp_st=sp_list_n,n=n_list), #rule novoalign
-        #expand(join(out_dir,'{mp_st}/reads/{sp_st}.split.{n}.unique.txt'),zip,mp_st=mp_list_n,sp_st=sp_list_n,n=n_list), #split_mm_unique
-        #expand(join(out_dir,'{mp_st}/reads/{sp_st}.split.{n}.mm.txt'),zip,mp_st=mp_list_n,sp_st=sp_list_n,n=n_list), #split_mm_unique
-        #expand(join(out_dir,'{mp_st}/reads/{sp_st}.split.{n}.header.txt'),zip,mp_st=mp_list_n,sp_st=sp_list_n,n=n_list), #sam_to_header
-        #expand(join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.unique.bam'),zip,mp_st=mp_list_n,sp_st=sp_list_n,n=n_list), #create_bam_unique
-        #expand(join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.mm.bam'),zip,mp_st=mp_list_n,sp_st=sp_list_n,n=n_list), #create_bam_mm
-        #expand(join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.unique.i.bam'),zip,mp_st=mp_list_n,sp_st=sp_list_n,n=n_list), #sort_mm_and_unique
-        #expand(join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.mm.i.bam'),zip,mp_st=mp_list_n,sp_st=sp_list_n,n=n_list), #index_mm_and_unique
-        #expand(join(out_dir,'{mp}/bam_merged_splits/{sp}.merged.mm.bam'),zip,mp=mp_list,sp=sp_list),
-        #expand(join(out_dir,'{mp}/bam_merged_splits/{sp}.merged.unique.bam'),zip,mp=mp_list,sp=sp_list),
-        #expand(join(out_dir,'{mp}/bam_merged/{sp}.merged.bam'),zip,mp=mp_list,sp=sp_list),
-        #expand(join(out_dir,'{mp}/bam_merged_sort/{sp}.merged.s.bam'),zip,mp=mp_list,sp=sp_list),
-        #expand(join(out_dir,'{mp_st}/bam_merged/{sp_st}.split.{n}.merged.bam'),zip,mp_st=mp_list_n,sp_st=sp_list_n,n=n_list), #merge_splits_mm
-        #expand(join(out_dir,'{mp_st}/bam_merged/{sp_st}.split.{n}.merged.i.bam'),zip,mp_st=mp_list_n,sp_st=sp_list_n,n=n_list), #merge_splits_unique
-
+        expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
+        #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
+        #expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
+        #expand(join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list), #remove adaptors
+        #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
+        #join(out_dir,'split_params.tsv'), #determine_splits
+        #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/13_peaks/{sp}.txt'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/13_peaks/{sp}.SAF'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/14_gff/{sp}.gff3'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}/15_peak_counts/{sp}_FCountUnique.txt'),zip, mp=mp_list, sp=sp_list),
 
 include: "rules/common.smk"
 include: "rules/other.smk"
@@ -215,7 +221,7 @@ rule check_manifest:
     output:
         o1 = out_dir + "/manifest_clean.txt"
     shell:
-        "module load python; python workflow/scripts/manifest_check.py '{out_dir}/manifest_' {input.f1} {input.f2}"
+        "module load python; python workflow/scripts/01_check_manifest.py '{out_dir}/manifest_' {input.f1} {input.f2}"
 
 rule demultiplex:
     """
@@ -225,7 +231,7 @@ rule demultiplex:
     params:
         ml = 15,
         cmd = demux_cmd,
-        doc = '/docker/icount.sif'
+        doc = source_dir + 'container/icount.sif'
     output:
         o1 = join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),
     shell:
@@ -259,7 +265,7 @@ rule remove_adaptors:
     params:
         ml = 1,
         adapt = adapt_cmd,
-        doc = "/dcoker/icount.sif",
+        doc = source_dir + 'container/icount.sif',
     output:
         o1 = join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz')
     shell:
@@ -280,26 +286,38 @@ rule gunzip_files:
     shell:
         "gunzip -c {input.f1} > {output.o1}"
 
-rule split_files:
+rule determine_splits:
     """
-    value = determines the total number of reads (IE 4004), determines how many lines would go into split_number files
-    (IE 4004 / 30 = 134), determines if that number (134) is divisible by 4 (N lines / seq) and counts up until N
-    is found (IE 134/4 = fail; 135/4 = fail, 136/4 = pass and store)
-    splits files into N = value lines, adding ".split.N" to file name
+    determine the number of files, and chunk sizes, to maintain integrity of
+    4 line chunk in seq file
     """
     input:
-        f1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq')
-
+        f1 = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
     params:
-        p1 = join(out_dir,'{mp}/04_split/{sp}.split.'),
-        n = split_number
+        p1 = source_dir + 'scripts/02_find_split_parameters.sh'
     output:
-        o1 = expand(join(out_dir,'{{mp}}/04_split/{{sp}}.split.{n}.fastq'),n=range(10,(split_number+10)))
+        o1 = join(out_dir,'split_params.tsv')
     shell:
         """
-        value=`(sed -n \$= {input.f1} | awk '{{print (($0/{params.n})-int($0/{params.n})>0)?int($0/{params.n})+1:int($0/{params.n})}}' | \
-        awk '{{$0=int($0/4+1)*4}}1')`; \
-        split --additional-suffix .fastq -l $value --numeric-suffixes=10 {input.f1} {params.p1}
+        sh {params.p1} {output.o1} {input.f1}
+        """
+
+rule split_files:
+    """
+
+    """
+    input:
+        all = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
+        f1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq'),
+        sp = join(out_dir,'split_params.tsv')
+    params:
+        p1 = join(out_dir,'{mp}/04_split/{sp}.split.'),
+        c = get_filechunk_size
+    output:
+        o1 = dynamic(join(out_dir,'{mp}/04_split/{sp}.split.{n}.fastq'))
+    shell:
+        """
+        split --additional-suffix .fastq -l {params.c} --numeric-suffixes=10 {input.f1} {params.p1}
         """
 
 rule novoalign:
@@ -314,11 +332,11 @@ rule novoalign:
 
     """
     input:
-        f1 = join(out_dir,'{mp}/04_split/{sp}.split.{n}.fastq')
+        f1 = join(out_dir,'{mp}/04_split/{sp}.split.{n}.fastq'),
     params:
-        n_index = nova_index
+        n_index = nova_index,
     output:
-        o1 = join(out_dir,'{mp}/sam/{sp}.split.{n}.sam'),
+        o1 = join(out_dir,'{mp}/05_sam/{sp}.split.{n}.sam'),
     shell:
         """
         set +e
@@ -348,14 +366,22 @@ rule split_mm_unique:
     samtools view folder1/ad.all.sam | grep 'NH:i' >folder3/ad.all.MM.txt
     """
     input:
-        f1 = join(out_dir,'{mp_st}/sam/{sp_st}.split.{n}.sam'),
+        f1 = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
     output:
-        o1 = join(out_dir,'{mp_st}/reads/{sp_st}.split.{n}.unique.txt'),
-        o2 = join(out_dir,'{mp_st}/reads/{sp_st}.split.{n}.mm.txt'),
+        o1 = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.unique.txt'),
+        o2 = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.mm.txt'),
     shell:
         """
+        set +e
         module load samtools; samtools view {input.f1} | grep -v 'NH:i' > {output.o1}; \
-        samtools view {input.f1} | grep 'NH:i' > {output.o2}
+        samtools view {input.f1} | grep 'NH:i' > {output.o2};
+        exitcode=0
+        if [ $exitcode -eq 1 ]
+        then
+            exit 1
+        else
+            exit 0
+        fi
         """
 
 rule sam_to_header:
@@ -363,9 +389,9 @@ rule sam_to_header:
     read sam file header, print to header txt
     """
     input:
-        sam = join(out_dir,'{mp_st}/sam/{sp_st}.split.{n}.sam'),
+        sam = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
     output:
-        h = join(out_dir,'{mp_st}/reads/{sp_st}.split.{n}.header.txt'),
+        h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
     shell:
         """
         module load samtools; samtools view -H {input.sam} > {output.h};
@@ -376,10 +402,10 @@ rule create_bam_unique:
     add nh:i:1 tag to "unique file", cat header, create unique bam file
     """
     input:
-        h = join(out_dir,'{mp_st}/reads/{sp_st}.split.{n}.header.txt'),
-        un = join(out_dir,'{mp_st}/reads/{sp_st}.split.{n}.unique.txt'),
+        h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
+        un = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.unique.txt'),
     output:
-        o1 = join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.unique.bam'),
+        o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.bam'),
     shell:
         """
         module load samtools;
@@ -392,10 +418,10 @@ rule create_bam_mm:
     cat header, create mm bam file
     """
     input:
-        h = join(out_dir,'{mp_st}/reads/{sp_st}.split.{n}.header.txt'),
-        mm = join(out_dir,'{mp_st}/reads/{sp_st}.split.{n}.mm.txt'),
+        h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
+        mm = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.mm.txt'),
     output:
-        o1 = join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.mm.bam'),
+        o1 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.bam'),
     shell:
         """
         module load samtools; cat {input.h} {input.mm} | samtools sort | samtools view -Sb > {output.o1}
@@ -406,15 +432,15 @@ rule sort_mm_and_unique:
     sort both the mm and unique bam files
     """
     input:
-        un = join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.unique.bam'),
-        mm = join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.mm.bam'),
+        un = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.bam'),
+        mm = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.bam'),
     output:
-        o1 = join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.unique.s.bam'),
-        o2 = join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.mm.s.bam'),
+        o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.s.bam'),
+        o2 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.s.bam'),
     shell:
         """
-        module load samtools; cp {input.un} {output.o1}; samtools sort {output.o1}; \
-        cp {input.mm} {output.o2}; samtools sort {output.o2};
+        module load samtools; samtools sort {input.un} -o {output.o1}; \
+        samtools sort {input.mm} -o {output.o2};
         """
 
 rule index_mm_and_unique:
@@ -422,14 +448,15 @@ rule index_mm_and_unique:
     index both the mm and unique bam files
     """
     input:
-        un = join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.unique.s.bam'),
-        mm = join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.mm.s.bam'),
+        un = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.s.bam'),
+        mm = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.s.bam'),
     output:
-        o1 = join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.unique.i.bam'),
-        o2 = join(out_dir,'{mp_st}/bam/{sp_st}.split.{n}.mm.i.bam'),
+        o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.i.bam'),
+        o2 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.i.bam'),
     shell:
         """
-        module load samtools; cp {input.un} {output.o1}; samtools index {output.o1}; \
+        module load samtools; \
+        cp {input.un} {output.o1}; samtools index {output.o1}; \
         cp {input.mm} {output.o2}; samtools index {output.o2};
         """
 
@@ -438,9 +465,9 @@ rule merge_splits_mm:
     merge split mm bam files into merged.mm bam file
     """
     input:
-        f1 = expand(join(out_dir,'{{mp}}/bam/{{sp}}.split.{n}.mm.i.bam'),n=range(10,split_number+10)),
+        f1 = dynamic(join(out_dir,'{mp}/07_bam_mm/{sp}.split.{n}.mm.i.bam'))
     output:
-        o1 = join(out_dir,'{mp}/bam_merged_splits/{sp}.merged.mm.bam'),
+        o1 = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),
     shell:
         """
         module load samtools; samtools merge -f {output.o1} {input.f1}
@@ -451,9 +478,9 @@ rule merge_splits_unique:
     merge split unique bam files into merged.unique bam file
     """
     input:
-        f1 = expand(join(out_dir,'{{mp}}/bam/{{sp}}.split.{n}.unique.i.bam'),n=range(10,split_number+10)),
+        f1 = dynamic(join(out_dir,'{mp}/07_bam_unique/{sp}.split.{n}.unique.i.bam'))
     output:
-        o1 = join(out_dir,'{mp}/bam_merged_splits/{sp}.merged.unique.bam'),
+        o1 = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),
     shell:
         """
         module load samtools; samtools merge -f {output.o1} {input.f1}
@@ -464,10 +491,10 @@ rule merge_mm_and_unique:
     merge merged.mm and merged.unique bam files
     """
     input:
-        un = join(out_dir,'{mp}/bam_merged_splits/{sp}.merged.unique.bam'),
-        mm = join(out_dir,'{mp}/bam_merged_splits/{sp}.merged.mm.bam'),
+        un = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),
+        mm = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),
     output:
-        o1 = join(out_dir,'{mp}/bam_merged/{sp}.merged.bam'),
+        o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),
     shell:
         """
         module load samtools; samtools merge -f {output.o1} {input.un} {input.mm}
@@ -478,12 +505,12 @@ rule sort_merged:
     sort merged.bam
     """
     input:
-        f1 = join(out_dir,'{mp}/bam_merged/{sp}.merged.bam'),
+        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),
     output:
-        o1 = join(out_dir,'{mp}/bam_merged/{sp}.merged.s.bam'),
+        o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.s.bam'),
     shell:
         """
-        module load samtools; cp {input.un} {output.o1}; samtools sort {output.o1}
+        module load samtools; samtools sort {input.f1} -o {output.o1};
         """
 
 rule index_merged:
@@ -491,30 +518,36 @@ rule index_merged:
     index merged.s.bam files
     """
     input:
-        f1 = join(out_dir,'{mp}/bam_merged/{sp}.merged.s.bam'),
+        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.s.bam'),
     output:
-        o1 = join(out_dir,'{mp}/bam_merged/{sp}.merged.i.bam'),
+        o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
     shell:
         """
-        module load samtools; cp {input.un} {output.o1}; samtools index {output.o1};
+        module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
 rule dedup:
     """
     deduplicate merged.i.bam files
+
+            module load umitools; umi_tools dedup \
+            -I {input.f1} \
+            --method unique --multimapping-detection-method=NH --umi-separator rbc: \
+            -S {output.o1} --log2stderr \
+            -L {output.o2};
     """
     input:
-        f1 = join(out_dir,'{mp}/bam_merged/{sp}.merged.i.bam'),
+        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
     output:
-        o1 = join(out_dir,'{mp}/dedup/{sp}.dedup.bam'),
-        o2 = join(out_dir,'{mp}/dedup/{sp}.dedup.log'),
+        o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),
+        o2 = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.log'),
     shell:
         """
-        module load umi_tools; dedup \
-        -I {input.f1} --method unique --multimapping-detection-method=NH \
-        --umi-separator rbc: \
+        module load umitools; umi_tools dedup \
+        -I {input.f1} \
+        --method unique --multimapping-detection-method=NH --umi-separator=rbc: \
         -S {output.o1} \
-        --log2stderr -L {output.o2}
+        --log2stderr -L {output.o2};
         """
 
 rule sort_dedup:
@@ -522,12 +555,12 @@ rule sort_dedup:
     sort dedup.bam file
     """
     input:
-        f1 = join(out_dir,'{mp}/dedup/{sp}.dedup.bam'),
+        f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),
     output:
-        o1 = join(out_dir,'{mp}/dedup/{sp}.dedup.s.bam'),
+        o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.s.bam'),
     shell:
         """
-        module load samtools; cp {input.un} {output.o1}; samtools sort {output.o1};
+        module load samtools; samtools sort {input.f1} -o {output.o1};
         """
 
 rule index_dedup:
@@ -535,12 +568,12 @@ rule index_dedup:
     index dedup.s.bam file
     """
     input:
-        f1 = join(out_dir,'{mp}/dedup/{sp}.dedup.s.bam'),
+        f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.s.bam'),
     output:
-        o1 = join(out_dir,'{mp}/dedup/{sp}.dedup.i.bam'),
+        o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
     shell:
         """
-        module load samtools; cp {input.un} {output.o1}; samtools index {output.o1};
+        module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
 rule dedup_header:
@@ -550,12 +583,12 @@ rule dedup_header:
     samtools view -H dedup/unique.NH.mm.ddup.s.bam > dedup/unique.NH.mm.ddup.s.header.txt
     """
     input:
-        f1 = join(out_dir,'{mp}/dedup/{sp}.dedup.i.bam'),
+        f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
     output:
-        o1 = join(out_dir,'{mp}/dedup/{sp}.dedup.header.txt'),
+        o1 = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.header.txt'),
     shell:
         """
-        module load samptools; samtools view -H {input.f1} > {output.o1}
+        module load samtools; samtools view -H {input.f1} > {output.o1}
         """
 
 rule split_dedup_mm_and_unique:
@@ -570,16 +603,24 @@ rule split_dedup_mm_and_unique:
 
     """
     input:
-        bam = join(out_dir,'{mp}/dedup/{sp}.dedup.i.bam'),
-        h = join(out_dir,'{mp}/dedup/{sp}.dedup.header.txt'),
+        bam = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
+        h = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.header.txt'),
     output:
-        o1 = join(out_dir,'{mp}/dedup_split/{sp}.dedup.mm.bam'),
-        o2 = join(out_dir,'{mp}/dedup_split/{sp}.dedup.unique.bam'),
+        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.bam'),
+        o2 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
     shell:
         """
-        module load samtools;  samtools view {input.bam} | grep -v -w 'NH:i:1' | cat {input.h} - | \
-        samtools sort | samtools view -Sb > {output.o1}; \
+        set +e
+        module load samtools; \
+        samtools view {input.bam} | grep -v -w 'NH:i:1' | cat {input.h} - | samtools sort | samtools view -Sb > {output.o1}; \
         samtools view {input.bam} | grep -w 'NH:i:1' | cat {input.h} - |  samtools sort | samtools view -Sb > {output.o2}
+        exitcode=0
+        if [ $exitcode -eq 1 ]
+        then
+            exit 1
+        else
+            exit 0
+        fi
         """
 
 rule index_split_dedup_mm:
@@ -588,9 +629,9 @@ rule index_split_dedup_mm:
     samtools index mm/uniqueNH.mm.ddup.s.mm.bam
     """
     input:
-        f1 = join(out_dir,'{mp}/dedup_split/{sp}.dedup.mm.bam'),
+        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.bam'),
     output:
-        o1 = join(out_dir,'{mp}/dedup_split/{sp}.dedup.mm.i.bam'),
+        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),
     shell:
         """
         module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
@@ -602,9 +643,9 @@ rule index_split_dedup_unique:
      samtools index unique/uniqueNH.mm.ddup.s.unique.bam
     """
     input:
-        f1 = join(out_dir,'{mp}/dedup_split/{sp}.dedup.unique.bam'),
+        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
     output:
-        o1 = join(out_dir,'{mp}/dedup_split/{sp}.dedup.unique.i.bam'),
+        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
     shell:
         """
         module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
@@ -616,41 +657,123 @@ rule create_bed:
     /scratch/homanpj/iCLIP_pipeline/peaks/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.bed
     """
     input:
-        f1 = join(out_dir,'{mp}/dedup_split/{sp}.dedup.unique.i.bam'),
+        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
     output:
-        o1 = join(out_dir,'{mp}/bed/{sp}.bed')
+        o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
     shell:
         """
         module load bedtools; bedtools bamtobed -i {input.f1} > {output.o1}
         """
 
-rule merge_bed:
+rule merge_bed_txt:
     """
+    4_Peak_Identification 1_
     bedtools merge -c 6 -o count,distinct -d -1 -i /scratch/homanpj/iCLIP_pipeline/peaks/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.bed
     -s > /scratch/homanpj/iCLIP_pipeline/peaks/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.peaks.txt
     """
     input:
-        f1 = join(out_dir,'{mp}/bed/{sp}.bed')
+        f1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
     output:
-        o1 = join(out_dir,'{mp}/peaks/{sp}.txt')
+        o1 = join(out_dir,'{mp}/13_peaks/{sp}.txt'),
     shell:
         """
-        module load bedtools; bedtools merge -c 6 -o count,distinct -d -1 -i {input.f1} -s > {output.o1}
+        module load bedtools; \
+        bedtools merge -c 6 -o count,distinct -s -d -1 -i {input.f1} > {output.o1}
+        """
+
+rule merge_bed_saf:
+    """
+    4_Peak_Identification 2_
+    bedtools merge -c 6 -o count,distinct -bed -s -d -1 -i /scratch/homanpj/iCLIP_pipeline/peaks/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.bed | \
+    /scratch/homanpj/iCLIP_pipeline/peaks/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.peaks.bedtools.SAF
+    """
+    input:
+        f1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
+    output:
+        o1 = join(out_dir,'{mp}/13_peaks/{sp}.SAF')
+    shell:
+        """
+        module load bedtools; \
+        bedtools merge -c 6 -o count,distinct -s -d -1 -i {input.f1} | \
+        awk '{{OFS="\t"; print $1":"$2"-"$3,$1,$2+1,$3,$5}}' | awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > \
+        {output.o1}
+        """
+
+rule ID_peaks:
+    """
+    Rscript /data/RBL_NCI/Wolin/Phil/mESC_clip/scripts/SelectPeaks.R
+    /scratch/homanpj/iCLIP_pipeline/peaks/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.peaks.txt
+    /scratch/homanpj/iCLIP_pipeline/peaks/
+
+    Q. do we need the bed file again? We have it above.
+
+    Q. used "selectPeaks.R" - there is a selectPeaks_2.R; should I use that one?
+    """
+    input:
+        f1 = join(out_dir,'{mp}/13_peaks/{sp}.txt')
+    params:
+        s = source_dir + 'scripts/03_select_peaks.R',
+        dir = join(out_dir,'{mp}/14_gff/{sp}'),
+        min = min_count
+    output:
+        o1 = join(out_dir,'{mp}/14_gff/{sp}.gff3'),
+        o2 = join(out_dir,'{mp}/14_gff/{sp}.gtf'),
+        o3 = join(out_dir,'{mp}/14_gff/{sp}.bed'),
+    shell:
+        """
+        module load R; \
+        Rscript {params.s} {input.f1} {params.dir} {params.min}
+        """
+
+rule create_peak_table:
+    """
+    Rscript /scratch/homanpj/iCLIP_pipeline/4_Peak_Identification/CreateTable.R \
+    /scratch/homanpj/iCLIP_pipeline/peaks/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.peaks.txt \
+    /scratch/homanpj/iCLIP_pipeline/peaks/ \
+    dedup/unique.NH.mm.ddup.s.bam \
+    .PeakcountsUniq 1
+
+    Q. CreateTable.R vs UntNts_CIGAR_V6b_count.R - which one is correct?
+    """
+    input:
+        f1 = join(out_dir,'{mp}/13_peaks/{sp}.txt')
+    params:
+        s = source_dir + 'scripts/04_create_peak_table.R',
+        dir = join(out_dir,'{mp}/13_peaks/{sp}')
+    output:
+        o1 = "tbd"
+    shell:
+        """
+        module load R; \
+        {params.s} {params.dir}
+        """
+
+rule count_peaks:
+    """
+    Q: seems fairly time consuming... thinking of separating into sep rules rather than
+    processing at once in FeatureCounts.sh file?
+    """
+    input:
+        b = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
+        anno = join(out_dir,'{mp}/13_peaks/{sp}.SAF'),
+    params:
+        s = source_dir + 'scripts/05_count_features.sh',
+        threads = 8,
+        base = join(out_dir,'{mp}/15_peak_counts/'),
+        sample = '{sp}'
+    output:
+        o1 = join(out_dir,'{mp}/15_peak_counts/{sp}_FCountUnique.txt'),
+        o2 = join(out_dir,'{mp}/15_peak_counts/{sp}_FCountAll.txt'),
+        o3 = join(out_dir,'{mp}/15_peak_counts/{sp}_FCountAll_frac.txt'),
+        o4 = join(out_dir,'{mp}/15_peak_counts/{sp}_FCountAll_primary.txt'),
+        o5 = join(out_dir,'{mp}/15_peak_counts/{sp}_FCountAll_FracPrime.txt'),
+    shell:
+        """
+        module load subread; \
+        sh {params.s} {params.threads} {input.anno} {input.b} {params.base} {params.sample}
         """
 
 """
-
-
-Rscript /data/RBL_NCI/Wolin/Phil/mESC_clip/scripts/SelectPeaks.R /scratch/homanpj/iCLIP_pipeline/peaks/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.peaks.txt
-/scratch/homanpj/iCLIP_pipeline/peaks/
-
-Rscript /scratch/homanpj/iCLIP_pipeline/4_Peak_Identification/CreateTable.R \
-/scratch/homanpj/iCLIP_pipeline/peaks/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.peaks.txt \
-/scratch/homanpj/iCLIP_pipeline/peaks/ \
-dedup/unique.NH.mm.ddup.s.bam \
-.PeakcountsUniq 1
-
-
 https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
 
 # updates 10/26
@@ -658,7 +781,7 @@ https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
 - script to check manifests - ensure concordance and flags errors before pipeline runs
 - add rules after split_files
 
-#updates 11/2
+# updates 11/2
 - differentiate for control vs study samples [controls don't get split]
 - use created docker for iCOUNT '/data/sevillas2/iCLIP/container/icount.sif'
 - control calculation for split; otherwise lines were splitting the 4-line seq chunk
@@ -668,18 +791,23 @@ https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
     - split_number = 30
     - one sample 20K reads = 10min; two samples 10K reads = 14min
 
+# updates 11/16
+- update req files and execution documentation
+- added logic for variable number of lines - dynamic split will vary by size using 02_fine_split_parameters script
+-- need to determine max size of file
+- re-organize dir structure
+- created 03_select_peaks and 05_count_features scripts; copied 04_create_peak_table - have Q
+- testing with one sample, two demultiplexed - 13 minutes to complete
+- all rules but create_peak_table,count_peaks execute output
+
 # TODO:
 - workflow
-    - dedup reads
-    - id and count peaks
-
-- submit jobs to cluster
-
+    - create_peak_table
 - QC metrics
     - adaptors left over
     - counts / barcodes, counts / reads not assigned
-
+- submit jobs to cluster
 - figure out time parameters
-
 - set temp files
+
 """
