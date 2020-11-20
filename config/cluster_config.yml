@@ -1,0 +1,8 @@
+# cluster configuration
+__default__:
+    gres: lscratch:256
+    mem: 48g
+    partition: norm
+    time: 4-00:00:00
+    threads: 8
+    cores: 16
