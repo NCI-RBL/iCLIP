@@ -128,7 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-
 # Virtual Environments
 .env/
 .venv/
@@ -145,3 +144,19 @@ scratch/
 
 # mkdocs documentation
 site/
+
+#snakemake log
+.snakemake/*
+
+#slurm
+slurm*
+
+#container
+*.sif
+
+#test files
+testing/
+workflow/tmp.py
+.Rproj.user
+.R*
+scripts.Rproj

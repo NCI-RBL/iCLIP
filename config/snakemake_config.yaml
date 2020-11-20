@@ -1,0 +1,17 @@
+# Global configuration file for the pipeline
+#path to snakemake file
+source_dir: "/home/sevillas2/git/iCLIP/workflow/"
+
+#path to output directory
+out_dir: "/data/sevillas2/iCLIP/output"
+
+#path to manifest files
+sample_manifest: "/home/sevillas2/git/iCLIP/config/samples_two.tsv"
+multiplex_manifest: "/home/sevillas2/git/iCLIP/config/multiplex_two.tsv"
+
+#path to fastq files
+fastq_dir: "/data/sevillas2/iCLIP/fastq"
+
+#user parameters
+novoalign_reference: "mm10" #options: mm10 hg38
+minimum_count: 2 #minimum number of peaks

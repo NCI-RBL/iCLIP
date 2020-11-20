@@ -25,7 +25,7 @@ module load snakemake/5.24.1
 
 ##### 1.3 Configure workflow
 
-Configure the workflow according to your needs via editing the files in the `config/` folder. Adjust `config.yaml` to configure the workflow execution, and `samples.tsv` to specify your sample setup.
+Configure the workflow according to your needs via editing the files in the `config/` folder. Adjust `snakemake_config.yaml` to configure the workflow execution, `cluster_config.yml` to configure the cluster settings, `multiplex_manifest.tsv` and `samples_manifest.tsv` to specify your sample setup.
 
 ##### 1.4 Lint the workflow
 
@@ -35,17 +35,18 @@ snakemake --lint -s workflow/Snakefile
 ```
 ##### 1.5 Dry-run the workflow
 
-Please run the following command to dry-run the snakemake pipeline:
+Please run the following either command to dry-run the snakemake pipeline:
 ```bash
 snakemake -npr -s workflow/Snakefile
+
+sh run_snakemake.sh test
 ```
 
 ### 2. Usage
 
 Submit master job to the cluster:
 ```bash
-# Add later
-echo "Coming soon!"
+sh run_snakemake.sh run
 ```
 
 ### 3. Contribute
@@ -57,4 +58,3 @@ This section is for new developers working with the iCLIP pipeline. If you have 
 3. Copy the modified files to the cloned fork.
 4. Commit and push your changes to your fork.
 5. Create a [pull request](https://help.github.com/en/articles/creating-a-pull-request) to this repository.
-

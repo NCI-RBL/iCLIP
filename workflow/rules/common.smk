@@ -7,9 +7,9 @@ container: "docker://continuumio/miniconda3"
 
 ##### load config and sample sheets #####
 
-configfile: "config/config.yaml"
+configfile: "config/snakemake_config.yaml"
 validate(config, schema="../schemas/config.schema.yaml")
 
-samples = pd.read_csv(config["samples"], sep="\t").set_index("sample", drop=False)
+samples = pd.read_csv(config["sample_manifest"], sep="\t").set_index("sample", drop=False)
 samples.index.names = ["sample_id"]
 validate(samples, schema="../schemas/samples.schema.yaml")

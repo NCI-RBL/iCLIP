@@ -1,0 +1,31 @@
+Bootstrap: library
+From: godloved/secure/ubuntu-bionic
+
+%post
+	apt-get update && apt-get upgrade -y
+	apt-get install wget git -y
+	apt-get clean -y && apt-get autoremove -y
+	
+	cd /opt
+	wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+	bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda
+	rm Miniconda3-latest-Linux-x86_64.sh
+	. /opt/conda/etc/profile.d/conda.sh
+	conda create --yes -n icount python=3
+	conda activate icount
+	conda config --env --add channels bioconda
+	conda config --env --add channels conda-forge
+	conda config --env --set channel_priority strict
+	conda install --yes bedtools==2.27.1  numpy pandas numpydoc matplotlib \
+		star==2.6.1a pysam pybedtools numpydoc matplotlib
+	
+	git clone https://github.com/tomazc/iCount.git
+	cd iCount
+	pip install .[docs,test]
+	cd /opt
+	
+
+%environment
+	. /opt/conda/etc/profile.d/conda.sh
+	conda activate icount
+
