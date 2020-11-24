@@ -26,81 +26,30 @@ from collections import defaultdict
     2) snakemake_config.yaml
     3) multiplex.tsv
     4) samples.tsv
-
-    1) cluster_config.yml must include:
-        - gres: lscratch:256
-        - mem: 48g
-        - partition: norm
-        - time: 4-00:00:00
-        - threads: 4
-        - cores: 8
-
-    2) snakemake_config.yaml must include:
-        - source_dir: '/path/to/iCLIP/'
-        - out_dir: '/path/to/output/'
-        - multiplex_manifest: '/path/to/multiplex_manifest.tsv'
-        - sample_manifest: '/path/to/sample_manifest.tsv'
-        - fastq_dir: '/path/to/raw/fastq/files'
-        - novoalign_reference: selection of either hg38, mm10
-        - minimum_count: minimum number of peaks for count
-
-    3) multiplex.tsv should have the following headers:
-        - file_name: the full file name of the multiplexed sample; this must be unique
-        - multiplex: the basename to reference filename; this must be unique and will match with the multiplex column in the samples.tsv file
-
-        An example multplex.tsv file:
-            file_name                   multiplex
-            SIM_iCLIP_S1_R1_001.fastq   SIM_iCLIP_S1
-
-    4) samples.tsv should have the following headers:
-        - multiplex: the mutliplexed sample name; this will not be unique
-        - sample: the final sample name; this must be unique
-        - barcode: the barcode to identify multiplexed sample; this must be unique per each mutliplex sample name but can repeat between samples
-        - adaptor: the adaptor used, to be removed from sample; this may or may not be unique
-        - group: CNTRL must be used for control samples, but any other group designation (alpha numeric) is accepted
-
-        An example sample.tsv file:
-            multiplex       sample          group       barcode     adaptor
-            SIM_iCLIP_S1    Ro_Clip         CLIP        NNNTGGCNN   AGATCGGAAGAGCGGTTCAG
-            SIM_iCLIP_S1    Control_Clip    CNTRL       NNNCGGANN   AGATCGGAAGAGCGGTTCAG
-- In addition, users must provide a copy of the icount.sif file in  '/{source_dir}/container'.
-
-* Execution *
-To run:
-    - clone https://github.com/RBL-NCI/iCLIP.git; fetch activeDev branch
-    - update required files above
-    - copy icount.sif into /{source_dir}/container/
-    - cd /path/to/iCLIP/
-    - module load snakemake
-    - sh run_snakemake.sh [OPTION]
-        --run for full run
-        --unlock for failed run
-        --test for dryrun
+- Read specific input requirements, and execution information on the Wikipage
+located at: https://github.com/RBL-NCI/iCLIP.git
 '''
 #config
 configfile:'config/snakemake_config.yaml'
-source_dir = config['source_dir']
-out_dir = config['out_dir']
+source_dir = config['source_dir'].rstrip('/') + '/'
+out_dir = config['out_dir'].rstrip('/') + '/'
 sample_manifest = config['sample_manifest']
 multiplex_manifest = config['multiplex_manifest']
-fastq_dir = config['fastq_dir']
+fastq_dir = config['fastq_dir'].rstrip('/') + '/'
+cont_dir = config['container_dir'].rstrip('/') + '/'
+index_dir = config['index_dir'].rstrip('/') + '/'
 nova_ref = config['novoalign_reference']
 min_count = config['minimum_count']
 
-#output paths
-split_dir=out_dir + '/split'
-sam_dir=out_dir + '/sam'
-bam=out_dir + '/bam'
-
 #error checking of index selection
 if nova_ref == 'mm10':
-    nova_index = '/data/sevillas2/iCLIP/index/mm10_gencode_prerRNA/mm10_gencode_prerRNA'
+    nova_index = join(index_dir,'mm10_gencode_prerRNA')
 elif nova_ref == 'hg38':
-    nova_index =  '/data/sevillas2/iCLIP/index/hg38/hg38'
+    nova_index =  join(index_dir,'hg38')
 else:
     sys.exit("""
-    You must select either mm10 or hg38 for a reference in config file.
-    Please update config and then re-run snakemake workflow.
+    You must select either mm10 or hg38 for a reference in the snakemake_config.yaml
+    file. Please update and re-run snakemake workflow.
     """)
 
 #dict multiplex name (1): sample name (1): barcodes (>1, will vary)
@@ -142,7 +91,7 @@ def CreateProjLists(dict_m,dict_s):
 #get list of fq names based on multiplex name
 #{fastq_dir}/{filename}.fastq.gz
 def get_fq_names(wildcards):
-    fq = fastq_dir + '/' + multiplex_dict[wildcards.mp]
+    fq = fastq_dir + multiplex_dict[wildcards.mp]
     return(fq)
 
 #create demux command line
@@ -154,7 +103,7 @@ def demux_cmd(wildcards):
     barcodes = ' '.join(sub_df['barcode'].tolist())
 
     #create command
-    cmd_line = fastq_dir + '/' + multiplex_dict[wildcards.mp] + ' ' + sub_df.iloc[0]['adaptor'] + ' ' + barcodes + ' --out_dir ' + out_dir + '/' + wildcards.mp + '/'
+    cmd_line = fastq_dir + multiplex_dict[wildcards.mp] + ' ' + sub_df.iloc[0]['adaptor'] + ' ' + barcodes + ' --out_dir ' + out_dir + wildcards.mp + '/'
 
     return(cmd_line)
 
@@ -162,7 +111,7 @@ def demux_cmd(wildcards):
 def rename_cmd(wildcards):
     bc = samp_dict[wildcards.mp][wildcards.sp]
 
-    cmd_line = out_dir + '/' + wildcards.mp + '/demux_' + bc + '.fastq.gz' + ' ' + out_dir + '/' + wildcards.mp + '/01_renamed/' + wildcards.sp + '.fastq.gz'
+    cmd_line = out_dir + wildcards.mp + '/demux_' + bc + '.fastq.gz' + ' ' + out_dir + wildcards.mp + '/01_renamed/' + wildcards.sp + '.fastq.gz'
 
     return(cmd_line)
 
@@ -170,7 +119,7 @@ def rename_cmd(wildcards):
 def adapt_cmd(wildcards):
     sub_df = df_samples[(df_samples['multiplex']==wildcards.mp) & (df_samples['sample']==wildcards.sp)]
 
-    base = out_dir + '/' + wildcards.mp + '/02_adaptor/' + wildcards.sp
+    base = out_dir + wildcards.mp + '/02_adaptor/' + wildcards.sp
     fq_un =  base + '_untrimmed.fastq.gz '
     fq_t = base + '_trimmed.fastq.gz '
 
@@ -183,7 +132,7 @@ def adapt_cmd(wildcards):
 
 #determine the number of lines to split each file by reading split_params.tsv file
 def get_filechunk_size(wildcards):
-    fq_path=out_dir + '/' + wildcards.mp + '/03_unzip/' + wildcards.sp + '.fastq '
+    fq_path=out_dir + wildcards.mp + '/03_unzip/' + wildcards.sp + '.fastq '
 
     #read in split_params file for chunksize
     try:
@@ -208,10 +157,12 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 
 rule all:
     input:
-        out_dir + "/manifest_clean.txt",
+        out_dir + "manifest_clean.txt",
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
         #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
         #expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
+        expand(join(out_dir,'{mp}/00_qc/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        join(out_dir,'qc/multiqc_report.html'),
         #expand(join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list), #remove adaptors
         #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
         #join(out_dir,'split_params.tsv'), #determine_splits
@@ -242,11 +193,11 @@ rule check_manifest:
         f1 = multiplex_manifest,
         f2 = sample_manifest
     params:
-        rname='ic:manif',
+        rname='ic_manif',
     output:
-        o1 = temp(out_dir + "/manifest_clean.txt")
+        o1 = temp(out_dir + "manifest_clean.txt")
     shell:
-        "module load python; python workflow/scripts/01_check_manifest.py '{out_dir}/manifest_' {input.f1} {input.f2}"
+        "module load python; python workflow/scripts/01_check_manifest.py '{out_dir}manifest_' {input.f1} {input.f2}"
 
 rule demultiplex:
     """
@@ -266,10 +217,10 @@ rule demultiplex:
     input:
         f1 = get_fq_names
     params:
-        rname='ic:demux',
+        rname='ic_demux',
         ml = 15,
         cmd = demux_cmd,
-        doc = source_dir + 'container/icount.sif'
+        doc = join(cont_dir,'icount.sif')
     output:
         o1 = join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),
     shell:
@@ -288,12 +239,40 @@ rule rename_files:
     input:
         join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),
     params:
-        rname='ic:rename',
+        rname = 'ic_rename',
         p1 = rename_cmd
     output:
         o1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
     shell:
         'mv {params.p1}'
+
+rule fastqc:
+    input:
+        f1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
+    output:
+        o1 = join(out_dir,'{mp}/00_qc/{sp}_fastqc.html')
+    params:
+        rname='ic_fqc',
+        out = join(out_dir,'{mp}/00_qc/')
+    shell:
+        """
+        module load fastqc;
+        fastqc {input.f1} -o {params.out}
+        """
+
+rule multiqc:
+    input:
+        f1 = expand(join(out_dir,'{mp}/00_qc/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list)
+    output:
+        o1 = join(out_dir,'qc/multiqc_report.html')
+    params:
+        rname = 'ic_mqc',
+        dir = expand(join(out_dir,'{mp_s}/00_qc/'),mp_s = samp_dict.keys())
+    shell:
+        """
+        module load multiqc;
+        multiqc {params.dir} -o {out_dir}qc
+        """
 
 rule remove_adaptors:
     """
@@ -302,10 +281,10 @@ rule remove_adaptors:
     input:
         f1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
     params:
-        rname='ic:adapt',
+        rname='ic_adapt',
         ml = 1,
         adapt = adapt_cmd,
-        doc = source_dir + 'container/icount.sif',
+        doc = join(cont_dir,'icount.sif')
     output:
         o1 = join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz')
     shell:
@@ -322,7 +301,7 @@ rule gunzip_files:
     input:
         f1 = join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz')
     params:
-        rname='ic:gunzip',
+        rname='ic_gunzip',
     output:
         o1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq')
     shell:
@@ -336,7 +315,7 @@ rule determine_splits:
     input:
         f1 = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
     params:
-        rname='ic:splitdoc',
+        rname='ic_splitdoc',
         p1 = source_dir + 'scripts/02_find_split_parameters.sh'
     output:
         o1 = join(out_dir,'split_params.tsv')
@@ -354,7 +333,7 @@ rule split_files:
         f1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq'),
         sp = join(out_dir,'split_params.tsv')
     params:
-        rname='ic:split',
+        rname='ic_split',
         p1 = join(out_dir,'{mp}/04_split/{sp}.split.'),
         c = get_filechunk_size
     output:
@@ -378,7 +357,7 @@ rule novoalign:
     input:
         f1 = join(out_dir,'{mp}/04_split/{sp}.split.{n}.fastq'),
     params:
-        rname='ic:novo',
+        rname='ic_novo',
         n_index = nova_index,
     output:
         o1 = join(out_dir,'{mp}/05_sam/{sp}.split.{n}.sam'),
@@ -411,7 +390,7 @@ rule split_mm_unique:
     input:
         f1 = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
     params:
-        rname='ic:split_mu',
+        rname='ic_split_mu',
     output:
         o1 = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.unique.txt'),
         o2 = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.mm.txt'),
@@ -436,7 +415,7 @@ rule sam_to_header:
     input:
         sam = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
     params:
-        rname='ic:sam_head',
+        rname='ic_sam_head',
     output:
         h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
     shell:
@@ -452,7 +431,7 @@ rule create_bam_unique:
         h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
         un = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.unique.txt'),
     params:
-        rname='ic:bam_u',
+        rname='ic_bam_u',
     output:
         o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.bam'),
     shell:
@@ -470,7 +449,7 @@ rule create_bam_mm:
         h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
         mm = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.mm.txt'),
     params:
-        rname='ic:bam_m',
+        rname='ic_bam_m',
     output:
         o1 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.bam'),
     shell:
@@ -486,7 +465,7 @@ rule sort_mm_and_unique:
         un = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.bam'),
         mm = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.bam'),
     params:
-        rname='ic:sort_mu',
+        rname='ic_sort_mu',
     output:
         o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.s.bam'),
         o2 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.s.bam'),
@@ -504,7 +483,7 @@ rule index_mm_and_unique:
         un = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.s.bam'),
         mm = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.s.bam'),
     params:
-        rname='ic:index_mu',
+        rname='ic_index_mu',
     output:
         o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.i.bam'),
         o2 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.i.bam'),
@@ -522,7 +501,7 @@ rule merge_splits_mm:
     input:
         f1 = dynamic(join(out_dir,'{mp}/07_bam_mm/{sp}.split.{n}.mm.i.bam'))
     params:
-        rname='ic:merge_m',
+        rname='ic_merge_m',
     output:
         o1 = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),
     shell:
@@ -537,7 +516,7 @@ rule merge_splits_unique:
     input:
         f1 = dynamic(join(out_dir,'{mp}/07_bam_unique/{sp}.split.{n}.unique.i.bam'))
     params:
-        rname='ic:merge_u',
+        rname='ic_merge_u',
     output:
         o1 = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),
     shell:
@@ -553,7 +532,7 @@ rule merge_mm_and_unique:
         un = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),
         mm = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),
     params:
-        rname='ic:merge_mu',
+        rname='ic_merge_mu',
     output:
         o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),
     shell:
@@ -568,7 +547,7 @@ rule sort_merged:
     input:
         f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),
     params:
-        rname='ic:sort_m',
+        rname='ic_sort_m',
     output:
         o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.s.bam'),
     shell:
@@ -583,7 +562,7 @@ rule index_merged:
     input:
         f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.s.bam'),
     params:
-        rname='ic:index_m',
+        rname='ic_index_m',
     output:
         o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
     shell:
@@ -600,7 +579,7 @@ rule dedup:
     input:
         f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
     params:
-        rname='ic:dedup',
+        rname='ic_dedup',
     output:
         o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),
         o2 = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.log'),
@@ -620,7 +599,7 @@ rule sort_dedup:
     input:
         f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),
     params:
-        rname='ic:sort_dedup',
+        rname='ic_sort_dedup',
     output:
         o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.s.bam'),
     shell:
@@ -635,7 +614,7 @@ rule index_dedup:
     input:
         f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.s.bam'),
     params:
-        rname='ic:index_dedup',
+        rname='ic_index_dedup',
     output:
         o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
     shell:
@@ -651,7 +630,7 @@ rule dedup_header:
     input:
         f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
     params:
-        rname='ic:dedup_head',
+        rname='ic_dedup_head',
     output:
         o1 = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.header.txt'),
     shell:
@@ -669,7 +648,7 @@ rule split_dedup_mm_and_unique:
         bam = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
         h = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.header.txt'),
     params:
-        rname='ic:split_dedup',
+        rname='ic_split_dedup',
     output:
         o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.bam'),
         o2 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
@@ -695,7 +674,7 @@ rule index_split_dedup_mm:
     input:
         f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.bam'),
     params:
-        rname='ic:index_splitm',
+        rname='ic_index_splitm',
     output:
         o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),
     shell:
@@ -710,7 +689,7 @@ rule index_split_dedup_unique:
     input:
         f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
     params:
-        rname='ic:index_splitu',
+        rname='ic_index_splitu',
     output:
         o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
     shell:
@@ -725,7 +704,7 @@ rule create_bed:
     input:
         f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
     params:
-        rname='ic:bed',
+        rname='ic_bed',
     output:
         o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
     shell:
@@ -740,7 +719,7 @@ rule merge_bed_txt:
     input:
         f1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
     params:
-        rname='ic:bed_txt',
+        rname='ic_bed_txt',
     output:
         o1 = join(out_dir,'{mp}/13_peaks/{sp}.txt'),
     shell:
@@ -756,7 +735,7 @@ rule merge_bed_saf:
     input:
         f1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
     params:
-        rname='ic:bed_saf',
+        rname='ic_bed_saf',
     output:
         o1 = join(out_dir,'{mp}/13_peaks/{sp}.SAF')
     shell:
@@ -774,7 +753,7 @@ rule ID_peaks:
     input:
         f1 = join(out_dir,'{mp}/13_peaks/{sp}.txt')
     params:
-        rname='ic:idpeaks',
+        rname='ic_idpeaks',
         s = source_dir + 'scripts/03_select_peaks.R',
         dir = join(out_dir,'{mp}/14_gff/{sp}'),
         min = min_count
@@ -800,7 +779,7 @@ rule create_peak_table:
     input:
         f1 = join(out_dir,'{mp}/13_peaks/{sp}.txt')
     params:
-        rname='ic:peaktab',
+        rname='ic_peaktab',
         s = source_dir + 'scripts/04_create_peak_table.R',
         dir = join(out_dir,'{mp}/13_peaks/{sp}')
     output:
@@ -820,7 +799,7 @@ rule count_peaks:
         b = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
         anno = join(out_dir,'{mp}/13_peaks/{sp}.SAF'),
     params:
-        rname='ic:peakcount',
+        rname='ic_peakcount',
         s = source_dir + 'scripts/05_count_features.sh',
         threads = 8,
         base = join(out_dir,'{mp}/15_peak_counts/'),
@@ -864,13 +843,22 @@ https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
 - testing with one sample, two demultiplexed - 13 minutes to complete
 - all rules but create_peak_table,count_peaks execute output
 
+# updates 11/23
+- submit job to cluster
+- add cluster config
+
+# updates 11/30
+- added FASTQC and MULTIQC reports
+-
+
 # TODO:
+- get novoalign output into graphical report
+- add branch for spliceaware
 - workflow
     - create_peak_table
 - QC metrics
     - adaptors left over
     - counts / barcodes, counts / reads not assigned
-- submit jobs to cluster
 - figure out time parameters
 - set temp files
 
