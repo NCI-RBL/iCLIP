@@ -19,19 +19,31 @@ parse_yaml() {
 # read yaml file
 eval $(parse_yaml config/snakemake_config.yaml "config_")
 
-if [ -d "${config_out_dir}/log" ]
-then
-  echo "Pipeline re-run"
-else
-  mkdir "${config_out_dir}/log"
-fi
-
-#cp "config/snakemake_config.yaml ${config_out_dir}/log/snakemake_config.yaml"
-#cp "config/cluster_config.yml ${config_out_dir}/log/cluster_config.yml"
-#cp "${config_sample_manifest} ${config_out_dir}/log/sample_manifest.tsv"
-#cp "${config_multiplex_manifest} ${config_out_dir}/log/multiplex_manifest.tsv"
+# set timestamp
+now=`date +"%Y%m%d_%H%M"`
 
 if [[ $test = "run" ]]; then
+
+  #create log dir
+  if [ -d "${config_out_dir}/log" ]
+  then
+    echo
+    echo "Pipeline re-run, jobid:"
+  else
+    mkdir "${config_out_dir}/log"
+    echo
+    echo "Pipeline initial run, jobid:"
+  fi
+
+  # copy config inputs for ref
+  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml' ${config_multiplex_manifest} ${config_sample_manifest})
+
+  for f in ${files_save[@]}; do
+    IFS='/' read -r -a strarr <<< "$f"
+    cp $f "${config_out_dir}/log/${now}_${strarr[-1]}"
+  done
+
+  #submit job to cluster
   sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --mail-type=BEGIN,END,FAIL \
   snakemake --latency-wait 120  -s workflow/Snakefile --printshellcmds --cluster-config config/cluster_config.yml --keep-going \
   --restart-times 1 --cluster "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} -p {cluster.partition} -t {cluster.time} \
