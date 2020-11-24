@@ -12,6 +12,10 @@ multiplex_manifest: "/home/sevillas2/git/iCLIP/config/multiplex_two.tsv"
 #path to fastq files
 fastq_dir: "/data/sevillas2/iCLIP/fastq"
 
+#path to containers, index
+container_dir: "/data/RBL_NCI/iCLIP/container"
+index_dir: "/data/RBL_NCI/iCLIP/index"
+
 #user parameters
 novoalign_reference: "mm10" #options: mm10 hg38
 minimum_count: 2 #minimum number of peaks
