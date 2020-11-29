@@ -36,7 +36,7 @@ if [[ $test = "run" ]]; then
   fi
 
   # copy config inputs for ref
-  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml' ${config_multiplex_manifest} ${config_sample_manifest})
+  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml' 'config/cluster_config.yml' ${config_multiplex_manifest} ${config_sample_manifest})
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
