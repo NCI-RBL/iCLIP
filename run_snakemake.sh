@@ -47,7 +47,7 @@ if [[ $test = "run" ]]; then
   sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --mail-type=BEGIN,END,FAIL \
   snakemake --latency-wait 120  -s workflow/Snakefile --printshellcmds --cluster-config config/cluster_config.yml --keep-going \
   --restart-times 1 --cluster "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} -p {cluster.partition} -t {cluster.time} \
-  --mem {cluster.mem} --cores {cluster.cores} --job-name={params.rname} --output=${config_out_dir}/log/{params.rname}.out" -j 500 --rerun-incomplete
+  --mem {cluster.mem} --cores {cluster.cores} --job-name={params.rname} --output=${config_out_dir}/log/{params.rname}_${now}.out" -j 500 --rerun-incomplete
 
 elif [[ $test = "unlock" ]]; then
   snakemake -s workflow/Snakefile --unlock --cores=8
