@@ -1,0 +1,3 @@
+multiplex	sample	group	barcode	adaptor
+test_1	Ro_Clip	CLIP	NNNTGGCNN	AGATCGGAAGAGCGGTTCAG
+test_1	Control_Clip	CNTRL	NNNCGGANN	AGATCGGAAGAGCGGTTCAG
