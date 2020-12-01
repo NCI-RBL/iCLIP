@@ -60,5 +60,6 @@ elif [[ $pipeline = "unlock" ]]; then
   snakemake -s workflow/Snakefile --unlock --cores 8
 else
   #run snakemake
-  snakemake -s workflow/Snakefile -npr
+  snakemake -s workflow/Snakefile --configfile config/snakemake_config.yaml \
+  --printshellcmds --cluster-config config/cluster_config.yml -npr
 fi
