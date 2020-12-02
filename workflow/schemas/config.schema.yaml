@@ -6,9 +6,49 @@ type: object
 
 # possible entries of the config file and which type they should be
 properties:
+  source_dir:
+    type: string
+    description: /path/to/iCLIP/dir
+  container_dir:
+    type: string
+    description: /path/to/container/sif/files
+  fastq_dir:
+    type: string
+    description: /path/to/fastq/files
+  output_dir:
+    type: string
+    description: /path/to/output/dir
   sample_manifest:
     type: string
+    description: /path/to/sample/manifest
+  multiplex_manifest:
+    type: string
+    description: /path/to/multiplex/manifest
+  novoalign_reference:
+    type: string
+    enum: ["hg38","mm10"]
+    description: reference organism
+  splice_aware:
+    type: string
+    enum: ["Y","N","y","n"]
+    description: whether to include splice align parameters
+  splice_bp_length:
+    type: number
+    enum: [50,75,150]
+    description: bp length of created index
+  minimum_count:
+    type: number
+    description: minimum number of values to count as a 'peak'
 
 # entries that have to be in the config file for successful validation
 required:
+  - source_dir
+  - container_dir
+  - fastq_dir
+  - output_dir
   - sample_manifest
+  - multiplex_manifest
+  - novoalign_reference
+  - splice_aware
+  - splice_bp_length
+  - minimum_count
