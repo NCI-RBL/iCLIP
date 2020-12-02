@@ -1,6 +1,6 @@
 # Global configuration file for the pipeline
 #path to snakemake file
-source_dir: "/home/sevillas2/git/iCLIP/workflow/"
+source_dir: "/home/sevillas2/git/iCLIP/"
 
 #path to output directory
 output_dir: "/data/sevillas2/iCLIP/hg38_one/"
@@ -8,7 +8,6 @@ output_dir: "/data/sevillas2/iCLIP/hg38_one/"
 #path to manifest files
 sample_manifest: "/data/RBL_NCI/iCLIP/test/sample_hg38_one.tsv"
 multiplex_manifest: "/data/RBL_NCI/iCLIP/test/multiplex_hg38_one.tsv"
-index_manifest: "/home/sevillas2/git/iCLIP/config/index_config.yaml"
 
 #path to fastq files
 fastq_dir: "/data/RBL_NCI/iCLIP/test"

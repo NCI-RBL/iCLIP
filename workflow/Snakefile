@@ -30,8 +30,8 @@ import yaml
 - Read specific input requirements, and execution information on the Wikipage
 located at: https://github.com/RBL-NCI/iCLIP.git
 '''
+
 #snakemake config
-#configfile:'config/snakemake_config.yaml'
 source_dir = config['source_dir'].rstrip('/') + '/'
 cont_dir = config['container_dir'].rstrip('/') + '/'
 out_dir = config['output_dir'].rstrip('/') + '/'
@@ -39,7 +39,6 @@ fastq_dir = config['fastq_dir'].rstrip('/') + '/'
 
 sample_manifest = config['sample_manifest']
 multiplex_manifest = config['multiplex_manifest']
-index_manifest = config['index_manifest']
 
 nova_ref = config['novoalign_reference']
 splice_aware = config['splice_aware']
@@ -49,6 +48,7 @@ split_params =  config['split_params']
 min_count = config['minimum_count']
 
 #index selection
+index_manifest = source_dir + 'config/index_config.yaml'
 with open(index_manifest) as file:
     index_list = yaml.load(file, Loader=yaml.FullLoader)
 if (splice_aware=='N' or splice_aware=="n"):
@@ -179,7 +179,7 @@ rule all:
         #expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),zip, mp=mp_list, sp=sp_list),
         expand(join(out_dir,'{mp}/15_gff/{sp}.gff3'),zip, mp=mp_list, sp=sp_list),
 
 
@@ -321,7 +321,7 @@ rule determine_splits:
         f1 = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
     params:
         rname='ic_splitdoc',
-        p1 = source_dir + 'scripts/02_find_split_parameters.sh'
+        p1 = source_dir + 'workflow/scripts/02_find_split_parameters.sh'
     output:
         o1 = join(out_dir,'split_params.tsv')
     shell:
@@ -874,7 +874,7 @@ rule count_peaks:
         anno = join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),
     params:
         rname='ic_peak_frac',
-        s = source_dir + 'scripts/03_count_features.sh',
+        s = source_dir + 'workflow/scripts/03_count_features.sh',
         threads = 8,
         base = join(out_dir,'{mp}/14_peak_count/'),
         sample = '{sp}'
@@ -894,7 +894,7 @@ rule ID_peaks:
         f1 = join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),
     params:
         rname='ic_idpeaks',
-        s = source_dir + 'scripts/04_select_peaks.R',
+        s = source_dir + 'workflow/scripts/04_select_peaks.R',
         dir = join(out_dir,'{mp}/15_gff/{sp}'),
         min = min_count
     output:

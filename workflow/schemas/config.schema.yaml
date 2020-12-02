@@ -24,9 +24,6 @@ properties:
   multiplex_manifest:
     type: string
     description: /path/to/multiplex/manifest
-  index_manifest:
-    type: string
-    description: /path/to/index/manifest
   novoalign_reference:
     type: string
     enum: ["hg38","mm10"]
@@ -51,7 +48,6 @@ required:
   - output_dir
   - sample_manifest
   - multiplex_manifest
-  - index_manifest
   - novoalign_reference
   - splice_aware
   - splice_bp_length
