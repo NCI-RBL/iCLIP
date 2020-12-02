@@ -18,6 +18,7 @@ container: "docker://continuumio/miniconda3"
 from os.path import join
 import pandas as pd
 from collections import defaultdict
+import yaml
 
 '''
 * Requirements *
@@ -29,28 +30,31 @@ from collections import defaultdict
 - Read specific input requirements, and execution information on the Wikipage
 located at: https://github.com/RBL-NCI/iCLIP.git
 '''
-#config
-configfile:'config/snakemake_config.yaml'
+#snakemake config
+#configfile:'config/snakemake_config.yaml'
 source_dir = config['source_dir'].rstrip('/') + '/'
-out_dir = config['out_dir'].rstrip('/') + '/'
+cont_dir = config['container_dir'].rstrip('/') + '/'
+out_dir = config['output_dir'].rstrip('/') + '/'
+fastq_dir = config['fastq_dir'].rstrip('/') + '/'
+
 sample_manifest = config['sample_manifest']
 multiplex_manifest = config['multiplex_manifest']
-fastq_dir = config['fastq_dir'].rstrip('/') + '/'
-cont_dir = config['container_dir'].rstrip('/') + '/'
-index_dir = config['index_dir'].rstrip('/') + '/'
+index_manifest = config['index_manifest']
+
 nova_ref = config['novoalign_reference']
+splice_aware = config['splice_aware']
+splice_bp = config['splice_bp_length']
+
+split_params =  config['split_params']
 min_count = config['minimum_count']
 
-#error checking of index selection
-if nova_ref == 'mm10':
-    nova_index = join(index_dir,'mm10_gencode_prerRNA')
-elif nova_ref == 'hg38':
-    nova_index =  join(index_dir,'hg38')
+#index selection
+with open(index_manifest) as file:
+    index_list = yaml.load(file, Loader=yaml.FullLoader)
+if (splice_aware=='N' or splice_aware=="n"):
+    nova_index = index_list[nova_ref]['std']
 else:
-    sys.exit("""
-    You must select either mm10 or hg38 for a reference in the snakemake_config.yaml
-    file. Please update and re-run snakemake workflow.
-    """)
+    nova_index = index_list[nova_ref]['spliceaware'][str(splice_bp)+'bp']
 
 #dict multiplex name (1): sample name (1): barcodes (>1, will vary)
 def CreateSampleDicts(df_m,df_s):
@@ -165,7 +169,7 @@ rule all:
         join(out_dir,'qc/multiqc_report.html'),
         #expand(join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list), #remove adaptors
         #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
-        #join(out_dir,'split_params.tsv'), #determine_splits
+        join(out_dir,'split_params.tsv'), #determine_splits
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
@@ -173,10 +177,11 @@ rule all:
         #expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/13_peaks/{sp}.txt'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/13_peaks/{sp}.SAF'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/14_gff/{sp}.gff3'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/15_peak_counts/{sp}_FCountUnique.txt'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/15_gff/{sp}.gff3'),zip, mp=mp_list, sp=sp_list),
+
 
 include: "rules/common.smk"
 include: "rules/other.smk"
@@ -226,7 +231,7 @@ rule demultiplex:
     shell:
         """
         module load singularity
-        singularity exec -B /data/$USER,/fdb,/scratch \
+        singularity exec -B /data/$USER,/data/RBL_NCI,{out_dir},/fdb,/scratch \
         {params.doc} iCount demultiplex -ml {params.ml} {params.cmd}
         """
 
@@ -244,7 +249,7 @@ rule rename_files:
     output:
         o1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
     shell:
-        'mv {params.p1}'
+        'cp {params.p1}'
 
 rule fastqc:
     input:
@@ -290,7 +295,7 @@ rule remove_adaptors:
     shell:
         """
         module load singularity
-        singularity exec -B /data/$USER,/fdb,/scratch \
+        singularity exec -B /data/$USER,/data/RBL_NCI,{out_dir},/fdb,/scratch \
         {params.doc} iCount cutadapt -ml {params.ml} {params.adapt}
         """
 
@@ -321,7 +326,7 @@ rule determine_splits:
         o1 = join(out_dir,'split_params.tsv')
     shell:
         """
-        sh {params.p1} {output.o1} {input.f1}
+        sh {params.p1} {output.o1} {split_params} {input.f1}
         """
 
 rule split_files:
@@ -343,39 +348,152 @@ rule split_files:
         split --additional-suffix .fastq -l {params.c} --numeric-suffixes=10 {input.f1} {params.p1}
         """
 
-rule novoalign:
-    """
-    aligns files to index given; output is a sam file
-
-    updates:
-    1) A reporting limit ( -r All limit )should be set with the -r All option. Defaulting to 999.
-    2) Error: Unable to determine file format, test.split01.fastq
- Format could be one of : SLXFQ STDFQ ILMFQ --> add -F STDFQ flag
-    3) output interpreted as an error - add code to handle output vs real errors
-
-    """
-    input:
-        f1 = join(out_dir,'{mp}/04_split/{sp}.split.{n}.fastq'),
-    params:
-        rname='ic_novo',
-        n_index = nova_index,
-    output:
-        o1 = join(out_dir,'{mp}/05_sam/{sp}.split.{n}.sam'),
-    shell:
+if (splice_aware == "N" or splice_aware == "n"):
+    rule novoalign:
         """
-        set +e
-        module load novocraft; novoalign -d {params.n_index} \
-        -f {input.f1} -F STDFQ -c 32 \
-        -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
-        -R 0 -r All 999 > {output.o1}
-        exitcode=$?
-        if [ $exitcode -eq 1 ]
-        then
-            exit 1
-        else
-            exit 0
-        fi
+        aligns files to index given; output is a sam file
+
         """
+        input:
+            f1 = join(out_dir,'{mp}/04_split/{sp}.split.{n}.fastq'),
+        params:
+            rname='ic_novo',
+            n_index = nova_index,
+        output:
+            o1 = join(out_dir,'{mp}/05_sam/{sp}.split.{n}.sam'),
+        shell:
+            """
+            set +e
+            module load novocraft; novoalign -d {params.n_index} \
+            -f {input.f1} -F STDFQ -c 32 \
+            -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
+            -R 0 -r All 999 > {output.o1}
+            exitcode=$?
+            if [ $exitcode -eq 1 ]
+            then
+                exit 1
+            else
+                exit 0
+            fi
+            """
+else:
+    rule novoalign_splice:
+        """
+        novoalign -c 56 \
+        -t 15,3 \
+        -l 20 \
+        -x 4 \
+        -g 20 \
+        -s 1 \
+        -o SAM \
+        -R 0 -r All 25 \
+        input.fastq > WT_Clip_iCountcutadpt.split.dg.all.transc.sam
+        """
+        input:
+            f1 = join(out_dir,'{mp_st}/04_split/{sp_st}.split.{n}.fastq'),
+        params:
+            rname='ic_novo',
+            n_index = nova_index,
+        output:
+            o1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.sam'),
+        shell:
+            """
+            set +e
+            module load novocraft; novoalign -d {params.n_index} \
+            -f {input.f1} -F STDFQ -c 56 \
+            -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
+            -R 0 -r All 999 > {output.o1}
+            exitcode=$?
+            if [ $exitcode -eq 1 ]
+            then
+                exit 1
+            else
+                exit 0
+            fi
+            """
+
+    rule sam_cleanup:
+        """
+        Q: the first file is never used - why is it created?
+
+        ## Clean up Alignments
+        1) samtools view WT_Clip_iCountcutadpt.split.dg.all.transc.sam | awk '{ if ($4 == 1) { print } }' > WT_Clip_iCountcutadpt.split.dg.all.transc.1.sam
+
+        2) samtools view WT_Clip_iCountcutadpt.split.dg.all.transc.sam | awk '{ if ($4 > 1) { print } }' > WT_Clip_iCountcutadpt.split.dg.all.transc.G1.sam
+
+        3) samtools view -H WT_Clip_iCountcutadpt.split.dg.all.transc.sam | cat - WT_Clip_iCountcutadpt.split.dg.all.transc.G1.sam > WT_Clip_iCountcutadpt.split.dg.all.transc.G1.good.sam
+        """
+        input:
+            f1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.sam'),
+        params:
+            rname = 'ic_sam_cleanup'
+        output:
+            g1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.tmp.sam'),
+            final = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.final.sam'),
+        shell:
+            """
+            module load samtools;
+            samtools view {input.f1} | awk '{{ if ($4 > 1) {{ print }} }}' > {output.g1};
+            samtools view -H {input.f1} | cat - {output.g1} > {output.final}
+            """
+
+
+    rule convert_transcript:
+        """
+        ## Convert Transcriptome Coordinates to Genomic Coordinates
+        java -jar -Xmx50G -jar USeq_8.9.6/Apps/SamTranscriptomeParser -f bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.transc.G1.good.sam
+        -a 50000 -n 25 -u -s  bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.sam
+        """
+        input:
+            f1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.final.sam'),
+        params:
+            rname = 'ic_convert',
+            base = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam'),
+            doc = join(cont_dir,'USeq_8.9.6/Apps/SamTranscriptomeParser')
+        output:
+            o1 = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam.gz'),
+        shell:
+            """
+            module load java;
+            java -jar -Xmx50G -jar {params.doc} \
+            -f {input.f1} \
+            -a 50000 -n 25 -u -s {params.base}
+            """
+
+    rule gunzip_sam:
+        """
+        gunzip -f bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.sam.gz
+        """
+        input:
+            f1 = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam.gz'),
+        params:
+            rname = 'ic_gzipsam'
+        output:
+            o1 = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
+        shell:
+            """
+            gunzip -c {input.f1} > {output.o1}
+            """
+
+    rule novosort:
+        """
+        Q: where does this belong? this step wasn't included in the original pipeline and creates a new BAM file
+
+        samtools view -uS bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.sam 2> bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.convert.err
+        | novosort -  > bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.bam
+        """
+        input:
+            f1 = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
+        params:
+            rname = 'ic_novosort'
+        output:
+            o1 = join(out_dir,'{mp_st}/05_bam/{sp_st}.split.{n}.bam'),
+        shell:
+            """
+            module load samtools;
+            samtools view -uS {input.f1} 2> bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.convert.err
+            | novosort -  > {output.o1}
+            """
 
 rule split_mm_unique:
     """
@@ -721,7 +839,7 @@ rule merge_bed_txt:
     params:
         rname='ic_bed_txt',
     output:
-        o1 = join(out_dir,'{mp}/13_peaks/{sp}.txt'),
+        o1 = join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),
     shell:
         """
         module load bedtools; \
@@ -737,7 +855,7 @@ rule merge_bed_saf:
     params:
         rname='ic_bed_saf',
     output:
-        o1 = join(out_dir,'{mp}/13_peaks/{sp}.SAF')
+        o1 = join(out_dir,'{mp}/13_peak_anno/{sp}.SAF')
     shell:
         """
         module load bedtools; \
@@ -746,74 +864,45 @@ rule merge_bed_saf:
         {output.o1}
         """
 
-rule ID_peaks:
-    """
-
-    """
-    input:
-        f1 = join(out_dir,'{mp}/13_peaks/{sp}.txt')
-    params:
-        rname='ic_idpeaks',
-        s = source_dir + 'scripts/03_select_peaks.R',
-        dir = join(out_dir,'{mp}/14_gff/{sp}'),
-        min = min_count
-    output:
-        o1 = join(out_dir,'{mp}/14_gff/{sp}.gff3'),
-        o2 = join(out_dir,'{mp}/14_gff/{sp}.gtf')
-    shell:
-        """
-        module load R; \
-        Rscript {params.s} {input.f1} {params.dir} {params.min}
-        """
-
-rule create_peak_table:
-    """
-    Rscript /scratch/homanpj/iCLIP_pipeline/4_Peak_Identification/CreateTable.R \
-    /scratch/homanpj/iCLIP_pipeline/peaks/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.peaks.txt \
-    /scratch/homanpj/iCLIP_pipeline/peaks/ \
-    dedup/unique.NH.mm.ddup.s.bam \
-    .PeakcountsUniq 1
-
-    CreateTable.R
-    """
-    input:
-        f1 = join(out_dir,'{mp}/13_peaks/{sp}.txt')
-    params:
-        rname='ic_peaktab',
-        s = source_dir + 'scripts/04_create_peak_table.R',
-        dir = join(out_dir,'{mp}/13_peaks/{sp}')
-    output:
-        o1 = "tbd"
-    shell:
-        """
-        module load R; \
-        {params.s} {params.dir}
-        """
-
 rule count_peaks:
     """
-    Q: seems fairly time consuming... thinking of separating into sep rules rather than
-    processing at once in FeatureCounts.sh file?
+    Q: do we need the BAM file output (R-path)? pipeline isn't using it
+    Q: also this file is getting re-written each time we use subread - if we do need, it which one should we keep?
     """
     input:
         b = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
-        anno = join(out_dir,'{mp}/13_peaks/{sp}.SAF'),
+        anno = join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),
     params:
-        rname='ic_peakcount',
-        s = source_dir + 'scripts/05_count_features.sh',
+        rname='ic_peak_frac',
+        s = source_dir + 'scripts/03_count_features.sh',
         threads = 8,
-        base = join(out_dir,'{mp}/15_peak_counts/'),
+        base = join(out_dir,'{mp}/14_peak_count/'),
         sample = '{sp}'
     output:
-        o1 = join(out_dir,'{mp}/15_peak_counts/{sp}_FCountUnique.txt'),
-        o2 = join(out_dir,'{mp}/15_peak_counts/{sp}_FCountAll.txt'),
-        o3 = join(out_dir,'{mp}/15_peak_counts/{sp}_FCountAll_frac.txt'),
-        o4 = join(out_dir,'{mp}/15_peak_counts/{sp}_FCountAll_primary.txt'),
-        o5 = join(out_dir,'{mp}/15_peak_counts/{sp}_FCountAll_FracPrime.txt'),
+        o1 = join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt')
     shell:
         """
         module load subread; \
         sh {params.s} {params.threads} {input.anno} {input.b} {params.base} {params.sample}
+        """
+
+rule ID_peaks:
+    """
+    Q - which peak file should be input?
+    """
+    input:
+        f1 = join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),
+    params:
+        rname='ic_idpeaks',
+        s = source_dir + 'scripts/04_select_peaks.R',
+        dir = join(out_dir,'{mp}/15_gff/{sp}'),
+        min = min_count
+    output:
+        o1 = join(out_dir,'{mp}/15_gff/{sp}.gff3')
+    shell:
+        """
+        module load R; \
+        Rscript {params.s} {input.f1} {params.dir} {params.min}
         """
 
 """
@@ -849,17 +938,24 @@ https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
 
 # updates 11/30
 - added FASTQC and MULTIQC reports
--
+
+# updates 12/7
+- count_peaks functioning
+- add index configs
+- schema updated to confirm configs
+- copy configs/manifests and use copy; allow for multiple processes to run at once
+- updated ic name to handle multiple iterations
+- add local execution
+- create test files for hg38
+
 
 # TODO:
 - get novoalign output into graphical report
 - add branch for spliceaware
-- workflow
-    - create_peak_table
 - QC metrics
     - adaptors left over
     - counts / barcodes, counts / reads not assigned
 - figure out time parameters
 - set temp files
-
+- error for source_dir
 """
