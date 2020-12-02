@@ -26,8 +26,8 @@ s_time=`date +"%Y%m%d_%H%M%S"`
 #clean config_output_dir
 output_dir=${config_output_dir%/}
 
-#run pipeline, test pipeline, unlock pipeline
-if [[ $pipeline = "run" ]]; then
+#if pipeline to run on cluster or locally
+if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
 
   #create log dir
   if [ -d "${output_dir}/log" ]
@@ -48,14 +48,21 @@ if [[ $pipeline = "run" ]]; then
     cp $f "${output_dir}/log/${log_time}_${strarr[-1]}"
   done
 
-  #submit job to cluster
-  sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --mail-type=BEGIN,END,FAIL \
-  snakemake --latency-wait 120  -s workflow/Snakefile --configfile \${output_dir}/log/${log_time}_snakemake_config.yaml \
-  --printshellcmds --cluster-config ${output_dir}/log/${log_time}_cluster_config.yml --keep-going \
-  --restart-times 1 --cluster "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
-  -p {cluster.partition} -t {cluster.time} \ --mem {cluster.mem} --cores {cluster.cores} \
-  --job-name={params.rname} --output=${output_dir}/log/${s_time}_{params.rname}.out" -j 500 --rerun-incomplete
+  #if cluster - submit job
+  if [[ $pipeline = "cluster" ]]; then
+    #submit job to cluster
+    sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --mail-type=BEGIN,END,FAIL \
+    snakemake --latency-wait 120  -s workflow/Snakefile --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
+    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_cluster_config.yml --keep-going \
+    --restart-times 1 --cluster "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
+    -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} --cores {cluster.cores} \
+    --job-name={params.rname} --output=${output_dir}/log/${s_time}_{params.rname}.out" -j 500 --rerun-incomplete
 
+  #otherwise submit job locally
+  else
+    snakemake -s workflow/Snakefile --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
+    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_cluster_config.yml --cores 8
+  fi
 elif [[ $pipeline = "unlock" ]]; then
   snakemake -s workflow/Snakefile --unlock --cores 8
 else
