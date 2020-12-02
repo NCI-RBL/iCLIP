@@ -20,4 +20,4 @@ split_params: 3000 #number of sequences to be included in split files; rec 3000 
 novoalign_reference: "hg38" #options: mm10 hg38
 splice_aware: 'y' #options: Y or N
 splice_bp_length: 75 # options: if splice_aware = Y, 50,75,150
-minimum_count: 2 #minimum number of peaks
+minimum_count: 2 #minimum number of matches to count as a true peak

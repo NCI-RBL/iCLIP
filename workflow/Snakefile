@@ -176,12 +176,12 @@ rule all:
         #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),zip, mp=mp_list, sp=sp_list),
         expand(join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),zip, mp=mp_list, sp=sp_list),
         expand(join(out_dir,'{mp}/15_gff/{sp}.gff3'),zip, mp=mp_list, sp=sp_list),
-
 
 include: "rules/common.smk"
 include: "rules/other.smk"
@@ -191,8 +191,6 @@ rule check_manifest:
     Read in multiplex manifest and sample manifest.
     Use python script to check file matching, sample matching, and invalid characters.
     If files are correct, outputs a temp file. If not, outputs error file.
-
-    TODO: use rules/schemas to handle this
     """
     input:
         f1 = multiplex_manifest,
@@ -252,6 +250,9 @@ rule rename_files:
         'cp {params.p1}'
 
 rule fastqc:
+    """
+    Runs FastQC report on each sample
+    """
     input:
         f1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
     output:
@@ -266,6 +267,9 @@ rule fastqc:
         """
 
 rule multiqc:
+    """
+    merges FastQC report into MultiQC report
+    """
     input:
         f1 = expand(join(out_dir,'{mp}/00_qc/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list)
     output:
@@ -281,7 +285,8 @@ rule multiqc:
 
 rule remove_adaptors:
     """
-    removes adaptors from files, adds "trimmed" to file name
+    removes adaptors from files
+    outputs untrimmed and trimmed file
     """
     input:
         f1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
@@ -301,7 +306,7 @@ rule remove_adaptors:
 
 rule gunzip_files:
     """
-    unzips files
+    unzips untrimmed files
     """
     input:
         f1 = join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz')
@@ -314,8 +319,9 @@ rule gunzip_files:
 
 rule determine_splits:
     """
-    determine the number of files, and chunk sizes, to maintain integrity of
-    4 line chunk in seq file
+    determine the number of files, and chunk sizes, to split FASTQ file
+    split is necessary to improve speed of alignment
+    split is done based off split_params input, maintaining every 4 lines = 1 seq
     """
     input:
         f1 = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
@@ -331,7 +337,7 @@ rule determine_splits:
 
 rule split_files:
     """
-
+    performs split of fastq file into smaller files using parameters in split_params.tsv
     """
     input:
         all = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
@@ -352,7 +358,6 @@ if (splice_aware == "N" or splice_aware == "n"):
     rule novoalign:
         """
         aligns files to index given; output is a sam file
-
         """
         input:
             f1 = join(out_dir,'{mp}/04_split/{sp}.split.{n}.fastq'),
@@ -379,15 +384,8 @@ if (splice_aware == "N" or splice_aware == "n"):
 else:
     rule novoalign_splice:
         """
-        novoalign -c 56 \
-        -t 15,3 \
-        -l 20 \
-        -x 4 \
-        -g 20 \
-        -s 1 \
-        -o SAM \
-        -R 0 -r All 25 \
-        input.fastq > WT_Clip_iCountcutadpt.split.dg.all.transc.sam
+        aligns files to index given; output is a sam file
+        functionally equiv to rule novoalign, expect for output file name
         """
         input:
             f1 = join(out_dir,'{mp_st}/04_split/{sp_st}.split.{n}.fastq'),
@@ -440,9 +438,8 @@ else:
 
     rule convert_transcript:
         """
-        ## Convert Transcriptome Coordinates to Genomic Coordinates
-        java -jar -Xmx50G -jar USeq_8.9.6/Apps/SamTranscriptomeParser -f bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.transc.G1.good.sam
-        -a 50000 -n 25 -u -s  bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.sam
+        converts transcriptome coordinates to genomic coordinates
+        uses USeq version 8.9.6
         """
         input:
             f1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.final.sam'),
@@ -462,7 +459,7 @@ else:
 
     rule gunzip_sam:
         """
-        gunzip -f bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.sam.gz
+        unzips sam file
         """
         input:
             f1 = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam.gz'),
@@ -500,10 +497,6 @@ rule split_mm_unique:
     creates two text files from sam file
     1. unique file without NH:i
     2. MM file with NH:i
-
-    #grab lines without NH tag - becomes "unique file"
-
-    #grab lines with NH tag - becomes "MM file"
     """
     input:
         f1 = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
@@ -543,7 +536,7 @@ rule sam_to_header:
 
 rule create_bam_unique:
     """
-    add nh:i:1 tag to "unique file", cat header, create unique bam file
+    add nh:i:1 tag, cat header, create unique bam file
     """
     input:
         h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
@@ -561,7 +554,7 @@ rule create_bam_unique:
 
 rule create_bam_mm:
     """
-    cat header, create mm bam file
+    cat header, create multimapped bam file
     """
     input:
         h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
@@ -577,7 +570,7 @@ rule create_bam_mm:
 
 rule sort_mm_and_unique:
     """
-    sort both the mm and unique bam files
+    sort both the multimapped and unique bam files
     """
     input:
         un = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.bam'),
@@ -595,7 +588,7 @@ rule sort_mm_and_unique:
 
 rule index_mm_and_unique:
     """
-    index both the mm and unique bam files
+    index both the multimapped and unique bam files
     """
     input:
         un = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.s.bam'),
@@ -612,24 +605,9 @@ rule index_mm_and_unique:
         cp {input.mm} {output.o2}; samtools index {output.o2};
         """
 
-rule merge_splits_mm:
-    """
-    merge split mm bam files into merged.mm bam file
-    """
-    input:
-        f1 = dynamic(join(out_dir,'{mp}/07_bam_mm/{sp}.split.{n}.mm.i.bam'))
-    params:
-        rname='ic_merge_m',
-    output:
-        o1 = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),
-    shell:
-        """
-        module load samtools; samtools merge -f {output.o1} {input.f1}
-        """
-
 rule merge_splits_unique:
     """
-    merge split unique bam files into merged.unique bam file
+    merge split unique bam files into one merged.unique bam file
     """
     input:
         f1 = dynamic(join(out_dir,'{mp}/07_bam_unique/{sp}.split.{n}.unique.i.bam'))
@@ -642,9 +620,24 @@ rule merge_splits_unique:
         module load samtools; samtools merge -f {output.o1} {input.f1}
         """
 
+rule merge_splits_mm:
+    """
+    merge split multimapped bam files into one merged.mm bam file
+    """
+    input:
+        f1 = dynamic(join(out_dir,'{mp}/07_bam_mm/{sp}.split.{n}.mm.i.bam'))
+    params:
+        rname='ic_merge_m',
+    output:
+        o1 = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),
+    shell:
+        """
+        module load samtools; samtools merge -f {output.o1} {input.f1}
+        """
+
 rule merge_mm_and_unique:
     """
-    merge merged.mm and merged.unique bam files
+    merge merged.mm and merged.unique bam files by sample
     """
     input:
         un = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),
@@ -691,8 +684,6 @@ rule index_merged:
 rule dedup:
     """
     deduplicate merged.i.bam files
-
-
     """
     input:
         f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
@@ -743,7 +734,6 @@ rule index_dedup:
 rule dedup_header:
     """
     cat bam header
-
     """
     input:
         f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
@@ -758,9 +748,7 @@ rule dedup_header:
 
 rule split_dedup_mm_and_unique:
     """
-    split dedup file into mm file
-
-
+    split dedup file into multimapped and unique files
     """
     input:
         bam = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
@@ -785,24 +773,9 @@ rule split_dedup_mm_and_unique:
         fi
         """
 
-rule index_split_dedup_mm:
-    """
-    index split deduped mm file
-    """
-    input:
-        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.bam'),
-    params:
-        rname='ic_index_splitm',
-    output:
-        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),
-    shell:
-        """
-        module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
-        """
-
 rule index_split_dedup_unique:
     """
-
+    index deduped unique file
     """
     input:
         f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
@@ -815,9 +788,24 @@ rule index_split_dedup_unique:
         module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
+rule index_split_dedup_mm:
+    """
+    index deduped multimapped file
+    """
+    input:
+        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.bam'),
+    params:
+        rname='ic_index_splitm',
+    output:
+        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),
+    shell:
+        """
+        module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
+        """
+
 rule create_bed:
     """
-
+    create bed file from the deduped unique file
     """
     input:
         f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
@@ -832,7 +820,7 @@ rule create_bed:
 
 rule merge_bed_txt:
     """
-
+    merge overlapping peaks into bed file
     """
     input:
         f1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
@@ -848,7 +836,7 @@ rule merge_bed_txt:
 
 rule merge_bed_saf:
     """
-
+    create peak annotation files
     """
     input:
         f1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
@@ -868,6 +856,8 @@ rule count_peaks:
     """
     Q: do we need the BAM file output (R-path)? pipeline isn't using it
     Q: also this file is getting re-written each time we use subread - if we do need, it which one should we keep?
+
+    create peak count files for all, unique, primary, fraction, and primary/fraction
     """
     input:
         b = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
@@ -889,6 +879,7 @@ rule count_peaks:
 rule ID_peaks:
     """
     Q - which peak file should be input?
+    create gtf and gff files
     """
     input:
         f1 = join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),
