@@ -2,11 +2,11 @@ hg38:
   std: '/data/RBL_NCI/iCLIP/index/hg38.nix'
   spliceaware:
     50bp: 'tbd'
-    75bp: '/data/RBL_NCI/iCLIP/index/hg38_splice75bp.nix' #'/data/RBL_NCI/iCLIP/index/hg38_splice75bp.nix'
+    75bp: '/data/RBL_NCI/iCLIP/index/hg38_splice75bp.nix'
     150bp: 'tbd'
 mm10:
-  std: '/data/RBL_NCI/iCLIP/index/mm10_gencode_prerRNA'
+  std: '/data/RBL_NCI/iCLIP/index/mm10.nix'
   spliceaware:
-    50bp: 'tbd'
-    75bp: 'tbd'
+    50bp: '/data/RBL_NCI/iCLIP/index/mm10_splice50bp.nix'
+    75bp: '/data/RBL_NCI/iCLIP/index/mm10_splice75bp.nix'
     150bp: 'tbd'
