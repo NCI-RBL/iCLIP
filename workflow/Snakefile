@@ -938,15 +938,4 @@ https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
 - updated ic name to handle multiple iterations
 - add local execution
 - create test files for hg38
-
-
-# TODO:
-- get novoalign output into graphical report
-- add branch for spliceaware
-- QC metrics
-    - adaptors left over
-    - counts / barcodes, counts / reads not assigned
-- figure out time parameters
-- set temp files
-- error for source_dir
 """
