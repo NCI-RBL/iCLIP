@@ -427,14 +427,7 @@ else:
 
     rule sam_cleanup:
         """
-        Q: the first file is never used - why is it created?
-
-        ## Clean up Alignments
-        1) samtools view WT_Clip_iCountcutadpt.split.dg.all.transc.sam | awk '{ if ($4 == 1) { print } }' > WT_Clip_iCountcutadpt.split.dg.all.transc.1.sam
-
-        2) samtools view WT_Clip_iCountcutadpt.split.dg.all.transc.sam | awk '{ if ($4 > 1) { print } }' > WT_Clip_iCountcutadpt.split.dg.all.transc.G1.sam
-
-        3) samtools view -H WT_Clip_iCountcutadpt.split.dg.all.transc.sam | cat - WT_Clip_iCountcutadpt.split.dg.all.transc.G1.sam > WT_Clip_iCountcutadpt.split.dg.all.transc.G1.good.sam
+        performs cleanup for inserts
         """
         input:
             f1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.sam'),
@@ -446,7 +439,7 @@ else:
         shell:
             """
             module load samtools;
-            samtools view {input.f1} | awk '{{ if ($4 > 1) {{ print }} }}' > {output.g1};
+            samtools view {input.f1} | awk '{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) { print } }' > {output.g1};
             samtools view -H {input.f1} | cat - {output.g1} > {output.final}
             """
 
