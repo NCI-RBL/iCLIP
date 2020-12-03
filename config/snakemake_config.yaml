@@ -3,11 +3,11 @@
 source_dir: "/home/sevillas2/git/iCLIP/"
 
 #path to output directory
-output_dir: "/data/sevillas2/iCLIP/hg38_one/"
+output_dir: "/data/sevillas2/iCLIP/hg38_full/"
 
 #path to manifest files
-sample_manifest: "/data/RBL_NCI/iCLIP/test/sample_hg38_one.tsv"
-multiplex_manifest: "/data/RBL_NCI/iCLIP/test/multiplex_hg38_one.tsv"
+sample_manifest: "/data/RBL_NCI/iCLIP/test/sample_hg38_full.tsv"
+multiplex_manifest: "/data/RBL_NCI/iCLIP/test/multiplex_hg38_full.tsv"
 
 #path to fastq files
 fastq_dir: "/data/RBL_NCI/iCLIP/test"
@@ -16,7 +16,7 @@ fastq_dir: "/data/RBL_NCI/iCLIP/test"
 container_dir: "/data/RBL_NCI/iCLIP/container"
 
 #user parameters
-split_params: 3000 #number of sequences to be included in split files; rec 3000 test, 2000000 full
+split_value: 2000000 #number of sequences in split files [min 3000, default 1000000]
 novoalign_reference: "hg38" #options: mm10 hg38
 splice_aware: 'y' #options: Y or N
 splice_bp_length: 75 # options: if splice_aware = Y, 50,75,150
