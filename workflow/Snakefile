@@ -811,20 +811,36 @@ rule index_split_dedup_mm:
         module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
-rule create_bed:
-    """
-    create bed file from the deduped unique file
-    """
-    input:
-        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
-    params:
-        rname='ic_bed',
-    output:
-        o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
-    shell:
+if [[splice_aware=='n' or splice_aware=='N']]:
+    rule create_bed:
         """
-        module load bedtools; bedtools bamtobed -i {input.f1} > {output.o1}
+        create bed file from the deduped unique file
         """
+        input:
+            f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
+        params:
+            rname='ic_bed',
+        output:
+            o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
+        shell:
+            """
+            module load bedtools; bedtools bamtobed -i {input.f1} > {output.o1}
+            """
+else:
+    rule create_bed:
+        """
+        create bed file from the deduped unique file
+        """
+        input:
+            f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
+        params:
+            rname='ic_bed',
+        output:
+            o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
+        shell:
+            """
+            module load bedtools; bedtools bamtobed -split -i {input.f1} | bedtools sort -i - > {output.o1}
+            """
 
 rule merge_bed_txt:
     """
@@ -862,9 +878,6 @@ rule merge_bed_saf:
 
 rule count_peaks:
     """
-    Q: do we need the BAM file output (R-path)? pipeline isn't using it
-    Q: also this file is getting re-written each time we use subread - if we do need, it which one should we keep?
-
     create peak count files for all, unique, primary, fraction, and primary/fraction
     """
     input:
@@ -877,7 +890,8 @@ rule count_peaks:
         base = join(out_dir,'{mp}/14_peak_count/'),
         sample = '{sp}'
     output:
-        o1 = join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt')
+        txt = join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),
+        bam = temp(join(out_dir,'{mp}/14_peak_count/{sp}.dedup.i.bam.featureCounts.bam'))
     shell:
         """
         module load subread; \
