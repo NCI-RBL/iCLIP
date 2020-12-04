@@ -44,8 +44,23 @@ nova_ref = config['novoalign_reference']
 splice_aware = config['splice_aware']
 splice_bp = config['splice_bp_length']
 
-split_params =  config['split_params']
+split_value =  config['split_value']
 min_count = config['minimum_count']
+
+#split_params
+def check_split(split_in):
+    if (type(split_in) == str):
+        split_replace = split_in.replace(',', '')
+        if (type(split_in) == str):
+            split_replace = 1000000
+    elif (split_in < 3000):
+        split_replace = 1000000
+    elif (type(split_in) == float):
+        split_replace = int(split_in)
+    else:
+        split_replace = split_in
+    return split_replace
+split_value = check_split(split_value)
 
 #index selection
 index_manifest = source_dir + 'config/index_config.yaml'
@@ -321,7 +336,7 @@ rule determine_splits:
     """
     determine the number of files, and chunk sizes, to split FASTQ file
     split is necessary to improve speed of alignment
-    split is done based off split_params input, maintaining every 4 lines = 1 seq
+    split is done based off split_value input, maintaining every 4 lines = 1 seq
     """
     input:
         f1 = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
@@ -332,7 +347,7 @@ rule determine_splits:
         o1 = join(out_dir,'split_params.tsv')
     shell:
         """
-        sh {params.p1} {output.o1} {split_params} {input.f1}
+        sh {params.p1} {output.o1} {split_value} {input.f1}
         """
 
 rule split_files:
@@ -412,14 +427,7 @@ else:
 
     rule sam_cleanup:
         """
-        Q: the first file is never used - why is it created?
-
-        ## Clean up Alignments
-        1) samtools view WT_Clip_iCountcutadpt.split.dg.all.transc.sam | awk '{ if ($4 == 1) { print } }' > WT_Clip_iCountcutadpt.split.dg.all.transc.1.sam
-
-        2) samtools view WT_Clip_iCountcutadpt.split.dg.all.transc.sam | awk '{ if ($4 > 1) { print } }' > WT_Clip_iCountcutadpt.split.dg.all.transc.G1.sam
-
-        3) samtools view -H WT_Clip_iCountcutadpt.split.dg.all.transc.sam | cat - WT_Clip_iCountcutadpt.split.dg.all.transc.G1.sam > WT_Clip_iCountcutadpt.split.dg.all.transc.G1.good.sam
+        performs cleanup for inserts
         """
         input:
             f1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.sam'),
@@ -431,7 +439,7 @@ else:
         shell:
             """
             module load samtools;
-            samtools view {input.f1} | awk '{{ if ($4 > 1) {{ print }} }}' > {output.g1};
+            samtools view {input.f1} | awk '{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) { print } }' > {output.g1};
             samtools view -H {input.f1} | cat - {output.g1} > {output.final}
             """
 
@@ -803,20 +811,36 @@ rule index_split_dedup_mm:
         module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
-rule create_bed:
-    """
-    create bed file from the deduped unique file
-    """
-    input:
-        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
-    params:
-        rname='ic_bed',
-    output:
-        o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
-    shell:
+if [[splice_aware=='n' or splice_aware=='N']]:
+    rule create_bed:
         """
-        module load bedtools; bedtools bamtobed -i {input.f1} > {output.o1}
+        create bed file from the deduped unique file
         """
+        input:
+            f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
+        params:
+            rname='ic_bed',
+        output:
+            o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
+        shell:
+            """
+            module load bedtools; bedtools bamtobed -i {input.f1} > {output.o1}
+            """
+else:
+    rule create_bed:
+        """
+        create bed file from the deduped unique file
+        """
+        input:
+            f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
+        params:
+            rname='ic_bed',
+        output:
+            o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
+        shell:
+            """
+            module load bedtools; bedtools bamtobed -split -i {input.f1} | bedtools sort -i - > {output.o1}
+            """
 
 rule merge_bed_txt:
     """
@@ -854,9 +878,6 @@ rule merge_bed_saf:
 
 rule count_peaks:
     """
-    Q: do we need the BAM file output (R-path)? pipeline isn't using it
-    Q: also this file is getting re-written each time we use subread - if we do need, it which one should we keep?
-
     create peak count files for all, unique, primary, fraction, and primary/fraction
     """
     input:
@@ -869,7 +890,8 @@ rule count_peaks:
         base = join(out_dir,'{mp}/14_peak_count/'),
         sample = '{sp}'
     output:
-        o1 = join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt')
+        txt = join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),
+        bam = temp(join(out_dir,'{mp}/14_peak_count/{sp}.dedup.i.bam.featureCounts.bam'))
     shell:
         """
         module load subread; \
@@ -878,7 +900,6 @@ rule count_peaks:
 
 rule ID_peaks:
     """
-    Q - which peak file should be input?
     create gtf and gff files
     """
     input:

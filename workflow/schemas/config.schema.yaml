@@ -28,6 +28,9 @@ properties:
     type: string
     enum: ["hg38","mm10"]
     description: reference organism
+  split_value:
+    type: number
+    description: number of sequences to split fastq file
   splice_aware:
     type: string
     enum: ["Y","N","y","n"]
@@ -49,6 +52,7 @@ required:
   - sample_manifest
   - multiplex_manifest
   - novoalign_reference
+  - split_value
   - splice_aware
   - splice_bp_length
   - minimum_count
