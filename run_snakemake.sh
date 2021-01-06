@@ -51,7 +51,7 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   #if cluster - submit job
   if [[ $pipeline = "cluster" ]]; then
     #submit job to cluster
-    sbatch --job-name="eCLIP" --gres=lscratch:200 --time=120:00:00 --output=${output_dir}/log/%j_%x.out --mail-type=BEGIN,END,FAIL \
+    sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --output=${output_dir}/log/%j_%x.out --mail-type=BEGIN,END,FAIL \
     snakemake --latency-wait 120  -s workflow/Snakefile --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
     --printshellcmds --cluster-config ${output_dir}/log/${log_time}_cluster_config.yml --keep-going \
     --restart-times 1 --cluster "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
