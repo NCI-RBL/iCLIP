@@ -119,7 +119,7 @@ for k,v in multiplex_dict.items():
     plt.suptitle('Top 5 Barcodes: ' + k)
     plt.xticks(rotation='45', fontsize=6)
     for k,v in top_dict.items():
-        plt.text(x=k , y =v+1 , s=str(v), color = 'black', va = 'left', fontweight='bold')
+        plt.text(x=k , y =v+1 , s=str(v), color = 'black', fontweight='bold')
     plt.tight_layout()
     plt.savefig(file_save)
 
