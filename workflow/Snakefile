@@ -214,10 +214,15 @@ rule check_manifest:
         f2 = sample_manifest
     params:
         rname='ic_manif',
+        py = join(source_dir,'workflow/scripts/01_check_manifest.py')
     output:
         o1 = out_dir + "manifest_clean.txt"
     shell:
-        "module load python; python workflow/scripts/01_check_manifest.py '{out_dir}manifest_' {input.f1} {input.f2}"
+        """
+        module load python; \
+        python {params.py} \
+            '{out_dir}manifest_' {input.f1} {input.f2}
+        """
 
 rule barcode_qc:
     input:
@@ -232,7 +237,7 @@ rule barcode_qc:
         """
         module load python; \
         python {params.py} \
-        {sample_manifest} {multiplex_manifest} {fastq_dir} {out_dir}qc/
+            {sample_manifest} {multiplex_manifest} {fastq_dir} {out_dir}qc/
         """
 
 rule demultiplex:
@@ -380,12 +385,12 @@ rule determine_splits:
         f1 = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
     params:
         rname='ic_splitdoc',
-        p1 = source_dir + 'workflow/scripts/02_find_split_parameters.sh'
+        sh = join(source_dir,'workflow/scripts/03_find_split_parameters.sh')
     output:
         o1 = join(out_dir,'split_params.tsv')
     shell:
         """
-        sh {params.p1} {output.o1} {split_value} {input.f1}
+        sh {params.sh} {output.o1} {split_value} {input.f1}
         """
 
 rule split_files:
@@ -922,7 +927,7 @@ rule count_peaks:
         anno = join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),
     params:
         rname='ic_peak_frac',
-        s = source_dir + 'workflow/scripts/03_count_features.sh',
+        sh = join(source_dir,'workflow/scripts/04_count_features.sh'),
         threads = 8,
         base = join(out_dir,'{mp}/14_peak_count/'),
         sample = '{sp}'
@@ -932,7 +937,7 @@ rule count_peaks:
     shell:
         """
         module load subread; \
-        sh {params.s} {params.threads} {input.anno} {input.b} {params.base} {params.sample}
+        sh {params.sh} {params.threads} {input.anno} {input.b} {params.base} {params.sample}
         """
 
 rule ID_peaks:
@@ -943,7 +948,7 @@ rule ID_peaks:
         f1 = join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),
     params:
         rname='ic_idpeaks',
-        s = source_dir + 'workflow/scripts/04_select_peaks.R',
+        sh = join(source_dir,'workflow/scripts/05_select_peaks.R'),
         dir = join(out_dir,'{mp}/15_gff/{sp}'),
         min = min_count
     output:
@@ -951,7 +956,7 @@ rule ID_peaks:
     shell:
         """
         module load R; \
-        Rscript {params.s} {input.f1} {params.dir} {params.min}
+        Rscript {params.sh} {input.f1} {params.dir} {params.min}
         """
 
 """
