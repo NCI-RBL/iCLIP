@@ -178,25 +178,27 @@ rule all:
     input:
         join(out_dir + "manifest_clean.txt"),
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
+        expand(join(out_dir,'qc/barcode_plot_{mp}.png'), mp=mp_list), #barcode qc
+        expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list), #barcode qc
         #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
         #expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
         #expand(join(out_dir,'{mp}/00_qc/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list), qc reports
-        join(out_dir,'qc/multiqc_report.html'), #multiqc report 
+        ##join(out_dir,'qc/multiqc_report.html'), #multiqc report 
         #expand(join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list), #remove adaptors
         #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
-        join(out_dir,'split_params.tsv'), #determine_splits
+        ##join(out_dir,'split_params.tsv'), #determine_splits
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),zip, mp=mp_list, sp=sp_list),
+        ##expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/15_gff/{sp}.gff3'),zip, mp=mp_list, sp=sp_list),
+        ##expand(join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),zip, mp=mp_list, sp=sp_list),
+        ##expand(join(out_dir,'{mp}/15_gff/{sp}.gff3'),zip, mp=mp_list, sp=sp_list),
 
 include: "rules/common.smk"
 include: "rules/other.smk"
@@ -217,6 +219,22 @@ rule check_manifest:
     shell:
         "module load python; python workflow/scripts/01_check_manifest.py '{out_dir}manifest_' {input.f1} {input.f2}"
 
+rule barcode_qc:
+    input:
+        f1 = out_dir + "manifest_clean.txt"
+    params:
+        rname="ic_bcQC",
+        py = join(source_dir,'workflow/scripts/02_barcode_qc.py')
+    output:
+        o1 = expand(join(out_dir,'qc/barcode_plot_{mp}.png'),mp=mp_list),
+        o2 = expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list)
+    shell:
+        """
+        module load python; \
+        python {params.py} \
+        {sample_manifest} {multiplex_manifest} {fastq_dir} {out_dir}qc/
+        """
+
 rule demultiplex:
     """
     Reads in fastq files from multiplex_manifest.
@@ -233,7 +251,8 @@ rule demultiplex:
     SIM_iCLIP_S1    Control_Clip    CNTRL       NNNCGGANN   AGATCGGAAGAGCGGTTCAG
     """
     input:
-        f1 = get_fq_names
+        f1 = get_fq_names,
+        qc = expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list)
     params:
         rname='ic_demux',
         ml = 15,
