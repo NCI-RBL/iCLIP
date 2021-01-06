@@ -1,7 +1,7 @@
 hg38:
   std: '/data/RBL_NCI/iCLIP/index/hg38.nix'
   spliceaware:
-    50bp: 'tbd'
+    50bp: '/data/RBL_NCI/iCLIP/index/hg38_splice50bp.nix'
     75bp: '/data/RBL_NCI/iCLIP/index/hg38_splice75bp.nix'
     150bp: 'tbd'
 mm10:
