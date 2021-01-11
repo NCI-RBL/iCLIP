@@ -1,19 +1,19 @@
 # Global configuration file for the pipeline
 #path to snakemake file
-source_dir: "/home/sevillas2/git/iCLIP/"
+source_dir: ""
 
 #path to output directory
-output_dir: "/data/sevillas2/iCLIP/hg38_full/"
+output_dir: "hg38_full/"
 
 #path to manifest files
-sample_manifest: "/data/RBL_NCI/iCLIP/test/sample_hg38_full.tsv"
-multiplex_manifest: "/data/RBL_NCI/iCLIP/test/multiplex_hg38_full.tsv"
+sample_manifest: ".tests/sample_hg38_full.tsv"
+multiplex_manifest: ".tests/multiplex_hg38_full.tsv"
 
 #path to fastq files
-fastq_dir: "/data/RBL_NCI/iCLIP/test"
+fastq_dir: ".tests/"
 
 #path to containers
-container_dir: "/data/RBL_NCI/iCLIP/container"
+container_dir: "container"
 
 #user parameters
 split_value: 2000000 #number of sequences in split files [min 3000, default 1000000]
