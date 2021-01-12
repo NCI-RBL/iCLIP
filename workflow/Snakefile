@@ -32,8 +32,8 @@ located at: https://github.com/RBL-NCI/iCLIP.git
 '''
 
 #snakemake config
-source_dir = config['source_dir'].rstrip('/') + '/'
-cont_dir = config['container_dir'].rstrip('/') + '/'
+source_dir = config['source_dir']
+cont_dir = config['container_dir']
 out_dir = config['output_dir'].rstrip('/') + '/'
 fastq_dir = config['fastq_dir'].rstrip('/') + '/'
 
@@ -63,7 +63,7 @@ def check_split(split_in):
 split_value = check_split(split_value)
 
 #index selection
-index_manifest = source_dir + 'config/index_config.yaml'
+index_manifest = join(source_dir, 'config', 'index_config.yaml')
 with open(index_manifest) as file:
     index_list = yaml.load(file, Loader=yaml.FullLoader)
 if (splice_aware=='N' or splice_aware=="n"):
@@ -183,21 +183,21 @@ rule all:
         #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
         #expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
         #expand(join(out_dir,'{mp}/00_qc/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list), qc reports
-        ##join(out_dir,'qc/multiqc_report.html'), #multiqc report 
+        join(out_dir,'qc/multiqc_report.html'), #multiqc report
         #expand(join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list), #remove adaptors
         #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
-        ##join(out_dir,'split_params.tsv'), #determine_splits
+        join(out_dir,'split_params.tsv'), #determine_splits
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
-        ##expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),zip, mp=mp_list, sp=sp_list),
-        ##expand(join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),zip, mp=mp_list, sp=sp_list),
         ##expand(join(out_dir,'{mp}/15_gff/{sp}.gff3'),zip, mp=mp_list, sp=sp_list),
 
 include: "rules/common.smk"
@@ -216,7 +216,7 @@ rule check_manifest:
         rname='ic_manif',
         py = join(source_dir,'workflow/scripts/01_check_manifest.py')
     output:
-        o1 = out_dir + "manifest_clean.txt"
+        o1 = join(out_dir, "manifest_clean.txt"),
     shell:
         """
         module load python; \
@@ -229,7 +229,7 @@ rule barcode_qc:
         f1 = out_dir + "manifest_clean.txt"
     params:
         rname="ic_bcQC",
-        py = join(source_dir,'workflow/scripts/02_barcode_qc.py')
+        py = join(source_dir,'workflow', 'scripts', '02_barcode_qc.py'),
     output:
         o1 = expand(join(out_dir,'qc/barcode_plot_{mp}.png'),mp=mp_list),
         o2 = expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list)
@@ -385,7 +385,11 @@ rule determine_splits:
         f1 = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
     params:
         rname='ic_splitdoc',
+<<<<<<< HEAD
         sh = join(source_dir,'workflow/scripts/03_find_split_parameters.sh')
+=======
+        p1 = join(source_dir, 'workflow', 'scripts', '02_find_split_parameters.sh'),
+>>>>>>> ea05906be4cf348b62b66c909432388a575ef718
     output:
         o1 = join(out_dir,'split_params.tsv')
     shell:
@@ -927,7 +931,11 @@ rule count_peaks:
         anno = join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),
     params:
         rname='ic_peak_frac',
+<<<<<<< HEAD
         sh = join(source_dir,'workflow/scripts/04_count_features.sh'),
+=======
+        s = join(source_dir, 'workflow', 'scripts', '03_count_features.sh'),
+>>>>>>> ea05906be4cf348b62b66c909432388a575ef718
         threads = 8,
         base = join(out_dir,'{mp}/14_peak_count/'),
         sample = '{sp}'
@@ -948,7 +956,7 @@ rule ID_peaks:
         f1 = join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),
     params:
         rname='ic_idpeaks',
-        sh = join(source_dir,'workflow/scripts/05_select_peaks.R'),
+        sh = join(source_dir, 'workflow', 'scripts', '04_select_peaks.R'),
         dir = join(out_dir,'{mp}/15_gff/{sp}'),
         min = min_count
     output:
