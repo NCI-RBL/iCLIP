@@ -454,9 +454,7 @@ rule determine_splits:
         f1 = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
     params:
         rname='ic_splitdoc',
-<<<<<<< HEAD
         sh = join(source_dir, 'workflow', 'scripts', '02_find_split_parameters.sh'),
->>>>>>> ea05906be4cf348b62b66c909432388a575ef718
     output:
         o1 = join(out_dir,'split_params.tsv')
     shell:
@@ -998,9 +996,7 @@ rule count_peaks:
         anno = join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),
     params:
         rname='ic_peak_frac',
-<<<<<<< HEAD
         sh = join(source_dir, 'workflow', 'scripts', '03_count_features.sh'),
->>>>>>> ea05906be4cf348b62b66c909432388a575ef718
         threads = 8,
         base = join(out_dir,'{mp}/14_peak_count/'),
         sample = '{sp}'
