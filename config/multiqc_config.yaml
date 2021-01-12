@@ -1,0 +1,9 @@
+# Order that modules should appear in report. Try to list in order of analysis,
+# eg. FastQC is usually the first step, so should be last in this list.
+
+fastqscreen_simpleplot: true
+
+module_order:
+# Pre-alignment QC
+    - 'fastq_screen'
+    - 'fastqc'
