@@ -183,17 +183,13 @@ rule all:
         #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
         #expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
         #expand(join(out_dir,'{mp}/00_qc/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list), qc reports
-<<<<<<< Updated upstream
-        join(out_dir,'qc/multiqc_report.html'), #multiqc report
-=======
-        
+
         #FastQ Screen
         expand(join(out_dir,'{mp}/00_qc_screen_p1/{sp}_screen.txt'),zip, mp=mp_list, sp=sp_list),
         expand(join(out_dir,'{mp}/00_qc_screen_p2/{sp}_screen.txt'),zip, mp=mp_list, sp=sp_list),
         
         #MultiQC Report
         join(out_dir,'qc/multiqc_report.html'),
->>>>>>> Stashed changes
         #expand(join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list), #remove adaptors
         #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
         join(out_dir,'split_params.tsv'), #determine_splits

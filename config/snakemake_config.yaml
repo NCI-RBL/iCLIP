@@ -3,19 +3,14 @@
 source_dir: ""
 
 #path to output directory
-<<<<<<< Updated upstream
-output_dir: "hg38_full/"
+output_dir: "/data/sevillas2/iCLIP/marco/"
 
 #path to manifest files
-sample_manifest: ".tests/sample_hg38_full.tsv"
-multiplex_manifest: ".tests/multiplex_hg38_full.tsv"
+sample_manifest: "/data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/samples.tsv"
+multiplex_manifest: "/data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/multiplex.tsv"
 
 #path to fastq files
-fastq_dir: ".tests/"
-
-#path to containers
-container_dir: "container"
->>>>>>> Stashed changes
+fastq_dir: "/data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/"
 
 #user parameters
 split_value: 1000000 #number of sequences in split files [min 3000, default 1000000]
