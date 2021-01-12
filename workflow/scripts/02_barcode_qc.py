@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import pandas as pd
 import sys
+import json
 
 #NOTE
 #Current script is set up for two barcoding strategies - if additional are required they 
@@ -103,9 +104,10 @@ for k,v in multiplex_dict.items():
     if check is True:
         file_save = output_dir + 'barcode_summary_' + k + '.txt'
         f = open(file_save,"w+")
-        f.write("Reviewing sample {}\n".format(k))
+        f.write("Reviewing sample {}\n\n".format(k))
         f.write("The top barcodes identified {} include the expected barcodes {}\n\n".format(bc_obs, bc_exp))
-        f.write("print(dict(sorted(top_dict.items(), key=lambda item: item[1])))")
+        f.write("Top barcode counts:\n")
+        f.write(json.dumps(top_dict))
         f.close()    
     else :
         file_save = output_dir + 'barcode_errors_' + k + '.txt'

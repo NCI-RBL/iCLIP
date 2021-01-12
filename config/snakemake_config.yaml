@@ -3,6 +3,7 @@
 source_dir: ""
 
 #path to output directory
+<<<<<<< Updated upstream
 output_dir: "hg38_full/"
 
 #path to manifest files
@@ -14,10 +15,17 @@ fastq_dir: ".tests/"
 
 #path to containers
 container_dir: "container"
+>>>>>>> Stashed changes
 
 #user parameters
-split_value: 2000000 #number of sequences in split files [min 3000, default 1000000]
-novoalign_reference: "hg38" #options: mm10 hg38
+split_value: 1000000 #number of sequences in split files [min 3000, default 1000000]
+novoalign_reference: "hg38" #options: mm10 mm10
 splice_aware: 'y' #options: Y or N
 splice_bp_length: 75 # options: if splice_aware = Y, 50,75,150
-minimum_count: 2 #minimum number of matches to count as a true peak
+minimum_count: 3 #minimum number of matches to count as a true peak
+
+#modules, container parameters
+container_dir: "/data/RBL_NCI/iCLIP/container"
+bowtie2: "bowtie/2-2.3.4"
+fastq_screen: "fastq_screen/0.14.0"
+perl: "perl/5.24.3"

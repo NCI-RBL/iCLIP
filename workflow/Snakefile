@@ -183,7 +183,17 @@ rule all:
         #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
         #expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
         #expand(join(out_dir,'{mp}/00_qc/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list), qc reports
+<<<<<<< Updated upstream
         join(out_dir,'qc/multiqc_report.html'), #multiqc report
+=======
+        
+        #FastQ Screen
+        expand(join(out_dir,'{mp}/00_qc_screen_p1/{sp}_screen.txt'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/00_qc_screen_p2/{sp}_screen.txt'),zip, mp=mp_list, sp=sp_list),
+        
+        #MultiQC Report
+        join(out_dir,'qc/multiqc_report.html'),
+>>>>>>> Stashed changes
         #expand(join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list), #remove adaptors
         #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
         join(out_dir,'split_params.tsv'), #determine_splits
@@ -235,7 +245,7 @@ rule barcode_qc:
         o2 = expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list)
     shell:
         """
-        module load python; \
+        module load python; module load Qt/5.13.2; \
         python {params.py} \
             {sample_manifest} {multiplex_manifest} {fastq_dir} {out_dir}qc/
         """
@@ -343,6 +353,59 @@ rule fastqc_post:
         fastqc {input.f1} -o {params.out}
         """
 
+rule fastq_screen_p1:
+    """
+    this will align to human, mouse, bacteria
+    http://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/_build/html/index.html
+    """
+    input:
+        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz')
+    params:
+        rname='ic_screen_p1',
+        dir_screen = join(out_dir,'{mp}/00_qc_screen/'),
+        fq_config = join(source_dir,'config/fqscreen_p1_config.conf')
+    threads: 24
+    envmodules:
+        config['bowtie2'],
+        config['perl'],
+        config['fastq_screen'],
+    output:
+        o1 = join(out_dir,'{mp}/00_qc_screen_p1/{sp}_screen.txt'),
+        o2 = join(out_dir,'{mp}/00_qc_screen_p1/{sp}_screen.png'),
+    shell:
+        '''
+        fastq_screen --conf {params.fq_config} --outdir {params.dir_screen} \
+            --threads {threads} --subset 1000000 --aligner bowtie2 --force \
+            {input.f1}
+        '''
+
+rule fastq_screen_p2:
+    """
+    this will align to rRNA and must be run separately from _p1 as we are interested
+    in the total amount aligning to rRNA and not a subset after human and mouse alignment
+    http://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/_build/html/index.html
+    """
+    input:
+        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz')
+    params:
+        rname='ic_screen_p2',
+        dir_screen = join(out_dir,'{mp}/00_qc_screen/'),
+        fq_config = join(source_dir,'config/fqscreen_p2_config.conf')
+    threads: 24
+    envmodules:
+        config['bowtie2'],
+        config['perl'],
+        config['fastq_screen'],
+    output:
+        o1 = join(out_dir,'{mp}/00_qc_screen_p2/{sp}_screen.txt'),
+        o2 = join(out_dir,'{mp}/00_qc_screen_p2/{sp}_screen.png'),
+    shell:
+        '''
+        fastq_screen --conf {params.fq_config} --outdir {params.dir_screen} \
+            --threads {threads} --subset 1000000 --aligner bowtie2 --force \
+            {input.f1}
+        '''
+
 rule multiqc:
     """
     merges FastQC reports for pre/post trimmed fastq files into MultiQC report
@@ -350,16 +413,22 @@ rule multiqc:
     input:
         f1 = expand(join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
         f2 = expand(join(out_dir,'{mp}/00_qc_post/{sp}_untrimmed_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        f3 = expand(join(out_dir,'{mp}/00_qc_screen_p1/{sp}_screen.txt'),zip,mp=mp_list,sp=sp_list),
+        f4 = expand(join(out_dir,'{mp}/00_qc_screen_p2/{sp}_screen.txt'),zip,mp=mp_list,sp=sp_list),
     output:
         o1 = join(out_dir,'qc/multiqc_report.html')
     params:
         rname = 'ic_multiqc',
+        qc_config = join(source_dir,'config/multiqc_config.yaml'),
         dir_pre = expand(join(out_dir,'{mp_s}/00_qc_pre/'),mp_s = samp_dict.keys()),
         dir_post = expand(join(out_dir,'{mp_s}/00_qc_post/'),mp_s = samp_dict.keys()),
+        dir_screen1 = expand(join(out_dir,'{mp_s}/00_qc_screen_p1/'),mp_s = samp_dict.keys()),
+        dir_screen2 = expand(join(out_dir,'{mp_s}/00_qc_screen_p2/'),mp_s = samp_dict.keys()),
     shell:
         """
         module load multiqc;
-        multiqc {params.dir_pre} {params.dir_post} -o {out_dir}qc
+        multiqc -c {params.qc_config} \
+            {params.dir_pre} {params.dir_post} {params.dir_screen1} {params.dir_screen2} -o {out_dir}qc
         """
 
 rule gunzip_files:
@@ -386,9 +455,7 @@ rule determine_splits:
     params:
         rname='ic_splitdoc',
 <<<<<<< HEAD
-        sh = join(source_dir,'workflow/scripts/03_find_split_parameters.sh')
-=======
-        p1 = join(source_dir, 'workflow', 'scripts', '02_find_split_parameters.sh'),
+        sh = join(source_dir, 'workflow', 'scripts', '02_find_split_parameters.sh'),
 >>>>>>> ea05906be4cf348b62b66c909432388a575ef718
     output:
         o1 = join(out_dir,'split_params.tsv')
@@ -932,9 +999,7 @@ rule count_peaks:
     params:
         rname='ic_peak_frac',
 <<<<<<< HEAD
-        sh = join(source_dir,'workflow/scripts/04_count_features.sh'),
-=======
-        s = join(source_dir, 'workflow', 'scripts', '03_count_features.sh'),
+        sh = join(source_dir, 'workflow', 'scripts', '03_count_features.sh'),
 >>>>>>> ea05906be4cf348b62b66c909432388a575ef718
         threads = 8,
         base = join(out_dir,'{mp}/14_peak_count/'),
