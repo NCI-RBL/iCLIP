@@ -60,6 +60,7 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
 
   #otherwise submit job locally
   else
+    rm -r /tmp/iCount/; \
     snakemake -s workflow/Snakefile --use-envmodules --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
     --printshellcmds --cluster-config ${output_dir}/log/${log_time}_cluster_config.yml --cores 8
   fi
