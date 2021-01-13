@@ -61,32 +61,33 @@ for k,v in multiplex_dict.items():
         #zip two barcodes andn compare each letter
         compare=zip(a,b)
         diff_list=[]
+        #print (a,b)
         for i,j in compare:
             #if the letters are a mismatch, add to list
             if i!=j:
                 diff_list.append(j)
             #if the mismatch list is not > than the mismatch value requested, print error and fail
-            if(len(diff_list)<1+mismatch):
-                print('The number of differences ({}) between barcodes {} and {} is less than or equal to the number of mismatches requested ({})'. format(len(diff_list),a,b,mismatch))
-                sys.exit('Barcode strategy requires differences between barcodes is greater than mismatch allowance')
+        if(len(diff_list)<1 + int(mismatch)):
+            print('The number of differences ({}) between barcodes {} and {} is less than or equal to the number of mismatches requested ({})'. format(len(diff_list),a,b,mismatch))
+            
+            sys.exit('Barcode strategy requires differences between barcodes is greater than mismatch allowance')
 
     # for each expected barcode
     for bc in bc_exp:
-        #vary the string by one bp, push str to dict with expected value 
-        #as the dict key
+        #vary the string by one bp, push str to dict with expected value as the dict key
         for i in range(0,len(list(bc))):
             for nuc in nuc_list:
                 tmp = list(bc)
                 tmp[i]=nuc
                 bc_mutants["".join(tmp)]=bc
 
-                #if more than 2 mismatches are allowed, repeat
-                if(mismatch==2):
-                    for i2 in range(0,len(list(bc))):
+                #if more than 1 mismatch is allowed, repeat variation
+                if(int(mismatch)==2):
+                    for j in range(0,len(list(bc))):
                         for nuc in nuc_list:
-                            tmp = list("".join(tmp))
-                            tmp[i2]=nuc
-                            bc_mutants["".join(tmp)]=bc
+                            tmp2 = list("".join(tmp))
+                            tmp2[j]=nuc
+                            bc_mutants["".join(tmp2)]=bc
     
     #determine bc length for one bc
     bc_length = len(samp_dict[k][k2])
@@ -123,7 +124,6 @@ for k,v in multiplex_dict.items():
         bc_obs.append(k2)
         
     check =  all(item in bc_obs for item in bc_exp)
-        
     if check is True:
         file_save = output_dir + 'barcode_summary_' + k + '.txt'
         f = open(file_save,"w+")
@@ -132,6 +132,7 @@ for k,v in multiplex_dict.items():
         f.write("The top barcodes identified {} include the expected barcodes {}\n\n".format(bc_obs, bc_exp))
         f.write("Top barcode counts:\n")
         f.write(json.dumps(top_dict))
+
         f.close()    
     else :
         file_save = output_dir + 'barcode_errors_' + k + '.txt'
@@ -153,6 +154,10 @@ for k,v in multiplex_dict.items():
 """
 #Testing
 print(dict(sorted(bc_dict.items(), key=lambda item: item[1])))
-python 02_barcode_qc.py /data/RBL_NCI/iCLIP/test/sample_mm10_two.tsv /data/RBL_NCI/iCLIP/test/multiplex_mm10_two.tsv /data/RBL_NCI/iCLIP/test/ /data/sevillas2/iCLIP/marco/ 2
+python workflow/scripts/02_barcode_qc.py /data/RBL_NCI/iCLIP/test/sample_mm10_one.tsv /data/RBL_NCI/iCLIP/test/multiplex_mm10_one.tsv /data/RBL_NCI/iCLIP/test/ /data/sevillas2/iCLIP/test/ 1
+
+python workflow/scripts/02_barcode_qc.py /data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/samples.tsv /data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/multiplex.tsv /data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/ /data/sevillas2/iCLIP/marco/ 1
+
+
 for read in itertools.islice(fastq_file, 2000):
 """
