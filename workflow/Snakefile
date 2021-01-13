@@ -164,13 +164,13 @@ def get_filechunk_size(wildcards):
 
 #create cmd to rename fastq screen outputs
 def rename_fqscreen1(wildcards):
-    n_in = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp + '_trimmed_screen')
+    n_in = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp + '_screen')
     n_out = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp)
     cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
     return(cmd)
 
 def rename_fqscreen2(wildcards):
-    n_in = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp + '_trimmed_screen')
+    n_in = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp + '_screen')
     n_out = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp)
     cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
     return(cmd)
@@ -200,19 +200,21 @@ rule all:
         expand(join(out_dir,'qc/barcode_plot_{mp}.png'), mp=mp_list), #barcode qc
         expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list), #barcode qc
         
-        #demultiplex samples
+        #demultiplex samples, rename
         #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
-        
-        #rename samples
         #expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
         
-        #Remove adaptors
-        expand(join(out_dir,'{mp}/02_adaptor/{sp}_trimmed.fastq.gz'),zip, mp=mp_list, sp=sp_list),
+        #Remove adaptors, rename
+        expand(join(out_dir,'{mp}/02_adaptor/{sp}_filtered.fastq.gz'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/02_adaptor/{sp}_removed.fastq.gz'),zip, mp=mp_list, sp=sp_list),
 
         #FastQC
         expand(join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/00_qc_post/{sp}_trimmed_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/00_qc_post/{sp}_filtered_fastqc.html'),zip, mp=mp_list, sp=sp_list),
         
+        #Unzip samples
+        #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
+         
         #FastQ Screen
         expand(join(out_dir,'{mp}/00_qc_screen_species/{sp}.txt'),zip, mp=mp_list, sp=sp_list),
         expand(join(out_dir,'{mp}/00_qc_screen_rrna/{sp}.txt'),zip, mp=mp_list, sp=sp_list),
@@ -220,11 +222,10 @@ rule all:
         #MultiQC Report
         join(out_dir,'qc/multiqc_report.html'),
         
-        #Unzip samples
-        #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
+        
         
         #Determine file split parameters
-        join(out_dir,'split_params.tsv'), #determine_splits
+        #join(out_dir,'split_params.tsv'), #determine_splits
         
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
@@ -318,7 +319,7 @@ rule demultiplex:
         {params.doc} iCount demultiplex --minimum_length {params.ml} --mismatches {params.mm} {params.cmd}
         """
 
-rule rename_files:
+rule rename_demux:
     """
     renames demultiplexed files based on
     from: {out_dir}/{multiplex_id}/demux_{barcode}.fastq.gz
@@ -336,8 +337,9 @@ rule rename_files:
 
 rule remove_adaptors:
     """
-    removes adaptors from files
-    outputs untrimmed and trimmed file
+    removes adaptors from files. software outputs:
+    1) untrimmed.fastq.gz - the remaining sequences without the adaptor and 
+    2) trimmed.fastq.gz - the sequences that were trimmed from the input file
     """
     input:
         f1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
@@ -349,12 +351,34 @@ rule remove_adaptors:
     envmodules:
         config['singularity'],    
     output:
-        o1 = join(out_dir,'{mp}/02_adaptor/{sp}_trimmed.fastq.gz')
+        o1 = join(out_dir,'{mp}/02_adaptor/{sp}_trimmed.fastq.gz'),
+        o2 = join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz')
     shell:
         """
         singularity exec -B /data/$USER,/data/RBL_NCI,{out_dir},/fdb,/scratch \
         {params.doc} iCount cutadapt -ml {params.ml} {params.adapt}
         """
+
+rule rename_adaptors:
+    """
+    naming schema of adaptors is confusing, and makes interpretation of QC report difficult
+    
+    files are renamed for clarity
+    1) untrimmed.fastq.gz --> filtered.fastq.gz
+    2) trimmed.fastq.gz --> removed.fastq.gz
+    """
+    input:
+        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_trimmed.fastq.gz'),
+        f2 = join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz')
+    params:
+        rname = "ic_rename_ad"
+    output:
+        o1 = join(out_dir,'{mp}/02_adaptor/{sp}_removed.fastq.gz'),
+        o2 = join(out_dir,'{mp}/02_adaptor/{sp}_filtered.fastq.gz')
+    shell:
+        '''
+        mv {input.f1} {output.o1}; mv {input.f2} {output.o2}
+        '''
 
 rule fastqc_pre:
     """
@@ -379,9 +403,9 @@ rule fastqc_post:
     Runs FastQC report on each sample after adaptors have been removed
     """
     input:
-        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_trimmed.fastq.gz')
+        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_filtered.fastq.gz')
     output:
-        o1 = join(out_dir,'{mp}/00_qc_post/{sp}_trimmed_fastqc.html')
+        o1 = join(out_dir,'{mp}/00_qc_post/{sp}_filtered_fastqc.html')
     envmodules:
         config['fastqc']
     params:
@@ -392,6 +416,19 @@ rule fastqc_post:
         fastqc {input.f1} -o {params.out}
         """
 
+rule gunzip_files:
+    """
+    unzips untrimmed files - these are what is leftover after adaptor trimming
+    """
+    input:
+        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_filtered.fastq.gz')
+    params:
+        rname='ic_gunzip',
+    output:
+        o1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq')
+    shell:
+        "gunzip -c {input.f1} > {output.o1}"
+        
 rule fastq_screen1:
     """
     this will align to human, mouse, bacteria
@@ -399,7 +436,7 @@ rule fastq_screen1:
     http://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/_build/html/index.html
     """
     input:
-        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_trimmed.fastq.gz')
+        f1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq')
     params:
         rname='ic_screen1',
         dir_screen = join(out_dir,'{mp}/00_qc_screen_species'),
@@ -426,7 +463,7 @@ rule fastq_screen2:
     http://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/_build/html/index.html
     """
     input:
-        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_trimmed.fastq.gz')
+        f1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq')
     params:
         rname='ic_screen2',
         dir_screen = join(out_dir,'{mp}/00_qc_screen_rrna'),
@@ -453,7 +490,7 @@ rule multiqc:
     """
     input:
         f1 = expand(join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
-        f2 = expand(join(out_dir,'{mp}/00_qc_post/{sp}_trimmed_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        f2 = expand(join(out_dir,'{mp}/00_qc_post/{sp}_filtered_fastqc.html'),zip, mp=mp_list, sp=sp_list),
         f3 = expand(join(out_dir,'{mp}/00_qc_screen_species/{sp}.txt'),zip,mp=mp_list,sp=sp_list),
         f4 = expand(join(out_dir,'{mp}/00_qc_screen_rrna/{sp}.txt'),zip,mp=mp_list,sp=sp_list)
     params:
@@ -473,19 +510,6 @@ rule multiqc:
             -d -dd 1 {params.dir_pre} {params.dir_post} \
             {params.dir_screen_rrna} {params.dir_screen_species} -o {out_dir}qc
         """
-
-rule gunzip_files:
-    """
-    unzips untrimmed files
-    """
-    input:
-        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_trimmed.fastq.gz')
-    params:
-        rname='ic_gunzip',
-    output:
-        o1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq')
-    shell:
-        "gunzip -c {input.f1} > {output.o1}"
 
 rule determine_splits:
     """
@@ -792,7 +816,7 @@ rule merge_splits_unique:
         f1 = dynamic(join(out_dir,'{mp}/07_bam_unique/{sp}.split.{n}.unique.i.bam'))
     params:
         rname='ic_merge_u',
-     envmodules:
+    envmodules:
         config['samtools']  
     output:
         o1 = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),
@@ -1110,8 +1134,6 @@ rule ID_peaks:
         sh = join(source_dir, 'workflow', 'scripts', '04_select_peaks.R'),
         dir = join(out_dir,'{mp}/15_gff/{sp}'),
         min = min_count
-        envmodules:
-            config['']  
     envmodules:
         config['R']  
     output:
