@@ -3,6 +3,10 @@
 
 fastqscreen_simpleplot: true
 
+sp:
+    fastq_screen:
+        fn: '*.txt'
+
 module_order:
 # Pre-alignment QC
     - 'fastq_screen'
