@@ -191,7 +191,7 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 rule all:
     input:
         #check manifest
-        join(out_dir + "manifest_clean.txt"),
+        join(out_dir,'qc','manifest_clean.txt'),
 
         #check input fastq files
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
@@ -252,20 +252,21 @@ rule check_manifest:
         f2 = sample_manifest
     params:
         rname='ic_manif',
-        py = join(source_dir,'workflow,','scripts','01_check_manifest.py')
+        py = join(source_dir,'workflow','scripts','01_check_manifest.py'),
+        base = join(out_dir,'qc','manifest_')
     envmodules:
         config['python']  
     output:
-        o1 = join(out_dir, "manifest_clean.txt"),
+        o1 = join(out_dir, 'qc', 'manifest_clean.txt'),
     shell:
         """
         python {params.py} \
-            '{out_dir}manifest_' {input.f1} {input.f2}
+            '{params.base}' {input.f1} {input.f2}
         """
 
 rule barcode_qc:
     input:
-        f1 = out_dir + "manifest_clean.txt"
+        f1 = join(out_dir,'qc', "manifest_clean.txt")
     params:
         rname="ic_bcQC",
         py = join(source_dir,'workflow', 'scripts', '02_barcode_qc.py'),
