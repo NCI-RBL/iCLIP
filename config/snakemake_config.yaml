@@ -3,25 +3,37 @@
 source_dir: "/home/sevillas2/git/iCLIP/"
 
 #path to output directory
-output_dir: "/data/sevillas2/iCLIP/marco/"
+output_dir: "/data/sevillas2/iCLIP/mm10/"
 
 #path to manifest files
-sample_manifest: "/data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/samples.tsv"
-multiplex_manifest: "/data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/multiplex.tsv"
+sample_manifest: "/data/RBL_NCI/iCLIP/test/sample_mm10_one.tsv"
+multiplex_manifest: "/data/RBL_NCI/iCLIP/test/multiplex_mm10_one.tsv"
 
 #path to fastq files
-fastq_dir: "/data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/"
+fastq_dir: "/data/RBL_NCI/iCLIP/test/"
 
 #user parameters
 mismatch_allowance: 1 #number of nt mismatches allowed in barcodes; options [1,2]
-split_value: 1000000 #number of sequences in split files [min 3000, default 1000000]
-novoalign_reference: "hg38" #options: mm10 mm10
-splice_aware: 'y' #options: Y or N
+split_value: 3000 #number of sequences in split files [min 3000, default 1000000]
+novoalign_reference: "mm10" #options: mm10 mm10
+splice_aware: 'n' #options: Y or N
 splice_bp_length: 75 # options: if splice_aware = Y, 50,75,150
-minimum_count: 3 #minimum number of matches to count as a true peak
+minimum_count: 2 #minimum number of matches to count as a true peak
 
 #modules, container parameters
 container_dir: "/data/RBL_NCI/iCLIP/container"
 bowtie2: "bowtie/2-2.3.4"
 fastq_screen: "fastq_screen/0.14.0"
 perl: "perl/5.24.3"
+multiqc: "multiqc/1.9"
+python: "python/3.7"
+Qt: "Qt/5.13.2"
+singularity: "singularity/3.7.0"
+fastqc: "fastqc/0.11.9"
+novocraft: "novocraft/4.03.01"
+samtools: "samtools/1.11"
+java: "java/12.0.1"
+umitools: "umitools/1.1.1"
+bedtools: "bedtools/2.29.2"
+subread: "subread/2.0.1"
+R: "R/4.0"
