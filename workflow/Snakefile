@@ -162,6 +162,19 @@ def get_filechunk_size(wildcards):
         return(0)
     return(sub_df.iloc[0]['chunksize'])
 
+#create cmd to rename fastq screen outputs
+def rename_fqscreen1(wildcards):
+    n_in = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp + '_trimmed_screen')
+    n_out = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp)
+    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
+    return(cmd)
+
+def rename_fqscreen2(wildcards):
+    n_in = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp + '_trimmed_screen')
+    n_out = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp)
+    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
+    return(cmd)
+
 #read manifests
 df_multiplex = pd.read_csv(multiplex_manifest,sep="\t")
 df_samples = pd.read_csv(sample_manifest,sep="\t")
@@ -177,14 +190,23 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 
 rule all:
     input:
+        #check manifest
         join(out_dir + "manifest_clean.txt"),
+
+        #check input fastq files
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
+        
+        #check barcodes
         expand(join(out_dir,'qc/barcode_plot_{mp}.png'), mp=mp_list), #barcode qc
         expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list), #barcode qc
+        
+        #demultiplex samples
         #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
+        
+        #rename samples
         #expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
         
-        #Adaptors
+        #Remove adaptors
         expand(join(out_dir,'{mp}/02_adaptor/{sp}_trimmed.fastq.gz'),zip, mp=mp_list, sp=sp_list),
 
         #FastQC
@@ -198,9 +220,12 @@ rule all:
         #MultiQC Report
         join(out_dir,'qc/multiqc_report.html'),
         
-        #expand(join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list), #remove adaptors
+        #Unzip samples
         #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
-        ##join(out_dir,'split_params.tsv'), #determine_splits
+        
+        #Determine file split parameters
+        join(out_dir,'split_params.tsv'), #determine_splits
+        
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
@@ -257,6 +282,7 @@ rule barcode_qc:
 
 rule demultiplex:
     """
+    https://icount.readthedocs.io/en/latest/ref_CLI.html
     Reads in fastq files from multiplex_manifest.
     Finds multiplex match between manifest files, splits files based on list of
     barcodeIDs found in sample_manifest
@@ -359,12 +385,6 @@ rule fastqc_post:
         fastqc {input.f1} -o {params.out}
         """
 
-def rename_fqscreen1(wildcards):
-    n_in = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp + '_trimmed_screen')
-    n_out = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp)
-    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
-    return(cmd)
-
 rule fastq_screen1:
     """
     this will align to human, mouse, bacteria
@@ -391,13 +411,6 @@ rule fastq_screen1:
             --threads {threads} --subset 1000000 --aligner bowtie2 --force \
             {input.f1}; {params.cmd}
         '''
-
-#output of fqscreen will label samples as {sp}_screen. rename samples to improve reporting features
-def rename_fqscreen2(wildcards):
-    n_in = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp + '_trimmed_screen')
-    n_out = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp)
-    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
-    return(cmd)
 
 rule fastq_screen2:
     """
