@@ -253,7 +253,7 @@ rule check_manifest:
         f2 = sample_manifest
     params:
         rname='ic_manif',
-        py = join(source_dir,'workflow/scripts/01_check_manifest.py')
+        py = join(source_dir,'workflow,','scripts','01_check_manifest.py')
     output:
         o1 = join(out_dir, "manifest_clean.txt"),
     shell:
@@ -298,7 +298,7 @@ rule demultiplex:
     """
     input:
         f1 = get_fq_names,
-        qc = expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list)
+        qc = expand(join(out_dir,'qc','barcode_summary_{mp}.txt'),mp=mp_list)
     params:
         rname='ic_demux',
         doc = join(cont_dir,'icount.sif'),
@@ -396,7 +396,7 @@ rule fastq_screen1:
     params:
         rname='ic_screen1',
         dir_screen = join(out_dir,'{mp}/00_qc_screen_species'),
-        fq_config = join(source_dir,'config/fqscreen_species_config.conf'),
+        fq_config = join(source_dir,'config','fqscreen_species_config.conf'),
         cmd = rename_fqscreen1
     threads: 24
     envmodules:
@@ -423,7 +423,7 @@ rule fastq_screen2:
     params:
         rname='ic_screen2',
         dir_screen = join(out_dir,'{mp}/00_qc_screen_rrna'),
-        fq_config = join(source_dir,'config/fqscreen_rrna_config.conf'),
+        fq_config = join(source_dir,'config','fqscreen_rrna_config.conf'),
         cmd = rename_fqscreen2
     threads: 24
     envmodules:
@@ -600,7 +600,7 @@ else:
         params:
             rname = 'ic_convert',
             base = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam'),
-            doc = join(cont_dir,'USeq_8.9.6/Apps/SamTranscriptomeParser')
+            doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
         output:
             o1 = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam.gz'),
         shell:
