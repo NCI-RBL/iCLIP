@@ -222,10 +222,8 @@ rule all:
         #MultiQC Report
         join(out_dir,'qc/multiqc_report.html'),
         
-        
-        
         #Determine file split parameters
-        #join(out_dir,'split_params.tsv'), #determine_splits
+        join(out_dir,'qc','split_params.tsv'),
         
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
@@ -521,9 +519,9 @@ rule determine_splits:
         f1 = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
     params:
         rname='ic_splitdoc',
-        sh = join(source_dir, 'workflow', 'scripts', '02_find_split_parameters.sh'),
+        sh = join(source_dir, 'workflow', 'scripts', '03_find_split_parameters.sh'),
     output:
-        o1 = join(out_dir,'split_params.tsv')
+        o1 = join(out_dir,'qc','split_params.tsv')
     shell:
         """
         sh {params.sh} {output.o1} {split_value} {input.f1}
@@ -536,7 +534,7 @@ rule split_files:
     input:
         all = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
         f1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq'),
-        sp = join(out_dir,'split_params.tsv')
+        sp = join(out_dir,'qc','split_params.tsv')
     params:
         rname='ic_split',
         p1 = join(out_dir,'{mp}/04_split/{sp}.split.'),
