@@ -1,6 +1,6 @@
 # Global configuration file for the pipeline
 #path to snakemake file
-source_dir: ""
+source_dir: "/home/sevillas2/git/iCLIP/"
 
 #path to output directory
 output_dir: "/data/sevillas2/iCLIP/marco/"
@@ -13,6 +13,7 @@ multiplex_manifest: "/data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/mult
 fastq_dir: "/data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/"
 
 #user parameters
+mismatch_allowance: 1 #number of nt mismatches allowed in barcodes; options [1,2]
 split_value: 1000000 #number of sequences in split files [min 3000, default 1000000]
 novoalign_reference: "hg38" #options: mm10 mm10
 splice_aware: 'y' #options: Y or N

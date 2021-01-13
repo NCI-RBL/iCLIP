@@ -42,6 +42,10 @@ properties:
   minimum_count:
     type: number
     description: minimum number of values to count as a 'peak'
+  mismatch_allowance:
+    types: number
+    enum: [1,2]
+    description: number of bp mismatches allowed in demultiplexing
 
 # entries that have to be in the config file for successful validation
 required:
