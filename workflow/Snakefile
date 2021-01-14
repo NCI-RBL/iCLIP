@@ -41,7 +41,7 @@ sample_manifest = config['sample_manifest']
 multiplex_manifest = config['multiplex_manifest']
 
 nova_ref = config['novoalign_reference']
-splice_aware = config['splice_aware']
+splice_aware = config['splice_aware'].capitalize()
 splice_bp = config['splice_bp_length']
 
 mismatch = config['mismatch_allowance']
@@ -67,7 +67,7 @@ split_value = check_split(split_value)
 index_manifest = join(source_dir, 'config', 'index_config.yaml')
 with open(index_manifest) as file:
     index_list = yaml.load(file, Loader=yaml.FullLoader)
-if (splice_aware=='N' or splice_aware=="n"):
+if (splice_aware=='N'):
     nova_index = index_list[nova_ref]['std']
 else:
     nova_index = index_list[nova_ref]['spliceaware'][str(splice_bp)+'bp']
@@ -557,7 +557,7 @@ rule split_files:
         split --additional-suffix .fastq -l {params.c} --numeric-suffixes=10 {input.f1} {params.p1}
         """
 
-if (splice_aware == "N" or splice_aware == "n"):
+if (splice_aware == "N"):
     rule novoalign:
         """
         aligns files to index given; output is a sam file
@@ -1038,7 +1038,7 @@ rule index_split_dedup_mm:
         cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
-if [[splice_aware=='n' or splice_aware=='N']]:
+if [[splice_aware=='N']]:
     rule create_bed:
         """
         create bed file from the deduped unique file
