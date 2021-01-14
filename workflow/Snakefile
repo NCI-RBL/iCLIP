@@ -197,14 +197,14 @@ rule all:
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
         
         #check barcodes
-        expand(join(out_dir,'qc/barcode_plot_{mp}.png'), mp=mp_list), #barcode qc
-        expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list), #barcode qc
+        expand(join(out_dir,'qc/barcode_plot_{mp}.png'), mp=mp_list),
+        expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list), 
         
-        #demultiplex samples, rename
+        #demultiplex samples, rename samples
         #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
         #expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
         
-        #Remove adaptors, rename
+        #Remove adaptors, rename samples
         expand(join(out_dir,'{mp}/02_adaptor/{sp}_filtered.fastq.gz'),zip, mp=mp_list, sp=sp_list),
         expand(join(out_dir,'{mp}/02_adaptor/{sp}_removed.fastq.gz'),zip, mp=mp_list, sp=sp_list),
 
@@ -213,7 +213,7 @@ rule all:
         expand(join(out_dir,'{mp}/00_qc_post/{sp}_filtered_fastqc.html'),zip, mp=mp_list, sp=sp_list),
         
         #Unzip samples
-        #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
+        expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
          
         #FastQ Screen
         expand(join(out_dir,'{mp}/00_qc_screen_species/{sp}.txt'),zip, mp=mp_list, sp=sp_list),
@@ -225,10 +225,20 @@ rule all:
         #Determine file split parameters
         join(out_dir,'qc','split_params.tsv'),
         
+        #alignment
+        #dynamic(join(out_dir,'{mp}/05_sam/{sp}.split.{n}.sam')) if (splice_aware == "N" or splice_aware == "n") else dynamic(join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.sam')),
+
+        #Merge splits
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
+
+        #Merge unique and mm
         #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
+
+        #Sort and index merged
         #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
+
         #expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
         ##expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),zip, mp=mp_list, sp=sp_list),
