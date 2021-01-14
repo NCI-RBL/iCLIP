@@ -39,14 +39,18 @@ Please run the following either command to dry-run the snakemake pipeline:
 ```bash
 snakemake -npr -s workflow/Snakefile
 
-sh run_snakemake.sh test
+sh run_snakemake.sh dry-run
 ```
 
 ### 2. Usage
 
 Submit master job to the cluster:
 ```bash
-sh run_snakemake.sh run
+sh run_snakemake.sh cluster
+```
+Submit master job locally:
+```bash
+sh run_snakemake.sh local
 ```
 
 ### 3. Contribute
