@@ -5,9 +5,10 @@ fastqscreen_simpleplot: true
 
 sp:
     fastq_screen:
-        fn: '*.txt'
+        fn: '*_filtered.txt'
 
 module_order:
 # Pre-alignment QC
-    - 'fastq_screen'
     - 'fastqc'
+    - 'fastq_screen'
+    - 'samtools'
