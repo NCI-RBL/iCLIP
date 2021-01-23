@@ -883,7 +883,7 @@ rule index_merged:
         cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
-rule sam_stats:
+rule qc_samstats:
     """
     generate statistics for sam file before deduplication
     http://www.htslib.org/doc/samtools-stats.html
