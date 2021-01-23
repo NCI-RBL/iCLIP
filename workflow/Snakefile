@@ -397,7 +397,7 @@ rule rename_adaptors:
         mv {input.f1} {output.o1}; mv {input.f2} {output.o2}
         '''
 
-rule fastqc_pre:
+rule qc_fastq_pre:
     """
     Runs FastQC report on each sample before adaptors have been removed
     """
@@ -415,7 +415,7 @@ rule fastqc_pre:
         fastqc {input.f1} -o {params.out}
         """
 
-rule fastqc_post:
+rule qc_fastq_post:
     """
     Runs FastQC report on each sample after adaptors have been removed
     """
@@ -446,7 +446,7 @@ rule gunzip_files:
     shell:
         "gunzip -c {input.f1} > {output.o1}"
         
-rule fastq_screen1:
+rule qc_screen_sp:
     """
     this will align to human, mouse, bacteria
     must run fastq_screen as two separate rules - multiqc will merge values of rRNA with human/mouse
@@ -473,7 +473,7 @@ rule fastq_screen1:
             {input.f1}; {params.cmd}
         '''
 
-rule fastq_screen2:
+rule qc_screen_rrna:
     """
     this will align to rRNA
     must run fastq_screen as two separate rules - multiqc will merge values of rRNA with human/mouse
