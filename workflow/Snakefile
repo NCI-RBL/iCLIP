@@ -156,7 +156,7 @@ def get_filechunk_size(wildcards):
 
     #read in split_params file for chunksize
     try:
-        split_df=pd.read_csv(join(out_dir,'split_params.tsv'),names=["path","filenum","chunksize"],sep="\t")
+        split_df=pd.read_csv(join(out_dir,'qc','split_params.tsv'),names=["path","filenum","chunksize"],sep="\t")
         sub_df=split_df[(split_df['path']==fq_path)]
     except:
         return(0)
@@ -165,13 +165,13 @@ def get_filechunk_size(wildcards):
 #create cmd to rename fastq screen outputs
 def rename_fqscreen1(wildcards):
     n_in = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp + '_screen')
-    n_out = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp)
+    n_out = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp + '_filtered')
     cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
     return(cmd)
 
 def rename_fqscreen2(wildcards):
     n_in = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp + '_screen')
-    n_out = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp)
+    n_out = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp + '_filtered')
     cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
     return(cmd)
 
@@ -197,8 +197,8 @@ rule all:
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
         
         #check barcodes
-        expand(join(out_dir,'qc/barcode_plot_{mp}.png'), mp=mp_list),
-        expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list), 
+        expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.png'), mp=samp_dict.keys()),
+        expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.txt'),mp=samp_dict.keys()), 
         
         #demultiplex samples, rename samples
         #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
@@ -216,29 +216,37 @@ rule all:
         expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
          
         #FastQ Screen
-        expand(join(out_dir,'{mp}/00_qc_screen_species/{sp}.txt'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/00_qc_screen_rrna/{sp}.txt'),zip, mp=mp_list, sp=sp_list),
-
-        #MultiQC Report
-        join(out_dir,'qc/multiqc_report.html'),
+        expand(join(out_dir,'{mp}/00_qc_screen_species/{sp}_filtered.txt'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/00_qc_screen_rrna/{sp}_filtered.txt'),zip, mp=mp_list, sp=sp_list),
         
         #Determine file split parameters
         join(out_dir,'qc','split_params.tsv'),
         
-        #alignment
-        #dynamic(join(out_dir,'{mp}/05_sam/{sp}.split.{n}.sam')) if (splice_aware == "N" or splice_aware == "n") else dynamic(join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.sam')),
-
         #Merge splits
-        #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
 
         #Merge unique and mm
-        #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
 
         #Sort and index merged
-        #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
 
+        #Samstats
+        expand(join(out_dir,'{mp}/00_qc_post/{sp}_samstats.txt'),zip, mp=mp_list, sp=sp_list),
+
+        #MultiQC Report
+        join(out_dir,'qc/multiqc_report.html'),
+
+        #Alignment stats
+        expand(join(out_dir,'{mp}/00_qc_post/{sp}_aligned.png'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.png'),zip, mp=mp_list, sp=sp_list),
+
+        #QC Troubleshooting
+        join(out_dir,'qc','qc_report.html')
+
+        #Deduplicate
         #expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
         ##expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),zip, mp=mp_list, sp=sp_list),
@@ -274,23 +282,23 @@ rule check_manifest:
             '{params.base}' {input.f1} {input.f2}
         """
 
-rule barcode_qc:
+rule qc_barcode:
     input:
         f1 = join(out_dir,'qc', "manifest_clean.txt")
     params:
         rname="ic_bcQC",
         py = join(source_dir,'workflow', 'scripts', '02_barcode_qc.py'),
-        mm = mismatch
+        mm = mismatch,
     envmodules:
         config['python'],
         config['Qt']
     output:
-        o1 = expand(join(out_dir,'qc/barcode_plot_{mp}.png'),mp=mp_list),
-        o2 = expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list)
+        o1 = expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.png'),mp=samp_dict.keys()),
+        o2 = expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.txt'),mp=samp_dict.keys())
     shell:
         """
         python {params.py} \
-            {sample_manifest} {multiplex_manifest} {fastq_dir} {out_dir}qc/ {params.mm}
+            {sample_manifest} {multiplex_manifest} {fastq_dir} {out_dir} {params.mm}
         """
 
 rule demultiplex:
@@ -311,7 +319,7 @@ rule demultiplex:
     """
     input:
         f1 = get_fq_names,
-        qc = expand(join(out_dir,'qc','barcode_summary_{mp}.txt'),mp=mp_list)
+        qc = expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.txt'),mp=samp_dict.keys())
     params:
         rname='ic_demux',
         doc = join(cont_dir,'icount.sif'),
@@ -457,7 +465,7 @@ rule fastq_screen1:
         config['perl'],
         config['fastq_screen'],
     output:
-        o1 = join(out_dir,'{mp}/00_qc_screen_species/{sp}.txt'),
+        o1 = join(out_dir,'{mp}/00_qc_screen_species/{sp}_filtered.txt'),
     shell:
         '''
         fastq_screen --conf {params.fq_config} --outdir {params.dir_screen} \
@@ -484,41 +492,13 @@ rule fastq_screen2:
         config['perl'],
         config['fastq_screen'],
     output:
-        o1 = join(out_dir,'{mp}/00_qc_screen_rrna/{sp}.txt'),
+        o1 = join(out_dir,'{mp}/00_qc_screen_rrna/{sp}_filtered.txt'),
     shell:
         '''
         fastq_screen --conf {params.fq_config} --outdir {params.dir_screen} \
             --threads {threads} --subset 1000000 --aligner bowtie2 --force \
             {input.f1}; {params.cmd}
         '''
-
-rule multiqc:
-    """
-    merges FastQC reports for pre/post trimmed fastq files into MultiQC report
-    https://multiqc.info/docs/#running-multiqc
-    """
-    input:
-        f1 = expand(join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
-        f2 = expand(join(out_dir,'{mp}/00_qc_post/{sp}_filtered_fastqc.html'),zip, mp=mp_list, sp=sp_list),
-        f3 = expand(join(out_dir,'{mp}/00_qc_screen_species/{sp}.txt'),zip,mp=mp_list,sp=sp_list),
-        f4 = expand(join(out_dir,'{mp}/00_qc_screen_rrna/{sp}.txt'),zip,mp=mp_list,sp=sp_list)
-    params:
-        rname = 'ic_multiqc',
-        qc_config = join(source_dir,'config','multiqc_config.yaml'),
-        dir_pre = expand(join(out_dir,'{mp_s}/00_qc_pre/'),mp_s = samp_dict.keys()),
-        dir_post = expand(join(out_dir,'{mp_s}/00_qc_post/'),mp_s = samp_dict.keys()),
-        dir_screen_species = expand(join(out_dir,'{mp_s}/00_qc_screen_species/'),mp_s = samp_dict.keys()),
-        dir_screen_rrna = expand(join(out_dir,'{mp_s}/00_qc_screen_rrna/'),mp_s = samp_dict.keys()),
-    envmodules:
-        config['multiqc']
-    output:
-        o1 = join(out_dir,'qc/multiqc_report.html')
-    shell:
-        """
-        multiqc -f -v -c {params.qc_config} \
-            -d -dd 1 {params.dir_pre} {params.dir_post} \
-            {params.dir_screen_rrna} {params.dir_screen_species} -o {out_dir}qc
-        """
 
 rule determine_splits:
     """
@@ -574,7 +554,7 @@ if (splice_aware == "N"):
         shell:
             """
             set +e
-            novoalign -d {params.n_index} \
+            novoalign -d {params.n_index} -k \
             -f {input.f1} -F STDFQ -c 32 \
             -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
             -R 0 -r All 999 > {output.o1}
@@ -901,6 +881,113 @@ rule index_merged:
     shell:
         """
         cp {input.f1} {output.o1}; samtools index {output.o1};
+        """
+
+rule sam_stats:
+    """
+    generate statistics for sam file before deduplication
+    http://www.htslib.org/doc/samtools-stats.html
+    > $1
+    """
+    input:
+        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
+    params:
+        rname='ic_samstats'
+    envmodules:
+        config['samtools']
+    output:
+        o1 = join(out_dir,'{mp}/00_qc_post/{sp}_samstats.txt')
+    shell:
+        """
+        samtools view -h {input.f1} | samtools stats - > {output.o1}
+        """
+
+rule multiqc:
+    """
+    merges FastQC reports for pre/post trimmed fastq files into MultiQC report
+    https://multiqc.info/docs/#running-multiqc
+    """
+    input:
+        f1 = expand(join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        f2 = expand(join(out_dir,'{mp}/00_qc_post/{sp}_filtered_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        f3 = expand(join(out_dir,'{mp}/00_qc_screen_species/{sp}_filtered.txt'),zip,mp=mp_list,sp=sp_list),
+        f4 = expand(join(out_dir,'{mp}/00_qc_screen_rrna/{sp}_filtered.txt'),zip,mp=mp_list,sp=sp_list),
+        f5 = expand(join(out_dir,'{mp}/00_qc_post/{sp}_samstats.txt'),zip,mp=mp_list,sp=sp_list)
+    params:
+        rname = 'ic_multiqc',
+        out = join(out_dir,'qc'),
+        qc_config = join(source_dir,'config','multiqc_config.yaml'),
+        dir_pre = expand(join(out_dir,'{mp}/00_qc_pre/'),mp = samp_dict.keys()),
+        dir_post = expand(join(out_dir,'{mp}/00_qc_post/'),mp = samp_dict.keys()),
+        dir_screen_species = expand(join(out_dir,'{mp}/00_qc_screen_species/'),mp = samp_dict.keys()),
+        dir_screen_rrna = expand(join(out_dir,'{mp}/00_qc_screen_rrna/'),mp = samp_dict.keys()),
+    envmodules:
+        config['multiqc']
+    output:
+        o1 = join(out_dir,'qc/multiqc_report.html')
+    shell:
+        """
+        multiqc -f -v -c {params.qc_config} \
+            -d -dd 1 {params.dir_pre} {params.dir_post} \
+            {params.dir_screen_rrna} {params.dir_screen_species} \
+            -o {params.out}
+        """
+
+rule qc_alignment:
+    """
+    uses samtools to create a bams of unaligned reads and aligned reads
+    input 
+    generates plots and summmary file for aligned vs unaligned statistics
+    """
+    input:
+        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
+    params:
+        rname = "ic_qc_align",
+        R = join(source_dir,'workflow','scripts','04_alignment_stats.R'),
+        base = join(out_dir,'{mp}/00_qc_post/')
+    envmodules:
+        config['samtools'],
+        config['R']
+    output:
+        bam_a = join(out_dir,'{mp}/00_qc_post/{sp}_align_len.txt'),
+        bam_u = join(out_dir,'{mp}/00_qc_post/{sp}_unalign_len.txt'),
+        png_align = join(out_dir,'{mp}/00_qc_post/{sp}_aligned.png'),
+        png_unalign = join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.png'),
+        txt_align = join(out_dir,'{mp}/00_qc_post/{sp}_aligned.txt'),
+        txt_unalign = join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.txt'),
+    shell:
+        """
+        samtools view -F 4 {input.f1} | awk '{{print length($10)}}' > {output.bam_a}; \
+        samtools view -f 4 {input.f1} | awk '{{print length($10)}}' > {output.bam_u}; \
+        Rscript {params.R} {wildcards.sp} {output.bam_a} {output.bam_u} {params.base}
+        """
+
+rule qc_troubleshoot:
+    """
+    generates a PDF of barcode plots and alignment plots for qc troubleshooting
+    """
+    input:
+        png_align = expand(join(out_dir,'{mp}/00_qc_post/{sp}_aligned.png'),zip,mp=mp_list,sp=sp_list),
+        png_unalign = expand(join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.png'),zip,mp=mp_list,sp=sp_list),
+        txt_align = expand(join(out_dir,'{mp}/00_qc_post/{sp}_aligned.txt'),zip,mp=mp_list,sp=sp_list),
+        txt_unalign = expand(join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.txt'),zip,mp=mp_list,sp=sp_list),
+        txt_bc = expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.txt'),mp=samp_dict.keys()),
+        png_bc = expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.png'),mp=samp_dict.keys()),
+    params:
+        rname = "ic_qc_ts",
+        R = join(source_dir,'workflow','scripts','05_qc_report.Rmd'),
+    envmodules:
+        config['R']
+    output:
+        o1 = join(out_dir,'qc','qc_report.html')
+    shell:
+        """
+        Rscript -e 'library(rmarkdown); \
+        rmarkdown::render("{params.R}",
+            output_file = "{output.o1}", \
+            params= list(a_txt = "{input.txt_align}", \
+                u_txt = "{input.txt_unalign}", \
+                b_txt = "{input.txt_bc}"))'
         """
 
 rule dedup:
