@@ -1,0 +1,83 @@
+---
+title: "QC Troubleshooting"
+output: html_document
+params:
+  a_txt: 
+    value: x
+  u_txt: 
+      value: x
+  b_txt: 
+      value: x
+---
+
+```{r Params, echo=FALSE}
+align_txt = as.list(strsplit(params$a_txt, '\\s+')[[1]])
+unalign_txt = as.list(strsplit(params$u_txt, '\\s+')[[1]])
+bc_txt = as.list(strsplit(params$b_txt, '\\s+')[[1]])
+```
+
+```{r echo=FALSE, warning=FALSE}
+#Generate sampleids
+mp_list = c()
+
+for (paths in align_txt){
+  mp_list[length(mp_list)+1] = strsplit(paths,"/")[[1]][6]
+}
+
+mp_list = mp_list[!duplicated(mp_list)]
+```
+
+## Demultiplexing 
+**Statistics for sample barcodes:**
+
+```{r, echo=FALSE, warning=FALSE, comment='', results="asis"}
+for (mp in mp_list){
+  for (a_file in bc_txt){
+    if(strsplit(a_file,"/")[[1]][6]==mp){
+      #text files
+      cat(readLines(a_file), sep = '\n\n')
+
+      #png files
+      png_file = gsub(".txt",".png",a_file)
+      cat(paste0("![](", png_file,")"), "\n")
+    }
+  }
+}
+```
+
+## Alignment
+### Aligned
+**Statistics for aligned samples:**
+
+```{r, echo=FALSE, comment='', results="asis"}
+for (mp in mp_list){
+  for (a_file in align_txt){
+    if(strsplit(a_file,"/")[[1]][6]==mp){
+      #text files
+      cat(readLines(a_file), sep = '\n\n')
+      
+      #png files
+      png_file = gsub(".txt",".png",a_file)
+      cat(paste0("![](", png_file,")"), "\n")
+    }
+  }
+}
+```
+
+### Unaligned
+**Statistics for unaligned samples:**
+
+```{r, echo=FALSE, comment='', results="asis"}
+for (mp in mp_list){
+  for (a_file in unalign_txt){
+    if(strsplit(a_file,"/")[[1]][6]==mp){
+      #text files
+      cat(readLines(a_file), sep = '\n')
+
+      #png files
+      png_file = gsub(".txt",".png",a_file)
+      cat(paste0("![](", png_file,")"), "\n")
+    }
+  }
+}
+```
