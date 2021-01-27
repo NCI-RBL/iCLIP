@@ -250,11 +250,7 @@ rule all:
         #expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
         ##expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),zip, mp=mp_list, sp=sp_list),
-        ##expand(join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),zip, mp=mp_list, sp=sp_list),
-        ##expand(join(out_dir,'{mp}/15_gff/{sp}.gff3'),zip, mp=mp_list, sp=sp_list),
+
 
 include: "rules/common.smk"
 include: "rules/other.smk"
@@ -1125,7 +1121,6 @@ rule index_split_dedup_mm:
         cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
-if [[splice_aware=='N']]:
     rule create_bed:
         """
         create bed file from the deduped unique file
@@ -1142,102 +1137,7 @@ if [[splice_aware=='N']]:
             """
             bedtools bamtobed -i {input.f1} > {output.o1}
             """
-else:
-    rule create_bed:
-        """
-        create bed file from the deduped unique file
-        """
-        input:
-            f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
-        params:
-            rname='ic_bed',
-        envmodules:
-            config['bedtools']  
-        output:
-            o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
-        shell:
-            """
-            bedtools bamtobed -split -i {input.f1} | bedtools sort -i - > {output.o1}
-            """
 
-rule merge_bed_txt:
-    """
-    merge overlapping peaks into bed file
-    """
-    input:
-        f1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
-    params:
-        rname='ic_bed_txt',
-    envmodules:
-        config['bedtools']  
-    output:
-        o1 = join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),
-    shell:
-        """
-        bedtools merge -c 6 -o count,distinct -s -d -1 -i {input.f1} > {output.o1}
-        """
-
-rule merge_bed_saf:
-    """
-    create peak annotation files
-    """
-    input:
-        f1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
-    params:
-        rname='ic_bed_saf',
-    envmodules:
-        config['bedtools']
-    output:
-        o1 = join(out_dir,'{mp}/13_peak_anno/{sp}.SAF')
-    shell:
-        """
-        bedtools merge -c 6 -o count,distinct -s -d -1 -i {input.f1} | \
-        awk '{{OFS="\t"; print $1":"$2"-"$3,$1,$2+1,$3,$5}}' | awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > \
-        {output.o1}
-        """
-
-rule count_peaks:
-    """
-    create peak count files for all, unique, primary, fraction, and primary/fraction
-    """
-    input:
-        b = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
-        anno = join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),
-    params:
-        rname='ic_peak_frac',
-        sh = join(source_dir, 'workflow', 'scripts', '03_count_features.sh'),
-        threads = 8,
-        base = join(out_dir,'{mp}/14_peak_count/'),
-        sample = '{sp}'
-    envmodules:
-        config['subread']  
-    output:
-        txt = join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),
-        bam = temp(join(out_dir,'{mp}/14_peak_count/{sp}.dedup.i.bam.featureCounts.bam'))
-    shell:
-        """
-        sh {params.sh} {params.threads} {input.anno} {input.b} {params.base} {params.sample}
-        """
-
-rule ID_peaks:
-    """
-    create gtf and gff files
-    """
-    input:
-        f1 = join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),
-    params:
-        rname='ic_idpeaks',
-        sh = join(source_dir, 'workflow', 'scripts', '04_select_peaks.R'),
-        dir = join(out_dir,'{mp}/15_gff/{sp}'),
-        min = min_count
-    envmodules:
-        config['R']  
-    output:
-        o1 = join(out_dir,'{mp}/15_gff/{sp}.gff3')
-    shell:
-        """
-        Rscript {params.sh} {input.f1} {params.dir} {params.min}
-        """
 
 """
 https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
@@ -1282,3 +1182,4 @@ https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
 - add local execution
 - create test files for hg38
 """
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
