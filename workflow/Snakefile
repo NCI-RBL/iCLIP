@@ -48,6 +48,8 @@ mismatch = config['mismatch_allowance']
 split_value =  config['split_value']
 min_count = config['minimum_count']
 nt_merge = config['nt_merge']
+peak_id = config['peak_id']
+DE_method = config['DE_method']
 
 #split_params
 def check_split(split_in):
@@ -255,11 +257,15 @@ rule all:
         expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
 
         #SAF 
-        expand(join(out_dir,'{mp}/13_SAF/{sp}_',str(nt_merge),'.SAF'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/13_SAF/{sp}_'+ str(nt_merge) +'.SAF'),zip, mp=mp_list, sp=sp_list),
 
         #Count features
-        expand(join(out_dir,'{mp}/14_counts/{sp}_',str(nt_merge),'_unique.txt'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/14_counts/{sp}_',str(nt_merge),'_all.txt'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_all.txt'),zip, mp=mp_list, sp=sp_list),
+
+        #Annotation
+        expand(join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.html'),zip, mp=mp_list, sp=sp_list),
 
 include: "rules/common.smk"
 include: "rules/other.smk"
@@ -1139,7 +1145,7 @@ rule create_saf:
     envmodules:
         config['bedtools']  
     output:
-        o1 = join(out_dir,'{mp}/13_SAF/{sp}_',str(nt_merge),'.SAF')
+        o1 = join(out_dir,'{mp}/13_SAF/{sp}_' + str(nt_merge) + '.SAF')
     shell:
         """
         bedtools merge \
@@ -1155,25 +1161,26 @@ rule feature_counts_unique:
     When peaks counts are combined for peaks connected by splicing in Rscript)
     """
      input:
-        f1 = join(out_dir,'{mp}/13_SAF/{sp}_',str(nt_merge),'.SAF')
+        bam = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
+        saf = join(out_dir,'{mp}/13_SAF/{sp}_' + str(nt_merge) + '.SAF')
     params:
         rname='ic_saf',
     envmodules:
-        config['bedtools']  
+        config['subread']  
     output:
-        o1 = join(out_dir,'{mp}/14_counts/{sp}_',str(nt_merge),'_unique.txt')
+        o1 = join(out_dir,'{mp}/14_counts/{sp}_' + str(nt_merge) + '_unique.txt')
     shell:
         """
         featureCounts -F SAF \
-            -a {input.f1} \
+            -a {input.saf} \
             -O \
             -J \
             --fraction \
             --minOverlap 1 \
             -s 1 \
             -T 8 \
-            -o {output.o1} 
-            10_dedup_bam/KO_fCLIP.dedup.i.bam
+            -o {output.o1} \
+            {input.bam}
         """   
 
 rule feature_counts_all:
@@ -1184,17 +1191,18 @@ rule feature_counts_all:
     whole count for the unique alignement in combined peak.
     """
      input:
-        f1 = join(out_dir,'{mp}/13_SAF/{sp}_',str(nt_merge),'.SAF')
+        bam = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
+        saf = join(out_dir,'{mp}/13_SAF/{sp}_' + str(nt_merge) + '.SAF')
     params:
         rname='ic_saf',
     envmodules:
-        config['bedtools']  
+        config['subread']  
     output:
-        o1 = join(out_dir,'{mp}/14_counts/{sp}_',str(nt_merge),'_all.txt')
+        o1 = join(out_dir,'{mp}/14_counts/{sp}_' + str(nt_merge) + '_all.txt')
     shell:
         """
         featureCounts -F SAF \
-            -a {input.f1} \
+            -a {input.saf} \
             -M \
             -O \
             -J \
@@ -1202,12 +1210,44 @@ rule feature_counts_all:
             --minOverlap 1 \
             -s 1 \
             -T 8 \
-            -o {output.o1} 
-            10_dedup_bam/KO_fCLIP.dedup.i.bam
+            -o {output.o1} \
+            {input.bam}
         """  
 
-
-
+rule annotations:
+    """
+    """
+     input:
+        unique = join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),
+        all = join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_all.txt')
+    params:
+        rname='ic_anno',
+        R = join(source_dir,'workflow','scripts','06_annotation.R'),
+        n_ref = nova_ref,
+        base = join(out_dir,'{mp}/15_annotation/'),
+        base2 = join(out_dir,'{mp}/16_peaks_MAnorm/'),
+        m_count = min_count,
+        p_id = peak_id,
+        de_meth = DE_method,
+        nt_merge = nt_merge,
+        s_aware = "False",
+    envmodules:
+        config['R'],
+        config['samtools'],
+        config['bedtools'],
+    output:
+        txt = join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.txt'),
+        html = join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.html'),
+        bed = join(out_dir,'{mp}/16_peaks_MAnorm/input/{sp}_' + str(nt_merge) + '_peakDepth.bed')
+    shell:
+        """
+        Rscript {params.R} \
+            {wildcards.sp} {params.n_ref} \
+            {input.unique} {input.all} \
+            {params.base1} {params.m_count} \
+            {params.p_id} {params.de_meth} {params.nt_merge} \
+            {output.html} {params.s_aware} {params.base2}
+        """  
 
 """
 https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
