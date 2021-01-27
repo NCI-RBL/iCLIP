@@ -47,6 +47,7 @@ splice_bp = config['splice_bp_length']
 mismatch = config['mismatch_allowance']
 split_value =  config['split_value']
 min_count = config['minimum_count']
+nt_merge = config['nt_merge']
 
 #split_params
 def check_split(split_in):
@@ -250,6 +251,15 @@ rule all:
         expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
         expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
 
+        #Bed files
+        expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
+
+        #SAF 
+        expand(join(out_dir,'{mp}/13_SAF/{sp}_',str(nt_merge),'.SAF'),zip, mp=mp_list, sp=sp_list),
+
+        #Count features
+        expand(join(out_dir,'{mp}/14_counts/{sp}_',str(nt_merge),'_unique.txt'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/14_counts/{sp}_',str(nt_merge),'_all.txt'),zip, mp=mp_list, sp=sp_list),
 
 include: "rules/common.smk"
 include: "rules/other.smk"
@@ -1101,7 +1111,6 @@ rule index_dedup_unique:
         cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
-
 rule create_bed:
     """
     create bed file from the deduped unique file
@@ -1116,8 +1125,88 @@ rule create_bed:
         o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
     shell:
         """
-        bedtools bamtobed -i {input.f1} > {output.o1}
+        bedtools bamtobed \
+            -split -i {input.f1} | bedtools sort -i - > {output.o1} 
         """
+
+rule create_saf: 
+    """
+    """
+    input:
+        f1 = join(out_dir,'{mp}/12_bed/{sp}.bed'),
+    params:
+        rname='ic_saf',
+    envmodules:
+        config['bedtools']  
+    output:
+        o1 = join(out_dir,'{mp}/13_SAF/{sp}_',str(nt_merge),'.SAF')
+    shell:
+        """
+        bedtools merge \
+            -c 6 -o count,distinct -bed -s -d 50 \
+            -i {input.f1} | \
+            awk '{{OFS="\t"; print $1":"$2"-"$3,$1,$2,$3,$5}}'| \
+            awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > {output.o1}
+        """
+
+rule feature_counts_unique:
+    """
+    Unique reads (fractional counts correctly count splice reads for each peak. 
+    When peaks counts are combined for peaks connected by splicing in Rscript)
+    """
+     input:
+        f1 = join(out_dir,'{mp}/13_SAF/{sp}_',str(nt_merge),'.SAF')
+    params:
+        rname='ic_saf',
+    envmodules:
+        config['bedtools']  
+    output:
+        o1 = join(out_dir,'{mp}/14_counts/{sp}_',str(nt_merge),'_unique.txt')
+    shell:
+        """
+        featureCounts -F SAF \
+            -a {input.f1} \
+            -O \
+            -J \
+            --fraction \
+            --minOverlap 1 \
+            -s 1 \
+            -T 8 \
+            -o {output.o1} 
+            10_dedup_bam/KO_fCLIP.dedup.i.bam
+        """   
+
+rule feature_counts_all:
+    """
+    Include Multimap reads - MM reads given fractional count based on # of mapping 
+    locations. All spliced reads also get fractional count. So Unique reads can get 
+    fractional count when spliced peaks combined in R script the summed counts give 
+    whole count for the unique alignement in combined peak.
+    """
+     input:
+        f1 = join(out_dir,'{mp}/13_SAF/{sp}_',str(nt_merge),'.SAF')
+    params:
+        rname='ic_saf',
+    envmodules:
+        config['bedtools']  
+    output:
+        o1 = join(out_dir,'{mp}/14_counts/{sp}_',str(nt_merge),'_all.txt')
+    shell:
+        """
+        featureCounts -F SAF \
+            -a {input.f1} \
+            -M \
+            -O \
+            -J \
+            --fraction \
+            --minOverlap 1 \
+            -s 1 \
+            -T 8 \
+            -o {output.o1} 
+            10_dedup_bam/KO_fCLIP.dedup.i.bam
+        """  
+
+
 
 
 """
