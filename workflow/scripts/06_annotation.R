@@ -49,8 +49,11 @@ OutDIR=as.character(args[5]) # path to place Annotation table
 readdepth=as.numeric(args[6]) ## minimum number of reads to evaluate a peak
 PeakIdnt=as.character(args[7]) ## Unique or all
 DEmethod=as.character(args[8]) ## DE peaks method for now only MAnorm works or none
-NameAdd=as.character(args[9]) ## additonal information to add to file name
-ntmerge='50nt'
+#NameAdd=as.character(args[9]) ## additonal information to add to file name
+ntmerge=as.character(args[9]) #nt merge length
+outName=as.character(args[10]) #output file name
+spliceaware=as.character(args[11])
+OutDIR2=as.character(args[12]) # path to place Annotation table 
 
 PeaksUniq=gsub("\\\\ "," ",PeaksUniq)
 PeaksFracMM=gsub("\\\\ "," ",PeaksFracMM)
@@ -61,9 +64,9 @@ PeaksUniq
 Sys.setenv(RSTUDIO_PANDOC="/Applications/RStudio.app/Contents/MacOS/pandoc")
 
 #File output : params$OutDIR,samplename,"_CLIP_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD15.txt"
-rmarkdown::render('CLIP_MD15_BW.Rmd',
+rmarkdown::render('workflow/scripts/CLIP_MD15_BW.Rmd',
                   encoding=encoding,
-                  output_file=paste0(OutDIR,samplename,'_CLIP_',PeakIdnt,'Peaks',ntmerge,'_peakDepth',readdepth,NameAdd,'_MD15.html'), 
+                  output_file=outName,
                   params = list(
                     samplename= samplename,
                     # INbam = paste0(bamDIR,'ddup/'),
@@ -75,9 +78,11 @@ rmarkdown::render('CLIP_MD15_BW.Rmd',
                     OUT= paste0(OutDIR,"/annotation/"),
                     readdepth= readdepth,
                     PeakIdnt=PeakIdnt,
-                    NameAdd=NameAdd,
+                    #NameAdd=NameAdd,
                     DEmethod=DEmethod,
-                    species= species
-                    
+                    species= species,
+                    ntmerge = ntmerge,
+                    JoinJunc = spliceaware,
+                    OutDIR2 = OutDIR2
                   )
 )

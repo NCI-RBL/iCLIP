@@ -35,16 +35,16 @@ params:
   species: species
   PeakIdnt: PeakIdnt #MultiMap, Unique, all
   NameAdd: NameAdd
-  ntmerge: 50
+  ntmerge: ntmerge
   Condense: FALSE
-  JoinJunc: TRUE
+  JoinJunc: JoinJunc
   calcMAPQ: FALSE
   calcALTLOC: FALSE
   DEmethod: DEmethod
   RunMAnorm: FALSE
-  AnnoFiles: '/Users/homanpj/Documents/Resources/ref'
-  AnnoScript: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIP_Annotation_MD11_BW.R"
-
+  AnnoFiles: '/data/RBL_NCI/iCLIP/ref/'
+  AnnoScript: "/home/sevillas2/git/iCLIP/workflow/scripts/CLIP_Annotation_MD11_BW.R"
+  OutDIR2: OutDIR2
 ---
 
 ```{r eval=F, echo=F, message=FALSE, warning=FALSE, include=F,results=F,}
@@ -53,14 +53,12 @@ params:
 
 # Identification of CLIP peaks: `r toString(params$samplename)`    
  
- 
 ```{r include=F ,echo=F,warning=F,message=FALSE}
 rm(list=setdiff(ls(), "params"))
 
 ntmerge='50nt'
 if(params$species=='mouse'){refGTF='GENCODE mm10 v23'};
 if(params$species=='human'){refGTF='GENCODE hg38 v32'}
-
 
 # example
 # chr1:59,692,533-59,692,616
@@ -178,7 +176,7 @@ RunMAnorm=params$calcALTLOC
 species=params$species
 testFldr=paste0(samplename,'test')
 ntmerge=paste0(ntmerge,"nt")
-
+JoinJunc=params$JoinJunc
 
 
 if (species=="mm10") {species="mouse"}
@@ -232,7 +230,7 @@ incd_rRNA=T
 #############################################
 ########## Feature Counts
 #############################################
-  INpeaks = paste0(params$INpeaks,params$samplename,'/',params$PeakIdnt,'/')
+#  INpeaks = paste0(params$INpeaks,params$samplename,'/',params$PeakIdnt,'/')
 # PeaksUniq=paste0(INpeaks,samplename,"_Clip_iCountcutadpt_all.unique.NH.mm.ddup.",fname,ntmerge,".FCountUnique.txt")
 # PeaksFracMM=paste0(INpeaks,samplename,"_Clip_iCountcutadpt_all.unique.NH.mm.ddup.",fname,ntmerge,".FCountAll_frac.txt")
 
@@ -519,13 +517,13 @@ FtrCount=FtrCount[duplicated(FtrCount)==F,]
 if (params$DEmethod=='MAnorm') {
   
 
-  if (dir.exists(file.path(paste0(params$OutDIR,"/peaks_MAnorm/")))==F) {dir.create(paste0(params$OutDIR,"/peaks_MAnorm/"))}
-  if (dir.exists(file.path(paste0(params$OutDIR,"/peaks_MAnorm/input/")))==F) {dir.create(paste0(params$OutDIR,"/peaks_MAnorm/input/"))}
+  #if (dir.exists(file.path(paste0(params$OutDIR,"/peaks_MAnorm/")))==F) {dir.create(paste0(params$OutDIR,"/peaks_MAnorm/"))}
+  #if (dir.exists(file.path(paste0(params$OutDIR,"/peaks_MAnorm/input/")))==F) {dir.create(paste0(params$OutDIR,"/peaks_MAnorm/input/"))}
 FtrCount$Counts_fracMM>
 
-write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(params$OutDIR,"/peaks_MAnorm/input/",samplename,"_",params$PeakIdnt,"PeaksforMAnrom_",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,".bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(params$OutDIR,"/peaks_MAnorm/input/",samplename,"_",params$PeakIdnt,"PeaksforMAnrom_",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,".P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(params$OutDIR,"/peaks_MAnorm/input/",samplename,"_",params$PeakIdnt,"PeaksforMAnrom_",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,".N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(params$OutDIR2,samplename,"_",ntmerge,"_peakDepth.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(params$OutDIR2,samplename,"_",ntmerge,"_peakDepth.P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(params$OutDIR2,samplename,"_",ntmerge,"_peakDepth.N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
 # 
 }
 # 'Counts_All','Counts_Unique','Counts_MM','Counts_primary','Counts_fracMM','Counts_Primary_fracMM'
