@@ -125,23 +125,23 @@ for k,v in multiplex_dict.items():
         
     check =  all(item in bc_obs for item in bc_exp)
     if check is True:
-        file_save = output_dir + 'barcode_summary_' + k + '.txt'
+        file_save = output_dir + k + '/00_qc_post/' + k + '_barcode.txt'
         f = open(file_save,"w+")
-        f.write("Reviewing sample {}\n".format(k))
-        f.write("Number of mismatches allowed {}\n******************************\n\n".format(mismatch))
-        f.write("The top barcodes identified {} include the expected barcodes {}\n\n".format(bc_obs, bc_exp))
-        f.write("Top barcode counts:\n")
-        f.write(json.dumps(top_dict))
+        f.write("\n* SampleID {}\n".format(k))
+        f.write("\t + Number of mismatches allowed {}\n".format(mismatch))
+        f.write("\t + The top barcodes identified {} include the expected barcodes {}\n\n".format(bc_obs, bc_exp))
+        f.write("\t + List of top barcodes:counts \n")
+        f.write("\t\t + " + json.dumps(top_dict))
 
         f.close()    
     else :
-        file_save = output_dir + 'barcode_errors_' + k + '.txt'
+        file_save = output_dir + k + '_barcode_errors.txt'
         f = open(file_save,"w+")
         f.write("The top barcodes identified {} were not congruent with expected barcode list {}. Review associated img for more information.".format(bc_obs, bc_exp)) 
         f.close()
 
     #print barplot for top barcodes
-    file_save = output_dir + 'barcode_plot_' + k + '.png'
+    file_save = output_dir + k + '/00_qc_post/' + k + '_barcode.png'
     plt.bar(*zip(*top_dict.items()))
     plt.suptitle('Top 5 Barcodes: ' + k + '\n Number of mismatches allowed: ' + mismatch)
     plt.xticks(rotation='45', fontsize=6)
