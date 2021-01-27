@@ -244,12 +244,11 @@ rule all:
         expand(join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.png'),zip, mp=mp_list, sp=sp_list),
 
         #QC Troubleshooting
-        join(out_dir,'qc','qc_report.html')
+        join(out_dir,'qc','qc_report.html'),
 
         #Deduplicate
-        #expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
-        ##expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
 
 
 include: "rules/common.smk"
@@ -1059,7 +1058,7 @@ rule dedup_header:
         samtools view -H {input.f1} > {output.o1}
         """
 
-rule split_dedup_mm_and_unique:
+rule dedup_unique:
     """
     split dedup file into multimapped and unique files
     """
@@ -1071,13 +1070,11 @@ rule split_dedup_mm_and_unique:
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.bam'),
-        o2 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
+        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
     shell:
         """
         set +e
-        samtools view {input.bam} | grep -v -w 'NH:i:1' | cat {input.h} - | samtools sort | samtools view -Sb > {output.o1}; \
-        samtools view {input.bam} | grep -w 'NH:i:1' | cat {input.h} - |  samtools sort | samtools view -Sb > {output.o2}
+        samtools view {input.bam} | grep -w 'NH:i:1' | cat {input.h} - |  samtools sort | samtools view -Sb > {output.o1}
         exitcode=0
         if [ $exitcode -eq 1 ]
         then
@@ -1087,7 +1084,7 @@ rule split_dedup_mm_and_unique:
         fi
         """
 
-rule index_split_dedup_unique:
+rule index_dedup_unique:
     """
     index deduped unique file
     """
@@ -1104,39 +1101,23 @@ rule index_split_dedup_unique:
         cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
-rule index_split_dedup_mm:
+
+rule create_bed:
     """
-    index deduped multimapped file
+    create bed file from the deduped unique file
     """
     input:
-        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.bam'),
+        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
     params:
-        rname='ic_index_splitm',
+        rname='ic_bed',
     envmodules:
-        config['samtools']  
+        config['bedtools']  
     output:
-        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),
+        o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
     shell:
         """
-        cp {input.f1} {output.o1}; samtools index {output.o1};
+        bedtools bamtobed -i {input.f1} > {output.o1}
         """
-
-    rule create_bed:
-        """
-        create bed file from the deduped unique file
-        """
-        input:
-            f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
-        params:
-            rname='ic_bed',
-        envmodules:
-            config['bedtools']  
-        output:
-            o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
-        shell:
-            """
-            bedtools bamtobed -i {input.f1} > {output.o1}
-            """
 
 
 """
@@ -1182,4 +1163,3 @@ https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
 - add local execution
 - create test files for hg38
 """
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
