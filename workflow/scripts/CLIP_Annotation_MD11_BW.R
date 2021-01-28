@@ -64,7 +64,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     # peaks=peaks[,c("V1","V2","V3",'V6')]
     # peaks=Peaksdata2[,c('chr','start','end','strand')]
     # WriteClassTable=T
-    # species="human"
+    # species="hg38"
     # outdir="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/HaCat_fCLIP2/"
     # Ref='/Users/homanpj/Documents/Resources/ref'
     # setwd('/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/HaCat_fCLIP2/')
@@ -89,7 +89,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   
   ###################################################
   ##################################################
-  if (species=='mouse'){
+  if (species=='mm10'){
     
     alias=fread(paste0(Ref,"/mm10/mm10.chromAlias.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F,skip = "#",fill=TRUE)
     colnames(alias)=c('chr','alias1','aliasNCBI','Refseq')
@@ -97,7 +97,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     alias[-grep('_',alias$chr),'aliasNCBI2']=alias[-grep('_',alias$chr),'chr']
   }
   
-  if (species=='human') {
+  if (species=='hg38') {
     alias=fread(paste0(Ref,"/hg38/hg38.chromAlias.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F,skip = "#",fill=TRUE)
     colnames(alias)=c('chr','alias2','aliasNCBI',"Refseq")
     alias$aliasNCBI2=alias$aliasNCBI
@@ -141,7 +141,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   
   # for types https://www.gencodegenes.org/pages/types.html
   #################################
-  if (species=='mouse'){
+  if (species=='mm10'){
     ### annotations will most closely match refseq 
     # mm10all=Rgb::read.gtf(paste0(Ref,"/mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf"),attr='split')
     # write.table(mm10all,file=(paste0(Ref,"/mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt"), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE)
@@ -152,13 +152,13 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   }
   
   
-  if (species=='human') {
+  if (species=='hg38') {
     # mm10all=Rgb::read.gtf(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf"),attr='split')
-    # write.table(mm10all,file=(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE)
-    # mm10all=fread(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
+    # write.table(mm10all,file=(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE)
+    # mm10all=fread(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
     # mm10allprim=fread(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.primary_assembly.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
     # mm10all=fread(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
-    mm10all=fread(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
+    mm10all=fread(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
   }
   # unique(mm10all$seqname)
   # unique(mm10allprim$seqname)
@@ -188,7 +188,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   #################################################
   
   
-  if (species=='mouse') {
+  if (species=='mm10') {
     # mm10all=Rgb::read.gtf(paste0(Ref,"/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf")),attr='split')
     # write.table(mm10all,file=(paste0(Ref,"/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE)
     # 
@@ -204,7 +204,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     ####################################################  ##################################################
   }
   
-  if (species=='human') {
+  if (species=='hg38') {
     # mm10all=Rgb::read.gtf(paste0(Ref,"/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gff"),attr='split')
     # write.table(mm10all,file=(paste0(Ref,"/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gff.txt")), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE)
     # 
@@ -220,7 +220,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     ####################################################  ##################################################
   }
   
-  if (species=='human') {
+  if (species=='hg38') {
     # colnames(mm10allRefseq)[colnames(mm10allRefseq)%in%'seqname']='chr'
     mm10allRefseq=mm10allRefseq[is.na(mm10allRefseq$chr)==F,]
     colnames(mm10allRefseq)[colnames(mm10allRefseq)%in%'gene_id']='ensembl_gene_id'
@@ -238,7 +238,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   ##################################################################################################################################
   #### Gencode - Select only numbered chromosomes and contigs not in refseq f
   
-  if (species=='human') {
+  if (species=='hg38') {
   chrms=unique(mm10all$chr)[-grep("_",unique(mm10all$chr))]
   chrmU=unique(setdiff(mm10all$chr,unique(mm10allRefseq$chr)))
   mm10all=mm10all[mm10all$chr%in%c(chrms,chrmU),]
@@ -304,10 +304,10 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   mm10_FTR=mm10all[mm10all$feature%in%c("3UTR","5UTR",'CDS','UTR'),]
   ##############################
   
-  if (species=='mouse') {
+  if (species=='mm10') {
     canonical=fread(paste0(Ref,"/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
   }  
-  if (species=='human') {
+  if (species=='hg38') {
     canonical=fread(paste0(Ref,"/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
   }
   
@@ -324,10 +324,10 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   # 
   
   ########
-  if (species=='mouse') {
+  if (species=='mm10') {
     introns=fread(paste0(Ref,"/mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
   }
-  if (species=='human') {
+  if (species=='hg38') {
     introns=fread(paste0(Ref,"/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
     # introns_alias=fread(paste0(Ref,"/hg38/NCBI_RefSeq/fromUCSC/Refseq_introns_GRCh38.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
     }
@@ -505,10 +505,10 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   newRmsk=1
   if (newRmsk==1) {
     
-    if (species=='mouse') {
+    if (species=='mm10') {
       rmsk_GRCm38=fread(paste0(Ref,"/mm10/repeatmasker/rmsk_GRCm38.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
     }
-    if (species=='human') {
+    if (species=='hg38') {
       rmsk_GRCm38=fread(paste0(Ref,"/hg38/repeatmasker/rmsk_GRCh38.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
     }
     # unique(rmsk_GRCm38$repClass)
@@ -518,8 +518,8 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     # r2=rmsk_GRCm38[rmsk_GRCm38$repClass%in%c('LINE','SINE','LTR','DNA','Satellite','Simple_repeat','Low_complexity','Other','Unknown'),]
     # rmsk_GRCm38=rbind(r1,r2)
     # # 
-    # if (species=='mouse') {write.table(rmsk_GRCm38,file=(paste0(Ref,"/mm10/repeatmasker/rmsk_GRCm38_subClip.txt")), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)}
-    # if (species=='human') {write.table(rmsk_GRCm38,file=(paste0(Ref,"/hg38/repeatmasker/rmsk_GRCh38_subClip.txt")), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)}
+    # if (species=='mm10') {write.table(rmsk_GRCm38,file=(paste0(Ref,"/mm10/repeatmasker/rmsk_GRCm38_subClip.txt")), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)}
+    # if (species=='hg38') {write.table(rmsk_GRCm38,file=(paste0(Ref,"/hg38/repeatmasker/rmsk_GRCh38_subClip.txt")), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)}
   }
   
   #################################################
@@ -611,7 +611,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   #################################################
   #### SOYEONG
   #################################################
-  if (species=='mouse') {
+  if (species=='mm10') {
     
   additionalAnno=1
   if (additionalAnno==1) {
@@ -746,7 +746,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   rownames(Classification)=rnames
   colnames(Classification)=cnames
   
-  if (species=='mouse') {
+  if (species=='mm10') {
     Classification['yRNA','SY_count']=nrow(yRNA_sy)
     Classification['snRNA','SY_count']=nrow(snRNA_sy)
     Classification['snoRNA','SY_count']=nrow(snoRNA_sy)
@@ -794,7 +794,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   
   Classification$Comb=rowSums(Classification[,c('Gencode','Repeatmasker')])
   
-  if (species=='mouse') {
+  if (species=='mm10') {
     Classification['yRNA','notes']='use Repeatmasker - subset of scRNA'
     Classification['snRNA','notes']='Use Gencode'
     Classification['snoRNA','notes']='Use Gencode'
@@ -823,7 +823,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     Classification['lncRNA','source']='Gencode_V23'
   }
   
-  if (species=='human') {
+  if (species=='hg38') {
     Classification['yRNA','source']='Repeatmasker'
     Classification['snRNA','source']='Gencode_V32'
     Classification['snoRNA','source']='Gencode_V32'
@@ -853,7 +853,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   Classification['lncRNA','Description']='Generic long non-coding RNA type'
   Classification['lincRNA','Description']='long non-coding RNA type with Intronic + Exonic Regions'
   
-  if (species=='mouse') {
+  if (species=='mm10') {
     Classification['yRNA','contents']=paste0(unique(YRNA_rmsk$name),collapse = ', ')
     Classification['snRNA','contents']='U1,U2,U5,U6,U7,U11,U12 and various predicted genes' ;#paste0(unique(snRNA_mm10$transcript_type),collapse = ', ')
     Classification['snoRNA','contents']=paste0('Various ',paste0(unique(snoRNA_mm10$transcript_type),collapse = ', '))
@@ -869,7 +869,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     Classification['lncRNA','contents']=paste0('Various ',paste0(unique(lncRNA_mm10[lncRNA_mm10$gene_type_ALL%in%'lncRNA','transcript_type']),collapse = ', '))
     Classification['lincRNA','contents']=paste0('Various ',paste0(unique(lncRNA_mm10[lncRNA_mm10$gene_type_ALL%in%'lncRNA'==F,'transcript_type']),collapse = ', '))
   }
-  if (species=='human') {
+  if (species=='hg38') {
     Classification['yRNA','contents']=paste0(unique(YRNA_rmsk$name),collapse = ', ')
     Classification['snRNA','contents']='U1,U2,U5,U6,U7,U11,U12' ;#paste0(unique(snRNA_mm10$transcript_type),collapse = ', ')
     Classification['snoRNA','contents']=paste0('Various ',paste0(unique(snoRNA_mm10$transcript_type),collapse = ', '))
@@ -920,7 +920,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     mm10col=c('chr','start','end','transcript_name','score','strand')
     rmskcol=c('chr','start','end','name','swScore','strand')
     
-    if (species=='mouse'){
+    if (species=='mm10'){
       write.table(YRNA_rmsk[,rmskcol],file=paste0(outdir,"/annotation/yRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
       write.table(snRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/snRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
       write.table(snoRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/snoRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
@@ -935,7 +935,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
       write.table(rRNA_BK00964[,rmskcol],file=paste0(outdir,"/annotation/rRNA_BK00964.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
       write.table(lncRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/lncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
     }
-    if (species=='human'){
+    if (species=='hg38'){
       write.table(YRNA_rmsk[,rmskcol],file=paste0(outdir,"/annotation/yRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
       write.table(snRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/snRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
       write.table(snoRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/snoRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
@@ -949,11 +949,11 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
       write.table(lncRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/lncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
     }
     
-    if (species=='mouse') {
+    if (species=='mm10') {
       rnames_ncRNA=c('yRNA','snRNA','snoRNA','srpRNA','tRNA','7SK RNA','scRNA','sncRNA','miRNA','rRNA_gencode','rRNA_rmsk','rRNA_DNA','lncRNA','lincRNA')
       cnames_ncRNA=c('source','contents','Description') 
     }
-    if (species=='human') {
+    if (species=='hg38') {
       rnames_ncRNA=c('yRNA','snRNA','snoRNA','srpRNA','tRNA','7SK RNA','scRNA','miRNA','rRNA_gencode','rRNA_rmsk','lncRNA')
       cnames_ncRNA=c('source','contents','Description')
     }
@@ -1125,7 +1125,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     
 
 
-    if (species=='human'){
+    if (species=='hg38'){
     p=bam_anno2(peaks,
                 rbind(mm10[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')],
                       mm10allRefseq[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')],### added anno for chrm not in gencode
@@ -1137,7 +1137,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
                            )
     }
     
-    if (species=='mouse'){
+    if (species=='mm10'){
       annocol=c('chr','start','end','strand','type','name')
       Anno_RNA_comb=rbind(YRNA_rmsk[,annocol],srpRNA_rmsk[,annocol],tRNA_sy[,annocol],SKRNA_rmsk[,annocol],scRNA_rmsk[,annocol],sncRNA_sy[,annocol],rRNA_rmsk[,annocol],rRNA_BK00964[,annocol])
       
@@ -1168,12 +1168,12 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     
     ### Add Column that commbines all additional annotations
     annocol=c('chr','start','end','strand','type','name')
-    if (species=='mouse'){
+    if (species=='mm10'){
       Anno_RNA_comb=rbind(YRNA_rmsk[,annocol],srpRNA_rmsk[,annocol],
                           tRNA_sy[,annocol],sncRNA_sy[,annocol],rRNA_BK00964[,annocol],
                           SKRNA_rmsk[,annocol],scRNA_rmsk[,annocol],rRNA_rmsk[,annocol])
     }
-    if (species=='human'){
+    if (species=='hg38'){
       Anno_RNA_comb=rbind(YRNA_rmsk[,annocol],srpRNA_rmsk[,annocol],
                           SKRNA_rmsk[,annocol],scRNA_rmsk[,annocol],
                           rRNA_rmsk[,annocol],tRNA_rmsk[,annocol])
