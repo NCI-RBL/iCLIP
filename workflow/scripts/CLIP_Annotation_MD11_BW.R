@@ -241,9 +241,10 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   #### Gencode - Select only numbered chromosomes and contigs not in refseq f
   
   if (species=='hg38') {
-  chrms=unique(mm10all$chr)[-grep("_",unique(mm10all$chr))]
-  chrmU=unique(setdiff(mm10all$chr,unique(mm10allRefseq$chr)))
-  mm10all=mm10all[mm10all$chr%in%c(chrms,chrmU),]
+  #sam edit
+  #chrms=unique(mm10all$chr)[-grep("_",unique(mm10all$chr))]
+  #chrmU=unique(setdiff(mm10all$chr,unique(mm10allRefseq$chr)))
+  #mm10all=mm10all[mm10all$chr%in%c(chrms,chrmU),]
   
   #### refseq - Select contigs not in Gencode
   
@@ -1822,6 +1823,8 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   return(PeaksdataOut)
 }
 #Peaksdata2=read.csv("/Volumes/sevillas2/git/iCLIP/workflow/scripts/peakstest.csv")
-#CLIPannotation(Peaksdata2[,c('chr','start','end','strand')],T,"hg38",
-#               "/Volumes/data/iCLIP/marco/fCLIP_HS/15_annotation/",'/Volumes/iCLIP/ref/CLIP_Anno')
-
+#peaks = Peaksdata2[,c('chr','start','end','strand')]
+#WriteClassTable = T
+#species = "hg38"
+#outdir = "/Volumes/data/iCLIP/marco/fCLIP_HS/15_annotation/"
+#Ref = "/Volumes/iCLIP/ref/CLIP_Anno"
