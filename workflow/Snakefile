@@ -212,60 +212,60 @@ rule all:
         expand(join(out_dir,'{mp}/02_adaptor/{sp}_removed.fastq.gz'),zip, mp=mp_list, sp=sp_list),
 
         #FastQC
-        expand(join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/00_qc_post/{sp}_filtered_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'{mp}/00_qc_post/{sp}_filtered_fastqc.html'),zip, mp=mp_list, sp=sp_list),
         
-        #Unzip samples
-        expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
+        # #Unzip samples
+        # expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
          
-        #FastQ Screen
-        expand(join(out_dir,'{mp}/00_qc_screen_species/{sp}_filtered.txt'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/00_qc_screen_rrna/{sp}_filtered.txt'),zip, mp=mp_list, sp=sp_list),
+        # #FastQ Screen
+        # expand(join(out_dir,'{mp}/00_qc_screen_species/{sp}_filtered.txt'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'{mp}/00_qc_screen_rrna/{sp}_filtered.txt'),zip, mp=mp_list, sp=sp_list),
         
-        #Determine file split parameters
-        join(out_dir,'qc','split_params.tsv'),
+        # #Determine file split parameters
+        # join(out_dir,'qc','split_params.tsv'),
         
-        #Merge splits
-        expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
+        # #Merge splits
+        # expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
 
-        #Merge unique and mm
-        expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
+        # #Merge unique and mm
+        # expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
 
-        #Sort and index merged
-        expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
+        # #Sort and index merged
+        # expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
 
-        #Samstats
-        expand(join(out_dir,'{mp}/00_qc_post/{sp}_samstats.txt'),zip, mp=mp_list, sp=sp_list),
+        # #Samstats
+        # expand(join(out_dir,'{mp}/00_qc_post/{sp}_samstats.txt'),zip, mp=mp_list, sp=sp_list),
 
-        #MultiQC Report
-        join(out_dir,'qc/multiqc_report.html'),
+        # #MultiQC Report
+        # join(out_dir,'qc/multiqc_report.html'),
 
-        #Alignment stats
-        expand(join(out_dir,'{mp}/00_qc_post/{sp}_aligned.png'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.png'),zip, mp=mp_list, sp=sp_list),
+        # #Alignment stats
+        # expand(join(out_dir,'{mp}/00_qc_post/{sp}_aligned.png'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.png'),zip, mp=mp_list, sp=sp_list),
 
-        #QC Troubleshooting
-        join(out_dir,'qc','qc_report.html'),
+        # #QC Troubleshooting
+        # join(out_dir,'qc','qc_report.html'),
 
-        #Deduplicate
-        expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
+        # #Deduplicate
+        # expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
 
-        #Bed files
-        expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
+        # #Bed files
+        # expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
 
-        #SAF 
-        expand(join(out_dir,'{mp}/13_SAF/{sp}_'+ str(nt_merge) +'.SAF'),zip, mp=mp_list, sp=sp_list),
+        # #SAF 
+        # expand(join(out_dir,'{mp}/13_SAF/{sp}_'+ str(nt_merge) +'.SAF'),zip, mp=mp_list, sp=sp_list),
 
-        #Count features
-        expand(join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_all.txt'),zip, mp=mp_list, sp=sp_list),
+        # #Count features
+        # expand(join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_all.txt'),zip, mp=mp_list, sp=sp_list),
 
-        #Annotation
-        expand(join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.html'),zip, mp=mp_list, sp=sp_list),
+        # #Annotation
+        # #expand(join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.html'),zip, mp=mp_list, sp=sp_list),
 
 include: "rules/common.smk"
 include: "rules/other.smk"
@@ -1217,7 +1217,7 @@ rule feature_counts_all:
 rule annotations:
     """
     """
-     input:
+    input:
         unique = join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),
         all = join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_all.txt')
     params:
@@ -1236,18 +1236,145 @@ rule annotations:
         config['samtools'],
         config['bedtools'],
     output:
-        txt = join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.txt'),
+        #txt = join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.txt'),
         html = join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.html'),
-        bed = join(out_dir,'{mp}/16_peaks_MAnorm/input/{sp}_' + str(nt_merge) + '_peakDepth.bed')
+        #bed = join(out_dir,'{mp}/16_MAnorm/input/{sp}_' + str(nt_merge) + '_peakDepth.bed')
     shell:
         """
         Rscript {params.R} \
             {wildcards.sp} {params.n_ref} \
             {input.unique} {input.all} \
-            {params.base1} {params.m_count} \
+            {params.base} {params.m_count} \
             {params.p_id} {params.de_meth} {params.nt_merge} \
             {output.html} {params.s_aware} {params.base2}
         """  
+
+if (DE_method=="MANORM"):
+    def set_contrasts():
+        #read in contrast list as df
+        #multiplex_id   #sampleid_1 #sampleid_2
+        contrast_list = ""
+        return(contrast_list)
+
+
+    def manorm_cmd(contrast_df):
+        contrast_df = ""
+        cmd = ""
+        #for each row in df
+            #file_in = join(output_dir,multiplex.col,'12_bed',sample1.col + '.bed')
+            #file_out = join(output_dir,multiplex.col,'16_manorm',sample1.col + '.P.bed')
+            #cmd = cmd + "awk '$6=="+"' " + file_in "> " + file_out " "
+        #return(cmd)
+
+    rule create_pbeds:
+        '''
+        expand(join(out_dir,'{mp}/16_manorm/{sp}.p.bed'),zip,mp=mp_list,sp=sp_list)
+        expand(join(out_dir,'{mp}/16_manorm/{sp}.n.bed'),zip,mp=mp_list,sp=sp_list)
+        '''
+        input:
+            f1 = join(out_dir,'{mp}/12_bed/{sp}.bed'),
+        output:
+            o1 = join(out_dir,'{mp}/16_manorm/{sp}.p.bed'),
+            o2 = join(out_dir,'{mp}/16_manorm/{sp}.n.bed'),
+        shell:
+            '''
+            awk '$6=="+"' {input.f1} > {output.o1};
+            awk '$6=="-"' {input.f1} > {output.o2};
+            '''
+    rule manorm:
+        '''
+        expand(join(out_dir,'{pairOfSamples}/{sampleid}.{strand}.bed", pairOfSamples=keys, sampleid=values, strand = c["p","n"]
+        '''
+        input:
+            s1_r = join(out_dir,'{mp}/15_annotation/{sample1}.RNAME.bed'), #{sample1}WT_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed,
+            s2_r = join(out_dir,'{mp}/15_annotation/{sample2}.RNAME.bed'), #{sample2}KO_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed,
+            s1_p = join(out_dir,'{mp}/16_manorm/{sample1}.p.bed'), #{sample1}WT_CLIP.dedup.i.bam.P.bed
+            s2_p = join(out_dir,'{mp}/16_manorm/{sample2}.p.bed'), #{sample2}WT_CLIP.dedup.i.bam.P.bed
+        params:
+            name1 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample1}'),
+            name2 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample2}'),
+            base = join(out_dir,'{mp}/16manorm/') #/data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/WTvsKO/
+        envmodules:
+            config['MANorm'],
+        output:
+            o1 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample1}.txt'),
+            o2 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample2}.txt'),
+        shell:
+            '''
+            manorm \
+                --p1 {input.s1_r} \
+                --p2 {input.s2_r} \
+                --r1 {input.s1_p} \
+                --r2 {input.s2_p} \
+                --s1 0 \
+                --s2 0 \
+                -p 1 \
+                -d 25 \
+                -n 10000 \
+                -s \
+                -o {params.base} \
+                --name1 {params.name1} \
+                --name2 {params.name2}
+            '''
+
+
+    rule manorm:
+        """
+        """
+        input:
+            
+        params:
+        envmodules:
+        output:
+        shell:
+            """
+            #step 1
+            pbed_cmd
+            awk '$6=="+"' {sample1} WT_CLIP.dedup.i.bam.bed > {sample1}WT_CLIP.dedup.i.bam.P.bed
+            awk '$6=="+"' {sample2}KO_CLIP.dedup.i.bam.bed > {sample2}KO_CLIP.dedup.i.bam.P.bed
+
+            #step2
+            manorm_cmd
+            manorm \
+            --p1 {sample1}WT_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed \
+            --p2 {sample2}KO_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed \
+            --r1 {sample1}WT_CLIP.dedup.i.bam.P.bed \
+            --r2 {sample2}KO_CLIP.dedup.i.bam.P.bed \
+            --s1 0 \
+            --s2 0 \
+            -p 1 \
+            -d 25 \
+            -n 10000 \
+            -s \
+            -o /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/WTvsKO/ \
+            --name1 WT_50nt_peakDepth5Test_Pos \
+            --name2 KO_50nt_peakDepth5Test_Pos
+
+            #step 3
+            pbed_cmd
+            awk '$6=="-"' {sample1} WT_CLIP.dedup.i.bam.bed > {sample1}WT_CLIP.dedup.i.bam.N.bed
+            awk '$6=="-"' {sample2}KO_CLIP.dedup.i.bam.bed > {sample2}KO_CLIP.dedup.i.bam.N.bed
+
+            #step4
+            manorm_cmd
+            manorm \
+            --p1 {sample1}WT_allPeaksforMAnrom_50nt_peakDepth5Test.N.bed \
+            --p2 {sample2}KO_allPeaksforMAnrom_50nt_peakDepth5Test.N.bed \
+            --r1 {sample1}WT_CLIP.dedup.i.bam.N.bed \
+            --r2 {sample2}KO_CLIP.dedup.i.bam.N.bed \
+            --s1 0 \
+            --s2 0 \
+            -p 1 \
+            -d 25 \
+            -n 10000 \
+            -s \
+            -o /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/WTvsKO/ \
+            --name1 WT_50nt_peakDepth5Test_Neg \
+            --name2 KO_50nt_peakDepth5Test_Neg
+
+
+            """
+
 
 """
 https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
