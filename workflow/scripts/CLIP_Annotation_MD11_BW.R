@@ -1,6 +1,31 @@
 removeVersion <- function(ids){
   return(unlist(lapply(stringr::str_split(ids, "[.]"), "[[",1)))
 }
+
+library(VariantAnnotation,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
+library(GenomicRanges,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
+# library(trackViewer)
+library("pheatmap")
+# library(vcfR)
+library(ggplot2,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
+library("viridis",quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
+library(edgeR,quietly = T,verbose = F)
+library('GenomicFeatures',quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
+library('rtracklayer',quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
+library(matrixStats,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
+library(plyr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
+library(tidyr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
+library(fitdistrplus,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
+library(stringr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
+library(data.table)
+library(reshape)
+library(knitr)
+library(stringi)
+library(biomaRt)
+library(plotly)
+library(tidyr)
+library(GenomicRanges)
+library(RColorBrewer)
  
 CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   # peaksIN=bedfile in format- c('chr','start','end','strand')
@@ -15,30 +40,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   # /Users/homanpj/Documents/Resources/ref/hg38
   
 
-  library(VariantAnnotation,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-  library(GenomicRanges,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-  # library(trackViewer)
-  library("pheatmap")
-  # library(vcfR)
-  library(ggplot2,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-  library("viridis",quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-  library(edgeR,quietly = T,verbose = F)
-  library('GenomicFeatures',quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-  library('rtracklayer',quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-  library(matrixStats,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-  library(plyr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-  library(tidyr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-  library(fitdistrplus,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-  library(stringr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-  library(data.table)
-  library(reshape)
-  library(knitr)
-  library(stringi)
-  library(biomaRt)
-  library(plotly)
-  library(tidyr)
-  library(GenomicRanges)
-  library(RColorBrewer)
+
   
   
   blank_theme <- theme_minimal()+
@@ -1819,4 +1821,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   unlink(misc, recursive = TRUE)  
   return(PeaksdataOut)
 }
+#Peaksdata2=read.csv("/Volumes/sevillas2/git/iCLIP/workflow/scripts/peakstest.csv")
+#CLIPannotation(Peaksdata2[,c('chr','start','end','strand')],T,"hg38",
+#               "/Volumes/data/iCLIP/marco/fCLIP_HS/15_annotation/",'/Volumes/iCLIP/ref/CLIP_Anno')
 
