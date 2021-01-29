@@ -27,13 +27,7 @@ module load snakemake/5.24.1
 
 Configure the workflow according to your needs via editing the files in the `config/` folder. Adjust `snakemake_config.yaml` to configure the workflow execution, `cluster_config.yml` to configure the cluster settings, `multiplex_manifest.tsv` and `samples_manifest.tsv` to specify your sample setup.
 
-##### 1.4 Lint the workflow
-
-Please lint the workflow prior to dry-running.
-```bash
-snakemake --lint -s workflow/Snakefile
-```
-##### 1.5 Dry-run the workflow
+##### 1.4 Dry-run the workflow
 
 Please run the following either command to dry-run the snakemake pipeline:
 ```bash
