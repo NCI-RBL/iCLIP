@@ -142,7 +142,7 @@ def rename_cmd(wildcards):
 def adapt_cmd(wildcards):
     sub_df = df_samples[(df_samples['multiplex']==wildcards.mp) & (df_samples['sample']==wildcards.sp)]
 
-    base = out_dir + wildcards.mp + '/02_adaptor/' + wildcards.sp
+    base = out_dir + wildcards.mp + '/01_remove_adaptor/' + wildcards.sp
     fq_un =  base + '_untrimmed.fastq.gz '
     fq_t = base + '_trimmed.fastq.gz '
 
@@ -153,9 +153,22 @@ def adapt_cmd(wildcards):
 
     return(command_line)
 
+#create cmd to rename fastq screen outputs
+def rename_fqscreen1(wildcards):
+    n_in = join(out_dir,'00_qc_screen_species',wildcards.sp + '_screen')
+    n_out = join(out_dir,'00_qc_screen_species',wildcards.sp + '_filtered')
+    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
+    return(cmd)
+
+def rename_fqscreen2(wildcards):
+    n_in = join(out_dir,'00_qc_screen_rrna',wildcards.sp + '_screen')
+    n_out = join(out_dir,'00_qc_screen_rrna',wildcards.sp + '_filtered')
+    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
+    return(cmd)
+
 #determine the number of lines to split each file by reading split_params.tsv file
 def get_filechunk_size(wildcards):
-    fq_path=out_dir + wildcards.mp + '/03_unzip/' + wildcards.sp + '.fastq '
+    fq_path=join(out_dir,'02_unzip',wildcards.sp + '.fastq ')
 
     #read in split_params file for chunksize
     try:
@@ -164,20 +177,7 @@ def get_filechunk_size(wildcards):
     except:
         return(0)
     return(sub_df.iloc[0]['chunksize'])
-
-#create cmd to rename fastq screen outputs
-def rename_fqscreen1(wildcards):
-    n_in = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp + '_screen')
-    n_out = join(out_dir,wildcards.mp,'00_qc_screen_species',wildcards.sp + '_filtered')
-    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
-    return(cmd)
-
-def rename_fqscreen2(wildcards):
-    n_in = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp + '_screen')
-    n_out = join(out_dir,wildcards.mp,'00_qc_screen_rrna',wildcards.sp + '_filtered')
-    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
-    return(cmd)
-
+    
 #read manifests
 df_multiplex = pd.read_csv(multiplex_manifest,sep="\t")
 df_samples = pd.read_csv(sample_manifest,sep="\t")
@@ -208,29 +208,31 @@ rule all:
         #expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
         
         #Remove adaptors, rename samples
-        expand(join(out_dir,'{mp}/02_adaptor/{sp}_filtered.fastq.gz'),zip, mp=mp_list, sp=sp_list),
-        expand(join(out_dir,'{mp}/02_adaptor/{sp}_removed.fastq.gz'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_trimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+        #expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+        expand(join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz'),sp=sp_list),
+        expand(join(out_dir,'01_remove_adaptor','{sp}_removed_seq.fastq.gz'),sp=sp_list),
 
         #FastQC
-        # expand(join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
-        # expand(join(out_dir,'{mp}/00_qc_post/{sp}_filtered_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
+        expand(join(out_dir,'00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
         
-        # #Unzip samples
-        # expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
+        #Unzip samples
+        expand(join(out_dir,'02_unzip','{sp}.fastq'), sp=sp_list),
          
-        # #FastQ Screen
-        # expand(join(out_dir,'{mp}/00_qc_screen_species/{sp}_filtered.txt'),zip, mp=mp_list, sp=sp_list),
-        # expand(join(out_dir,'{mp}/00_qc_screen_rrna/{sp}_filtered.txt'),zip, mp=mp_list, sp=sp_list),
+        #FastQ Screen
+        expand(join(out_dir,'00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
+        expand(join(out_dir,'00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
         
-        # #Determine file split parameters
-        # join(out_dir,'qc','split_params.tsv'),
+        #Determine file split parameters
+        join(out_dir,'qc','split_params.tsv'),
         
-        # #Merge splits
-        # expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
-        # expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
+        #Merge splits
+        expand(join(out_dir,'07_bam_merged_splits/{sp}.merged.unique.bam'), sp=sp_list),
+        expand(join(out_dir,'07_bam_merged_splits/{sp}.merged.mm.bam'),sp=sp_list),
 
-        # #Merge unique and mm
-        # expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
+        #Merge unique and mm
+        expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
 
         # #Sort and index merged
         # expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
@@ -357,11 +359,11 @@ rule rename_demux:
         join(out_dir,'{mp}','demux_nomatch5.fastq.gz'),
     params:
         rname = 'ic_rename',
-        p1 = rename_cmd
+        cmd = rename_cmd
     output:
-        o1 = join(out_dir,'{mp}','01_renamed','sp}.fastq.gz')
+        o1 = join(out_dir,'{mp}','01_renamed','{sp}.fastq.gz')
     shell:
-        'cp {params.p1}'
+        'cp {params.cmd}'
 
 rule remove_adaptors:
     """
@@ -374,38 +376,56 @@ rule remove_adaptors:
     params:
         rname='ic_adapt',
         ml = 1,
-        adapt = adapt_cmd,
+        cmd = adapt_cmd,
         doc = join(cont_dir,'icount.sif'),
     envmodules:
         config['singularity'],    
     output:
-        o1 = join(out_dir,'{mp}','02_adaptor','{sp}_trimmed.fastq.gz'),
-        o2 = join(out_dir,'{mp}','02_adaptor','{sp}_untrimmed.fastq.gz')
+        o1 = join(out_dir,'{mp}','01_remove_adaptor','{sp}_trimmed.fastq.gz'),
+        o2 = join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz')
     shell:
         """
         singularity exec -B /data/$USER,/data/RBL_NCI,{out_dir},/fdb,/scratch \
-        {params.doc} iCount cutadapt -ml {params.ml} {params.adapt}
+        {params.doc} iCount cutadapt -ml {params.ml} {params.cmd}
         """
+
+def rename_adapt_cmd(wildcards):
+    cmd = ''
+
+    for sp in sp_list:
+        df_sub = df_samples[(df_samples['sample']==sp)] 
+        
+        #input
+        f1 = join(out_dir,df_sub.iloc[0]["multiplex"],'01_remove_adaptor',sp + '_trimmed.fastq.gz')
+        f2 = join(out_dir,df_sub.iloc[0]["multiplex"],'01_remove_adaptor',sp + '_untrimmed.fastq.gz')
+
+        #output
+        o1 = join(out_dir,'01_remove_adaptor',sp + '_removed_seq.fastq.gz')
+        o2 = join(out_dir,'01_remove_adaptor',sp + '_filtered.fastq.gz')
+
+        cmd = 'mv ' + f1 + ' ' + o1 + '; mv ' + f2 + ' ' + o2 + '; ' + cmd
+    return(cmd)
 
 rule rename_adaptors:
     """
     naming schema of adaptors is confusing, and makes interpretation of QC report difficult
     
-    files are renamed for clarity
+    files are renamed for clarity, renamed files moved into common dir
     1) untrimmed.fastq.gz --> filtered.fastq.gz
-    2) trimmed.fastq.gz --> removed.fastq.gz
+    2) trimmed.fastq.gz --> removed_seq.fastq.gz
     """
     input:
-        f1 = join(out_dir,'{mp}','02_adaptor','{sp}_trimmed.fastq.gz'),
-        f2 = join(out_dir,'{mp}','02_adaptor','{sp}_untrimmed.fastq.gz')
+        f1 = expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_trimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+        f2 = expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list)
     params:
-        rname = "ic_rename_ad"
+        rname = "ic_rename_ad",
+        cmd = rename_adapt_cmd
     output:
-        o1 = join(out_dir,'02_adaptor',{sp}_removed.fastq.gz'),
-        o2 = join(out_dir,'02_adaptor',{sp}_filtered.fastq.gz')
+        o1 = expand(join(out_dir,'01_remove_adaptor','{sp}_removed_seq.fastq.gz'),sp=sp_list),
+        o2 = expand(join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz'),sp=sp_list)
     shell:
         '''
-        mv {input.f1} {output.o1}; mv {input.f2} {output.o2}
+        {params.cmd}
         '''
 
 rule qc_fastq_pre:
@@ -414,16 +434,16 @@ rule qc_fastq_pre:
     """
     input:
         f1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
-    output:
-        o1 = join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html')
-    envmodules:
-        config['fastqc']
     params:
         rname='ic_fqc_pre',
-        out = join(out_dir,'{mp}/00_qc_pre/')
+        base = join(out_dir,'{mp}/00_qc_pre/')
+    envmodules:
+        config['fastqc']
+    output:
+        o1 = join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html')
     shell:
         """
-        fastqc {input.f1} -o {params.out}
+        fastqc {input.f1} -o {params.base}
         """
 
 rule qc_fastq_post:
@@ -431,17 +451,17 @@ rule qc_fastq_post:
     Runs FastQC report on each sample after adaptors have been removed
     """
     input:
-        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_filtered.fastq.gz')
-    output:
-        o1 = join(out_dir,'{mp}/00_qc_post/{sp}_filtered_fastqc.html')
-    envmodules:
-        config['fastqc']
+        f1 = join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz')
     params:
         rname='ic_fqc_post',
-        out = join(out_dir,'{mp}/00_qc_post/'),
+        base = join(out_dir,'00_qc_post'),
+    envmodules:
+        config['fastqc']
+    output:
+        o1 = join(out_dir,'00_qc_post','{sp}_filtered_fastqc.html')
     shell:
         """
-        fastqc {input.f1} -o {params.out}
+        fastqc {input.f1} -o {params.base}
         """
 
 rule gunzip_files:
@@ -449,11 +469,11 @@ rule gunzip_files:
     unzips untrimmed files - these are what is leftover after adaptor trimming
     """
     input:
-        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_filtered.fastq.gz')
+        f1 = join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz')
     params:
         rname='ic_gunzip',
     output:
-        o1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq')
+        o1 = join(out_dir,'02_unzip','{sp}.fastq')
     shell:
         "gunzip -c {input.f1} > {output.o1}"
         
@@ -464,10 +484,10 @@ rule qc_screen_sp:
     http://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/_build/html/index.html
     """
     input:
-        f1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq')
+        f1 = join(out_dir,'02_unzip','{sp}.fastq')
     params:
         rname='ic_screen1',
-        dir_screen = join(out_dir,'{mp}/00_qc_screen_species'),
+        base = join(out_dir,'00_qc_screen_species'),
         fq_config = join(source_dir,'config','fqscreen_species_config.conf'),
         cmd = rename_fqscreen1
     threads: 24
@@ -476,10 +496,10 @@ rule qc_screen_sp:
         config['perl'],
         config['fastq_screen'],
     output:
-        o1 = join(out_dir,'{mp}/00_qc_screen_species/{sp}_filtered.txt'),
+        o1 = join(out_dir,'00_qc_screen_species','{sp}_filtered.txt'),
     shell:
         '''
-        fastq_screen --conf {params.fq_config} --outdir {params.dir_screen} \
+        fastq_screen --conf {params.fq_config} --outdir {params.base} \
             --threads {threads} --subset 1000000 --aligner bowtie2 --force \
             {input.f1}; {params.cmd}
         '''
@@ -491,10 +511,10 @@ rule qc_screen_rrna:
     http://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/_build/html/index.html
     """
     input:
-        f1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq')
+        f1 = join(out_dir,'02_unzip','{sp}.fastq')
     params:
         rname='ic_screen2',
-        dir_screen = join(out_dir,'{mp}/00_qc_screen_rrna'),
+        base = join(out_dir,'00_qc_screen_rrna'),
         fq_config = join(source_dir,'config','fqscreen_rrna_config.conf'),
         cmd = rename_fqscreen2
     threads: 24
@@ -503,10 +523,10 @@ rule qc_screen_rrna:
         config['perl'],
         config['fastq_screen'],
     output:
-        o1 = join(out_dir,'{mp}/00_qc_screen_rrna/{sp}_filtered.txt'),
+        o1 = join(out_dir,'00_qc_screen_rrna','{sp}_filtered.txt'),
     shell:
         '''
-        fastq_screen --conf {params.fq_config} --outdir {params.dir_screen} \
+        fastq_screen --conf {params.fq_config} --outdir {params.base} \
             --threads {threads} --subset 1000000 --aligner bowtie2 --force \
             {input.f1}; {params.cmd}
         '''
@@ -518,7 +538,7 @@ rule determine_splits:
     split is done based off split_value input, maintaining every 4 lines = 1 seq
     """
     input:
-        f1 = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
+        f1 = expand(join(out_dir,'02_unzip/{sp}.fastq'), sp=sp_list),
     params:
         rname='ic_splitdoc',
         sh = join(source_dir, 'workflow', 'scripts', '03_find_split_parameters.sh'),
@@ -534,18 +554,18 @@ rule split_files:
     performs split of fastq file into smaller files using parameters in split_params.tsv
     """
     input:
-        all = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
-        f1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq'),
+        all = expand(join(out_dir,'02_unzip/{sp}.fastq'), sp=sp_list),
+        f1 = join(out_dir,'02_unzip/{sp}.fastq'),
         sp = join(out_dir,'qc','split_params.tsv')
     params:
         rname='ic_split',
-        p1 = join(out_dir,'{mp}/04_split/{sp}.split.'),
-        c = get_filechunk_size
+        base = join(out_dir,'03_split/{sp}.split.'),
+        cmd = get_filechunk_size
     output:
-        o1 = dynamic(join(out_dir,'{mp}/04_split/{sp}.split.{n}.fastq'))
+        o1 = dynamic(join(out_dir,'03_split/{sp}.split.{n}.fastq'))
     shell:
         """
-        split --additional-suffix .fastq -l {params.c} --numeric-suffixes=10 {input.f1} {params.p1}
+        split --additional-suffix .fastq -l {params.cmd} --numeric-suffixes=10 {input.f1} {params.base}
         """
 
 if (splice_aware == "N"):
@@ -554,14 +574,14 @@ if (splice_aware == "N"):
         aligns files to index given; output is a sam file
         """
         input:
-            f1 = join(out_dir,'{mp}/04_split/{sp}.split.{n}.fastq'),
+            f1 = join(out_dir,'03_split','{sp}.split.{n}.fastq'),
         params:
             rname='ic_novo',
             n_index = nova_index,
         envmodules:
             config['novocraft']    
         output:
-            o1 = join(out_dir,'{mp}/05_sam/{sp}.split.{n}.sam'),
+            o1 = join(out_dir,'04_sam','{sp}.split.{n}.sam'),
         shell:
             """
             set +e
@@ -584,14 +604,14 @@ else:
         functionally equiv to rule novoalign, expect for output file name
         """
         input:
-            f1 = join(out_dir,'{mp_st}/04_split/{sp_st}.split.{n}.fastq'),
+            f1 = join(out_dir,'03_split','{sp_st}.split.{n}.fastq'),
         params:
             rname='ic_novo',
             n_index = nova_index,
         envmodules:
             config['novocraft']   
         output:
-            o1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.sam'),
+            o1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.sam'),
         shell:
             """
             set +e
@@ -613,14 +633,14 @@ else:
         performs cleanup for inserts
         """
         input:
-            f1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.sam'),
+            f1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.sam'),
         params:
             rname = 'ic_sam_cleanup'
         envmodules:
             config['samtools']  
         output:
-            g1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.tmp.sam'),
-            final = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.final.sam'),
+            g1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.tmp.sam'),
+            final = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.final.sam'),
         shell:
             """
             samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > {output.g1};
@@ -633,15 +653,15 @@ else:
         uses USeq version 8.9.6
         """
         input:
-            f1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.final.sam'),
+            f1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.final.sam'),
         params:
             rname = 'ic_convert',
-            base = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam'),
+            base = join(out_dir,'04_sam_genomic','{sp_st}.split.{n}.sam'),
             doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
         envmodules:
             config['java']  
         output:
-            o1 = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam.gz'),
+            o1 = join(out_dir,'04_sam_genomic','{sp_st}.split.{n}.sam.gz'),
         shell:
             """
             java -jar -Xmx50G -jar {params.doc} \
@@ -654,11 +674,11 @@ else:
         unzips sam file
         """
         input:
-            f1 = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam.gz'),
+            f1 = join(out_dir,'04_sam_genomic','{sp_st}.split.{n}.sam.gz'),
         params:
             rname = 'ic_gzipsam'
         output:
-            o1 = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
+            o1 = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
         shell:
             """
             gunzip -c {input.f1} > {output.o1}
@@ -672,13 +692,13 @@ else:
         | novosort -  > bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.bam
         """
         input:
-            f1 = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
+            f1 = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
         params:
             rname = 'ic_novosort'
         envmodules:
             config['samtools']      
         output:
-            o1 = join(out_dir,'{mp_st}/05_bam/{sp_st}.split.{n}.bam'),
+            o1 = join(out_dir,'05_bam','{sp_st}.split.{n}.bam'),
         shell:
             """
             samtools view -uS {input.f1} 2> bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.convert.err
@@ -692,14 +712,14 @@ rule split_mm_unique:
     2. MM file with NH:i
     """
     input:
-        f1 = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
+        f1 = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
     params:
         rname='ic_split_mu',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.unique.txt'),
-        o2 = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.mm.txt'),
+        o1 = join(out_dir,'05_reads','{sp_st}.split.{n}.unique.txt'),
+        o2 = join(out_dir,'05_reads','{sp_st}.split.{n}.mm.txt'),
     shell:
         """
         set +e
@@ -719,13 +739,13 @@ rule sam_to_header:
     read sam file header, print to header txt
     """
     input:
-        sam = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
+        sam = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
     params:
         rname='ic_sam_head',
     envmodules:
         config['samtools'] 
     output:
-        h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
+        h = join(out_dir,'05_reads','{sp_st}.split.{n}.header.txt'),
     shell:
         """
         samtools view -H {input.sam} > {output.h};
@@ -736,14 +756,14 @@ rule create_bam_unique:
     add nh:i:1 tag, cat header, create unique bam file
     """
     input:
-        h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
-        un = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.unique.txt'),
+        h = join(out_dir,'05_reads','{sp_st}.split.{n}.header.txt'),
+        un = join(out_dir,'05_reads','{sp_st}.split.{n}.unique.txt'),
     params:
         rname='ic_bam_u',
     envmodules:
         config['samtools']        
     output:
-        o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.bam'),
+        o1 = join(out_dir,'06_bam_unique','{sp_st}.split.{n}.unique.bam'),
     shell:
         """
         awk -F '\t' -v OFS='\t' '{{ $(NF+1) = "NH:i:1"; print }}' {input.un} | cat {input.h} - | \
@@ -755,14 +775,14 @@ rule create_bam_mm:
     cat header, create multimapped bam file
     """
     input:
-        h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
-        mm = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.mm.txt'),
+        h = join(out_dir,'05_reads','{sp_st}.split.{n}.header.txt'),
+        mm = join(out_dir,'05_reads','{sp_st}.split.{n}.mm.txt'),
     params:
         rname='ic_bam_m',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.bam'),
+        o1 = join(out_dir,'06_bam_mm','{sp_st}.split.{n}.mm.bam'),
     shell:
         """
         cat {input.h} {input.mm} | samtools sort | samtools view -Sb > {output.o1}
@@ -773,15 +793,15 @@ rule sort_mm_and_unique:
     sort both the multimapped and unique bam files
     """
     input:
-        un = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.bam'),
-        mm = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.bam'),
+        un = join(out_dir,'06_bam_unique','{sp_st}.split.{n}.unique.bam'),
+        mm = join(out_dir,'06_bam_mm','{sp_st}.split.{n}.mm.bam'),
     params:
         rname='ic_sort_mu',
     envmodules:
         config['samtools']      
     output:
-        o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.s.bam'),
-        o2 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.s.bam'),
+        o1 = join(out_dir,'06_bam_unique','{sp_st}.split.{n}.unique.s.bam'),
+        o2 = join(out_dir,'06_bam_mm','{sp_st}.split.{n}.mm.s.bam'),
     shell:
         """
         samtools sort {input.un} -o {output.o1}; \
@@ -793,15 +813,15 @@ rule index_mm_and_unique:
     index both the multimapped and unique bam files
     """
     input:
-        un = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.s.bam'),
-        mm = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.s.bam'),
+        un = join(out_dir,'06_bam_unique','{sp_st}.split.{n}.unique.s.bam'),
+        mm = join(out_dir,'06_bam_mm','{sp_st}.split.{n}.mm.s.bam'),
     params:
         rname='ic_index_mu',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.i.bam'),
-        o2 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.i.bam'),
+        o1 = join(out_dir,'06_bam_unique','{sp_st}.split.{n}.unique.i.bam'),
+        o2 = join(out_dir,'06_bam_mm','{sp_st}.split.{n}.mm.i.bam'),
     shell:
         """
         cp {input.un} {output.o1}; samtools index {output.o1}; \
@@ -813,13 +833,13 @@ rule merge_splits_unique:
     merge split unique bam files into one merged.unique bam file
     """
     input:
-        f1 = dynamic(join(out_dir,'{mp}/07_bam_unique/{sp}.split.{n}.unique.i.bam'))
+        f1 = dynamic(join(out_dir,'06_bam_unique','{sp}.split.{n}.unique.i.bam'))
     params:
         rname='ic_merge_u',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),
+        o1 = join(out_dir,'07_bam_merged_splits','{sp}.merged.unique.bam'),
     shell:
         """
         samtools merge -f {output.o1} {input.f1}
@@ -830,13 +850,13 @@ rule merge_splits_mm:
     merge split multimapped bam files into one merged.mm bam file
     """
     input:
-        f1 = dynamic(join(out_dir,'{mp}/07_bam_mm/{sp}.split.{n}.mm.i.bam'))
+        f1 = dynamic(join(out_dir,'06_bam_mm','{sp}.split.{n}.mm.i.bam'))
     params:
         rname='ic_merge_m',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),
+        o1 = join(out_dir,'07_bam_merged_splits','{sp}.merged.mm.bam'),
     shell:
         """
         samtools merge -f {output.o1} {input.f1}
@@ -847,8 +867,8 @@ rule merge_mm_and_unique:
     merge merged.mm and merged.unique bam files by sample
     """
     input:
-        un = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),
-        mm = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),
+        un = join(out_dir,'07_bam_merged_splits','{sp}.merged.unique.bam'),
+        mm = join(out_dir,'07_bam_merged_splits','{sp}.merged.mm.bam'),
     params:
         rname='ic_merge_mu',
     envmodules:
