@@ -9,12 +9,6 @@ properties:
   source_dir:
     type: string
     description: /path/to/iCLIP/dir
-  container_dir:
-    type: string
-    description: /path/to/container/sif/files
-  fastq_dir:
-    type: string
-    description: /path/to/fastq/files
   output_dir:
     type: string
     description: /path/to/output/dir
@@ -24,13 +18,20 @@ properties:
   multiplex_manifest:
     type: string
     description: /path/to/multiplex/manifest
+  fastq_dir:
+    type: string
+    description: /path/to/fastq/files
+  mismatch_allowance:
+    types: number
+    enum: [1,2]
+    description: number of bp mismatches allowed in demultiplexing
+  split_value:
+    type: number
+    description: number of sequences to split fastq file
   novoalign_reference:
     type: string
     enum: ["hg38","mm10"]
     description: reference organism
-  split_value:
-    type: number
-    description: number of sequences to split fastq file
   splice_aware:
     type: string
     enum: ["Y","N","y","n"]
@@ -42,21 +43,36 @@ properties:
   minimum_count:
     type: number
     description: minimum number of values to count as a 'peak'
-  mismatch_allowance:
-    types: number
-    enum: [1,2]
-    description: number of bp mismatches allowed in demultiplexing
+  nt_merge:
+    type: number
+    description: minimum distance of nucleotides to merge peaks
+  peak_id:
+    type: string
+    enum: ["all","ALL","unique","UNIQUE"]
+    description: report peaks for unique peaks only or unique and fractional mm
+  DE_method:
+    type: string
+    enum: ["MANORM","manorm","none","NONE"]
+    description: DE method option  
+  container_dir:
+    type: string
+    description: /path/to/container/sif/files
 
 # entries that have to be in the config file for successful validation
 required:
   - source_dir
-  - container_dir
-  - fastq_dir
   - output_dir
   - sample_manifest
   - multiplex_manifest
-  - novoalign_reference
+  - fastq_dir
+  - mismatch_allowance
   - split_value
+  - novoalign_reference
   - splice_aware
   - splice_bp_length
   - minimum_count
+  - nt_merge
+  - peak_id
+  - DE_method
+  - container_dir
+  
