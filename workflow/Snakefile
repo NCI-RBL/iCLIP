@@ -48,8 +48,8 @@ mismatch = config['mismatch_allowance']
 split_value =  config['split_value']
 min_count = config['minimum_count']
 nt_merge = config['nt_merge']
-peak_id = config['peak_id']
-DE_method = config['DE_method']
+peak_id = config['peak_id'].capitalize()
+DE_method = config['DE_method'].capitalize()
 
 #split_params
 def check_split(split_in):
@@ -155,14 +155,14 @@ def adapt_cmd(wildcards):
 
 #create cmd to rename fastq screen outputs
 def rename_fqscreen1(wildcards):
-    n_in = join(out_dir,'00_qc_screen_species',wildcards.sp + '_screen')
-    n_out = join(out_dir,'00_qc_screen_species',wildcards.sp + '_filtered')
+    n_in = join(out_dir, 'qc', '00_qc_screen_species',wildcards.sp + '_screen')
+    n_out = join(out_dir, 'qc', '00_qc_screen_species',wildcards.sp + '_filtered')
     cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
     return(cmd)
 
 def rename_fqscreen2(wildcards):
-    n_in = join(out_dir,'00_qc_screen_rrna',wildcards.sp + '_screen')
-    n_out = join(out_dir,'00_qc_screen_rrna',wildcards.sp + '_filtered')
+    n_in = join(out_dir, 'qc', '00_qc_screen_rrna',wildcards.sp + '_screen')
+    n_out = join(out_dir, 'qc', '00_qc_screen_rrna',wildcards.sp + '_filtered')
     cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
     return(cmd)
 
@@ -215,14 +215,14 @@ rule all:
 
         #FastQC
         expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
-        expand(join(out_dir,'00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
         
         #Unzip samples
         expand(join(out_dir,'02_unzip','{sp}.fastq'), sp=sp_list),
          
         #FastQ Screen
-        expand(join(out_dir,'00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
-        expand(join(out_dir,'00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
         
         #Determine file split parameters
         join(out_dir,'qc','split_params.tsv'),
@@ -239,14 +239,14 @@ rule all:
         expand(join(out_dir,'08_bam_merged','{sp}.merged.si.bam.bai'),sp=sp_list),
 
         #Samstats
-        expand(join(out_dir,'00_qc_post','{sp}_samstats.txt'), sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}_samstats.txt'), sp=sp_list),
 
         #MultiQC Report
         join(out_dir,'qc/multiqc_report.html'),
 
         #Alignment stats
-        expand(join(out_dir,'00_qc_post','{sp}_aligned.png'), sp=sp_list),
-        expand(join(out_dir,'00_qc_post','{sp}_unaligned.png'), sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}_aligned.png'), sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.png'), sp=sp_list),
 
         #QC Troubleshooting
         join(out_dir,'qc','qc_report.html'),
@@ -454,11 +454,11 @@ rule qc_fastq_post:
         f1 = join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz')
     params:
         rname='ic_fqc_post',
-        base = join(out_dir,'00_qc_post'),
+        base = join(out_dir, 'qc', '00_qc_post'),
     envmodules:
         config['fastqc']
     output:
-        o1 = join(out_dir,'00_qc_post','{sp}_filtered_fastqc.html')
+        o1 = join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html')
     shell:
         """
         fastqc {input.f1} -o {params.base}
@@ -487,7 +487,7 @@ rule qc_screen_sp:
         f1 = join(out_dir,'02_unzip','{sp}.fastq')
     params:
         rname='ic_screen1',
-        base = join(out_dir,'00_qc_screen_species'),
+        base = join(out_dir, 'qc', '00_qc_screen_species'),
         fq_config = join(source_dir,'config','fqscreen_species_config.conf'),
         cmd = rename_fqscreen1
     threads: 24
@@ -496,7 +496,7 @@ rule qc_screen_sp:
         config['perl'],
         config['fastq_screen'],
     output:
-        o1 = join(out_dir,'00_qc_screen_species','{sp}_filtered.txt'),
+        o1 = join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),
     shell:
         '''
         fastq_screen --conf {params.fq_config} --outdir {params.base} \
@@ -514,7 +514,7 @@ rule qc_screen_rrna:
         f1 = join(out_dir,'02_unzip','{sp}.fastq')
     params:
         rname='ic_screen2',
-        base = join(out_dir,'00_qc_screen_rrna'),
+        base = join(out_dir, 'qc', '00_qc_screen_rrna'),
         fq_config = join(source_dir,'config','fqscreen_rrna_config.conf'),
         cmd = rename_fqscreen2
     threads: 24
@@ -523,7 +523,7 @@ rule qc_screen_rrna:
         config['perl'],
         config['fastq_screen'],
     output:
-        o1 = join(out_dir,'00_qc_screen_rrna','{sp}_filtered.txt'),
+        o1 = join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),
     shell:
         '''
         fastq_screen --conf {params.fq_config} --outdir {params.base} \
@@ -912,7 +912,7 @@ rule qc_samstats:
     envmodules:
         config['samtools']
     output:
-        o1 = join(out_dir,'00_qc_post','{sp}_samstats.txt')
+        o1 = join(out_dir, 'qc', '00_qc_post','{sp}_samstats.txt')
     shell:
         """
         samtools view -h {input.f1} | samtools stats - > {output.o1}
@@ -925,18 +925,18 @@ rule multiqc:
     """
     input:
         f1 = expand(join(out_dir,'{mp}/00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
-        f2 = expand(join(out_dir,'00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
-        f3 = expand(join(out_dir,'00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
-        f4 = expand(join(out_dir,'00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
-        f5 = expand(join(out_dir,'00_qc_post','{sp}_samstats.txt'),sp=sp_list)
+        f2 = expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        f3 = expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
+        f4 = expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
+        f5 = expand(join(out_dir, 'qc', '00_qc_post','{sp}_samstats.txt'),sp=sp_list)
     params:
         rname = 'ic_multiqc',
         out = join(out_dir,'qc'),
         qc_config = join(source_dir,'config','multiqc_config.yaml'),
         dir_pre = expand(join(out_dir,'{mp}','00_qc_pre'),mp = samp_dict.keys()),
-        dir_post = expand(join(out_dir,'00_qc_post')),
-        dir_screen_species = expand(join(out_dir,'00_qc_screen_species')),
-        dir_screen_rrna = expand(join(out_dir,'00_qc_screen_rrna')),
+        dir_post = expand(join(out_dir, 'qc', '00_qc_post')),
+        dir_screen_species = expand(join(out_dir, 'qc', '00_qc_screen_species')),
+        dir_screen_rrna = expand(join(out_dir, 'qc', '00_qc_screen_rrna')),
     envmodules:
         config['multiqc']
     output:
@@ -960,17 +960,17 @@ rule qc_alignment:
     params:
         rname = "ic_qc_align",
         R = join(source_dir,'workflow','scripts','04_alignment_stats.R'),
-        base = join(out_dir,'00_qc_post/')
+        base = join(out_dir, 'qc', '00_qc_post/')
     envmodules:
         config['samtools'],
         config['R']
     output:
-        bam_a = join(out_dir,'00_qc_post','{sp}_align_len.txt'),
-        bam_u = join(out_dir,'00_qc_post','{sp}_unalign_len.txt'),
-        png_align = join(out_dir,'00_qc_post','{sp}_aligned.png'),
-        png_unalign = join(out_dir,'00_qc_post','{sp}_unaligned.png'),
-        txt_align = join(out_dir,'00_qc_post','{sp}_aligned.txt'),
-        txt_unalign = join(out_dir,'00_qc_post','{sp}_unaligned.txt'),
+        bam_a = join(out_dir, 'qc', '00_qc_post','{sp}_align_len.txt'),
+        bam_u = join(out_dir, 'qc', '00_qc_post','{sp}_unalign_len.txt'),
+        png_align = join(out_dir, 'qc', '00_qc_post','{sp}_aligned.png'),
+        png_unalign = join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.png'),
+        txt_align = join(out_dir, 'qc', '00_qc_post','{sp}_aligned.txt'),
+        txt_unalign = join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.txt'),
     shell:
         """
         samtools view -F 4 {input.f1} | awk '{{print length($10)}}' > {output.bam_a}; \
@@ -983,10 +983,10 @@ rule qc_troubleshoot:
     generates a PDF of barcode plots and alignment plots for qc troubleshooting
     """
     input:
-        png_align = expand(join(out_dir,'00_qc_post','{sp}_aligned.png'), sp=sp_list),
-        png_unalign = expand(join(out_dir,'00_qc_post','{sp}_unaligned.png'), sp=sp_list),
-        txt_align = expand(join(out_dir,'00_qc_post','{sp}_aligned.txt'), sp=sp_list),
-        txt_unalign = expand(join(out_dir,'00_qc_post','{sp}_unaligned.txt'), sp=sp_list),
+        png_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}_aligned.png'), sp=sp_list),
+        png_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.png'), sp=sp_list),
+        txt_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}_aligned.txt'), sp=sp_list),
+        txt_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.txt'), sp=sp_list),
         txt_bc = expand(join(out_dir,'{mp}/00_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys()),
         png_bc = expand(join(out_dir,'{mp}/00_qc_post','{mp}_barcode.png'),mp=samp_dict.keys()),
     params:
@@ -1364,48 +1364,3 @@ if (DE_method=="MANORM"):
 
 
             """
-
-
-"""
-https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
-
-# updates 10/26
-- new multiplex manifest to take in filenames - flexibility in file naming
-- script to check manifests - ensure concordance and flags errors before pipeline runs
-- add rules after split_files
-
-# updates 11/2
-- differentiate for control vs study samples [controls don't get split]
-- use created docker for iCOUNT '/data/sevillas2/iCLIP/container/icount.sif'
-- control calculation for split; otherwise lines were splitting the 4-line seq chunk
-- error handling of novoalign
-- completed runs through rule samtools_sort_index_merge; equivalent of 3_dedup - 1,2a,2b
-    - sintearctive --mem=16g --cpus-per-task=4
-    - split_number = 30
-    - one sample 20K reads = 10min; two samples 10K reads = 14min
-
-# updates 11/16
-- update req files and execution documentation
-- added logic for variable number of lines - dynamic split will vary by size using 02_fine_split_parameters script
--- need to determine max size of file
-- re-organize dir structure
-- created 03_select_peaks and 05_count_features scripts; copied 04_create_peak_table - have Q
-- testing with one sample, two demultiplexed - 13 minutes to complete
-- all rules but create_peak_table,count_peaks execute output
-
-# updates 11/23
-- submit job to cluster
-- add cluster config
-
-# updates 11/30
-- added FASTQC and MULTIQC reports
-
-# updates 12/7
-- count_peaks functioning
-- add index configs
-- schema updated to confirm configs
-- copy configs/manifests and use copy; allow for multiple processes to run at once
-- updated ic name to handle multiple iterations
-- add local execution
-- create test files for hg38
-"""
