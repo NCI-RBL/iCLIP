@@ -232,42 +232,42 @@ rule all:
         expand(join(out_dir,'07_bam_merged_splits/{sp}.merged.mm.bam'),sp=sp_list),
 
         #Merge unique and mm
-        expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
+        expand(join(out_dir,'08_bam_merged','{sp}.merged.bam'), sp=sp_list),
 
-        # #Sort and index merged
-        # expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
-        # expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
+        #Sort and index merged
+        expand(join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),sp=sp_list),
+        expand(join(out_dir,'08_bam_merged','{sp}.merged.si.bam.bai'),sp=sp_list),
 
-        # #Samstats
-        # expand(join(out_dir,'{mp}/00_qc_post/{sp}_samstats.txt'),zip, mp=mp_list, sp=sp_list),
+        #Samstats
+        expand(join(out_dir,'00_qc_post','{sp}_samstats.txt'), sp=sp_list),
 
-        # #MultiQC Report
-        # join(out_dir,'qc/multiqc_report.html'),
+        #MultiQC Report
+        join(out_dir,'qc/multiqc_report.html'),
 
-        # #Alignment stats
-        # expand(join(out_dir,'{mp}/00_qc_post/{sp}_aligned.png'),zip, mp=mp_list, sp=sp_list),
-        # expand(join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.png'),zip, mp=mp_list, sp=sp_list),
+        #Alignment stats
+        expand(join(out_dir,'00_qc_post','{sp}_aligned.png'), sp=sp_list),
+        expand(join(out_dir,'00_qc_post','{sp}_unaligned.png'), sp=sp_list),
 
-        # #QC Troubleshooting
-        # join(out_dir,'qc','qc_report.html'),
+        #QC Troubleshooting
+        join(out_dir,'qc','qc_report.html'),
 
-        # #Deduplicate
-        # expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
-        # expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
+        #Deduplicate
+        expand(join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'), sp=sp_list),
+        expand(join(out_dir,'10_dedup_split/{sp}.dedup.unique.i.bam'), sp=sp_list),
 
-        # #Bed files
-        # expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
+        #Bed files
+        expand(join(out_dir,'11_bed','{sp}.bed'), sp=sp_list),
 
-        # #SAF 
-        # expand(join(out_dir,'{mp}/13_SAF/{sp}_'+ str(nt_merge) +'.SAF'),zip, mp=mp_list, sp=sp_list),
+        #SAF 
+        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'.SAF'), sp=sp_list),
 
         # #Count features
-        # expand(join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),zip, mp=mp_list, sp=sp_list),
-        # expand(join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_all.txt'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_unique.txt'), sp=sp_list),
+        # expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt'), sp=sp_list),
 
         # #Annotation
-        # #expand(join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
-        # expand(join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.html'),zip, mp=mp_list, sp=sp_list),
+        # #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.html'),zip, mp=mp_list, sp=sp_list),
 
 include: "rules/common.smk"
 include: "rules/other.smk"
@@ -874,44 +874,29 @@ rule merge_mm_and_unique:
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),
+        o1 = join(out_dir,'08_bam_merged/{sp}.merged.bam'),
     shell:
         """
         samtools merge -f {output.o1} {input.un} {input.mm}
         """
 
-rule sort_merged:
+rule sort_index_merged:
     """
     sort merged.bam
     """
     input:
-        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),
+        f1 = join(out_dir,'08_bam_merged','{sp}.merged.bam'),
     params:
-        rname='ic_sort_m',
+        rname='ic_si_m',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.s.bam'),
+        o1 = join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),
+        o2 = join(out_dir,'08_bam_merged','{sp}.merged.si.bam.bai'),
     shell:
         """
         samtools sort {input.f1} -o {output.o1};
-        """
-
-rule index_merged:
-    """
-    index merged.s.bam files
-    """
-    input:
-        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.s.bam'),
-    params:
-        rname='ic_index_m',
-    envmodules:
-        config['samtools']  
-    output:
-        o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
-    shell:
-        """
-        cp {input.f1} {output.o1}; samtools index {output.o1};
+        samtools index {output.o1}
         """
 
 rule qc_samstats:
@@ -921,13 +906,13 @@ rule qc_samstats:
     > $1
     """
     input:
-        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
+        f1 = join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),
     params:
         rname='ic_samstats'
     envmodules:
         config['samtools']
     output:
-        o1 = join(out_dir,'{mp}/00_qc_post/{sp}_samstats.txt')
+        o1 = join(out_dir,'00_qc_post','{sp}_samstats.txt')
     shell:
         """
         samtools view -h {input.f1} | samtools stats - > {output.o1}
@@ -939,19 +924,19 @@ rule multiqc:
     https://multiqc.info/docs/#running-multiqc
     """
     input:
-        f1 = expand(join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
-        f2 = expand(join(out_dir,'{mp}/00_qc_post/{sp}_filtered_fastqc.html'),zip, mp=mp_list, sp=sp_list),
-        f3 = expand(join(out_dir,'{mp}/00_qc_screen_species/{sp}_filtered.txt'),zip,mp=mp_list,sp=sp_list),
-        f4 = expand(join(out_dir,'{mp}/00_qc_screen_rrna/{sp}_filtered.txt'),zip,mp=mp_list,sp=sp_list),
-        f5 = expand(join(out_dir,'{mp}/00_qc_post/{sp}_samstats.txt'),zip,mp=mp_list,sp=sp_list)
+        f1 = expand(join(out_dir,'{mp}/00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        f2 = expand(join(out_dir,'00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        f3 = expand(join(out_dir,'00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
+        f4 = expand(join(out_dir,'00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
+        f5 = expand(join(out_dir,'00_qc_post','{sp}_samstats.txt'),sp=sp_list)
     params:
         rname = 'ic_multiqc',
         out = join(out_dir,'qc'),
         qc_config = join(source_dir,'config','multiqc_config.yaml'),
-        dir_pre = expand(join(out_dir,'{mp}/00_qc_pre/'),mp = samp_dict.keys()),
-        dir_post = expand(join(out_dir,'{mp}/00_qc_post/'),mp = samp_dict.keys()),
-        dir_screen_species = expand(join(out_dir,'{mp}/00_qc_screen_species/'),mp = samp_dict.keys()),
-        dir_screen_rrna = expand(join(out_dir,'{mp}/00_qc_screen_rrna/'),mp = samp_dict.keys()),
+        dir_pre = expand(join(out_dir,'{mp}','00_qc_pre'),mp = samp_dict.keys()),
+        dir_post = expand(join(out_dir,'00_qc_post')),
+        dir_screen_species = expand(join(out_dir,'00_qc_screen_species')),
+        dir_screen_rrna = expand(join(out_dir,'00_qc_screen_rrna')),
     envmodules:
         config['multiqc']
     output:
@@ -967,25 +952,25 @@ rule multiqc:
 rule qc_alignment:
     """
     uses samtools to create a bams of unaligned reads and aligned reads
-    input 
+    input; print qlength col to text file
     generates plots and summmary file for aligned vs unaligned statistics
     """
     input:
-        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
+        f1 = join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),
     params:
         rname = "ic_qc_align",
         R = join(source_dir,'workflow','scripts','04_alignment_stats.R'),
-        base = join(out_dir,'{mp}/00_qc_post/')
+        base = join(out_dir,'00_qc_post/')
     envmodules:
         config['samtools'],
         config['R']
     output:
-        bam_a = join(out_dir,'{mp}/00_qc_post/{sp}_align_len.txt'),
-        bam_u = join(out_dir,'{mp}/00_qc_post/{sp}_unalign_len.txt'),
-        png_align = join(out_dir,'{mp}/00_qc_post/{sp}_aligned.png'),
-        png_unalign = join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.png'),
-        txt_align = join(out_dir,'{mp}/00_qc_post/{sp}_aligned.txt'),
-        txt_unalign = join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.txt'),
+        bam_a = join(out_dir,'00_qc_post','{sp}_align_len.txt'),
+        bam_u = join(out_dir,'00_qc_post','{sp}_unalign_len.txt'),
+        png_align = join(out_dir,'00_qc_post','{sp}_aligned.png'),
+        png_unalign = join(out_dir,'00_qc_post','{sp}_unaligned.png'),
+        txt_align = join(out_dir,'00_qc_post','{sp}_aligned.txt'),
+        txt_unalign = join(out_dir,'00_qc_post','{sp}_unaligned.txt'),
     shell:
         """
         samtools view -F 4 {input.f1} | awk '{{print length($10)}}' > {output.bam_a}; \
@@ -998,12 +983,12 @@ rule qc_troubleshoot:
     generates a PDF of barcode plots and alignment plots for qc troubleshooting
     """
     input:
-        png_align = expand(join(out_dir,'{mp}/00_qc_post/{sp}_aligned.png'),zip,mp=mp_list,sp=sp_list),
-        png_unalign = expand(join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.png'),zip,mp=mp_list,sp=sp_list),
-        txt_align = expand(join(out_dir,'{mp}/00_qc_post/{sp}_aligned.txt'),zip,mp=mp_list,sp=sp_list),
-        txt_unalign = expand(join(out_dir,'{mp}/00_qc_post/{sp}_unaligned.txt'),zip,mp=mp_list,sp=sp_list),
-        txt_bc = expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.txt'),mp=samp_dict.keys()),
-        png_bc = expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.png'),mp=samp_dict.keys()),
+        png_align = expand(join(out_dir,'00_qc_post','{sp}_aligned.png'), sp=sp_list),
+        png_unalign = expand(join(out_dir,'00_qc_post','{sp}_unaligned.png'), sp=sp_list),
+        txt_align = expand(join(out_dir,'00_qc_post','{sp}_aligned.txt'), sp=sp_list),
+        txt_unalign = expand(join(out_dir,'00_qc_post','{sp}_unaligned.txt'), sp=sp_list),
+        txt_bc = expand(join(out_dir,'{mp}/00_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys()),
+        png_bc = expand(join(out_dir,'{mp}/00_qc_post','{mp}_barcode.png'),mp=samp_dict.keys()),
     params:
         rname = "ic_qc_ts",
         R = join(source_dir,'workflow','scripts','05_qc_report.Rmd'),
@@ -1026,14 +1011,14 @@ rule dedup:
     deduplicate merged.i.bam files
     """
     input:
-        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
+        f1 = join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),
     params:
         rname='ic_dedup',
     envmodules:
         config['umitools']  
     output:
-        o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),
-        o2 = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.log'),
+        o1 = join(out_dir,'09_dedup_bam','{sp}.dedup.bam'),
+        o2 = join(out_dir,'09_dedup_log','{sp}.dedup.log'),
     shell:
         """
         umi_tools dedup \
@@ -1043,38 +1028,23 @@ rule dedup:
         --log2stderr -L {output.o2};
         """
 
-rule sort_dedup:
+rule sort_index_dedup:
     """
     sort dedup.bam file
     """
     input:
-        f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),
+        f1 = join(out_dir,'09_dedup_bam','{sp}.dedup.bam'),
     params:
-        rname='ic_sort_dedup',
+        rname='ic_si_dedup',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.s.bam'),
+        o1 = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
+        o12 = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam.bai'),
     shell:
         """
         samtools sort {input.f1} -o {output.o1};
-        """
-
-rule index_dedup:
-    """
-    index dedup.s.bam file
-    """
-    input:
-        f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.s.bam'),
-    params:
-        rname='ic_index_dedup',
-    envmodules:
-        config['samtools']  
-    output:
-        o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
-    shell:
-        """
-        cp {input.f1} {output.o1}; samtools index {output.o1};
+        samtools index {output.o1}
         """
 
 rule dedup_header:
@@ -1082,13 +1052,13 @@ rule dedup_header:
     cat bam header
     """
     input:
-        f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
+        f1 = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
     params:
         rname='ic_dedup_head',
     envmodules:
         config['samtools']   
     output:
-        o1 = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.header.txt'),
+        o1 = join(out_dir,'09_dedup_log','{sp}.dedup.header.txt'),
     shell:
         """
         samtools view -H {input.f1} > {output.o1}
@@ -1099,14 +1069,14 @@ rule dedup_unique:
     split dedup file into multimapped and unique files
     """
     input:
-        bam = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
-        h = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.header.txt'),
+        bam = join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'),
+        h = join(out_dir,'09_dedup_log/{sp}.dedup.header.txt'),
     params:
         rname='ic_split_dedup',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
+        o1 = join(out_dir,'10_dedup_split/{sp}.dedup.unique.bam'),
     shell:
         """
         set +e
@@ -1125,13 +1095,13 @@ rule index_dedup_unique:
     index deduped unique file
     """
     input:
-        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
+        f1 = join(out_dir,'10_dedup_split','{sp}.dedup.unique.bam'),
     params:
         rname='ic_index_splitu',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
+        o1 = join(out_dir,'10_dedup_split','{sp}.dedup.unique.i.bam'),
     shell:
         """
         cp {input.f1} {output.o1}; samtools index {output.o1};
@@ -1142,13 +1112,13 @@ rule create_bed:
     create bed file from the deduped unique file
     """
     input:
-        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
+        f1 = join(out_dir,'10_dedup_split','{sp}.dedup.unique.i.bam'),
     params:
         rname='ic_bed',
     envmodules:
         config['bedtools']  
     output:
-        o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
+        o1 = join(out_dir,'11_bed','{sp}.bed')
     shell:
         """
         bedtools bamtobed \
@@ -1159,13 +1129,13 @@ rule create_saf:
     """
     """
     input:
-        f1 = join(out_dir,'{mp}/12_bed/{sp}.bed'),
+        f1 = join(out_dir,'11_bed/{sp}.bed'),
     params:
         rname='ic_saf',
     envmodules:
         config['bedtools']  
     output:
-        o1 = join(out_dir,'{mp}/13_SAF/{sp}_' + str(nt_merge) + '.SAF')
+        o1 = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '.SAF')
     shell:
         """
         bedtools merge \
@@ -1181,14 +1151,14 @@ rule feature_counts_unique:
     When peaks counts are combined for peaks connected by splicing in Rscript)
     """
      input:
-        bam = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
-        saf = join(out_dir,'{mp}/13_SAF/{sp}_' + str(nt_merge) + '.SAF')
+        bam = join(out_dir,'10_dedup_split','{sp}.dedup.unique.bam'),
+        saf = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '.SAF')
     params:
         rname='ic_saf',
     envmodules:
         config['subread']  
     output:
-        o1 = join(out_dir,'{mp}/14_counts/{sp}_' + str(nt_merge) + '_unique.txt')
+        o1 = join(out_dir,'13_counts','{sp}_' + str(nt_merge) + '_unique.txt')
     shell:
         """
         featureCounts -F SAF \
