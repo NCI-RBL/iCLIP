@@ -256,7 +256,7 @@ rule all:
         expand(join(out_dir,'10_dedup_split/{sp}.dedup.unique.i.bam'), sp=sp_list),
 
         #Bed files
-        expand(join(out_dir,'11_bed','{sp}.bed'), sp=sp_list),
+        expand(join(out_dir,'11_bed','{sp}.unique.bed'), sp=sp_list),
 
         #SAF 
         expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'.SAF'), sp=sp_list),
@@ -1018,7 +1018,7 @@ rule dedup:
         config['umitools']  
     output:
         o1 = join(out_dir,'09_dedup_bam','{sp}.dedup.bam'),
-        o2 = join(out_dir,'09_dedup_log','{sp}.dedup.log'),
+        o2 = join(out_dir,'09_dedup_bam','{sp}.dedup.log'),
     shell:
         """
         umi_tools dedup \
@@ -1058,7 +1058,7 @@ rule dedup_header:
     envmodules:
         config['samtools']   
     output:
-        o1 = join(out_dir,'09_dedup_log','{sp}.dedup.header.txt'),
+        o1 = join(out_dir,'09_dedup_bam','{sp}.dedup.header.txt'),
     shell:
         """
         samtools view -H {input.f1} > {output.o1}
@@ -1070,7 +1070,7 @@ rule dedup_unique:
     """
     input:
         bam = join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'),
-        h = join(out_dir,'09_dedup_log/{sp}.dedup.header.txt'),
+        h = join(out_dir,'09_dedup_bam/{sp}.dedup.header.txt'),
     params:
         rname='ic_split_dedup',
     envmodules:
@@ -1118,7 +1118,7 @@ rule create_bed:
     envmodules:
         config['bedtools']  
     output:
-        o1 = join(out_dir,'11_bed','{sp}.bed')
+        o1 = join(out_dir,'11_bed','{sp}.unique.bed')
     shell:
         """
         bedtools bamtobed \
@@ -1129,7 +1129,7 @@ rule create_saf:
     """
     """
     input:
-        f1 = join(out_dir,'11_bed/{sp}.bed'),
+        f1 = join(out_dir,'11_bed/{sp}.unique.bed'),
     params:
         rname='ic_saf',
     envmodules:
@@ -1262,7 +1262,7 @@ if (DE_method=="MANORM"):
         expand(join(out_dir,'{mp}/16_manorm/{sp}.n.bed'),zip,mp=mp_list,sp=sp_list)
         '''
         input:
-            f1 = join(out_dir,'{mp}/12_bed/{sp}.bed'),
+            f1 = join(out_dir,'{mp}/12_bed/{sp}.unique.bed'),
         output:
             o1 = join(out_dir,'{mp}/16_manorm/{sp}.p.bed'),
             o2 = join(out_dir,'{mp}/16_manorm/{sp}.n.bed'),
