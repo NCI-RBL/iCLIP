@@ -26,7 +26,7 @@ s_time=`date +"%Y%m%d_%H%M%S"`
 #clean config_output_dir
 output_dir=${config_output_dir}
 
-#if pipeline to run on cluster or locally
+#Run pipeline on cluster or locally
 if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
 
   #create log dir
@@ -48,23 +48,32 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     cp $f "${output_dir}/log/${log_time}_${strarr[-1]}"
   done
 
-  #if cluster - submit job
+  #submit jobs to cluster
   if [[ $pipeline = "cluster" ]]; then
-    #submit job to cluster
     sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --output=${output_dir}/log/%j_%x.out --mail-type=BEGIN,END,FAIL \
-    snakemake --latency-wait 120  -s workflow/Snakefile --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
+    snakemake --use-envmodules --latency-wait 120  -s workflow/Snakefile --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
     --printshellcmds --cluster-config ${output_dir}/log/${log_time}_cluster_config.yml --keep-going \
     --restart-times 1 --cluster "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
     --job-name={params.rname} --output=${output_dir}/log/${s_time}_{params.rname}.out" -j 500 --rerun-incomplete
 
-  #otherwise submit job locally
+  #submit jobs locally
   else
-    snakemake -s workflow/Snakefile --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
+    #remove iCount dir if it already exist - will cause error in demux
+    if [ -d "/tmp/iCount" ]; then 
+      rm -r /tmp/iCount/ 
+    fi
+    snakemake -s workflow/Snakefile --use-envmodules --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
     --printshellcmds --cluster-config ${output_dir}/log/${log_time}_cluster_config.yml --cores 8
   fi
+#Unlock pipeline
 elif [[ $pipeline = "unlock" ]]; then
-  snakemake -s workflow/Snakefile --unlock --cores 8 --configfile config/snakemake_config.yaml
+  snakemake -s workflow/Snakefile --use-envmodules --unlock --cores 8 --configfile config/snakemake_config.yaml
+#Run github actions
+elif [[ $pipeline = "test" ]]; then
+  snakemake -s workflow/Snakefile --configfile .tests/snakemake_config.yaml \
+  --printshellcmds --cluster-config config/cluster_config.yml -npr
+#Dry-run pipeline
 else
   #run snakemake
   snakemake -s workflow/Snakefile --configfile config/snakemake_config.yaml \

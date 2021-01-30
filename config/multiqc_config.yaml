@@ -1,0 +1,23 @@
+#Intro title information
+title: "CLIP Analysis Report"
+report_header_info:
+    - FASTQ Analysis: 'Samples include those after demultiplexing (sampleID) and those after adaptor removal (sampleID_filtered)'
+    - FASTQScreen Analysis: 'Samples include those after demultiplexing and adaptor removal'
+    - SAMStats Analysis: 'Sample include those after alignment (before dedulication)'
+
+#include fastqscreen
+fastqscreen_simpleplot: true
+
+#remove analysis paths from file
+show_analysis_paths: False
+
+#find samples
+sp:
+    fastq_screen:
+        fn: '*_filtered.txt'
+
+module_order:
+# Pre-alignment QC
+    - 'fastqc'
+    - 'fastq_screen'
+    - 'samtools'

@@ -32,8 +32,8 @@ located at: https://github.com/RBL-NCI/iCLIP.git
 '''
 
 #snakemake config
-source_dir = config['source_dir'].rstrip('/') + '/'
-cont_dir = config['container_dir'].rstrip('/') + '/'
+source_dir = config['source_dir']
+cont_dir = config['container_dir']
 out_dir = config['output_dir'].rstrip('/') + '/'
 fastq_dir = config['fastq_dir'].rstrip('/') + '/'
 
@@ -41,11 +41,15 @@ sample_manifest = config['sample_manifest']
 multiplex_manifest = config['multiplex_manifest']
 
 nova_ref = config['novoalign_reference']
-splice_aware = config['splice_aware']
+splice_aware = config['splice_aware'].capitalize()
 splice_bp = config['splice_bp_length']
 
+mismatch = config['mismatch_allowance']
 split_value =  config['split_value']
 min_count = config['minimum_count']
+nt_merge = config['nt_merge']
+peak_id = config['peak_id'].capitalize()
+DE_method = config['DE_method'].capitalize()
 
 #split_params
 def check_split(split_in):
@@ -63,10 +67,10 @@ def check_split(split_in):
 split_value = check_split(split_value)
 
 #index selection
-index_manifest = source_dir + 'config/index_config.yaml'
+index_manifest = join(source_dir, 'config', 'index_config.yaml')
 with open(index_manifest) as file:
     index_list = yaml.load(file, Loader=yaml.FullLoader)
-if (splice_aware=='N' or splice_aware=="n"):
+if (splice_aware=='N'):
     nova_index = index_list[nova_ref]['std']
 else:
     nova_index = index_list[nova_ref]['spliceaware'][str(splice_bp)+'bp']
@@ -138,7 +142,7 @@ def rename_cmd(wildcards):
 def adapt_cmd(wildcards):
     sub_df = df_samples[(df_samples['multiplex']==wildcards.mp) & (df_samples['sample']==wildcards.sp)]
 
-    base = out_dir + wildcards.mp + '/02_adaptor/' + wildcards.sp
+    base = out_dir + wildcards.mp + '/01_remove_adaptor/' + wildcards.sp
     fq_un =  base + '_untrimmed.fastq.gz '
     fq_t = base + '_trimmed.fastq.gz '
 
@@ -149,18 +153,31 @@ def adapt_cmd(wildcards):
 
     return(command_line)
 
+#create cmd to rename fastq screen outputs
+def rename_fqscreen1(wildcards):
+    n_in = join(out_dir, 'qc', '00_qc_screen_species',wildcards.sp + '_screen')
+    n_out = join(out_dir, 'qc', '00_qc_screen_species',wildcards.sp + '_filtered')
+    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
+    return(cmd)
+
+def rename_fqscreen2(wildcards):
+    n_in = join(out_dir, 'qc', '00_qc_screen_rrna',wildcards.sp + '_screen')
+    n_out = join(out_dir, 'qc', '00_qc_screen_rrna',wildcards.sp + '_filtered')
+    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
+    return(cmd)
+
 #determine the number of lines to split each file by reading split_params.tsv file
 def get_filechunk_size(wildcards):
-    fq_path=out_dir + wildcards.mp + '/03_unzip/' + wildcards.sp + '.fastq '
+    fq_path=join(out_dir,'02_unzip',wildcards.sp + '.fastq ')
 
     #read in split_params file for chunksize
     try:
-        split_df=pd.read_csv(join(out_dir,'split_params.tsv'),names=["path","filenum","chunksize"],sep="\t")
+        split_df=pd.read_csv(join(out_dir,'qc','split_params.tsv'),names=["path","filenum","chunksize"],sep="\t")
         sub_df=split_df[(split_df['path']==fq_path)]
     except:
         return(0)
     return(sub_df.iloc[0]['chunksize'])
-
+    
 #read manifests
 df_multiplex = pd.read_csv(multiplex_manifest,sep="\t")
 df_samples = pd.read_csv(sample_manifest,sep="\t")
@@ -176,29 +193,81 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 
 rule all:
     input:
-        join(out_dir + "manifest_clean.txt"),
+        #check manifest
+        join(out_dir,'qc','manifest_clean.txt'),
+
+        #check input fastq files
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
-        expand(join(out_dir,'qc/barcode_plot_{mp}.png'), mp=mp_list), #barcode qc
-        expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list), #barcode qc
+        
+        #check barcodes
+        expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.png'), mp=samp_dict.keys()),
+        expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.txt'),mp=samp_dict.keys()), 
+        
+        #demultiplex samples, rename samples
         #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
         #expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
-        #expand(join(out_dir,'{mp}/00_qc/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list), qc reports
-        ##join(out_dir,'qc/multiqc_report.html'), #multiqc report 
-        #expand(join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz'), zip, mp=mp_list, sp=sp_list), #remove adaptors
-        #expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list), #gunzip
-        ##join(out_dir,'split_params.tsv'), #determine_splits
-        #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),zip, mp=mp_list, sp=sp_list),
-        ##expand(join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/12_bed/{sp}.bed'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),zip, mp=mp_list, sp=sp_list),
-        #expand(join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),zip, mp=mp_list, sp=sp_list),
-        ##expand(join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),zip, mp=mp_list, sp=sp_list),
-        ##expand(join(out_dir,'{mp}/15_gff/{sp}.gff3'),zip, mp=mp_list, sp=sp_list),
+        
+        #Remove adaptors, rename samples
+        #expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_trimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+        #expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+        expand(join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz'),sp=sp_list),
+        expand(join(out_dir,'01_remove_adaptor','{sp}_removed_seq.fastq.gz'),sp=sp_list),
+
+        #FastQC
+        expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        
+        #Unzip samples
+        expand(join(out_dir,'02_unzip','{sp}.fastq'), sp=sp_list),
+         
+        #FastQ Screen
+        expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
+        
+        #Determine file split parameters
+        join(out_dir,'qc','split_params.tsv'),
+        
+        #Merge splits
+        expand(join(out_dir,'07_bam_merged_splits/{sp}.merged.unique.bam'), sp=sp_list),
+        expand(join(out_dir,'07_bam_merged_splits/{sp}.merged.mm.bam'),sp=sp_list),
+
+        #Merge unique and mm
+        expand(join(out_dir,'08_bam_merged','{sp}.merged.bam'), sp=sp_list),
+
+        #Sort and index merged
+        expand(join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),sp=sp_list),
+        expand(join(out_dir,'08_bam_merged','{sp}.merged.si.bam.bai'),sp=sp_list),
+
+        #Samstats
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}_samstats.txt'), sp=sp_list),
+
+        #MultiQC Report
+        join(out_dir,'qc/multiqc_report.html'),
+
+        #Alignment stats
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}_aligned.png'), sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.png'), sp=sp_list),
+
+        #QC Troubleshooting
+        join(out_dir,'qc','qc_report.html'),
+
+        #Deduplicate
+        expand(join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'), sp=sp_list),
+        expand(join(out_dir,'10_dedup_split/{sp}.dedup.unique.i.bam'), sp=sp_list),
+
+        #Bed files
+        expand(join(out_dir,'11_bed','{sp}.unique.bed'), sp=sp_list),
+
+        #SAF 
+        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'.SAF'), sp=sp_list),
+
+        #Count features
+        expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_unique.txt'), sp=sp_list),
+        expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt'), sp=sp_list),
+
+        # #Annotation
+        # #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
+        # expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.html'),zip, mp=mp_list, sp=sp_list),
 
 include: "rules/common.smk"
 include: "rules/other.smk"
@@ -214,29 +283,40 @@ rule check_manifest:
         f2 = sample_manifest
     params:
         rname='ic_manif',
+        py = join(source_dir,'workflow','scripts','01_check_manifest.py'),
+        base = join(out_dir,'qc','manifest_')
+    envmodules:
+        config['python']  
     output:
-        o1 = out_dir + "manifest_clean.txt"
-    shell:
-        "module load python; python workflow/scripts/01_check_manifest.py '{out_dir}manifest_' {input.f1} {input.f2}"
-
-rule barcode_qc:
-    input:
-        f1 = out_dir + "manifest_clean.txt"
-    params:
-        rname="ic_bcQC",
-        py = join(source_dir,'workflow/scripts/02_barcode_qc.py')
-    output:
-        o1 = expand(join(out_dir,'qc/barcode_plot_{mp}.png'),mp=mp_list),
-        o2 = expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list)
+        o1 = join(out_dir, 'qc', 'manifest_clean.txt'),
     shell:
         """
-        module load python; \
         python {params.py} \
-        {sample_manifest} {multiplex_manifest} {fastq_dir} {out_dir}qc/
+            '{params.base}' {input.f1} {input.f2}
+        """
+
+rule qc_barcode:
+    input:
+        f1 = join(out_dir,'qc', "manifest_clean.txt")
+    params:
+        rname="ic_bcQC",
+        py = join(source_dir,'workflow', 'scripts', '02_barcode_qc.py'),
+        mm = mismatch,
+    envmodules:
+        config['python'],
+        config['Qt']
+    output:
+        o1 = expand(join(out_dir,'{mp}','00_qc_post','{mp}_barcode.png'),mp=samp_dict.keys()),
+        o2 = expand(join(out_dir,'{mp}','00_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys())
+    shell:
+        """
+        python {params.py} \
+            {sample_manifest} {multiplex_manifest} {fastq_dir} {out_dir} {params.mm}
         """
 
 rule demultiplex:
     """
+    https://icount.readthedocs.io/en/latest/ref_CLI.html
     Reads in fastq files from multiplex_manifest.
     Finds multiplex match between manifest files, splits files based on list of
     barcodeIDs found in sample_manifest
@@ -252,123 +332,204 @@ rule demultiplex:
     """
     input:
         f1 = get_fq_names,
-        qc = expand(join(out_dir,'qc/barcode_summary_{mp}.txt'),mp=mp_list)
+        qc = expand(join(out_dir,'{mp}','00_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys())
     params:
         rname='ic_demux',
-        ml = 15,
+        doc = join(cont_dir,'icount.sif'),
         cmd = demux_cmd,
-        doc = join(cont_dir,'icount.sif')
+        ml = 15,
+        mm = mismatch
+    envmodules:
+        config['singularity'],
     output:
-        o1 = join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),
+        o1 = join(out_dir,'{mp}','demux_nomatch5.fastq.gz'),
     shell:
         """
-        module load singularity
         singularity exec -B /data/$USER,/data/RBL_NCI,{out_dir},/fdb,/scratch \
-        {params.doc} iCount demultiplex -ml {params.ml} {params.cmd}
+        {params.doc} iCount demultiplex --minimum_length {params.ml} --mismatches {params.mm} {params.cmd}
         """
 
-rule rename_files:
+rule rename_demux:
     """
     renames demultiplexed files based on
     from: {out_dir}/{multiplex_id}/demux_{barcode}.fastq.gz
     to: {out_dir}/{multiplex_id}/01_renamed/demux_{sample_id}.fast.gz
     """
     input:
-        join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),
+        join(out_dir,'{mp}','demux_nomatch5.fastq.gz'),
     params:
         rname = 'ic_rename',
-        p1 = rename_cmd
+        cmd = rename_cmd
     output:
-        o1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
+        o1 = join(out_dir,'{mp}','01_renamed','{sp}.fastq.gz')
     shell:
-        'cp {params.p1}'
+        'cp {params.cmd}'
 
 rule remove_adaptors:
     """
-    removes adaptors from files
-    outputs untrimmed and trimmed file
+    removes adaptors from files. software outputs:
+    1) untrimmed.fastq.gz - the remaining sequences without the adaptor and 
+    2) trimmed.fastq.gz - the sequences that were trimmed from the input file
     """
     input:
-        f1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
+        f1 = join(out_dir,'{mp}','01_renamed','{sp}.fastq.gz')
     params:
         rname='ic_adapt',
         ml = 1,
-        adapt = adapt_cmd,
-        doc = join(cont_dir,'icount.sif')
+        cmd = adapt_cmd,
+        doc = join(cont_dir,'icount.sif'),
+    envmodules:
+        config['singularity'],    
     output:
-        o1 = join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz')
+        o1 = join(out_dir,'{mp}','01_remove_adaptor','{sp}_trimmed.fastq.gz'),
+        o2 = join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz')
     shell:
         """
-        module load singularity
         singularity exec -B /data/$USER,/data/RBL_NCI,{out_dir},/fdb,/scratch \
-        {params.doc} iCount cutadapt -ml {params.ml} {params.adapt}
+        {params.doc} iCount cutadapt -ml {params.ml} {params.cmd}
         """
 
-rule fastqc_pre:
+def rename_adapt_cmd(wildcards):
+    cmd = ''
+
+    for sp in sp_list:
+        df_sub = df_samples[(df_samples['sample']==sp)] 
+        
+        #input
+        f1 = join(out_dir,df_sub.iloc[0]["multiplex"],'01_remove_adaptor',sp + '_trimmed.fastq.gz')
+        f2 = join(out_dir,df_sub.iloc[0]["multiplex"],'01_remove_adaptor',sp + '_untrimmed.fastq.gz')
+
+        #output
+        o1 = join(out_dir,'01_remove_adaptor',sp + '_removed_seq.fastq.gz')
+        o2 = join(out_dir,'01_remove_adaptor',sp + '_filtered.fastq.gz')
+
+        cmd = 'mv ' + f1 + ' ' + o1 + '; mv ' + f2 + ' ' + o2 + '; ' + cmd
+    return(cmd)
+
+rule rename_adaptors:
+    """
+    naming schema of adaptors is confusing, and makes interpretation of QC report difficult
+    
+    files are renamed for clarity, renamed files moved into common dir
+    1) untrimmed.fastq.gz --> filtered.fastq.gz
+    2) trimmed.fastq.gz --> removed_seq.fastq.gz
+    """
+    input:
+        f1 = expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_trimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+        f2 = expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list)
+    params:
+        rname = "ic_rename_ad",
+        cmd = rename_adapt_cmd
+    output:
+        o1 = expand(join(out_dir,'01_remove_adaptor','{sp}_removed_seq.fastq.gz'),sp=sp_list),
+        o2 = expand(join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz'),sp=sp_list)
+    shell:
+        '''
+        {params.cmd}
+        '''
+
+rule qc_fastq_pre:
     """
     Runs FastQC report on each sample before adaptors have been removed
     """
     input:
         f1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
-    output:
-        o1 = join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html')
     params:
         rname='ic_fqc_pre',
-        out = join(out_dir,'{mp}/00_qc_pre/')
+        base = join(out_dir,'{mp}/00_qc_pre/')
+    envmodules:
+        config['fastqc']
+    output:
+        o1 = join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html')
     shell:
         """
-        module load fastqc;
-        fastqc {input.f1} -o {params.out}
+        fastqc {input.f1} -o {params.base}
         """
 
-rule fastqc_post:
+rule qc_fastq_post:
     """
     Runs FastQC report on each sample after adaptors have been removed
     """
     input:
-        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz')
-    output:
-        o1 = join(out_dir,'{mp}/00_qc_post/{sp}_untrimmed_fastqc.html')
+        f1 = join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz')
     params:
         rname='ic_fqc_post',
-        out = join(out_dir,'{mp}/00_qc_post/'),
-    shell:
-        """
-        module load fastqc;
-        fastqc {input.f1} -o {params.out}
-        """
-
-rule multiqc:
-    """
-    merges FastQC reports for pre/post trimmed fastq files into MultiQC report
-    """
-    input:
-        f1 = expand(join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
-        f2 = expand(join(out_dir,'{mp}/00_qc_post/{sp}_untrimmed_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        base = join(out_dir, 'qc', '00_qc_post'),
+    envmodules:
+        config['fastqc']
     output:
-        o1 = join(out_dir,'qc/multiqc_report.html')
-    params:
-        rname = 'ic_multiqc',
-        dir_pre = expand(join(out_dir,'{mp_s}/00_qc_pre/'),mp_s = samp_dict.keys()),
-        dir_post = expand(join(out_dir,'{mp_s}/00_qc_post/'),mp_s = samp_dict.keys()),
+        o1 = join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html')
     shell:
         """
-        module load multiqc;
-        multiqc {params.dir_pre} {params.dir_post} -o {out_dir}qc
+        fastqc {input.f1} -o {params.base}
         """
 
 rule gunzip_files:
     """
-    unzips untrimmed files
+    unzips untrimmed files - these are what is leftover after adaptor trimming
     """
     input:
-        f1 = join(out_dir,'{mp}/02_adaptor/{sp}_untrimmed.fastq.gz')
+        f1 = join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz')
     params:
         rname='ic_gunzip',
     output:
-        o1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq')
+        o1 = join(out_dir,'02_unzip','{sp}.fastq')
     shell:
         "gunzip -c {input.f1} > {output.o1}"
+        
+rule qc_screen_sp:
+    """
+    this will align to human, mouse, bacteria
+    must run fastq_screen as two separate rules - multiqc will merge values of rRNA with human/mouse
+    http://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/_build/html/index.html
+    """
+    input:
+        f1 = join(out_dir,'02_unzip','{sp}.fastq')
+    params:
+        rname='ic_screen1',
+        base = join(out_dir, 'qc', '00_qc_screen_species'),
+        fq_config = join(source_dir,'config','fqscreen_species_config.conf'),
+        cmd = rename_fqscreen1
+    threads: 24
+    envmodules:
+        config['bowtie2'],
+        config['perl'],
+        config['fastq_screen'],
+    output:
+        o1 = join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),
+    shell:
+        '''
+        fastq_screen --conf {params.fq_config} --outdir {params.base} \
+            --threads {threads} --subset 1000000 --aligner bowtie2 --force \
+            {input.f1}; {params.cmd}
+        '''
+
+rule qc_screen_rrna:
+    """
+    this will align to rRNA
+    must run fastq_screen as two separate rules - multiqc will merge values of rRNA with human/mouse
+    http://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/_build/html/index.html
+    """
+    input:
+        f1 = join(out_dir,'02_unzip','{sp}.fastq')
+    params:
+        rname='ic_screen2',
+        base = join(out_dir, 'qc', '00_qc_screen_rrna'),
+        fq_config = join(source_dir,'config','fqscreen_rrna_config.conf'),
+        cmd = rename_fqscreen2
+    threads: 24
+    envmodules:
+        config['bowtie2'],
+        config['perl'],
+        config['fastq_screen'],
+    output:
+        o1 = join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),
+    shell:
+        '''
+        fastq_screen --conf {params.fq_config} --outdir {params.base} \
+            --threads {threads} --subset 1000000 --aligner bowtie2 --force \
+            {input.f1}; {params.cmd}
+        '''
 
 rule determine_splits:
     """
@@ -377,15 +538,15 @@ rule determine_splits:
     split is done based off split_value input, maintaining every 4 lines = 1 seq
     """
     input:
-        f1 = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
+        f1 = expand(join(out_dir,'02_unzip/{sp}.fastq'), sp=sp_list),
     params:
         rname='ic_splitdoc',
-        p1 = source_dir + 'workflow/scripts/02_find_split_parameters.sh'
+        sh = join(source_dir, 'workflow', 'scripts', '03_find_split_parameters.sh'),
     output:
-        o1 = join(out_dir,'split_params.tsv')
+        o1 = join(out_dir,'qc','split_params.tsv')
     shell:
         """
-        sh {params.p1} {output.o1} {split_value} {input.f1}
+        sh {params.sh} {output.o1} {split_value} {input.f1}
         """
 
 rule split_files:
@@ -393,36 +554,38 @@ rule split_files:
     performs split of fastq file into smaller files using parameters in split_params.tsv
     """
     input:
-        all = expand(join(out_dir,'{mp}/03_unzip/{sp}.fastq'), zip, mp=mp_list, sp=sp_list),
-        f1 = join(out_dir,'{mp}/03_unzip/{sp}.fastq'),
-        sp = join(out_dir,'split_params.tsv')
+        all = expand(join(out_dir,'02_unzip/{sp}.fastq'), sp=sp_list),
+        f1 = join(out_dir,'02_unzip/{sp}.fastq'),
+        sp = join(out_dir,'qc','split_params.tsv')
     params:
         rname='ic_split',
-        p1 = join(out_dir,'{mp}/04_split/{sp}.split.'),
-        c = get_filechunk_size
+        base = join(out_dir,'03_split/{sp}.split.'),
+        cmd = get_filechunk_size
     output:
-        o1 = dynamic(join(out_dir,'{mp}/04_split/{sp}.split.{n}.fastq'))
+        o1 = dynamic(join(out_dir,'03_split/{sp}.split.{n}.fastq'))
     shell:
         """
-        split --additional-suffix .fastq -l {params.c} --numeric-suffixes=10 {input.f1} {params.p1}
+        split --additional-suffix .fastq -l {params.cmd} --numeric-suffixes=10 {input.f1} {params.base}
         """
 
-if (splice_aware == "N" or splice_aware == "n"):
+if (splice_aware == "N"):
     rule novoalign:
         """
         aligns files to index given; output is a sam file
         """
         input:
-            f1 = join(out_dir,'{mp}/04_split/{sp}.split.{n}.fastq'),
+            f1 = join(out_dir,'03_split','{sp}.split.{n}.fastq'),
         params:
             rname='ic_novo',
             n_index = nova_index,
+        envmodules:
+            config['novocraft']    
         output:
-            o1 = join(out_dir,'{mp}/05_sam/{sp}.split.{n}.sam'),
+            o1 = join(out_dir,'04_sam','{sp}.split.{n}.sam'),
         shell:
             """
             set +e
-            module load novocraft; novoalign -d {params.n_index} \
+            novoalign -d {params.n_index} -k \
             -f {input.f1} -F STDFQ -c 32 \
             -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
             -R 0 -r All 999 > {output.o1}
@@ -441,16 +604,18 @@ else:
         functionally equiv to rule novoalign, expect for output file name
         """
         input:
-            f1 = join(out_dir,'{mp_st}/04_split/{sp_st}.split.{n}.fastq'),
+            f1 = join(out_dir,'03_split','{sp_st}.split.{n}.fastq'),
         params:
             rname='ic_novo',
             n_index = nova_index,
+        envmodules:
+            config['novocraft']   
         output:
-            o1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.sam'),
+            o1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.sam'),
         shell:
             """
             set +e
-            module load novocraft; novoalign -d {params.n_index} \
+            novoalign -d {params.n_index} \
             -f {input.f1} -F STDFQ -c 56 \
             -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
             -R 0 -r All 999 > {output.o1}
@@ -468,15 +633,16 @@ else:
         performs cleanup for inserts
         """
         input:
-            f1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.sam'),
+            f1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.sam'),
         params:
             rname = 'ic_sam_cleanup'
+        envmodules:
+            config['samtools']  
         output:
-            g1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.tmp.sam'),
-            final = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.final.sam'),
+            g1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.tmp.sam'),
+            final = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.final.sam'),
         shell:
             """
-            module load samtools;
             samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > {output.g1};
             samtools view -H {input.f1} | cat - {output.g1} > {output.final}
             """
@@ -487,16 +653,17 @@ else:
         uses USeq version 8.9.6
         """
         input:
-            f1 = join(out_dir,'{mp_st}/05_sam_splice/{sp_st}.split.{n}.splice.final.sam'),
+            f1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.final.sam'),
         params:
             rname = 'ic_convert',
-            base = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam'),
-            doc = join(cont_dir,'USeq_8.9.6/Apps/SamTranscriptomeParser')
+            base = join(out_dir,'04_sam_genomic','{sp_st}.split.{n}.sam'),
+            doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
+        envmodules:
+            config['java']  
         output:
-            o1 = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam.gz'),
+            o1 = join(out_dir,'04_sam_genomic','{sp_st}.split.{n}.sam.gz'),
         shell:
             """
-            module load java;
             java -jar -Xmx50G -jar {params.doc} \
             -f {input.f1} \
             -a 50000 -n 25 -u -s {params.base}
@@ -507,11 +674,11 @@ else:
         unzips sam file
         """
         input:
-            f1 = join(out_dir,'{mp_st}/05_sam_genomic/{sp_st}.split.{n}.sam.gz'),
+            f1 = join(out_dir,'04_sam_genomic','{sp_st}.split.{n}.sam.gz'),
         params:
             rname = 'ic_gzipsam'
         output:
-            o1 = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
+            o1 = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
         shell:
             """
             gunzip -c {input.f1} > {output.o1}
@@ -525,14 +692,15 @@ else:
         | novosort -  > bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.bam
         """
         input:
-            f1 = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
+            f1 = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
         params:
             rname = 'ic_novosort'
+        envmodules:
+            config['samtools']      
         output:
-            o1 = join(out_dir,'{mp_st}/05_bam/{sp_st}.split.{n}.bam'),
+            o1 = join(out_dir,'05_bam','{sp_st}.split.{n}.bam'),
         shell:
             """
-            module load samtools;
             samtools view -uS {input.f1} 2> bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.convert.err
             | novosort -  > {output.o1}
             """
@@ -544,16 +712,18 @@ rule split_mm_unique:
     2. MM file with NH:i
     """
     input:
-        f1 = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
+        f1 = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
     params:
         rname='ic_split_mu',
+    envmodules:
+        config['samtools']  
     output:
-        o1 = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.unique.txt'),
-        o2 = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.mm.txt'),
+        o1 = join(out_dir,'05_reads','{sp_st}.split.{n}.unique.txt'),
+        o2 = join(out_dir,'05_reads','{sp_st}.split.{n}.mm.txt'),
     shell:
         """
         set +e
-        module load samtools; samtools view {input.f1} | grep -v 'NH:i' > {output.o1}; \
+        samtools view {input.f1} | grep -v 'NH:i' > {output.o1}; \
         samtools view {input.f1} | grep 'NH:i' > {output.o2};
         exitcode=0
         if [ $exitcode -eq 1 ]
@@ -569,14 +739,16 @@ rule sam_to_header:
     read sam file header, print to header txt
     """
     input:
-        sam = join(out_dir,'{mp_st}/05_sam/{sp_st}.split.{n}.sam'),
+        sam = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
     params:
         rname='ic_sam_head',
+    envmodules:
+        config['samtools'] 
     output:
-        h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
+        h = join(out_dir,'05_reads','{sp_st}.split.{n}.header.txt'),
     shell:
         """
-        module load samtools; samtools view -H {input.sam} > {output.h};
+        samtools view -H {input.sam} > {output.h};
         """
 
 rule create_bam_unique:
@@ -584,15 +756,16 @@ rule create_bam_unique:
     add nh:i:1 tag, cat header, create unique bam file
     """
     input:
-        h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
-        un = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.unique.txt'),
+        h = join(out_dir,'05_reads','{sp_st}.split.{n}.header.txt'),
+        un = join(out_dir,'05_reads','{sp_st}.split.{n}.unique.txt'),
     params:
         rname='ic_bam_u',
+    envmodules:
+        config['samtools']        
     output:
-        o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.bam'),
+        o1 = join(out_dir,'06_bam_unique','{sp_st}.split.{n}.unique.bam'),
     shell:
         """
-        module load samtools;
         awk -F '\t' -v OFS='\t' '{{ $(NF+1) = "NH:i:1"; print }}' {input.un} | cat {input.h} - | \
         samtools sort | samtools view -Sb > {output.o1};
         """
@@ -602,15 +775,17 @@ rule create_bam_mm:
     cat header, create multimapped bam file
     """
     input:
-        h = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.header.txt'),
-        mm = join(out_dir,'{mp_st}/06_reads/{sp_st}.split.{n}.mm.txt'),
+        h = join(out_dir,'05_reads','{sp_st}.split.{n}.header.txt'),
+        mm = join(out_dir,'05_reads','{sp_st}.split.{n}.mm.txt'),
     params:
         rname='ic_bam_m',
+    envmodules:
+        config['samtools']  
     output:
-        o1 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.bam'),
+        o1 = join(out_dir,'06_bam_mm','{sp_st}.split.{n}.mm.bam'),
     shell:
         """
-        module load samtools; cat {input.h} {input.mm} | samtools sort | samtools view -Sb > {output.o1}
+        cat {input.h} {input.mm} | samtools sort | samtools view -Sb > {output.o1}
         """
 
 rule sort_mm_and_unique:
@@ -618,16 +793,18 @@ rule sort_mm_and_unique:
     sort both the multimapped and unique bam files
     """
     input:
-        un = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.bam'),
-        mm = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.bam'),
+        un = join(out_dir,'06_bam_unique','{sp_st}.split.{n}.unique.bam'),
+        mm = join(out_dir,'06_bam_mm','{sp_st}.split.{n}.mm.bam'),
     params:
         rname='ic_sort_mu',
+    envmodules:
+        config['samtools']      
     output:
-        o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.s.bam'),
-        o2 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.s.bam'),
+        o1 = join(out_dir,'06_bam_unique','{sp_st}.split.{n}.unique.s.bam'),
+        o2 = join(out_dir,'06_bam_mm','{sp_st}.split.{n}.mm.s.bam'),
     shell:
         """
-        module load samtools; samtools sort {input.un} -o {output.o1}; \
+        samtools sort {input.un} -o {output.o1}; \
         samtools sort {input.mm} -o {output.o2};
         """
 
@@ -636,16 +813,17 @@ rule index_mm_and_unique:
     index both the multimapped and unique bam files
     """
     input:
-        un = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.s.bam'),
-        mm = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.s.bam'),
+        un = join(out_dir,'06_bam_unique','{sp_st}.split.{n}.unique.s.bam'),
+        mm = join(out_dir,'06_bam_mm','{sp_st}.split.{n}.mm.s.bam'),
     params:
         rname='ic_index_mu',
+    envmodules:
+        config['samtools']  
     output:
-        o1 = join(out_dir,'{mp_st}/07_bam_unique/{sp_st}.split.{n}.unique.i.bam'),
-        o2 = join(out_dir,'{mp_st}/07_bam_mm/{sp_st}.split.{n}.mm.i.bam'),
+        o1 = join(out_dir,'06_bam_unique','{sp_st}.split.{n}.unique.i.bam'),
+        o2 = join(out_dir,'06_bam_mm','{sp_st}.split.{n}.mm.i.bam'),
     shell:
         """
-        module load samtools; \
         cp {input.un} {output.o1}; samtools index {output.o1}; \
         cp {input.mm} {output.o2}; samtools index {output.o2};
         """
@@ -655,14 +833,16 @@ rule merge_splits_unique:
     merge split unique bam files into one merged.unique bam file
     """
     input:
-        f1 = dynamic(join(out_dir,'{mp}/07_bam_unique/{sp}.split.{n}.unique.i.bam'))
+        f1 = dynamic(join(out_dir,'06_bam_unique','{sp}.split.{n}.unique.i.bam'))
     params:
         rname='ic_merge_u',
+    envmodules:
+        config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),
+        o1 = join(out_dir,'07_bam_merged_splits','{sp}.merged.unique.bam'),
     shell:
         """
-        module load samtools; samtools merge -f {output.o1} {input.f1}
+        samtools merge -f {output.o1} {input.f1}
         """
 
 rule merge_splits_mm:
@@ -670,14 +850,16 @@ rule merge_splits_mm:
     merge split multimapped bam files into one merged.mm bam file
     """
     input:
-        f1 = dynamic(join(out_dir,'{mp}/07_bam_mm/{sp}.split.{n}.mm.i.bam'))
+        f1 = dynamic(join(out_dir,'06_bam_mm','{sp}.split.{n}.mm.i.bam'))
     params:
         rname='ic_merge_m',
+    envmodules:
+        config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),
+        o1 = join(out_dir,'07_bam_merged_splits','{sp}.merged.mm.bam'),
     shell:
         """
-        module load samtools; samtools merge -f {output.o1} {input.f1}
+        samtools merge -f {output.o1} {input.f1}
         """
 
 rule merge_mm_and_unique:
@@ -685,45 +867,143 @@ rule merge_mm_and_unique:
     merge merged.mm and merged.unique bam files by sample
     """
     input:
-        un = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.unique.bam'),
-        mm = join(out_dir,'{mp}/08_bam_merged_splits/{sp}.merged.mm.bam'),
+        un = join(out_dir,'07_bam_merged_splits','{sp}.merged.unique.bam'),
+        mm = join(out_dir,'07_bam_merged_splits','{sp}.merged.mm.bam'),
     params:
         rname='ic_merge_mu',
+    envmodules:
+        config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),
+        o1 = join(out_dir,'08_bam_merged/{sp}.merged.bam'),
     shell:
         """
-        module load samtools; samtools merge -f {output.o1} {input.un} {input.mm}
+        samtools merge -f {output.o1} {input.un} {input.mm}
         """
 
-rule sort_merged:
+rule sort_index_merged:
     """
     sort merged.bam
     """
     input:
-        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.bam'),
+        f1 = join(out_dir,'08_bam_merged','{sp}.merged.bam'),
     params:
-        rname='ic_sort_m',
+        rname='ic_si_m',
+    envmodules:
+        config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.s.bam'),
+        o1 = join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),
+        o2 = join(out_dir,'08_bam_merged','{sp}.merged.si.bam.bai'),
     shell:
         """
-        module load samtools; samtools sort {input.f1} -o {output.o1};
+        samtools sort {input.f1} -o {output.o1};
+        samtools index {output.o1}
         """
 
-rule index_merged:
+rule qc_samstats:
     """
-    index merged.s.bam files
+    generate statistics for sam file before deduplication
+    http://www.htslib.org/doc/samtools-stats.html
+    > $1
     """
     input:
-        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.s.bam'),
+        f1 = join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),
     params:
-        rname='ic_index_m',
+        rname='ic_samstats'
+    envmodules:
+        config['samtools']
     output:
-        o1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
+        o1 = join(out_dir, 'qc', '00_qc_post','{sp}_samstats.txt')
     shell:
         """
-        module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
+        samtools view -h {input.f1} | samtools stats - > {output.o1}
+        """
+
+rule multiqc:
+    """
+    merges FastQC reports for pre/post trimmed fastq files into MultiQC report
+    https://multiqc.info/docs/#running-multiqc
+    """
+    input:
+        f1 = expand(join(out_dir,'{mp}/00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        f2 = expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        f3 = expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
+        f4 = expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
+        f5 = expand(join(out_dir, 'qc', '00_qc_post','{sp}_samstats.txt'),sp=sp_list)
+    params:
+        rname = 'ic_multiqc',
+        out = join(out_dir,'qc'),
+        qc_config = join(source_dir,'config','multiqc_config.yaml'),
+        dir_pre = expand(join(out_dir,'{mp}','00_qc_pre'),mp = samp_dict.keys()),
+        dir_post = expand(join(out_dir, 'qc', '00_qc_post')),
+        dir_screen_species = expand(join(out_dir, 'qc', '00_qc_screen_species')),
+        dir_screen_rrna = expand(join(out_dir, 'qc', '00_qc_screen_rrna')),
+    envmodules:
+        config['multiqc']
+    output:
+        o1 = join(out_dir,'qc/multiqc_report.html')
+    shell:
+        """
+        multiqc -f -v -c {params.qc_config} \
+            -d -dd 1 {params.dir_pre} {params.dir_post} \
+            {params.dir_screen_rrna} {params.dir_screen_species} \
+            -o {params.out}
+        """
+
+rule qc_alignment:
+    """
+    uses samtools to create a bams of unaligned reads and aligned reads
+    input; print qlength col to text file
+    generates plots and summmary file for aligned vs unaligned statistics
+    """
+    input:
+        f1 = join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),
+    params:
+        rname = "ic_qc_align",
+        R = join(source_dir,'workflow','scripts','04_alignment_stats.R'),
+        base = join(out_dir, 'qc', '00_qc_post/')
+    envmodules:
+        config['samtools'],
+        config['R']
+    output:
+        bam_a = join(out_dir, 'qc', '00_qc_post','{sp}_align_len.txt'),
+        bam_u = join(out_dir, 'qc', '00_qc_post','{sp}_unalign_len.txt'),
+        png_align = join(out_dir, 'qc', '00_qc_post','{sp}_aligned.png'),
+        png_unalign = join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.png'),
+        txt_align = join(out_dir, 'qc', '00_qc_post','{sp}_aligned.txt'),
+        txt_unalign = join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.txt'),
+    shell:
+        """
+        samtools view -F 4 {input.f1} | awk '{{print length($10)}}' > {output.bam_a}; \
+        samtools view -f 4 {input.f1} | awk '{{print length($10)}}' > {output.bam_u}; \
+        Rscript {params.R} {wildcards.sp} {output.bam_a} {output.bam_u} {params.base}
+        """
+
+rule qc_troubleshoot:
+    """
+    generates a PDF of barcode plots and alignment plots for qc troubleshooting
+    """
+    input:
+        png_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}_aligned.png'), sp=sp_list),
+        png_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.png'), sp=sp_list),
+        txt_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}_aligned.txt'), sp=sp_list),
+        txt_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.txt'), sp=sp_list),
+        txt_bc = expand(join(out_dir,'{mp}/00_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys()),
+        png_bc = expand(join(out_dir,'{mp}/00_qc_post','{mp}_barcode.png'),mp=samp_dict.keys()),
+    params:
+        rname = "ic_qc_ts",
+        R = join(source_dir,'workflow','scripts','05_qc_report.Rmd'),
+    envmodules:
+        config['R']
+    output:
+        o1 = join(out_dir,'qc','qc_report.html')
+    shell:
+        """
+        Rscript -e 'library(rmarkdown); \
+        rmarkdown::render("{params.R}",
+            output_file = "{output.o1}", \
+            params= list(a_txt = "{input.txt_align}", \
+                u_txt = "{input.txt_unalign}", \
+                b_txt = "{input.txt_bc}"))'
         """
 
 rule dedup:
@@ -731,49 +1011,40 @@ rule dedup:
     deduplicate merged.i.bam files
     """
     input:
-        f1 = join(out_dir,'{mp}/09_bam_merged/{sp}.merged.i.bam'),
+        f1 = join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),
     params:
         rname='ic_dedup',
+    envmodules:
+        config['umitools']  
     output:
-        o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),
-        o2 = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.log'),
+        o1 = join(out_dir,'09_dedup_bam','{sp}.dedup.bam'),
+        o2 = join(out_dir,'09_dedup_bam','{sp}.dedup.log'),
     shell:
         """
-        module load umitools; umi_tools dedup \
+        umi_tools dedup \
         -I {input.f1} \
         --method unique --multimapping-detection-method=NH --umi-separator=rbc: \
         -S {output.o1} \
         --log2stderr -L {output.o2};
         """
 
-rule sort_dedup:
+rule sort_index_dedup:
     """
     sort dedup.bam file
     """
     input:
-        f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.bam'),
+        f1 = join(out_dir,'09_dedup_bam','{sp}.dedup.bam'),
     params:
-        rname='ic_sort_dedup',
+        rname='ic_si_dedup',
+    envmodules:
+        config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.s.bam'),
+        o1 = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
+        o12 = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam.bai'),
     shell:
         """
-        module load samtools; samtools sort {input.f1} -o {output.o1};
-        """
-
-rule index_dedup:
-    """
-    index dedup.s.bam file
-    """
-    input:
-        f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.s.bam'),
-    params:
-        rname='ic_index_dedup',
-    output:
-        o1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
-    shell:
-        """
-        module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
+        samtools sort {input.f1} -o {output.o1};
+        samtools index {output.o1}
         """
 
 rule dedup_header:
@@ -781,34 +1052,35 @@ rule dedup_header:
     cat bam header
     """
     input:
-        f1 = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
+        f1 = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
     params:
         rname='ic_dedup_head',
+    envmodules:
+        config['samtools']   
     output:
-        o1 = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.header.txt'),
+        o1 = join(out_dir,'09_dedup_bam','{sp}.dedup.header.txt'),
     shell:
         """
-        module load samtools; samtools view -H {input.f1} > {output.o1}
+        samtools view -H {input.f1} > {output.o1}
         """
 
-rule split_dedup_mm_and_unique:
+rule dedup_unique:
     """
     split dedup file into multimapped and unique files
     """
     input:
-        bam = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
-        h = join(out_dir,'{mp}/10_dedup_log/{sp}.dedup.header.txt'),
+        bam = join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'),
+        h = join(out_dir,'09_dedup_bam/{sp}.dedup.header.txt'),
     params:
         rname='ic_split_dedup',
+    envmodules:
+        config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.bam'),
-        o2 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
+        o1 = join(out_dir,'10_dedup_split/{sp}.dedup.unique.bam'),
     shell:
         """
         set +e
-        module load samtools; \
-        samtools view {input.bam} | grep -v -w 'NH:i:1' | cat {input.h} - | samtools sort | samtools view -Sb > {output.o1}; \
-        samtools view {input.bam} | grep -w 'NH:i:1' | cat {input.h} - |  samtools sort | samtools view -Sb > {output.o2}
+        samtools view {input.bam} | grep -w 'NH:i:1' | cat {input.h} - |  samtools sort | samtools view -Sb > {output.o1}
         exitcode=0
         if [ $exitcode -eq 1 ]
         then
@@ -818,182 +1090,277 @@ rule split_dedup_mm_and_unique:
         fi
         """
 
-rule index_split_dedup_unique:
+rule index_dedup_unique:
     """
     index deduped unique file
     """
     input:
-        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
+        f1 = join(out_dir,'10_dedup_split','{sp}.dedup.unique.bam'),
     params:
         rname='ic_index_splitu',
+    envmodules:
+        config['samtools']  
     output:
-        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
+        o1 = join(out_dir,'10_dedup_split','{sp}.dedup.unique.i.bam'),
     shell:
         """
-        module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
+        cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
-rule index_split_dedup_mm:
+rule create_bed:
     """
-    index deduped multimapped file
+    create bed file from the deduped unique file
     """
     input:
-        f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.bam'),
+        f1 = join(out_dir,'10_dedup_split','{sp}.dedup.unique.i.bam'),
     params:
-        rname='ic_index_splitm',
+        rname='ic_bed',
+    envmodules:
+        config['bedtools']  
     output:
-        o1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.mm.i.bam'),
+        o1 = join(out_dir,'11_bed','{sp}.unique.bed')
     shell:
         """
-        module load samtools; cp {input.f1} {output.o1}; samtools index {output.o1};
+        bedtools bamtobed \
+            -split -i {input.f1} | bedtools sort -i - > {output.o1} 
         """
 
-if [[splice_aware=='n' or splice_aware=='N']]:
-    rule create_bed:
+rule create_saf: 
+    """
+    """
+    input:
+        f1 = join(out_dir,'11_bed/{sp}.unique.bed'),
+    params:
+        rname='ic_saf',
+    envmodules:
+        config['bedtools']  
+    output:
+        o1 = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '.SAF')
+    shell:
         """
-        create bed file from the deduped unique file
+        bedtools merge \
+            -c 6 -o count,distinct -bed -s -d 50 \
+            -i {input.f1} | \
+            awk '{{OFS="\t"; print $1":"$2"-"$3,$1,$2,$3,$5}}'| \
+            awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > {output.o1}
+        """
+
+rule feature_counts_unique:
+    """
+    Unique reads (fractional counts correctly count splice reads for each peak. 
+    When peaks counts are combined for peaks connected by splicing in Rscript)
+    """
+     input:
+        bam = join(out_dir,'10_dedup_split','{sp}.dedup.unique.bam'),
+        saf = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '.SAF')
+    params:
+        rname='ic_saf',
+    envmodules:
+        config['subread']  
+    output:
+        o1 = join(out_dir,'13_counts','{sp}_' + str(nt_merge) + '_unique.txt')
+    shell:
+        """
+        featureCounts -F SAF \
+            -a {input.saf} \
+            -O \
+            -J \
+            --fraction \
+            --minOverlap 1 \
+            -s 1 \
+            -T 8 \
+            -o {output.o1} \
+            {input.bam}
+        """   
+
+rule feature_counts_all:
+    """
+    Include Multimap reads - MM reads given fractional count based on # of mapping 
+    locations. All spliced reads also get fractional count. So Unique reads can get 
+    fractional count when spliced peaks combined in R script the summed counts give 
+    whole count for the unique alignement in combined peak.
+    """
+     input:
+        bam = join(out_dir,'10_dedup_split/{sp}.dedup.unique.bam'),
+        saf = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '.SAF')
+    params:
+        rname='ic_saf',
+    envmodules:
+        config['subread']  
+    output:
+        o1 = join(out_dir,'13_counts/{sp}_' + str(nt_merge) + '_all.txt')
+    shell:
+        """
+        featureCounts -F SAF \
+            -a {input.saf} \
+            -M \
+            -O \
+            -J \
+            --fraction \
+            --minOverlap 1 \
+            -s 1 \
+            -T 8 \
+            -o {output.o1} \
+            {input.bam}
+        """  
+
+rule annotations:
+    """
+    """
+    input:
+        unique = join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),
+        all = join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_all.txt')
+    params:
+        rname='ic_anno',
+        R = join(source_dir,'workflow','scripts','06_annotation.R'),
+        n_ref = nova_ref,
+        base = join(out_dir,'{mp}/15_annotation/'),
+        base2 = join(out_dir,'{mp}/16_peaks_MAnorm/'),
+        m_count = min_count,
+        p_id = peak_id,
+        de_meth = DE_method,
+        nt_merge = nt_merge,
+        s_aware = "False",
+    envmodules:
+        config['R'],
+        config['samtools'],
+        config['bedtools'],
+    output:
+        #txt = join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.txt'),
+        html = join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.html'),
+        #bed = join(out_dir,'{mp}/16_MAnorm/input/{sp}_' + str(nt_merge) + '_peakDepth.bed')
+    shell:
+        """
+        Rscript {params.R} \
+            {wildcards.sp} {params.n_ref} \
+            {input.unique} {input.all} \
+            {params.base} {params.m_count} \
+            {params.p_id} {params.de_meth} {params.nt_merge} \
+            {output.html} {params.s_aware} {params.base2}
+        """  
+
+if (DE_method=="MANORM"):
+    def set_contrasts():
+        #read in contrast list as df
+        #multiplex_id   #sampleid_1 #sampleid_2
+        contrast_list = ""
+        return(contrast_list)
+
+
+    def manorm_cmd(contrast_df):
+        contrast_df = ""
+        cmd = ""
+        #for each row in df
+            #file_in = join(output_dir,multiplex.col,'12_bed',sample1.col + '.bed')
+            #file_out = join(output_dir,multiplex.col,'16_manorm',sample1.col + '.P.bed')
+            #cmd = cmd + "awk '$6=="+"' " + file_in "> " + file_out " "
+        #return(cmd)
+
+    rule create_pbeds:
+        '''
+        expand(join(out_dir,'{mp}/16_manorm/{sp}.p.bed'),zip,mp=mp_list,sp=sp_list)
+        expand(join(out_dir,'{mp}/16_manorm/{sp}.n.bed'),zip,mp=mp_list,sp=sp_list)
+        '''
+        input:
+            f1 = join(out_dir,'{mp}/12_bed/{sp}.unique.bed'),
+        output:
+            o1 = join(out_dir,'{mp}/16_manorm/{sp}.p.bed'),
+            o2 = join(out_dir,'{mp}/16_manorm/{sp}.n.bed'),
+        shell:
+            '''
+            awk '$6=="+"' {input.f1} > {output.o1};
+            awk '$6=="-"' {input.f1} > {output.o2};
+            '''
+    rule manorm:
+        '''
+        expand(join(out_dir,'{pairOfSamples}/{sampleid}.{strand}.bed", pairOfSamples=keys, sampleid=values, strand = c["p","n"]
+        '''
+        input:
+            s1_r = join(out_dir,'{mp}/15_annotation/{sample1}.RNAME.bed'), #{sample1}WT_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed,
+            s2_r = join(out_dir,'{mp}/15_annotation/{sample2}.RNAME.bed'), #{sample2}KO_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed,
+            s1_p = join(out_dir,'{mp}/16_manorm/{sample1}.p.bed'), #{sample1}WT_CLIP.dedup.i.bam.P.bed
+            s2_p = join(out_dir,'{mp}/16_manorm/{sample2}.p.bed'), #{sample2}WT_CLIP.dedup.i.bam.P.bed
+        params:
+            name1 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample1}'),
+            name2 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample2}'),
+            base = join(out_dir,'{mp}/16manorm/') #/data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/WTvsKO/
+        envmodules:
+            config['MANorm'],
+        output:
+            o1 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample1}.txt'),
+            o2 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample2}.txt'),
+        shell:
+            '''
+            manorm \
+                --p1 {input.s1_r} \
+                --p2 {input.s2_r} \
+                --r1 {input.s1_p} \
+                --r2 {input.s2_p} \
+                --s1 0 \
+                --s2 0 \
+                -p 1 \
+                -d 25 \
+                -n 10000 \
+                -s \
+                -o {params.base} \
+                --name1 {params.name1} \
+                --name2 {params.name2}
+            '''
+
+
+    rule manorm:
+        """
         """
         input:
-            f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
+            
         params:
-            rname='ic_bed',
+        envmodules:
         output:
-            o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
         shell:
             """
-            module load bedtools; bedtools bamtobed -i {input.f1} > {output.o1}
+            #step 1
+            pbed_cmd
+            awk '$6=="+"' {sample1} WT_CLIP.dedup.i.bam.bed > {sample1}WT_CLIP.dedup.i.bam.P.bed
+            awk '$6=="+"' {sample2}KO_CLIP.dedup.i.bam.bed > {sample2}KO_CLIP.dedup.i.bam.P.bed
+
+            #step2
+            manorm_cmd
+            manorm \
+            --p1 {sample1}WT_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed \
+            --p2 {sample2}KO_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed \
+            --r1 {sample1}WT_CLIP.dedup.i.bam.P.bed \
+            --r2 {sample2}KO_CLIP.dedup.i.bam.P.bed \
+            --s1 0 \
+            --s2 0 \
+            -p 1 \
+            -d 25 \
+            -n 10000 \
+            -s \
+            -o /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/WTvsKO/ \
+            --name1 WT_50nt_peakDepth5Test_Pos \
+            --name2 KO_50nt_peakDepth5Test_Pos
+
+            #step 3
+            pbed_cmd
+            awk '$6=="-"' {sample1} WT_CLIP.dedup.i.bam.bed > {sample1}WT_CLIP.dedup.i.bam.N.bed
+            awk '$6=="-"' {sample2}KO_CLIP.dedup.i.bam.bed > {sample2}KO_CLIP.dedup.i.bam.N.bed
+
+            #step4
+            manorm_cmd
+            manorm \
+            --p1 {sample1}WT_allPeaksforMAnrom_50nt_peakDepth5Test.N.bed \
+            --p2 {sample2}KO_allPeaksforMAnrom_50nt_peakDepth5Test.N.bed \
+            --r1 {sample1}WT_CLIP.dedup.i.bam.N.bed \
+            --r2 {sample2}KO_CLIP.dedup.i.bam.N.bed \
+            --s1 0 \
+            --s2 0 \
+            -p 1 \
+            -d 25 \
+            -n 10000 \
+            -s \
+            -o /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/WTvsKO/ \
+            --name1 WT_50nt_peakDepth5Test_Neg \
+            --name2 KO_50nt_peakDepth5Test_Neg
+
+
             """
-else:
-    rule create_bed:
-        """
-        create bed file from the deduped unique file
-        """
-        input:
-            f1 = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.i.bam'),
-        params:
-            rname='ic_bed',
-        output:
-            o1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
-        shell:
-            """
-            module load bedtools; bedtools bamtobed -split -i {input.f1} | bedtools sort -i - > {output.o1}
-            """
-
-rule merge_bed_txt:
-    """
-    merge overlapping peaks into bed file
-    """
-    input:
-        f1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
-    params:
-        rname='ic_bed_txt',
-    output:
-        o1 = join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),
-    shell:
-        """
-        module load bedtools; \
-        bedtools merge -c 6 -o count,distinct -s -d -1 -i {input.f1} > {output.o1}
-        """
-
-rule merge_bed_saf:
-    """
-    create peak annotation files
-    """
-    input:
-        f1 = join(out_dir,'{mp}/12_bed/{sp}.bed')
-    params:
-        rname='ic_bed_saf',
-    output:
-        o1 = join(out_dir,'{mp}/13_peak_anno/{sp}.SAF')
-    shell:
-        """
-        module load bedtools; \
-        bedtools merge -c 6 -o count,distinct -s -d -1 -i {input.f1} | \
-        awk '{{OFS="\t"; print $1":"$2"-"$3,$1,$2+1,$3,$5}}' | awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > \
-        {output.o1}
-        """
-
-rule count_peaks:
-    """
-    create peak count files for all, unique, primary, fraction, and primary/fraction
-    """
-    input:
-        b = join(out_dir,'{mp}/10_dedup_bam/{sp}.dedup.i.bam'),
-        anno = join(out_dir,'{mp}/13_peak_anno/{sp}.SAF'),
-    params:
-        rname='ic_peak_frac',
-        s = source_dir + 'workflow/scripts/03_count_features.sh',
-        threads = 8,
-        base = join(out_dir,'{mp}/14_peak_count/'),
-        sample = '{sp}'
-    output:
-        txt = join(out_dir,'{mp}/14_peak_count/{sp}_FCount_unique.txt'),
-        bam = temp(join(out_dir,'{mp}/14_peak_count/{sp}.dedup.i.bam.featureCounts.bam'))
-    shell:
-        """
-        module load subread; \
-        sh {params.s} {params.threads} {input.anno} {input.b} {params.base} {params.sample}
-        """
-
-rule ID_peaks:
-    """
-    create gtf and gff files
-    """
-    input:
-        f1 = join(out_dir,'{mp}/13_peak/{sp}_merged.txt'),
-    params:
-        rname='ic_idpeaks',
-        s = source_dir + 'workflow/scripts/04_select_peaks.R',
-        dir = join(out_dir,'{mp}/15_gff/{sp}'),
-        min = min_count
-    output:
-        o1 = join(out_dir,'{mp}/15_gff/{sp}.gff3')
-    shell:
-        """
-        module load R; \
-        Rscript {params.s} {input.f1} {params.dir} {params.min}
-        """
-
-"""
-https://github.com/RBL-NCI/iCLIP_Pipeline/tree/master/3_Deduplicate
-
-# updates 10/26
-- new multiplex manifest to take in filenames - flexibility in file naming
-- script to check manifests - ensure concordance and flags errors before pipeline runs
-- add rules after split_files
-
-# updates 11/2
-- differentiate for control vs study samples [controls don't get split]
-- use created docker for iCOUNT '/data/sevillas2/iCLIP/container/icount.sif'
-- control calculation for split; otherwise lines were splitting the 4-line seq chunk
-- error handling of novoalign
-- completed runs through rule samtools_sort_index_merge; equivalent of 3_dedup - 1,2a,2b
-    - sintearctive --mem=16g --cpus-per-task=4
-    - split_number = 30
-    - one sample 20K reads = 10min; two samples 10K reads = 14min
-
-# updates 11/16
-- update req files and execution documentation
-- added logic for variable number of lines - dynamic split will vary by size using 02_fine_split_parameters script
--- need to determine max size of file
-- re-organize dir structure
-- created 03_select_peaks and 05_count_features scripts; copied 04_create_peak_table - have Q
-- testing with one sample, two demultiplexed - 13 minutes to complete
-- all rules but create_peak_table,count_peaks execute output
-
-# updates 11/23
-- submit job to cluster
-- add cluster config
-
-# updates 11/30
-- added FASTQC and MULTIQC reports
-
-# updates 12/7
-- count_peaks functioning
-- add index configs
-- schema updated to confirm configs
-- copy configs/manifests and use copy; allow for multiple processes to run at once
-- updated ic name to handle multiple iterations
-- add local execution
-- create test files for hg38
-"""

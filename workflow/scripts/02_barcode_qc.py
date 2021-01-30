@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import pandas as pd
 import sys
+import json
 
 #NOTE
 #Current script is set up for two barcoding strategies - if additional are required they 
@@ -16,6 +17,7 @@ sample_manifest = sys.argv[1] #"samples_example.tsv"
 multiplex_manifest = sys.argv[2] #"multiplex_example.tsv"
 fastq_dir = sys.argv[3]
 output_dir = sys.argv[4]
+mismatch = sys.argv[5]
 
 def CreateSampleDicts(df_m,df_s):
     s_dict={}
@@ -54,15 +56,38 @@ for k,v in multiplex_dict.items():
     bc_mutants={}
     nuc_list = ['A','T','C','G','N']
 
+    #check the number of mismatches requested is possible given the expected barcodes
+    for a, b in itertools.combinations(bc_exp, 2):
+        #zip two barcodes andn compare each letter
+        compare=zip(a,b)
+        diff_list=[]
+        #print (a,b)
+        for i,j in compare:
+            #if the letters are a mismatch, add to list
+            if i!=j:
+                diff_list.append(j)
+            #if the mismatch list is not > than the mismatch value requested, print error and fail
+        if(len(diff_list)<1 + int(mismatch)):
+            print('The number of differences ({}) between barcodes {} and {} is less than or equal to the number of mismatches requested ({})'. format(len(diff_list),a,b,mismatch))
+            
+            sys.exit('Barcode strategy requires differences between barcodes is greater than mismatch allowance')
+
     # for each expected barcode
     for bc in bc_exp:
-        #vary the string by one bp, push str to dict with expected value 
-        #as the dict key
+        #vary the string by one bp, push str to dict with expected value as the dict key
         for i in range(0,len(list(bc))):
             for nuc in nuc_list:
                 tmp = list(bc)
                 tmp[i]=nuc
                 bc_mutants["".join(tmp)]=bc
+
+                #if more than 1 mismatch is allowed, repeat variation
+                if(int(mismatch)==2):
+                    for j in range(0,len(list(bc))):
+                        for nuc in nuc_list:
+                            tmp2 = list("".join(tmp))
+                            tmp2[j]=nuc
+                            bc_mutants["".join(tmp2)]=bc
     
     #determine bc length for one bc
     bc_length = len(samp_dict[k][k2])
@@ -99,27 +124,29 @@ for k,v in multiplex_dict.items():
         bc_obs.append(k2)
         
     check =  all(item in bc_obs for item in bc_exp)
-        
     if check is True:
-        file_save = output_dir + 'barcode_summary_' + k + '.txt'
+        file_save = output_dir + k + '/00_qc_post/' + k + '_barcode.txt'
         f = open(file_save,"w+")
-        f.write("Reviewing sample {}\n".format(k))
-        f.write("The top barcodes identified {} include the expected barcodes {}\n\n".format(bc_obs, bc_exp))
-        f.write("print(dict(sorted(top_dict.items(), key=lambda item: item[1])))")
+        f.write("\n* SampleID {}\n".format(k))
+        f.write("\t + Number of mismatches allowed {}\n".format(mismatch))
+        f.write("\t + The top barcodes identified {} include the expected barcodes {}\n\n".format(bc_obs, bc_exp))
+        f.write("\t + List of top barcodes:counts \n")
+        f.write("\t\t + " + json.dumps(top_dict))
+
         f.close()    
     else :
-        file_save = output_dir + 'barcode_errors_' + k + '.txt'
+        file_save = output_dir + k + '_barcode_errors.txt'
         f = open(file_save,"w+")
         f.write("The top barcodes identified {} were not congruent with expected barcode list {}. Review associated img for more information.".format(bc_obs, bc_exp)) 
         f.close()
 
     #print barplot for top barcodes
-    file_save = output_dir + 'barcode_plot_' + k + '.png'
+    file_save = output_dir + k + '/00_qc_post/' + k + '_barcode.png'
     plt.bar(*zip(*top_dict.items()))
-    plt.suptitle('Top 5 Barcodes: ' + k)
+    plt.suptitle('Top 5 Barcodes: ' + k + '\n Number of mismatches allowed: ' + mismatch)
     plt.xticks(rotation='45', fontsize=6)
     for k,v in top_dict.items():
-        plt.text(x=k , y =v+1 , s=str(v), color = 'black', va = 'left', fontweight='bold')
+        plt.text(x=k , y =v+1 , s=str(v), color = 'black', fontweight='bold')
     plt.tight_layout()
     plt.savefig(file_save)
 
@@ -127,6 +154,10 @@ for k,v in multiplex_dict.items():
 """
 #Testing
 print(dict(sorted(bc_dict.items(), key=lambda item: item[1])))
-python 02_barcode_qc.py /data/RBL_NCI/iCLIP/test/sample_mm10_two.tsv /data/RBL_NCI/iCLIP/test/multiplex_mm10_two.tsv /data/RBL_NCI/iCLIP/test/ /data/sevillas2/iCLIP/marco/
+python workflow/scripts/02_barcode_qc.py /data/RBL_NCI/iCLIP/test/sample_mm10_one.tsv /data/RBL_NCI/iCLIP/test/multiplex_mm10_one.tsv /data/RBL_NCI/iCLIP/test/ /data/sevillas2/iCLIP/test/ 1
+
+python workflow/scripts/02_barcode_qc.py /data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/samples.tsv /data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/multiplex.tsv /data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/ /data/sevillas2/iCLIP/marco/ 1
+
+
 for read in itertools.islice(fastq_file, 2000):
 """
