@@ -17,10 +17,10 @@ bc_txt = as.list(strsplit(params$b_txt, '\\s+')[[1]])
 ```
 
 ```{r echo=FALSE, warning=FALSE}
-#Generate sampleids
+#Generate mpids
 mp_list = c()
 
-for (paths in align_txt){
+for (paths in bc_txt){
   mp_list[length(mp_list)+1] = strsplit(paths,"/")[[1]][6]
 }
 
@@ -39,7 +39,7 @@ for (mp in mp_list){
 
       #png files
       png_file = gsub(".txt",".png",a_file)
-      cat(paste0("![](", png_file,")"), "\n")
+      cat("\t\t", paste0("![](", png_file,")"), "\n")
     }
   }
 }
@@ -50,17 +50,13 @@ for (mp in mp_list){
 **Statistics for aligned samples:**
 
 ```{r, echo=FALSE, comment='', results="asis"}
-for (mp in mp_list){
-  for (a_file in align_txt){
-    if(strsplit(a_file,"/")[[1]][6]==mp){
-      #text files
-      cat(readLines(a_file), sep = '\n\n')
+for (a_file in align_txt){
+  #text files
+  cat(readLines(a_file), sep = '\n\n')
       
-      #png files
-      png_file = gsub(".txt",".png",a_file)
-      cat(paste0("![](", png_file,")"), "\n")
-    }
-  }
+  #png files
+  png_file = gsub(".txt",".png",a_file)
+  cat("\t\t", paste0("![](", png_file,")"), "\n")
 }
 ```
 
@@ -68,16 +64,12 @@ for (mp in mp_list){
 **Statistics for unaligned samples:**
 
 ```{r, echo=FALSE, comment='', results="asis"}
-for (mp in mp_list){
-  for (a_file in unalign_txt){
-    if(strsplit(a_file,"/")[[1]][6]==mp){
-      #text files
-      cat(readLines(a_file), sep = '\n')
+for (a_file in unalign_txt){
+  #text files
+  cat(readLines(a_file), sep = '\n')
 
-      #png files
-      png_file = gsub(".txt",".png",a_file)
-      cat(paste0("![](", png_file,")"), "\n")
-    }
-  }
+  #png files
+  png_file = gsub(".txt",".png",a_file)
+  cat("\t\t", paste0("![](", png_file,")"), "\n")
 }
 ```

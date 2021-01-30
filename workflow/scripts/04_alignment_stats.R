@@ -35,7 +35,7 @@ Seq_Processing <- function(txt_in,cat){
     stat_count(geom="text", aes(label=..count..), vjust=-0.5) +
     xlab('Sequence Length') + ylab('Number of Reads') +
     theme_minimal()
-  p_final = p + ggtitle(paste(cat,"sequence lengths:\n",sampleid))
+  p_final = p #+ ggtitle(paste(cat,"sequence lengths:",sampleid))
   file_save = paste(output_dir,sampleid,"_",cat,".png",sep="")
   ggsave(file_save,p_final)
   
