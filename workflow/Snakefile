@@ -261,9 +261,9 @@ rule all:
         #SAF 
         expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'.SAF'), sp=sp_list),
 
-        # #Count features
-        # expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_unique.txt'), sp=sp_list),
-        # expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt'), sp=sp_list),
+        #Count features
+        expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_unique.txt'), sp=sp_list),
+        expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt'), sp=sp_list),
 
         # #Annotation
         # #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
@@ -1181,14 +1181,14 @@ rule feature_counts_all:
     whole count for the unique alignement in combined peak.
     """
      input:
-        bam = join(out_dir,'{mp}/11_dedup_split/{sp}.dedup.unique.bam'),
-        saf = join(out_dir,'{mp}/13_SAF/{sp}_' + str(nt_merge) + '.SAF')
+        bam = join(out_dir,'10_dedup_split/{sp}.dedup.unique.bam'),
+        saf = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '.SAF')
     params:
         rname='ic_saf',
     envmodules:
         config['subread']  
     output:
-        o1 = join(out_dir,'{mp}/14_counts/{sp}_' + str(nt_merge) + '_all.txt')
+        o1 = join(out_dir,'13_counts/{sp}_' + str(nt_merge) + '_all.txt')
     shell:
         """
         featureCounts -F SAF \
