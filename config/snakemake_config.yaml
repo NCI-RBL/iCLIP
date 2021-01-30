@@ -1,24 +1,21 @@
 # Global configuration file for the pipeline
-#path to snakemake file
-source_dir: "/home/sevillas2/git/iCLIP/"
-
 #path to output directory
-output_dir: "/data/sevillas2/iCLIP/mm10/"
+output_dir: "/path/to/output/dir/"
 
 #path to manifest files
-sample_manifest: "/data/RBL_NCI/iCLIP/test/sample_mm10_one.tsv"
-multiplex_manifest: "/data/RBL_NCI/iCLIP/test/multiplex_mm10_one.tsv"
+sample_manifest: "/path/to/manifest/samples.tsv"
+multiplex_manifest: "/path/to/manifest/multiplex.tsv"
 
 #path to fastq files
-fastq_dir: "/data/RBL_NCI/iCLIP/test/"
+fastq_dir: "/path/to/fastq/files/"
 
 #user parameters
-mismatch_allowance: 1 #number of nt mismatches allowed in barcodes; options [1,2]
-split_value: 3000 #number of sequences in split files [min 3000, default 1000000]
-novoalign_reference: "mm10" #species ["mm10","hg38"]
-splice_aware: 'n' #whether to run spliceaware in pipeline ["Y","N"]
-splice_bp_length: 75 # splice aware bp_length [50,75,150]
-minimum_count: 3 #minimum number of matches to count as a true peak [1,2,3]
+mismatch_allowance: 2 #number of bp mismatches allowed in demultiplexing [1,2,3]
+split_value: 1000000 #number of sequences to split fastq file [min 3000, default 1000000]
+novoalign_reference: "hg38" #reference organism ["mm10", "hg38"]
+splice_aware: 'y' #whether to run splice_aware part of the pipeline ['y', 'n']
+splice_bp_length: 75 #length of splice index to use [50, 75, 150]
+minimum_count: 3 #minimum number of matches to count as a peak [1,2,3]
 nt_merge: 50 #minimum distance of nucleotides to merge peaks [10,20,30,40,50,60]
 peak_id: "all" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
 DE_method: "manorm" #choose DE method ["manorm","none"]
