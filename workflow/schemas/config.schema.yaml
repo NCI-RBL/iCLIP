@@ -23,7 +23,7 @@ properties:
     description: /path/to/fastq/files
   mismatch_allowance:
     types: number
-    enum: [1,2]
+    enum: [1,2,3]
     description: number of bp mismatches allowed in demultiplexing
   split_value:
     type: number
