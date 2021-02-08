@@ -1,4 +1,7 @@
 # Global configuration file for the pipeline
+#path to iCLIP directory
+source_dir: "/path/to/iCLIP/"
+
 #path to output directory
 output_dir: "/path/to/output/dir/"
 
