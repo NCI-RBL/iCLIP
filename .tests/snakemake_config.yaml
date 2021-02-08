@@ -13,6 +13,7 @@ multiplex_manifest: ".tests/multiplex_hg38_full.tsv"
 fastq_dir: ".tests/"
 
 #user parameters
+multiplex_flag: "Y" #flag that samples are multiplexed ["Y","N"]
 mismatch_allowance: 1 #number of nt mismatches allowed in barcodes; options [1,2]
 split_value: 10000 #number of sequences in split files [min 3000, default 1000000]
 novoalign_reference: "hg38" #species ["mm10","hg38"]
