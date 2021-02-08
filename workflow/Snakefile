@@ -700,7 +700,7 @@ else:
             o1 = join(out_dir,'04_sam_genomic','{sp_st}.split.{n}.sam.gz'),
         shell:
             """
-            java -jar -Xmx50G -jar {params.doc} \
+            java -Djava.io.tmpdir={params.base} -jar -Xmx50G -jar {params.doc} \
             -f {input.f1} \
             -a 50000 -n 25 -u -s {params.base}
             """
