@@ -13,6 +13,7 @@ multiplex_manifest: "/path/to/manifest/multiplex.tsv"
 fastq_dir: "/path/to/fastq/files/"
 
 #user parameters
+multiplex_flag: "Y" #flag that samples are multiplexed ["Y","N"]
 mismatch_allowance: 2 #number of bp mismatches allowed in demultiplexing [1,2,3]
 split_value: 1000000 #number of sequences to split fastq file [min 3000, default 1000000]
 novoalign_reference: "hg38" #reference organism ["mm10", "hg38"]
