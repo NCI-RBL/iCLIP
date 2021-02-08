@@ -44,7 +44,7 @@ nova_ref = config['novoalign_reference']
 splice_aware = config['splice_aware'].capitalize()
 splice_bp = config['splice_bp_length']
 
-multiplex_flag = config['multiplex_flag']
+multiplex_flag = config['multiplex_flag'].capitalize()
 mismatch = config['mismatch_allowance']
 split_value =  config['split_value']
 min_count = config['minimum_count']
@@ -145,7 +145,7 @@ def nondemux_cmd(wildcards):
 
   for k,v in multiplex_dict.items():
     for k2,v2 in samp_dict[k].items():
-      cmd_line = fastq_dir + v + ' ' + out_dir + k + '/01_renamed/' + k2 + '.fastq.gz; ' + cmd_line
+      cmd_line = 'cp ' + fastq_dir + v + ' ' + out_dir + k + '/01_renamed/' + k2 + '.fastq.gz; ' + cmd_line
   
   return(cmd_line)
 
@@ -398,7 +398,7 @@ else:
         output:
             o1 = expand(join(out_dir,'{mp}','01_renamed','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list)
         shell:
-            'cp {params.cmd}'
+            '{params.cmd}'
 
 
 rule remove_adaptors:
