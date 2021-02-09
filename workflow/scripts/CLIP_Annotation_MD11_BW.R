@@ -28,20 +28,7 @@ library(GenomicRanges)
 library(RColorBrewer)
  
 CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
-  # peaksIN=bedfile in format- c('chr','start','end','strand')
-  # WriteClassTable - Create output folder with bed files for each annotation classification
   OUT = paste0(outdir,'annotation/')
-  test=F
-  # test=T
-  
-  # Ref='/Users/homanpj/Documents/Resources/ref'
-  # Ref='/data/RBL_NCI/Phil/CLIP_Anno/Resources'
-  # /Users/homanpj/Documents/Resources/ref/mm10
-  # /Users/homanpj/Documents/Resources/ref/hg38
-  
-
-
-  
   
   blank_theme <- theme_minimal()+
     theme(
@@ -53,33 +40,9 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
       plot.title=element_text(size=14, face="bold")
     )
   
-  
-  if (test==T) {
-    # peaks=fread(paste0("./peaks/Ro/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.peaks.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    # # peaks=peaks[peaks$V4>=20,]
-    # peaks$V2=peaks$V2+1
-    # 
-    # peaks=peaks[is.na(peaks$V1)==F,]
-    # peaks=peaks[is.na(peaks$V2)==F,]
-    # peaks=peaks[is.na(peaks$V3)==F,]
-    # peaks=peaks[is.na(peaks$V6)==F,]
-    # peaks=peaks[,c("V1","V2","V3",'V6')]
-    # peaks=Peaksdata2[,c('chr','start','end','strand')]
-    # WriteClassTable=T
-    # species="hg38"
-    # outdir="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/HaCat_fCLIP2/"
-    # Ref='/Users/homanpj/Documents/Resources/ref'
-    # setwd('/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/HaCat_fCLIP2/')
-  }
-
   setwd(outdir)
-  ##### Begin script ###
-  # peaks=fread(paste0("./peaks/Ro/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.s.unique.bam.peaks.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-  # peaks=peaksIN
   misc=paste0('misc',sample(1:1000000,1))
-  
   annodir=paste0(outdir,"/annotation/")
-  
   
   colnames(peaks)=c('chr','start','end','strand')
   
@@ -89,7 +52,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   if (dir.exists(file.path(paste0(outdir,"/",misc)))==F) {dir.create(paste0(outdir,"/",misc))}
   if (dir.exists(file.path(annodir))==F) {dir.create(annodir)}
   
-  ###################################################
   ##################################################
   if (species=='mm10'){
     
@@ -97,9 +59,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     colnames(alias)=c('chr','alias1','aliasNCBI','Refseq')
     alias$aliasNCBI2=alias$aliasNCBI
     alias[-grep('_',alias$chr),'aliasNCBI2']=alias[-grep('_',alias$chr),'chr']
-  }
-  
-  if (species=='hg38') {
+  }else if (species=='hg38') {
     alias=fread(paste0(Ref,"/hg38/hg38.chromAlias.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F,skip = "#",fill=TRUE)
     colnames(alias)=c('chr','alias2','aliasNCBI',"Refseq")
     alias$aliasNCBI2=alias$aliasNCBI
@@ -115,11 +75,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   peaks$IDmod=paste0(peaks$chr,":",peaks$start,"-",peaks$end)
   
   ####################################################
-  ##################################################
   peaks=peaks[is.na(peaks$chr)==F,]
-  # alias[is.na(alias$chr),]
-  
-  
   peaks_oppo=peaks
   
   peaks_oppo$strand=gsub("\\+","pos",peaks_oppo$strand) 
@@ -127,103 +83,39 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   peaks_oppo$strand=gsub("pos","-",peaks_oppo$strand)
   
   
-  ###################################################################################################################################################################################################
-  ###################################################################################################################################################################################################
-  
+  ##############################################################################
   # 1. Read in Annotation files
+  ##############################################################################
   
-  ###################################################################################################################################################################################################
-  ###################################################################################################################################################################################################
-  
-  #################################################
   #### FROM GENCODE
-  #################################################
-  # install.packages('Rgb')  
-  # library(Rgb)
-  
   # for types https://www.gencodegenes.org/pages/types.html
-  #################################
   if (species=='mm10'){
     ### annotations will most closely match refseq 
-    # mm10all=Rgb::read.gtf(paste0(Ref,"/mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf"),attr='split')
-    # write.table(mm10all,file=(paste0(Ref,"/mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt"), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE)
-    # mm10all=Rgb::read.gtf(paste0(Ref,"/mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf"),attr='split')
-    # write.table(mm10all,file=(paste0(Ref,"/mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE)
     mm10all=fread(paste0(Ref,"/mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
-    # mm10all=fread(paste0(Ref,"/mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
-  }
-  
-  
-  if (species=='hg38') {
-    # mm10all=Rgb::read.gtf(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf"),attr='split')
-    # write.table(mm10all,file=(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE)
-    # mm10all=fread(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
-    # mm10allprim=fread(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.primary_assembly.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
-    # mm10all=fread(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
+  } else  if (species=='hg38') {
     mm10all=fread(paste0(Ref,"/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
   }
-  # unique(mm10all$seqname)
-  # unique(mm10allprim$seqname)
-  # unique(mm10allanno$seqname)
-  # unique(mm10allRefseq$seqname)
-  
   colnames(mm10all)[colnames(mm10all)%in%'seqname']='chr'
   colnames(mm10all)[colnames(mm10all)%in%'gene_id']='ensembl_gene_id'
   colnames(mm10all)[colnames(mm10all)%in%'gene_name']='external_gene_name'
   mm10all$transcript_id=removeVersion(mm10all$transcript_id)
   mm10all$ensembl_gene_id=removeVersion(mm10all$ensembl_gene_id)
   mm10all$chr=as.character(mm10all$chr)
-  
-  ##################################################  ###################################################
-  mm10all =merge(mm10all,alias[,c('chr','aliasNCBI2')],by.x='chr',by.y='aliasNCBI2',all.x=T)
+    mm10all =merge(mm10all,alias[,c('chr','aliasNCBI2')],by.x='chr',by.y='aliasNCBI2',all.x=T)
   mm10all=mm10all[,colnames(mm10all)%in%"chr"==F]
   colnames(mm10all)=gsub('chr.y','chr',colnames(mm10all))
   mm10all=mm10all[is.na(mm10all$chr)==F,]
-  # View(mm10all[is.na(mm10all$chr.y),])
-  # View(mm10all[grep(".",mm10all$chr),])
-  # setdiff(unique(mm10all$chr),unique(alias$aliasNCBI2))
-  ####################################################  ##################################################
   
-  
-  #################################################
   #### FROM refseq
-  #################################################
-  
-  
   if (species=='mm10') {
-    # mm10all=Rgb::read.gtf(paste0(Ref,"/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf")),attr='split')
-    # write.table(mm10all,file=(paste0(Ref,"/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE)
-    # 
     mm10allRefseq=fread(paste0(Ref,"/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
     colnames(mm10allRefseq)[colnames(mm10allRefseq)%in%'gene_biotype']='gene_type'
     mm10allRefseq=mm10allRefseq[,duplicated(colnames(mm10allRefseq))==F]
-    ##################################################  ###################################################
-    # mm10allRefseq =merge(mm10allRefseq,alias[,c('chr','Refseq2')],by.x='seqname',by.y='Refseq2',all.x=T)
-    
-    # mm10all=mm10all[,colnames(mm10all)%in%"chr"==F]
-    # colnames(mm10all)=gsub('chr.y','chr',colnames(mm10all))
-    # mm10all=mm10all[is.na(mm10all$chr)==F,]
-    ####################################################  ##################################################
-  }
-  
-  if (species=='hg38') {
-    # mm10all=Rgb::read.gtf(paste0(Ref,"/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gff"),attr='split')
-    # write.table(mm10all,file=(paste0(Ref,"/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gff.txt")), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE)
-    # 
+  } else if (species=='hg38') {
     mm10allRefseq=fread(paste0(Ref,"/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
     colnames(mm10allRefseq)[colnames(mm10allRefseq)%in%'gene_biotype']='gene_type'
     mm10allRefseq=mm10allRefseq[,duplicated(colnames(mm10allRefseq))==F]
-    ##################################################  ###################################################
     mm10allRefseq =merge(mm10allRefseq,alias[,c('chr','Refseq2')],by.x='seqname',by.y='Refseq2',all.x=T)
-    
-    # mm10all=mm10all[,colnames(mm10all)%in%"chr"==F]
-    # colnames(mm10all)=gsub('chr.y','chr',colnames(mm10all))
-    # mm10all=mm10all[is.na(mm10all$chr)==F,]
-    ####################################################  ##################################################
-  }
-  
-  if (species=='hg38') {
-    # colnames(mm10allRefseq)[colnames(mm10allRefseq)%in%'seqname']='chr'
     mm10allRefseq=mm10allRefseq[is.na(mm10allRefseq$chr)==F,]
     colnames(mm10allRefseq)[colnames(mm10allRefseq)%in%'gene_id']='ensembl_gene_id'
     colnames(mm10allRefseq)[colnames(mm10allRefseq)%in%'gene']='external_gene_name'
@@ -233,42 +125,25 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     mm10Refseq_snoRNA=mm10allRefseq[mm10allRefseq$gene_type%in%'snoRNA',]
     mm10Refseq_snoRNA$gene_type='snoRNA_RefSeq'
     mm10Refseq_snoRNA$gene_type_ALL=mm10Refseq_snoRNA$gene_type
-    }  
-  
-  
-  
-  ##################################################################################################################################
-  #### Gencode - Select only numbered chromosomes and contigs not in refseq f
-  
-  if (species=='hg38') {
-  #sam edit
-  #chrms=unique(mm10all$chr)[-grep("_",unique(mm10all$chr))]
-  #chrmU=unique(setdiff(mm10all$chr,unique(mm10allRefseq$chr)))
-  #mm10all=mm10all[mm10all$chr%in%c(chrms,chrmU),]
-  
-  #### refseq - Select contigs not in Gencode
-  
-  mm10allRefseq=mm10allRefseq[mm10allRefseq$chr%in%unique(mm10all$chr)==F,]
-  mm10allRefseq=mm10allRefseq[(mm10allRefseq$gene_type%in%'TEC')==F,]  
-  mm10allRefseq$gene_type_ALL=mm10allRefseq$gene_type
-  mm10allRefseq[grep('pseudogene',mm10allRefseq$gene_type),'gene_type']='pseudogene'
-  
-  mm10allRefseq$gene_type=gsub('miRNA','ncRNA',mm10allRefseq$gene_type)
-  mm10allRefseq$gene_type=gsub('miscRNA','ncRNA',mm10allRefseq$gene_type)
-  mm10allRefseq$gene_type=gsub('misc_RNA','ncRNA',mm10allRefseq$gene_type)
-  mm10allRefseq$gene_type=gsub('piRNA','ncRNA',mm10allRefseq$gene_type)
-  mm10allRefseq$gene_type=gsub('rRNA','ncRNA',mm10allRefseq$gene_type)
-  mm10allRefseq$gene_type=gsub('siRNA','ncRNA',mm10allRefseq$gene_type)
-  mm10allRefseq$gene_type=gsub('snRNA','ncRNA',mm10allRefseq$gene_type)
-  mm10allRefseq$gene_type=gsub('snoRNA','ncRNA',mm10allRefseq$gene_type)
-  mm10allRefseq$gene_type=gsub('tRNA','ncRNA',mm10allRefseq$gene_type)
-  mm10allRefseq$gene_type=gsub('ribozyme','ncRNA',mm10allRefseq$gene_type)
-  # mm10allRefseq$gene_type=gsub('lncRNA','ncRNA',mm10allRefseq$gene_type)
-  
-  # unique(mm10allRefseq$gene_type)
+    
+    #### refseq - Select contigs not in Gencode
+    mm10allRefseq=mm10allRefseq[mm10allRefseq$chr%in%unique(mm10all$chr)==F,]
+    mm10allRefseq=mm10allRefseq[(mm10allRefseq$gene_type%in%'TEC')==F,]  
+    mm10allRefseq$gene_type_ALL=mm10allRefseq$gene_type
+    mm10allRefseq[grep('pseudogene',mm10allRefseq$gene_type),'gene_type']='pseudogene'
+    
+    mm10allRefseq$gene_type=gsub('miRNA','ncRNA',mm10allRefseq$gene_type)
+    mm10allRefseq$gene_type=gsub('miscRNA','ncRNA',mm10allRefseq$gene_type)
+    mm10allRefseq$gene_type=gsub('misc_RNA','ncRNA',mm10allRefseq$gene_type)
+    mm10allRefseq$gene_type=gsub('piRNA','ncRNA',mm10allRefseq$gene_type)
+    mm10allRefseq$gene_type=gsub('rRNA','ncRNA',mm10allRefseq$gene_type)
+    mm10allRefseq$gene_type=gsub('siRNA','ncRNA',mm10allRefseq$gene_type)
+    mm10allRefseq$gene_type=gsub('snRNA','ncRNA',mm10allRefseq$gene_type)
+    mm10allRefseq$gene_type=gsub('snoRNA','ncRNA',mm10allRefseq$gene_type)
+    mm10allRefseq$gene_type=gsub('tRNA','ncRNA',mm10allRefseq$gene_type)
+    mm10allRefseq$gene_type=gsub('ribozyme','ncRNA',mm10allRefseq$gene_type)
   }
-  ##################################################################################################################################
-  
+
   ##remove TEC genes
   mm10all=mm10all[(mm10all$transcript_type%in%'TEC')==F,]
   mm10all=mm10all[(mm10all$gene_type%in%'TEC')==F,]  
@@ -282,9 +157,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   # unique(mm10all[grep('pseudogene',mm10all$gene_type),'gene_type'])
   mm10all[grep('pseudogene',mm10all$gene_type),'gene_type']='pseudogene'
   
-  ## Classify lncRNA as ncRNA
-  # mm10all$gene_type
-  
   ## combine all ncRNA
   mm10all$gene_type=gsub('miRNA','ncRNA',mm10all$gene_type)
   mm10all$gene_type=gsub('miscRNA','ncRNA',mm10all$gene_type)
@@ -296,21 +168,15 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   mm10all$gene_type=gsub('snoRNA','ncRNA',mm10all$gene_type)
   mm10all$gene_type=gsub('tRNA','ncRNA',mm10all$gene_type)
   mm10all$gene_type=gsub('ribozyme','ncRNA',mm10all$gene_type)
-  # mm10all$gene_type=gsub('lncRNA','ncRNA',mm10all$gene_type)
-  
-  
-  
   
   ##############################
   mm10=mm10all[mm10all$feature%in%'transcript',]
   mm10_exon=mm10all[mm10all$feature%in%c("exon"),]
   mm10_FTR=mm10all[mm10all$feature%in%c("3UTR","5UTR",'CDS','UTR'),]
-  ##############################
-  
+
   if (species=='mm10') {
     canonical=fread(paste0(Ref,"/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
-  }  
-  if (species=='hg38') {
+  }  else if (species=='hg38') {
     canonical=fread(paste0(Ref,"/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
   }
   
@@ -321,60 +187,40 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   ##################################################  ###################################################
   canonical =merge(canonical,alias[,c('chr','aliasNCBI2')],by.x='#chrom',by.y='aliasNCBI2',all.x=T)
   canonical=canonical[,colnames(canonical)%in%"#chrom"==F]
-  ####################################################  ##################################################
-  
-  # mm10all=Rgb::read.bed(paste0(Ref,"/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed"),attr='split')
-  # 
   
   ########
   if (species=='mm10') {
     introns=fread(paste0(Ref,"/mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-  }
-  if (species=='hg38') {
+  }else if (species=='hg38') {
     introns=fread(paste0(Ref,"/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    # introns_alias=fread(paste0(Ref,"/hg38/NCBI_RefSeq/fromUCSC/Refseq_introns_GRCh38.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    }
-  
-  # introns_alias=introns_alias[grepl("_",introns_alias$V1)==F,]###Non-Chromosome contigs
-  # colnames(introns_alias)=c('chr','start','end','attribute','V5','strand')
-  # introns_alias=separate(introns_alias,attribute,into=c('transcript','attribute'),remove = T,sep = "_intron_")
-  # introns_alias$feature='intron'
-  # introns_alias=separate(introns_alias,attribute,into=c('exon_number','level','chr2','intronnumber','dir'),remove = T,sep = "_")
-  # merge(introns_alias,alias)
-  # introns_alias$transcript_id=removeVersion(introns_alias$transcript_id)
-  # introns_alias[introns_alias$transcript_id%in%mm10allRefseq$transcript_id,]
+  }
   
   introns=introns[grepl("_",introns$V1)==F,]###Non-Chromosome contigs
   colnames(introns)=c('chr','start','end','attribute','V5','strand')
   introns=separate(introns,attribute,into=c('transcript_id','feature','exon_number','level','chr2','intronnumber','dir'),remove = T,sep = "_")
   introns$transcript_id=removeVersion(introns$transcript_id)
-  # introns_canon=introns[introns$transcript_id%in%canonical$transcript_id,]
   introns$start=introns$start+1
   introns$exon_number=as.numeric(introns$exon_number)+1
   
-  ##################################################  ###################################################
+  ################################################## 
   introns =merge(introns,alias[,c('chr','aliasNCBI2')],by.x='chr',by.y='aliasNCBI2',all.x=T)
   introns=introns[,colnames(introns)%in%"chr"==F]
   colnames(introns)=gsub('chr.y','chr',colnames(introns))
-  ####################################################  ##################################################
-  # unique( introns$chr)
   
+  #################################################### 
   mm10_ExnItrn=rbind(mm10_exon[,c('chr','feature','start','end','strand','transcript_id','exon_number')],
                      introns[,c('chr','feature','start','end','strand','transcript_id','exon_number')])
   mm10_ExnItrn$ID=paste0(mm10_ExnItrn$chr,':',mm10_ExnItrn$start,'-',mm10_ExnItrn$end)
   
-  # mm10 exon_number matches strand direction Intron does not 
-  # View(mm10_exon[,c('chr','start','end','strand',"feature","transcript_id","exon_number","level")])
-  
-  calcIntron=0
+  calcIntron=0 #??????
   if (calcIntron==1){
     #####################################################
     library(GenomicFeatures)
     library(rtracklayer)
     
-    # gtf <- makeTxDbFromGFF(paste0(Ref,"/mm10/Gencode_VM23/mm10.KnownGene.gtf")) #change me!
     gtf <- makeTxDbFromGFF(paste0(Ref,"/hg38/Gencode_V32/fromUCSC/KnownGene/hg38.KnownGene.gtf")) #change me!
     exons <- exonsBy(gtf, by="gene")
+
     #make introns
     exons <- reduce(exons)
     exons <- exons[sapply(exons, length) > 1]
@@ -396,81 +242,22 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     })
     introns <- GRangesList(introns)
     as.data.frame(introns)
-    ######################################
   }
+  
   #### for possible more effecient method
   ####https://genomicsclass.github.io/book/pages/bioc1_igranges.htm
-  
   mm10_ExnItrn=merge(mm10_ExnItrn,mm10[,c('transcript_id','gene_type')],by='transcript_id',all.x=T)
-  
-
-  ########################################################################################
-  ########################################################################################
-  
   
   ###################################
   ## GENCODE
   ## transcript_type https://www.gencodegenes.org/pages/types.html
-  
-  ######## hg38
-  # lncRNA
-  # miRNA
-  # snRNA
-  # vaultRNA
-  # scRNA
-  # sRNA
-  # ribozyme
-  # misc_RNA
-  # retained_intron
-  # nonsense_mediated_decay
-  # snoRNA
-  # scaRNA                            
-  # rRNA                              
-  # 
-  # protein_coding
-  # non_stop_decay
-  # 
-  # pseudogene
-  # processed_pseudogene,unprocessed_pseudogene,unitary_pseudogene,polymorphic_pseudogene
-  # transcribed_processed_pseudogene,translated_processed_pseudogene,translated_unprocessed_pseudogene,transcribed_unprocessed_pseudogene,transcribed_unitary_pseudogene
-  # IG_V_pseudogene,IG_C_pseudogene,IG_J_pseudogene,IG_pseudogene,TR_V_pseudogene,TR_J_pseudogene,rRNA_pseudogene
-  
-  # TR_C_gene,TR_J_gene,TR_V_gene,TR_D_gene
-  # IG_V_gene,IG_C_gene,IG_J_gene,IG_D_gene
-  
-  # Mt_tRNA,Mt_rRNA
-  
-  ########## mm10
-  # unique(mm10$transcript_type)
-  # snRNA
-  # snoRNA
-  # scRNA
-  # scaRNA 
-  # miRNA
-  # rRNA  
-  # lncRNA
-  # 
-  # ribozyme 
-  # sRNA                              
-  # misc_RNA                          
-  #                   
-  # protein_coding  
-  # TEC
-  # Mt_tRNA                           
-  # Mt_rRNA
-  # nonsense_mediated_decay
-  # retained_intron
-  # c("processed_pseudogene","transcribed_unitary_pseudogene","polymorphic_pseudogene","translated_unprocessed_pseudogene","pseudogene","unitary_pseudogene","transcribed_processed_pseudogene","transcribed_unprocessed_pseudogene","unprocessed_pseudogene")
-  # c("TR_V_gene","TR_V_pseudogene","TR_D_gene","TR_J_gene","TR_C_gene","TR_J_pseudogene")
-  # c("IG_D_pseudogene","IG_C_pseudogene","IG_D_gene","IG_LV_gene","IG_V_gene","IG_V_pseudogene","IG_J_gene","IG_C_gene","IG_pseudogene")
-  
-  
   snRNA_mm10=mm10[mm10$transcript_type%in%'snRNA',]
   snoRNA_mm10=mm10[mm10$transcript_type%in%'snoRNA',]
   scRNA_mm10=mm10[mm10$transcript_type%in%'scRNA',]
   scaRNA_mm10=mm10[mm10$transcript_type%in%'scaRNA',]
   miRNA_mm10=mm10[mm10$transcript_type%in%'miRNA',]
   rRNA_mm10=mm10[mm10$transcript_type%in%'rRNA',]
+  
   ############################################
   ### Separate lncRNA into intron and exon Regions
   ############################################
@@ -488,41 +275,27 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
                     lncRNA_mm10_intron[,c('chr','start','end','strand','ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL','feature','transcript_id','transcript_type','transcript_name','score')])
   lncRNA_mm10$gene_type_ALL='lincRNA'#'linLcRNA'
   lncRNA_mm10$gene_type_ALL=paste0(lncRNA_mm10$gene_type_ALL,'-',lncRNA_mm10$feature)
-  # lncRNA_mm10_noInt$gene_type_ALL='lnLcRNA'
   lncRNA_mm10=rbind(lncRNA_mm10[,c('chr','start','end','strand','ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL','feature','transcript_id','transcript_type','transcript_name','score')],
                     lncRNA_mm10_noInt[,c('chr','start','end','strand','ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL','feature','transcript_id','transcript_type','transcript_name','score')])
-  
-  # lncRNA_mm10$gene_type='lncRNA'
   mm10=mm10[mm10$transcript_id%in%unique(lncRNA_mm10$transcript_id)==F,]
-  # lncRNA_mm10=lncRNA_mm10[!lncRNA_mm10$transcript_id%in%lincRNA_mm10$transcript_id,]
-  # mm10[mm10$transcript_id%in%lincRNA_mm10$transcript_id,'transcript_type']='lincRNA'
-  ####################################################################################################################################
-  
+
+  ############################################################################
   sRNA_mm10=mm10[mm10$transcript_type%in%'sRNA',]
   misc_RNA_mm10=mm10[mm10$transcript_type%in%'misc_RNA',]
   ribozyme_RNA_mm10=mm10[mm10$transcript_type%in%'ribozyme',]
   
-  
   #######################################################
   #### get  repeat regions and extra small RNA locations
-  newRmsk=1
+  newRmsk=1 #?????
   if (newRmsk==1) {
     
     if (species=='mm10') {
       rmsk_GRCm38=fread(paste0(Ref,"/mm10/repeatmasker/rmsk_GRCm38.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
-    }
-    if (species=='hg38') {
+    } else if (species=='hg38') {
       rmsk_GRCm38=fread(paste0(Ref,"/hg38/repeatmasker/rmsk_GRCh38.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
     }
     # unique(rmsk_GRCm38$repClass)
     rmsk_GRCm38all=rmsk_GRCm38
-    
-    # r1=rmsk_GRCm38[rmsk_GRCm38$repFamily%in%c('scRNA','snRNA','srpRNA','tRNA','rRNA','RNA'),]
-    # r2=rmsk_GRCm38[rmsk_GRCm38$repClass%in%c('LINE','SINE','LTR','DNA','Satellite','Simple_repeat','Low_complexity','Other','Unknown'),]
-    # rmsk_GRCm38=rbind(r1,r2)
-    # # 
-    # if (species=='mm10') {write.table(rmsk_GRCm38,file=(paste0(Ref,"/mm10/repeatmasker/rmsk_GRCm38_subClip.txt")), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)}
-    # if (species=='hg38') {write.table(rmsk_GRCm38,file=(paste0(Ref,"/hg38/repeatmasker/rmsk_GRCh38_subClip.txt")), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)}
   }
   
   #################################################
@@ -530,16 +303,8 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   #################################################
   
   ## REPEATMASKER  ## repClass
-  # unique(rmsk_GRCm38all$repClass)
   aa=c("LTR", "LINE", "SINE", "Simple_repeat", "DNA", "Satellite", "Low_complexity", "Other", "Unknown", "RC")
   bb=c("SINE?", "LTR?", "DNA?", "RC?", "LINE?")  
-  # scRNA
-  # snRNA
-  # srpRNA
-  # tRNA
-  # rRNA
-  # RNA -- all RNA are 7SK (all 7SK are RNA)
-  
   YRNA_rmsk=rmsk_GRCm38all[(rmsk_GRCm38all$repFamily%in%'scRNA')&(grepl("HY",rmsk_GRCm38all$repName)==T),]; 
   YRNA_rmsk=YRNA_rmsk[,c('genoName','genoStart','genoEnd','repName','swScore','strand')]
   colnames(YRNA_rmsk)=c('chr','start','end','name','swScore','strand')
@@ -569,31 +334,9 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   colnames(SKRNA_rmsk)=c('chr','start','end','name','swScore','strand')
   SKRNA_rmsk$type='7SKRNA'
   
-  
-  
   ###################################
   ## REPEATMASKER
   ## repFamily
-  
-  # unique(rmsk_GRCm38all$repFamily)
-  # scRNA
-  # snRNA
-  # srpRNA
-  # tRNA
-  # rRNA
-  # RNA           
-  # MIR -- All MIR are SINES
-  # miRNA_rmsk=rmsk_GRCm38all[rmsk_GRCm38all$repFamily%in%'MIR',]
-  # 
-  # Simple_repeat
-  # Alu
-  # Satellite     
-  # Low_complexity 
-  # Other
-  # LTR
-  # Unknown
-  # DNA
-  
   a=c("ID", "ERVK", "L1", "B4", "B2", "L2", "CR1", "Deu", "ERV1", "ERVL-MaLR", "ERVL", "hAT-Charlie", "TcMar-Tigger", "RTE-X", "hAT-Tip100", "Gypsy", "hAT-Blackjack", "RTE-BovB", "TcMar-Mariner", "TcMar-Tc2", "Y-chromosome", "Helitron", "PiggyBac", "MULE-MuDR", "hAT", "Dong-R4", "TcMar", "MuDR", "TcMar-Pogo", "centr")
   b=c("ERVK?", "SINE?", "Gypsy?", "LTR?", "ERVL?", "TcMar?", "ERV1?", "DNA?", "Helitron?", "hAT?", "hAT-Tip100?", "PiggyBac?", "L1?", "Penelope?")
   
@@ -607,141 +350,111 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   rmsk_GRCm38_Other=rmsk_GRCm38[rmsk_GRCm38$repClass%in%'Other',]
   rmsk_GRCm38_unknown=rmsk_GRCm38[rmsk_GRCm38$repClass%in%'Unknown',]
   rmsk_GRCm38_LowComplx=rmsk_GRCm38[rmsk_GRCm38$repClass%in%'Low_complexity',]
-  # unique(rmsk_GRCm38$repClass)
-  # rmsk_GRCm38_repeat=rmsk_GRCm38[rmsk_GRCm38$repClass%in%c('Simple_repeat','Low_complexity','Other','Unknown'),]
-  
   
   #################################################
   #### SOYEONG
   #################################################
   if (species=='mm10') {
+    additionalAnno=1 #????
     
-  additionalAnno=1
-  if (additionalAnno==1) {
+    if (additionalAnno==1) {
+      ##### yRNA 
+      yRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_YRNA.bed"), 
+                    header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      colnames(yRNA_sy)=c('chr','start','end','name','swScore','strand')
+      yRNA_sy$type='yRNA'
+      
+      ##### srpRNA 
+      srpRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_srpRNA.bed"), 
+                      header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      colnames(srpRNA_sy)=c('chr','start','end','name','swScore','strand')
+      srpRNA_sy$type='srpRNA'
+      
+      tRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_tRNA.bed"), 
+                    header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      colnames(tRNA_sy)=c('chr','start','end','name','swScore','strand')
+      tRNA_sy$type='tRNA'
+      
+      ##### Soyeong Files Bed - from Repeatmasker
+      ##### scRNA (4.5S and BC1 RNA) (Gencode)
+      scRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_scRNA.bed"), 
+                     header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      
+      ##### 7SK RNA	mm10_7SKRNA.bed
+      SKRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_7SKRNA.bed"), 
+                     header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      
+      ###### rRNA pseudogenes and 5S	mm10_rRNA.bed and mouse_gencode_rRNA.gtf.1
+      rRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_rRNA.bed"), 
+                    header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      
+      ###### rRNA BK00964.3 'https://www.ncbi.nlm.nih.gov/nuccore/NR_046233.1'
+      rRNA_BK00964=fread(paste0(Ref,"/mm10/AdditionalAnno/BK000964.3_TPA_rRNA_repeats2.bed.txt"), 
+                         header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      rRNA_BK00964=rRNA_BK00964[,c('V1','V2','V3','V4','V5','V6')]
+      colnames(rRNA_BK00964)=c('chr','start','end','name','swScore','strand')
+      rRNA_BK00964$strand="*"
+      rRNA_BK00964$type='rRNA'
+      
+      ##### Introns		mm10_intron.bed
+      introns_SY=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_intron.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      
+      ######## 
+      # Anno_bed_comb=rbind(yRNA_SY,tRNA_SY,srpRNA_SY,SKRNA_SY,scRNA_SY,rRNA_SY)
+      ###############################################
+      ##### Soyeong Files GTF - from Gencode
+      
+      ##### sncRNA (mrp RNA, Rpph1, vault RNA)	mm10_snc.gtf
+      sncRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_snc.gtf"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      sncRNA_sy=separate(sncRNA_sy,col = "V9",into = c("gene","trans",'x'),sep = ";");sncRNA_sy$gene=gsub("gene_id ","",sncRNA_sy$gene);sncRNA_sy$trans=gsub("transcript_id ","",sncRNA_sy$trans)
+      sncRNA_sy=as.data.frame(sncRNA_sy)
+      sncRNA_sy=sncRNA_sy[,((colnames(sncRNA_sy)%in%'x')==F)]
+      
+      colnames(sncRNA_sy)=c('chr','source','gloc','start','end','V6','strand','V8','Gene_Ensemble','Transcript_id')
+      sncRNA_sy$type='sncRNA'
+      colnames(sncRNA_sy)[colnames(sncRNA_sy)%in%'Gene_Ensemble']='name'
+      
+      ###### snRNA (Gencode)
+      snRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_snRNA.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F,quote="" )
+      colnames(snRNA_sy)=c('chr','source','gloc','start','end','V6','strand','V8','V9','Gene_Ensemble','V11','V12','V13','Transcript_id','V15','version')
+      snRNA_sy=snRNA_sy[snRNA_sy$gloc%in%'gene',]
+      
+      ###### snoRNA (Gencode)
+      snoRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_sno.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F,quote="")
+      colnames(snoRNA_sy)=c('chr','source','gloc','start','end','V6','strand','V8','V9','Gene_Ensemble','V11','V12','V13','Transcript_id','V15','version')
+      snoRNA_sy=snoRNA_sy[snoRNA_sy$gloc%in%'gene',]
+      
+      ###### miRNA		mouse_gencode_miRNA.gtf.1 (Gencode)
+      miRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_miRNA.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F,quote="")
+      colnames(miRNA_sy)=c('chr','source','gloc','start','end','V6','strand','V8','V9','Gene_Ensemble','V11','V12','V13','Transcript_id','V15','version')
+      miRNA_sy=miRNA_sy[miRNA_sy$gloc%in%'gene',]
+      
+      
+      ###### rRNA pseudogenes and 5S	mm10_rRNA.bed and mouse_gencode_rRNA.gtf.1 (Gencode)
+      rRNA_gtf=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_rRNA.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F,quote="")
+      colnames(rRNA_gtf)=c('chr','source','gloc','start','end','V6','strand','V8','V9','Gene_Ensemble','V11','V12','V13','Transcript_id','V15','version')
+      rRNA_gtf=rRNA_gtf[rRNA_gtf$gloc%in%'gene',]
+      ## an examleof rRNA and rRNA_gtf chrY:991632-991664
+      
+      ###### linc RNA	mouse_gencode_linc.gtf.1 (Repeatmasker)
+      lincRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_linc.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F,quote="")
+      colnames(lincRNA_sy)=c('chr','source','gloc','start','end','V6','strand','V8','V9','Gene_Ensemble','V11','V12','V13','Transcript_id','V15','version')
+      lincRNA_sy=lincRNA_sy[lincRNA_sy$gloc%in%'gene',]
+      
+      SY_LTR=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_LTR.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      SY_DNA=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_DNA.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      SY_sat=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_sat.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      SY_SR=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_simple.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      SY_LC=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_LC.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      SY_other=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_other.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      SY_unknown=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_unknown.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+   }
     
-    ##### yRNA 
-    yRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_YRNA.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    colnames(yRNA_sy)=c('chr','start','end','name','swScore','strand')
-    yRNA_sy$type='yRNA'
-    
-    
-    ##### srpRNA 
-    srpRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_srpRNA.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    colnames(srpRNA_sy)=c('chr','start','end','name','swScore','strand')
-    srpRNA_sy$type='srpRNA'
-    
-    tRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_tRNA.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    colnames(tRNA_sy)=c('chr','start','end','name','swScore','strand')
-    tRNA_sy$type='tRNA'
-    
-    
-    ##### Soyeong Files Bed - from Repeatmasker
-    
-    ##### scRNA (4.5S and BC1 RNA) (Gencode)
-    scRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_scRNA.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    # colnames(scRNA_sy)=c('chr','start','end','name','swScore','strand')
-    # scRNA_sy$type='scRNA'
-    
-    ##### 7SK RNA	mm10_7SKRNA.bed
-    SKRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_7SKRNA.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    # colnames(SKRNA_sy)=c('chr','start','end','name','swScore','strand')
-    # SKRNA_sy$type='7SKRNA'
-    
-    
-    ###### rRNA pseudogenes and 5S	mm10_rRNA.bed and mouse_gencode_rRNA.gtf.1
-    rRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_rRNA.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    # colnames(rRNA_sy)=c('chr','start','end','name','swScore','strand')
-    # rRNA_sy$type='rRNA'
-    
-    ###### rRNA BK00964.3 'https://www.ncbi.nlm.nih.gov/nuccore/NR_046233.1'
-    rRNA_BK00964=fread(paste0(Ref,"/mm10/AdditionalAnno/BK000964.3_TPA_rRNA_repeats2.bed.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    rRNA_BK00964=rRNA_BK00964[,c('V1','V2','V3','V4','V5','V6')]
-    colnames(rRNA_BK00964)=c('chr','start','end','name','swScore','strand')
-    rRNA_BK00964$strand="*"
-    rRNA_BK00964$type='rRNA'
-    
-    ##### Introns		mm10_intron.bed
-    introns_SY=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_intron.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    
-    ######## 
-    # Anno_bed_comb=rbind(yRNA_SY,tRNA_SY,srpRNA_SY,SKRNA_SY,scRNA_SY,rRNA_SY)
-    ###############################################
-    
-    ##### Soyeong Files GTF - from Gencode
-    
-    ##### sncRNA (mrp RNA, Rpph1, vault RNA)	mm10_snc.gtf
-    sncRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_snc.gtf"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    sncRNA_sy=separate(sncRNA_sy,col = "V9",into = c("gene","trans",'x'),sep = ";");sncRNA_sy$gene=gsub("gene_id ","",sncRNA_sy$gene);sncRNA_sy$trans=gsub("transcript_id ","",sncRNA_sy$trans)
-    sncRNA_sy=as.data.frame(sncRNA_sy)
-    sncRNA_sy=sncRNA_sy[,((colnames(sncRNA_sy)%in%'x')==F)]
-    
-    colnames(sncRNA_sy)=c('chr','source','gloc','start','end','V6','strand','V8','Gene_Ensemble','Transcript_id')
-    sncRNA_sy$type='sncRNA'
-    colnames(sncRNA_sy)[colnames(sncRNA_sy)%in%'Gene_Ensemble']='name'
-    
-    
-    ###### snRNA (Gencode)
-    # snRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_snRNA.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F )
-    snRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_snRNA.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F,quote="" )
-    colnames(snRNA_sy)=c('chr','source','gloc','start','end','V6','strand','V8','V9','Gene_Ensemble','V11','V12','V13','Transcript_id','V15','version')
-    snRNA_sy=snRNA_sy[snRNA_sy$gloc%in%'gene',]
-    
-    
-    ###### snoRNA (Gencode)
-    # snoRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_sno.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    snoRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_sno.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F,quote="")
-    colnames(snoRNA_sy)=c('chr','source','gloc','start','end','V6','strand','V8','V9','Gene_Ensemble','V11','V12','V13','Transcript_id','V15','version')
-    snoRNA_sy=snoRNA_sy[snoRNA_sy$gloc%in%'gene',]
-    
-    
-    ###### miRNA		mouse_gencode_miRNA.gtf.1 (Gencode)
-    miRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_miRNA.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F,quote="")
-    colnames(miRNA_sy)=c('chr','source','gloc','start','end','V6','strand','V8','V9','Gene_Ensemble','V11','V12','V13','Transcript_id','V15','version')
-    miRNA_sy=miRNA_sy[miRNA_sy$gloc%in%'gene',]
-    
-    
-    ###### rRNA pseudogenes and 5S	mm10_rRNA.bed and mouse_gencode_rRNA.gtf.1 (Gencode)
-    rRNA_gtf=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_rRNA.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F,quote="")
-    colnames(rRNA_gtf)=c('chr','source','gloc','start','end','V6','strand','V8','V9','Gene_Ensemble','V11','V12','V13','Transcript_id','V15','version')
-    rRNA_gtf=rRNA_gtf[rRNA_gtf$gloc%in%'gene',]
-    ## an examleof rRNA and rRNA_gtf chrY:991632-991664
-    
-    
-    
-    ###### linc RNA	mouse_gencode_linc.gtf.1 (Repeatmasker)
-    lincRNA_sy=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mouse_gencode_linc.gtf.1"), header=F, sep="\t",stringsAsFactors = F,data.table=F,quote="")
-    colnames(lincRNA_sy)=c('chr','source','gloc','start','end','V6','strand','V8','V9','Gene_Ensemble','V11','V12','V13','Transcript_id','V15','version')
-    lincRNA_sy=lincRNA_sy[lincRNA_sy$gloc%in%'gene',]
-    
-    
-    ###### mRNA	mm10_refFlat.gtf
-    # mRNA=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_refFlat.gtf"), header=F, sep="\t",stringsAsFactors = F,data.table=F,quote="")
-    # mRNA=separate(mRNA,col = "V9",into = c("gene","trans","x"),sep = ";");mRNA$gene=gsub("gene_id ","",mRNA$gene);mRNA$trans=gsub("transcript_id ","",mRNA$trans)
-    # mRNA$class=substring(separate(mRNA,col="gene",into = c("num","class"),sep = "-")$class,1,3)
-    # mRNA=separate(data=mRNA,col=trans,into=c('x','trans'),remove=T,sep = "\\.")
-    
-    
-    SY_LTR=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_LTR.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    SY_DNA=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_DNA.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    SY_sat=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_sat.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    SY_SR=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_simple.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    SY_LC=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_LC.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    SY_other=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_other.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    SY_unknown=fread(paste0(Ref,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_unknown.bed"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-    
-    # rmsk_GRCm38_repeat=rmsk_GRCm38[rmsk_GRCm38$repClass%in%c('Simple_repeat','Low_complexity','Other','Unknown'),]
-    # repeats_GRCm38=fread(paste0("./rbl.wolin.parclip/inst/extdata/rmsk_GRCm38_LSlc.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
   }
-  
-  }
-  ###########################################################################################################################################################################################
-  ###########################################################################################################################################################################################
-  
+
+  #################################################
   #### Create CLASSIFICATION table 
-  
-  ###########################################################################################################################################################################################
-  ###########################################################################################################################################################################################
-  
+  #################################################
   
   rnames=c('45S','chrM','yRNA','snRNA','snoRNA','srpRNA','tRNA','7SK RNA','scRNA','sncRNA','miRNA','rRNA_gencode','rRNA_rmsk','rRNA_DNA','lncRNA','lincRNA','mRNA','LINE','SINE','LTR','DNA','Satalites','Simple Repeats','Low Complexity','Other repeats','Unknown repeats','Introns')
   cnames=c('SY_count','Gencode','Repeatmasker','Comb','contents','source','Description','notes','Annotation_file')
@@ -776,17 +489,13 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   Classification['miRNA','Gencode']=nrow(miRNA_mm10)
   Classification['rRNA_gencode','Gencode']=nrow(rRNA_mm10)
   Classification['lncRNA','Gencode']=nrow(lncRNA_mm10)
-  
-  
   Classification['yRNA','Repeatmasker']=nrow(YRNA_rmsk)
   Classification['snRNA','Repeatmasker']=nrow(snRNA_rmsk)
   Classification['srpRNA','Repeatmasker']=nrow(srpRNA_rmsk)
   Classification['tRNA','Repeatmasker']=nrow(tRNA_rmsk)
   Classification['scRNA','Repeatmasker']=nrow(scRNA_rmsk)
-  # Classification['miRNA','Repeatmasker']=nrow(miRNA_rmsk)
   Classification['rRNA_rmsk','Repeatmasker']=nrow(rRNA_rmsk)
   Classification['7SK RNA','Repeatmasker']=nrow(SKRNA_rmsk)
-  
   Classification['LTR','Repeatmasker']=nrow(rmsk_GRCm38_LTR)
   Classification['DNA','Repeatmasker']=nrow(rmsk_GRCm38_DNA)
   Classification['Satalites','Repeatmasker']=nrow(rmsk_GRCm38_sat)
@@ -794,7 +503,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   Classification['Low Complexity','Repeatmasker']=nrow(rmsk_GRCm38_LC)
   Classification['Other repeats','Repeatmasker']=nrow(rmsk_GRCm38_Other)
   Classification['Unknown repeats','Repeatmasker']=nrow(rmsk_GRCm38_unknown)
-  
   Classification$Comb=rowSums(Classification[,c('Gencode','Repeatmasker')])
   
   if (species=='mm10') {
@@ -810,7 +518,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     Classification['rRNA','notes']='Use Gencode + Repeatmasker'
     Classification['lincRNA','notes']='older versions of Gencode use linc'
     Classification['lncRNA','notes']='Gencode'
-    
     Classification['yRNA','source']='Repeatmasker'
     Classification['snRNA','source']='Gencode_V23'
     Classification['snoRNA','source']='Gencode_V23'
@@ -886,34 +593,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     Classification['lncRNA','contents']=paste0('Various ',paste0(unique(lncRNA_mm10[lncRNA_mm10$gene_type_ALL%in%'lncRNA','transcript_type']),collapse = ', '))
     Classification['lincRNA','contents']=paste0('Various ',paste0(unique(lncRNA_mm10[lncRNA_mm10$gene_type_ALL%in%'lncRNA'==F,'transcript_type']),collapse = ', '))
   }  
-  # Classification['yRNA','Annotation_file']='yRNA.bed'
-  # Classification['snRNA','Annotation_file']='snRNA.bed'
-  # Classification['snoRNA','Annotation_file']='snoRNA.bed'
-  # Classification['srpRNA','Annotation_file']='srpRNA.bed'
-  # Classification['tRNA','Annotation_file']='tRNA.bed'
-  # Classification['7SK RNA','Annotation_file']='SKRNA.bed'
-  # Classification['scRNA','Annotation_file']='scRNA.bed'
-  # Classification['sncRNA','Annotation_file']='sncRNA.bed'
-  # Classification['miRNA','Annotation_file']='miRNA.bed'
-  # Classification['rRNA_gencode','Annotation_file']='rRNA_gencode.bed'
-  # Classification['rRNA_rmsk','Annotation_file']='rRNA_rmsk.bed'
-  # Classification['rRNA_DNA','Annotation_file']='rRNA_BK00964.bed'
-  # Classification['lncRNA','Annotation_file']='lncRNA.bed'
-  # Classification['lincRNA','Annotation_file']='lincRNA.bed'
-  
-  
-  # rRNA_gencode types unique(rRNA_mm10[order(rRNA_mm10$external_gene_name),'external_gene_name'])
-  # lncRMA_gencode types unique(lncRNA_mm10[order(lncRNA_mm10$external_gene_name),'external_gene_name'])
-  
-  
-  ### add annotations to Gencode for:
-  # yRNA_sy
-  # srpRNA_rmsk
-  # tRNA_sy
-  # SKRNA_rmsk
-  # scRNA_rmsk
-  # sncRNA_sy
-  # rRNA_rmsk
   
   if (WriteClassTable==T) {
     if (dir.exists(file.path(OUT))==F) {dir.create(file.path(OUT))}
@@ -937,8 +616,9 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
       write.table(rRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/rRNA_gencode.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
       write.table(rRNA_BK00964[,rmskcol],file=paste0(outdir,"/annotation/rRNA_BK00964.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
       write.table(lncRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/lncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-    }
-    if (species=='hg38'){
+      rnames_ncRNA=c('yRNA','snRNA','snoRNA','srpRNA','tRNA','7SK RNA','scRNA','sncRNA','miRNA','rRNA_gencode','rRNA_rmsk','rRNA_DNA','lncRNA','lincRNA')
+      cnames_ncRNA=c('source','contents','Description') 
+    } else if (species=='hg38'){
       write.table(YRNA_rmsk[,rmskcol],file=paste0(outdir,"/annotation/yRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
       write.table(snRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/snRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
       write.table(snoRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/snoRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
@@ -950,13 +630,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
       write.table(rRNA_rmsk[,rmskcol],file=paste0(outdir,"/annotation/rRNA_rmsk.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
       write.table(rRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/rRNA_gencode.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
       write.table(lncRNA_mm10[,mm10col],file=paste0(outdir,"/annotation/lncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-    }
-    
-    if (species=='mm10') {
-      rnames_ncRNA=c('yRNA','snRNA','snoRNA','srpRNA','tRNA','7SK RNA','scRNA','sncRNA','miRNA','rRNA_gencode','rRNA_rmsk','rRNA_DNA','lncRNA','lincRNA')
-      cnames_ncRNA=c('source','contents','Description') 
-    }
-    if (species=='hg38') {
       rnames_ncRNA=c('yRNA','snRNA','snoRNA','srpRNA','tRNA','7SK RNA','scRNA','miRNA','rRNA_gencode','rRNA_rmsk','lncRNA')
       cnames_ncRNA=c('source','contents','Description')
     }
@@ -967,44 +640,31 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   }
   
 
-  ###########################################################################################################################################################################################
-  ###########################################################################################################################################################################################
+
+  #############################################################################
   ## Identify CLIP peak Gene Location
   
   ### Identify CLIP peak Host gene   
   
   # Using GTF file from GENCODE v24  
   # Peaks were annotated with overlapping gene  
-  ###########################################################################################################################################################################################
-  ###########################################################################################################################################################################################
-  
+
   ##################################################################################################
   #### FUNCTIONS
-  ##################################################################################################
-  
-  ##################################################################################################
-  
+  #################################################################################################
   bam_anno2=function(peaksTable,Annotable,ColumnName){
-    # peaksTable=peaks
-    # Annotable=rbind(mm10[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')],
-    #                 mm10allRefseq[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')],
-    #                 lncRNA_mm10[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')])
-    # ColumnName=c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
-
     p=peaksTable[,c('chr','start','end','ID','ID2','strand')]
     a=Annotable[,c('chr','start','end','chr','chr','strand',ColumnName)]
     a[,4:5]=""
     colnames(a)[colnames(a)%in%c('chr','start','end','strand')]=paste0(c('chr','start','end','strand'),'_anno')
-    # ColumnName=c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
-    
+
     write.table(a,file=paste0(outdir,"/",misc,"/annotable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
     write.table(p,file=paste0(outdir,"/",misc,"/peakstable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
     
     system(paste0('bedtools intersect -a ',gsub(" ","\\\\ ",outdir),'/',misc,'/peakstable.bed -b ',gsub(" ","\\\\ ",outdir),'/',misc,'/annotable.bed -wao -s > ',gsub(" ","\\\\ ",outdir),'/',misc,'/peaks_mm10_OL.txt'))
     ab_OL=fread(paste0(outdir,"/",misc,"/peaks_mm10_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
     colnames(ab_OL)=c(paste0(colnames(p)),paste0(colnames(a)),'ntOL')
-    # colnames(ab_OL)[colnames(ab_OL)%in%paste0(c('ID','ID2'),'_peaks')]=c('ID','ID2')
-    
+
     ab_OL$width=ab_OL$end-ab_OL$start
     ab_OL$width_anno=ab_OL$end_anno-ab_OL$start_anno
     
@@ -1038,15 +698,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     
     ab_OL_colapsed=rbind(ab_OL_colapsed,ab_OL_single)
     ab_OL_colapsed=ab_OL_colapsed[!is.na(ab_OL_colapsed$ID),]
-    
     ab_OL_colapsed[(ab_OL_colapsed$ntOL<=0),ColumnName]=NA
-    
-    # ab_OL_colapsed[(((ab_OL_colapsed$gene_type>0)==F)&(is.na(ab_OL_colapsed$gene_type)==F)),ColumnName]=NA
-    # for (cx in 1:length(ColumnName)) {
-    # ab_OL_colapsed[is.na(ab_OL_colapsed[,ColumnName[cx]]),ColumnName[cx]]=NA
-    # ab_OL_colapsed[ab_OL_colapsed[,ColumnName[cx]]%in%"",ColumnName[cx]]=NA
-    # }
-    
     ab_OL=ab_OL_colapsed
     system(paste0('rm ',gsub(" ","\\\\ ",outdir),'/',misc,'/annotable.bed'))
     system(paste0('rm ',gsub(" ","\\\\ ",outdir),'/',misc,'/peakstable.bed'))
@@ -1059,11 +711,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   ##################################################################################################
   
   rpmsk_anno=function(ColumnName,Annotable,peaksTable){
-    
-    # ColumnName='test'
-    # Annotable=rmsk_GRCm38_LISI
-    # peaksTable=PeaksdataOut
-    
     s=peaksTable
     s=separate(s,ID,into=c('chr','start'),sep=":",remove=F)
     s=separate(s,start,into=c('start','end'),sep="-",remove=F)
@@ -1092,8 +739,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     colnames(peaksTable_colapsed)=colnames(peaksTable_double)
     for(x in 1:length(u)){
       p=u[x]
-      # pd=as.numeric(peaks2[x,'V4'])
-      
       pam=peaksTable_double[peaksTable_double$ID%in%p,]
       peaksTable_colapsed[x,colnames(peaksTable_double)%in%c(ColumnName)==F]=(pam[1,colnames(peaksTable_double)%in%c(ColumnName)==F,drop=T])
       
@@ -1101,13 +746,9 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     }
     
     peaksTable_colapsed=rbind(peaksTable_colapsed,peaksTable_single)
-    # peaksTable_colapsed=peaksTable_colapsed[duplicated(peaksTable_colapsed[,colnames(peaksTable_colapsed)%in%c(ColumnName)==F])==F,]
-    
     peaksTable_colapsed=peaksTable_colapsed[!is.na(peaksTable_colapsed$ID),]
-    
     peaksTable_colapsed[is.na(peaksTable_colapsed[,ColumnName]),ColumnName]=NA
     peaksTable_colapsed[peaksTable_colapsed[,ColumnName]%in%"",ColumnName]=NA
-    
     peaksTable=peaksTable_colapsed
     
     return(peaksTable) 
@@ -1123,24 +764,21 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   for (xopp in 1:2) {
     # for (xopp in 1) {
       
-    if (xopp==1) {peaks=peaks;nmeprfix='Same_'}
-    if (xopp==2) {peaks=peaks_oppo;nmeprfix='Oppo_'}
-    
-
+    if (xopp==1) {
+      peaks=peaks;nmeprfix='Same_'
+    } else if (xopp==2) {
+      peaks=peaks_oppo;nmeprfix='Oppo_'
+    }
 
     if (species=='hg38'){
     p=bam_anno2(peaks,
                 rbind(mm10[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')],
                       mm10allRefseq[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')],### added anno for chrm not in gencode
                       lncRNA_mm10[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')]
-                      # mm10Refseq_snoRNA[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')]
                       ),
-                
                 c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
                            )
-    }
-    
-    if (species=='mm10'){
+    } else if (species=='mm10'){
       annocol=c('chr','start','end','strand','type','name')
       Anno_RNA_comb=rbind(YRNA_rmsk[,annocol],srpRNA_rmsk[,annocol],tRNA_sy[,annocol],SKRNA_rmsk[,annocol],scRNA_rmsk[,annocol],sncRNA_sy[,annocol],rRNA_rmsk[,annocol],rRNA_BK00964[,annocol])
       
@@ -1151,23 +789,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
       )
     }
     PeaksdataOut=merge(peaks,p[,c('ID','ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')],by='ID',all.x=T)
-    
-    ###### idnividual columns
-    ### add annotations for:
-    # yRNA_sy or yRNA_rmsk
-    # srpRNA_rmsk
-    # tRNA_sy
-    # SKRNA_rmsk
-    # scRNA_rmsk
-    # sncRNA_sy
-    # rRNA_rmsk
-    # PeaksdataOut=bam_anno('yRNA',yRNA_sy,PeaksdataOut)
-    # PeaksdataOut=bam_anno('srpRNA',srpRNA_rmsk,PeaksdataOut)
-    # PeaksdataOut=bam_anno('tRNA',tRNA_sy,PeaksdataOut)
-    # PeaksdataOut=bam_anno('SKRNA',SKRNA_rmsk,PeaksdataOut)
-    # PeaksdataOut=bam_anno('scRNA',scRNA_rmsk,PeaksdataOut)
-    # PeaksdataOut=gtf_anno('sncRNA',sncRNA_sy,PeaksdataOut)
-    # PeaksdataOut=bam_anno('rRNA',rRNA_rmsk,PeaksdataOut)
     
     ### Add Column that commbines all additional annotations
     annocol=c('chr','start','end','strand','type','name')
@@ -1277,9 +898,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
       pam_c2$a=gsub('sRNA','ncRNA',pam_c2$a)
       pam_c2$a=gsub('scaRNA','ncRNA',pam_c2$a)
       pam_c2$a=gsub('rRNA','ncRNA',pam_c2$a)
-      # pam_c2$a=gsub('lncRNA','ncRNA',pam_c2$a)
-      # pam_c2$a=gsub('lincRNA','ncRNA',pam_c2$a)
-      
+
       #### extra annotation unique(Anno_RNA_comb$type )
       pam_c2$a=gsub('yRNA','ncRNA',pam_c2$a)
       pam_c2$a=gsub('srpRNA','ncRNA',pam_c2$a)
@@ -1305,14 +924,9 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
       pam_G2=pam$name ### gene name from annotation
       pam_G2=as.data.frame(strsplit(pam_G2,','));colnames(pam_G2)='a';pam_G2$a=as.character(pam_G2$a)
       
-      # ### if using Linc any lnc,linc get changed to linc
-      # if ((pam_G1%in%'lncRNA')&(pam_2%in%'lincRNA')) {pam_1$a='lincRNA'}
-      # 
-      ### if gene name is gm (gencode) change to HY1 ( soyeong db)
-      # if (grepl('Gm',pam_G1)&grepl('HY1',pam_G2)) {pam_G2[pam_G2$a%in%'HY1',]=NA}
-      
-      ### if gene name is sk (gencode) change to sk ( repeatmakser db)
-      if (grepl('sk',pam_G1)&grepl('7SK',pam_G2)) {pam_G2[pam_G2$a%in%'7SK',]=NA}
+      if (grepl('sk',pam_G1)&grepl('7SK',pam_G2)) {
+        pam_G2[pam_G2$a%in%'7SK',]=NA
+      }
       
       pam_G3=rbind(pam_G1,pam_G2)
       pam_G3=pam_G3[!is.na(pam_G3$a),,drop=F]
@@ -1374,8 +988,7 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     a=Annotable[,c('chr','start','end','transcript_id','transcript_id','strand',ColumnName)]
     a[,5]=""
     colnames(a)[colnames(a)%in%c('chr','start','end','strand')]=paste0(c('chr','start','end','strand'),'_anno')
-    # ColumnName=c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
-    
+
     write.table(a,file=paste0(outdir,"/",misc,"/annotable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
     write.table(p,file=paste0(outdir,"/",misc,"/peakstable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
     
@@ -1383,9 +996,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     
     exoninof=fread(paste0(outdir,"/",misc,"/peaks_mm10_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
     colnames(exoninof)=c(paste0(colnames(p)),paste0(colnames(a)),'ntOL')
-    # colnames(ab_OL)[colnames(ab_OL)%in%paste0(c('ID','ID2'),'_peaks')]=c('ID','ID2')
-    
-    
     exoninof=exoninof[exoninof$ntOL>0,]
     exoninof$width_anno=exoninof$end_anno-exoninof$start_anno
     exoninof$OLper_anno=exoninof$ntOL/exoninof$width_anno
@@ -1454,8 +1064,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
           if (xopp==1) {
             g_e[g_e[,paste0(nmeprfix,'feature_Distance')]<0,paste0(nmeprfix,'feature_Distance')]=0
             peaksTable[x,paste0(nmeprfix,'Exn_start_dist')]=mean(as.numeric(g_e[,paste0(nmeprfix,'feature_Distance')]))
-            # peaksTable[x,paste0(nmeprfix,'Exn_5pStart')]=paste(unique(as.numeric(g_e[,paste0(nmeprfix,'feature_5pStart')])),collapse = ", ")
-            # peaksTable[x,paste0(nmeprfix,'Exn_5pStart')]=g_e[g_e$transcript_id%in%canonical$transcript,paste0(nmeprfix,'feature_5pStart')]
           }
         }
         
@@ -1469,9 +1077,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
           if (xopp==1) {
             g_i[g_i[,paste0(nmeprfix,'feature_Distance')]<0,paste0(nmeprfix,'feature_Distance')]=0
             peaksTable[x,paste0(nmeprfix,'Intron_start_dist')]=mean(as.numeric(g_i[,paste0(nmeprfix,'feature_Distance')]))
-            # peaksTable[x,paste0(nmeprfix,'Intron_5pStart')]=paste(unique(as.numeric(g_i[,paste0(nmeprfix,'feature_5pStart')])),collapse = ", ")
-            # peaksTable[x,paste0(nmeprfix,'Intron_5pStart')]=g_i[g_i$transcript_id%in%canonical$transcript,paste0(nmeprfix,'feature_5pStart')]
-            
           }
         }
       }
@@ -1575,9 +1180,6 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     #############################################################################################################
     #############################################################################################################
     
-    # write.table(peaksTable,file=("Clip_Peaks_2.txt"), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE)
-    # ncRNA > exonic > repeats > pseudogene > antisense > intronic > lncRNA > noFeature 
-    
     PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]=NA
     
     PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')] )
@@ -1592,56 +1194,36 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
     # PeaksdataOut=PeaksdataOutx
     
     # 1. ncRNA        
-    # comp=( grepl('ncRNA',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) & ((PeaksdataOut[,paste0(nmeprfix,'type_comb')]%in%c('lincRNA-exon','lincRNA-intron','lncRNA'))==F) )
-    # comp=( grepl('ncRNA',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) ) & ( grepl('lincRNA-exon|lincRNA-intron|lncRNA',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')])==F )
-    comp=( grepl('ncRNA',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) ) 
-    # sum(as.numeric(comp))
+     comp=( grepl('ncRNA',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) ) 
     PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='ncRNA'
     
     # 2. protein coding - Exonic
     comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('protein_coding',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')])&(grepl('exon',PeaksdataOut[,paste0(nmeprfix,'feature')])) )
-    # sum(as.numeric(comp))
     PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='protein_coding: exon'
     
     # 3. repeats
     comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& (is.na(PeaksdataOut[,paste0(nmeprfix,'Repeat_comb')])==F) )
-    # sum(as.numeric(comp))
     PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]="Repeat Element"
     
     # 4. Pseudogene
     comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('pseudogene',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) )
-    # sum(as.numeric(comp))
     PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='pseudogene'
     
     # 5. lncRNA-exon
-    # comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('ncRNA',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')])& ((PeaksdataOut[,paste0(nmeprfix,'type_comb')]%in%c('lincRNA-exon','lincRNA-intron','lncRNA'))==T) )
-    # comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]) & ((PeaksdataOut[,paste0(nmeprfix,'type_comb')]%in%c('linLcRNA-exon','lnLcRNA'))==T) )
     comp1=is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])  
     comp2=grepl('linLcRNA-exon',PeaksdataOut[,paste0(nmeprfix,'type_comb')]) | grepl('lnLcRNA',PeaksdataOut[,paste0(nmeprfix,'type_comb')])
     comp=comp1&comp2       
-    # sum(as.numeric(comp))
     PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='lnLcRNA-exon'
-    # View(PeaksdataOut[comp,])
     
     # 6. intron
     comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('protein_coding',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) )
-    # sum(as.numeric(comp))
     PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='protein_coding: Intron'
     
     # 7. lncRNA-intron
-    # comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('ncRNA',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')])& ((PeaksdataOut[,paste0(nmeprfix,'type_comb')]%in%c('lincRNA-exon','lincRNA-intron','lncRNA'))==T) )
-    # comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]) & ((PeaksdataOut[,paste0(nmeprfix,'type_comb')]%in%c('linLcRNA-intron'))==T) )
     comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]) & (grepl('linLcRNA-intron',PeaksdataOut[,paste0(nmeprfix,'type_comb')]) ))
-    # sum(as.numeric(comp))
     PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='lnLcRNA-intron'
-    
-    
     PeaksdataOut[is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]),paste0(nmeprfix,'Comb_type_exon')]='no Feature'
-    
-    
     PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]=factor(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')], levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lnLcRNA-exon","Antisense Feature","protein_coding: Intron","lnLcRNA-intron","no Feature"))
-    
-    # PeaksdataOut[is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]),]
     
     ##############################
     #### RNA subtypes
@@ -1718,80 +1300,54 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   # PeaksdataOut$type_simple_comb
   
   # 1. ncRNA        
-  # comp=(grepl('ncRNA',PeaksdataOut[,paste0('Same_','type_simple_comb')])& (PeaksdataOut[,paste0('Same_','type_comb')]%in%'lncRNA')==F)
   comp=(grepl('ncRNA',PeaksdataOut[,paste0('Same_','type_simple_comb')],fixed = T) )
-  # sum(as.numeric(comp))
   PeaksdataOut[comp,'Comb_type_exon_Oppo']='ncRNA'
 
   # 2. protein coding - Exonic
   comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])&grepl('protein_coding',PeaksdataOut[,paste0('Same_','type_simple_comb')])&(grepl('exon',PeaksdataOut[,paste0('Same_','feature')])) )
-  # sum(as.numeric(comp))
   PeaksdataOut[comp,'Comb_type_exon_Oppo']=paste0('protein_coding: exon')
   
   # 3. repeats
   comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])&(is.na(PeaksdataOut[,paste0('Same_','Repeat_comb')])==F) )
-  # sum(as.numeric(comp))
   PeaksdataOut[comp,'Comb_type_exon_Oppo']="Repeat Element"
   
   # 4. Pseudogene
   comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('pseudogene',PeaksdataOut[,paste0('Same_','type_simple_comb')]))
-  # sum(as.numeric(comp))
   PeaksdataOut[comp,'Comb_type_exon_Oppo']='pseudogene'
   
   # 5. Antisense - non LncRNA
   comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
-  # sum(as.numeric(comp))
   PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
   
-  
-  
-  
   # 6. lncRNA-exon
-  # comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('ncRNA',PeaksdataOut[,paste0('Same_','type_simple_comb')])& ((PeaksdataOut[,paste0('Same_','type_comb')]%in%'lncRNA')==T) )
   comp1=is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])
   comp2=((PeaksdataOut[,paste0('Same_','type_comb')]%in%c('linLcRNA-exon')) | (PeaksdataOut[,paste0('Same_','type_comb')]%in%c('lnLcRNA')) )
   comp=comp1&comp2       
-  # sum(as.numeric(comp))
   PeaksdataOut[comp,'Comb_type_exon_Oppo']='lnLcRNA-exon'
   
   # 7. Antisense - LncRNA - exon
   comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA-intron',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
-  # sum(as.numeric(comp))
   PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
-  
   
   # 8. intron
   comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('protein_coding',PeaksdataOut[,paste0('Same_','type_simple_comb')]))
-  # sum(as.numeric(comp))
   PeaksdataOut[comp,'Comb_type_exon_Oppo']=paste0('protein_coding: Intron')
-  
   
   # 9. Antisense - LncRNA - intron
   comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA-exon',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
-  # sum(as.numeric(comp))
   PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
   
   # 10. lncRNA -intron
-  # comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('ncRNA',PeaksdataOut[,paste0('Same_','type_simple_comb')])& ((PeaksdataOut[,paste0('Same_','type_comb')]%in%'lncRNA')==T) )
   comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo']) & ((PeaksdataOut[,paste0('Same_','type_comb')]%in%'linLcRNA-intron')==T) )
-  # sum(as.numeric(comp))
   PeaksdataOut[comp,'Comb_type_exon_Oppo']='lnLcRNA-intron'
-  
-  
   PeaksdataOut[is.na(PeaksdataOut[,'Comb_type_exon_Oppo']),'Comb_type_exon_Oppo']='no Feature'
   
-  # PeaksdataOut[,'Comb_type_exon_Oppo']=factor(PeaksdataOut[,'Comb_type_exon_Oppo'], levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lnLcRNA-exon","Antisense Feature","protein_coding: Intron","lnLcRNA-intron","no Feature"))
-
   
   ### only distances for final classification
-  # PeaksdataOut[(PeaksdataOut$Comb_type_exon_Oppo%in%c("protein_coding: exon")==F),c("Same_Exn_start_dist")]=NA
-  # PeaksdataOut[(PeaksdataOut$Comb_type_exon_Oppo%in%c("protein_coding: Intron")==F),c("Same_Intron_start_dist")]=NA
-  ### distances to any protein coading annotation
+  ## distances to any protein coading annotation
   PeaksdataOut[grepl('protein_coding',PeaksdataOut$Same_type_comb)==F,c("Same_Exn_start_dist")]=NA
   PeaksdataOut[grepl('protein_coding',PeaksdataOut$Same_type_comb)==F,c("Same_Intron_start_dist")]=NA
   
-  # View(PeaksdataOut[(PeaksdataOut$Comb_type_exon_Oppo%in%c("protein_coding: exon","protein_coding: Intron")==F),])
-
   ################################################  
   ### Revert lnLcRNA to lncRNA  
   
@@ -1801,29 +1357,13 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')] )
   PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
   PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
-
   PeaksdataOut[,'Comb_type_exon_Oppo']=factor(PeaksdataOut[,'Comb_type_exon_Oppo'], levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lncRNA-exon","Antisense Feature","protein_coding: Intron","lncRNA-intron","lncRNA","no Feature"))
 
-  
-  # PeaksdataOut[,paste0(c('Same_','Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,paste0(c('Same_','Oppo_'),'Comb_type_exon')] )
-  # PeaksdataOut[,paste0(c('Same_','Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,paste0(c('Same_','Oppo_'),'Comb_type_exon')] )
-  # PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
-  # PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
-  # 
-  # PeaksdataOut[,paste0(c('Same_','Oppo_'),'type_simple_comb')]= gsub('linLcRNA',"lincRNA",PeaksdataOut[,paste0(c('Same_','Oppo_'),'type_simple_comb')] )
-  # PeaksdataOut[,paste0(c('Same_','Oppo_'),'type_simple_comb')]= gsub('lnLcRNA',"lnLcRNA",PeaksdataOut[,paste0(c('Same_','Oppo_'),'type_simple_comb')] )
-  # PeaksdataOut[,paste0(c('Same_','Oppo_'),'type_comb')]= gsub('linLcRNA',"lincRNA",PeaksdataOut[,paste0(c('Same_','Oppo_'),'type_comb')] )
-  # PeaksdataOut[,paste0(c('Same_','Oppo_'),'type_comb')]= gsub('lnLcRNA',"lnLcRNA",PeaksdataOut[,paste0(c('Same_','Oppo_'),'type_comb')] )
-  # PeaksdataOut[,paste0(c('Same_','Oppo_'),'gene_type')]= gsub('linLcRNA',"lincRNA",PeaksdataOut[,paste0(c('Same_','Oppo_'),'gene_type')] )
-  # PeaksdataOut[,paste0(c('Same_','Oppo_'),'gene_type')]= gsub('lnLcRNA',"lnLcRNA",PeaksdataOut[,paste0(c('Same_','Oppo_'),'gene_type')] )
-  # PeaksdataOut[,paste0(c('Same_','Oppo_'),'gene_type_ALL')]= gsub('linLcRNA',"lincRNA",PeaksdataOut[,paste0(c('Same_','Oppo_'),'gene_type_ALL')] )
-  # PeaksdataOut[,paste0(c('Same_','Oppo_'),'gene_type_ALL')]= gsub('lnLcRNA',"lnLcRNA",PeaksdataOut[,paste0(c('Same_','Oppo_'),'gene_type_ALL')] )
-    
   unlink(misc, recursive = TRUE)  
   return(PeaksdataOut)
 }
 
-flag = "local"
+flag = "test"
 
 if (flag=="R"){
   Peaksdata2=read.csv("/Volumes/sevillas2/git/iCLIP/workflow/scripts/peakstest.csv")
@@ -1832,13 +1372,13 @@ if (flag=="R"){
   species = "hg38"
   outdir = "/Volumes/data/iCLIP/marco/14_annotation/"
   Ref = "/Volumes/iCLIP/ref/CLIP_Anno"
-} else{
+  CLIPannotation(peaks,WriteClassTable,species,outdir,Ref)
+} else if (flag = "local") {
   Peaksdata2=read.csv("/home/sevillas2/git/iCLIP/workflow/scripts/peakstest.csv")
   peaks = Peaksdata2[,c('chr','start','end','strand')]
   WriteClassTable = T
   species = "hg38"
   outdir = "/data/sevillas2/iCLIP/marco/14_annotation/"
   Ref = "/data/RBL_NCI/iCLIP/ref/CLIP_Anno"
-  
+  CLIPannotation(peaks,WriteClassTable,species,outdir,Ref)
 }
-CLIPannotation(peaks,WriteClassTable,species,outdir,Ref)
