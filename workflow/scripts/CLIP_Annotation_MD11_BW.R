@@ -19,9 +19,9 @@ library(fitdistrplus,quietly = T,verbose = F,warn.conflicts = F,logical.return =
 library(stringr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
 library(data.table)
 library(reshape)
-library(knitr)
+#library(knitr)
 library(stringi)
-library(biomaRt)
+#library(biomaRt)
 library(plotly)
 library(tidyr)
 library(GenomicRanges)
@@ -30,7 +30,7 @@ library(RColorBrewer)
 CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   # peaksIN=bedfile in format- c('chr','start','end','strand')
   # WriteClassTable - Create output folder with bed files for each annotation classification
-  
+  OUT = paste0(outdir,'annotation/')
   test=F
   # test=T
   
@@ -1822,9 +1822,23 @@ CLIPannotation=function(peaks,WriteClassTable,species,outdir,Ref){
   unlink(misc, recursive = TRUE)  
   return(PeaksdataOut)
 }
-#Peaksdata2=read.csv("/Volumes/sevillas2/git/iCLIP/workflow/scripts/peakstest.csv")
-#peaks = Peaksdata2[,c('chr','start','end','strand')]
-#WriteClassTable = T
-#species = "hg38"
-#outdir = "/Volumes/data/iCLIP/marco/fCLIP_HS/15_annotation/"
-#Ref = "/Volumes/iCLIP/ref/CLIP_Anno"
+
+flag = "local"
+
+if (flag=="R"){
+  Peaksdata2=read.csv("/Volumes/sevillas2/git/iCLIP/workflow/scripts/peakstest.csv")
+  peaks = Peaksdata2[,c('chr','start','end','strand')]
+  WriteClassTable = T
+  species = "hg38"
+  outdir = "/Volumes/data/iCLIP/marco/14_annotation/"
+  Ref = "/Volumes/iCLIP/ref/CLIP_Anno"
+} else{
+  Peaksdata2=read.csv("/home/sevillas2/git/iCLIP/workflow/scripts/peakstest.csv")
+  peaks = Peaksdata2[,c('chr','start','end','strand')]
+  WriteClassTable = T
+  species = "hg38"
+  outdir = "/data/sevillas2/iCLIP/marco/14_annotation/"
+  Ref = "/data/RBL_NCI/iCLIP/ref/CLIP_Anno"
+  
+}
+CLIPannotation(peaks,WriteClassTable,species,outdir,Ref)
