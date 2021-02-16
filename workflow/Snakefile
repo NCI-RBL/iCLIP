@@ -51,6 +51,7 @@ min_count = config['minimum_count']
 nt_merge = str(config['nt_merge']) + 'nt'
 peak_id = config['peak_id'].capitalize()
 DE_method = config['DE_method'].capitalize()
+sp_junc = config['splice_junction'].capitalize()
 
 #split_params
 def check_split(split_in):
@@ -75,6 +76,20 @@ if (splice_aware=='N'):
     nova_index = index_list[nova_ref]['std']
 else:
     nova_index = index_list[nova_ref]['spliceaware'][str(splice_bp)+'bp']
+
+#reference selection
+if(nova_ref == "mm10"){
+    genome_ref = "GENCODE mm10 v23"
+} elif(nova_ref=="hg38"){
+    genome_ref = "GENCODE hg38 v32"
+}
+
+#junctions
+if(sp_junc=="Y"){
+    sp_junc = TRUE
+}else{
+    sp_junc = FALSE
+}
 
 #dict multiplex name (1): sample name (1): barcodes (>1, will vary)
 def CreateSampleDicts(df_m,df_s):
@@ -305,7 +320,7 @@ rule all:
         expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt'), sp=sp_list),
 
         #In progress
-        #expand(join(out_dir,'inprogress/peaks_{sp}.txt'),sp=sp_list),
+        expand(join(out_dir,'14_peaks/peaks_{sp}.txt'),sp=sp_list),
 
         # #Annotation
         # #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
@@ -347,7 +362,7 @@ if (multiplex_flag == 'Y'):
             mm = mismatch,
         envmodules:
             config['python'],
-            config['Qt']
+            #config['Qt']
         output:
             o1 = expand(join(out_dir,'{mp}','00_qc_post','{mp}_barcode.png'),mp=samp_dict.keys()),
             o2 = expand(join(out_dir,'{mp}','00_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys())
@@ -1288,31 +1303,31 @@ rule merge_peaks_file:
         all = join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt')
     params:
         rname = 'ic_peaks',
-        script = join(out_dir,source_dir,'workflow/scripts/peak_01.R'),
-        g_ref = "GENCODE hg38 v32", #GENCODE mm10 v23
-        p_type = "all", #unique, mm, all
-        junc = "TRUE", #TRUE or FALSE
-        r_depth= 5,
-        d_method='MAnorm',
+        script = join(out_dir,source_dir,'workflow/scripts/06_peaks.R'),
+        g_ref = genome_ref
+        p_type = peak_id
+        junc = sp_junc
+        r_depth= min_count
+        d_method=DE_method
         sp = "{sp}",
         n_merge = nt_merge,
-        base = join(out_dir,'inprogress/'),
+        base = join(out_dir,'14_annotation/'),
     envmodules:
         config['R'],
     output:
-        o1 = join(out_dir,'inprogress','peaks_{sp}.txt')
+        o1 = join(out_dir,'14_peaks','peaks_{sp}.txt')
     shell:
         '''
         Rscript {params.script} \
-        {params.p_type} \
-        {input.unique} \
-        {input.all} \
-        {params.junc} \
-        {params.r_depth} \
-        {params.d_method} \
-        {params.sp} \
-        {params.n_merge} \
-        {params.base}
+            {params.p_type} \
+            {input.unique} \
+            {input.all} \
+            {params.junc} \
+            {params.r_depth} \
+            {params.d_method} \
+            {params.sp} \
+            {params.n_merge} \
+            {params.base}
         '''
 
 rule annotations:
