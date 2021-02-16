@@ -48,7 +48,7 @@ multiplex_flag = config['multiplex_flag'].capitalize()
 mismatch = config['mismatch_allowance']
 split_value =  config['split_value']
 min_count = config['minimum_count']
-nt_merge = config['nt_merge']
+nt_merge = str(config['nt_merge']) + 'nt'
 peak_id = config['peak_id'].capitalize()
 DE_method = config['DE_method'].capitalize()
 
@@ -293,18 +293,23 @@ rule all:
         expand(join(out_dir,'10_dedup_split/{sp}.dedup.unique.i.bam'), sp=sp_list),
 
         #Bed files
-        expand(join(out_dir,'11_bed','{sp}.unique.bed'), sp=sp_list),
+        expand(join(out_dir,'11_bed','{sp}_all.bed'), sp=sp_list),
+        expand(join(out_dir,'11_bed','{sp}_unique.bed'), sp=sp_list),
 
         #SAF 
-        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'.SAF'), sp=sp_list),
+        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_all.SAF'), sp=sp_list),
+        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
 
         #Count features
         expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_unique.txt'), sp=sp_list),
         expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt'), sp=sp_list),
 
+        #In progress
+        #expand(join(out_dir,'inprogress/peaks_{sp}.txt'),sp=sp_list),
+
         # #Annotation
         # #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
-        # expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.html'),zip, mp=mp_list, sp=sp_list),
+        #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.html'),zip, mp=mp_list, sp=sp_list),
 
 include: "rules/common.smk"
 include: "rules/other.smk"
@@ -416,7 +421,6 @@ else:
             o1 = expand(join(out_dir,'{mp}','01_renamed','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list)
         shell:
             '{params.cmd}'
-
 
 rule remove_adaptors:
     """
@@ -1169,42 +1173,54 @@ rule index_dedup_unique:
         cp {input.f1} {output.o1}; samtools index {output.o1};
         """
 
-rule create_bed:
+rule create_beds:
     """
-    create bed file from the deduped unique file
+    create bed file from the deduped unique file and deduped all file
     """
     input:
-        f1 = join(out_dir,'10_dedup_split','{sp}.dedup.unique.i.bam'),
+        all = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
+        unique = join(out_dir,'10_dedup_split','{sp}.dedup.unique.i.bam'),
     params:
         rname='ic_bed',
     envmodules:
         config['bedtools']  
     output:
-        o1 = join(out_dir,'11_bed','{sp}.unique.bed')
+        all = join(out_dir,'11_bed','{sp}_all.bed'),
+        unique = join(out_dir,'11_bed','{sp}_unique.bed')
     shell:
         """
         bedtools bamtobed \
-            -split -i {input.f1} | bedtools sort -i - > {output.o1} 
+            -split -i {input.all} | bedtools sort -i - > {output.all}; 
+        bedtools bamtobed \
+            -split -i {input.unique} | bedtools sort -i - > {output.unique}; 
         """
 
-rule create_saf: 
+rule create_safs: 
     """
+    create SAF files from the deduped unique bed and all bed files
     """
     input:
-        f1 = join(out_dir,'11_bed/{sp}.unique.bed'),
+        all = join(out_dir,'11_bed','{sp}_all.bed'),
+        unique = join(out_dir,'11_bed','{sp}_unique.bed')
     params:
         rname='ic_saf',
     envmodules:
         config['bedtools']  
     output:
-        o1 = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '.SAF')
+        all = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '_all.SAF'),
+        unique = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '_unique.SAF')
     shell:
         """
         bedtools merge \
             -c 6 -o count,distinct -bed -s -d 50 \
-            -i {input.f1} | \
+            -i {input.all} | \
             awk '{{OFS="\t"; print $1":"$2"-"$3,$1,$2,$3,$5}}'| \
-            awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > {output.o1}
+            awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > {output.all};
+        bedtools merge \
+            -c 6 -o count,distinct -bed -s -d 50 \
+            -i {input.unique} | \
+            awk '{{OFS="\t"; print $1":"$2"-"$3,$1,$2,$3,$5}}'| \
+            awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > {output.unique}
         """
 
 rule feature_counts_unique:
@@ -1213,8 +1229,8 @@ rule feature_counts_unique:
     When peaks counts are combined for peaks connected by splicing in Rscript)
     """
      input:
-        bam = join(out_dir,'10_dedup_split','{sp}.dedup.unique.bam'),
-        saf = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '.SAF')
+        bam = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
+        saf = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '_unique.SAF')
     params:
         rname='ic_saf',
     envmodules:
@@ -1243,8 +1259,8 @@ rule feature_counts_all:
     whole count for the unique alignement in combined peak.
     """
      input:
-        bam = join(out_dir,'10_dedup_split/{sp}.dedup.unique.bam'),
-        saf = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '.SAF')
+        bam = join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'),
+        saf = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '_all.SAF')
     params:
         rname='ic_saf',
     envmodules:
@@ -1266,40 +1282,91 @@ rule feature_counts_all:
             {input.bam}
         """  
 
+rule merge_peaks_file:
+    input:
+        unique = join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),
+        all = join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt')
+    params:
+        rname = 'ic_peaks',
+        script = join(out_dir,source_dir,'workflow/scripts/peak_01.R'),
+        g_ref = "GENCODE hg38 v32", #GENCODE mm10 v23
+        p_type = "all", #unique, mm, all
+        junc = "TRUE", #TRUE or FALSE
+        r_depth= 5,
+        d_method='MAnorm',
+        sp = "{sp}",
+        n_merge = nt_merge,
+        base = join(out_dir,'inprogress/'),
+    envmodules:
+        config['R'],
+    output:
+        o1 = join(out_dir,'inprogress','peaks_{sp}.txt')
+    shell:
+        '''
+        Rscript {params.script} \
+        {params.p_type} \
+        {input.unique} \
+        {input.all} \
+        {params.junc} \
+        {params.r_depth} \
+        {params.d_method} \
+        {params.sp} \
+        {params.n_merge} \
+        {params.base}
+        '''
+
 rule annotations:
     """
     """
     input:
-        unique = join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),
-        all = join(out_dir,'{mp}/14_counts/{sp}_'+ str(nt_merge) +'_all.txt')
+        unique = join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),
+        all = join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt')
     params:
         rname='ic_anno',
-        R = join(source_dir,'workflow','scripts','06_annotation.R'),
+        R = join(source_dir,'workflow','scripts','CLIP_MD15_BW.Rmd'),
         n_ref = nova_ref,
-        base = join(out_dir,'{mp}/15_annotation/'),
-        base2 = join(out_dir,'{mp}/16_peaks_MAnorm/'),
+        base = join(out_dir,'14_annotation/'),
+        base2 = join(out_dir,'15_peaks_MAnorm/'),
+        base3 = join(out_dir,'14_annotation/annotation'),
         m_count = min_count,
         p_id = peak_id,
         de_meth = DE_method,
         nt_merge = nt_merge,
-        s_aware = "False",
+        s_aware = "TRUE",
+        depth = 5,
+        peakid = "all",
+        samp = '{sp}',
+        annof = "/data/RBL_NCI/iCLIP/ref/CLIP_Anno",
+        annos = "/home/sevillas2/git/iCLIP/workflow/scripts/CLIP_Annotation_MD11_BW.R"
     envmodules:
         config['R'],
         config['samtools'],
         config['bedtools'],
     output:
         #txt = join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.txt'),
-        html = join(out_dir,'{mp}/15_annotation/{sp}_'+ str(nt_merge) +'_MD15.html'),
         #bed = join(out_dir,'{mp}/16_MAnorm/input/{sp}_' + str(nt_merge) + '_peakDepth.bed')
+        html = join(out_dir,'14_annotation','{sp}_' + str(nt_merge) + '_MD15.html')
     shell:
         """
-        Rscript {params.R} \
-            {wildcards.sp} {params.n_ref} \
-            {input.unique} {input.all} \
-            {params.base} {params.m_count} \
-            {params.p_id} {params.de_meth} {params.nt_merge} \
-            {output.html} {params.s_aware} {params.base2}
-        """  
+        Rscript -e 'library(rmarkdown); \
+        rmarkdown::render("{params.R}",
+            output_file = "{output.html}", \
+            params = list(
+                samplename = "{params.samp}", \
+                PeaksUniq = "{input.unique}", \
+                PeaksFracMM = "{input.all}", \
+                OutDIR = "{params.base}", \
+                readdepth = "{params.depth}", \
+                PeakIdnt = "{params.peakid}", \
+                DEmethod = "{params.de_meth}", \
+                species = "{params.n_ref}", \
+                ntmerge = "{params.nt_merge}", \
+                JoinJunc = "{params.s_aware}", \
+                AnnoFiles = "{params.annof}", \
+                AnnoScript = "{params.annos}", \
+                OutDIR2 = "{params.base2}"))'
+        """
+
 
 if (DE_method=="MANORM"):
     def set_contrasts():
