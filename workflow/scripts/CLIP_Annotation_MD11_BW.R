@@ -701,7 +701,17 @@ if (ref_species=='mm10') {
   annotation_output['snRNA','contents']='U1,U2,U5,U6,U7,U11,U12'
   annotation_output['rRNA_gencode','contents']='5S, 5.8s, predicted gene'
 }
+
 write.csv(annotation_output,paste0(out_dir,"annotation_in_progress.csv"))
+#write out annotation files  
+rnames_ncRNA = c('yRNA','snRNA','snoRNA','srpRNA','tRNA','7SK RNA','scRNA','miRNA','rRNA','lncRNA')
+cnames_ncRNA = c('source','contents','description')
+write.table(annotation_output,
+            file=paste0(out_dir,"/annotation/Annotations.txt"), 
+            sep = "\t", row.names = T, col.names = T, append = F, quote= FALSE)
+write.table(annotation_output[rnames_ncRNA,cnames_ncRNA],
+            file=paste0(out_dir,"/annotation/ncRNA_Annotations.txt"), 
+            sep = "\t", row.names = T, col.names = T, append = F, quote= FALSE)
 
 ###phil - this is not a listed family, can't add
 #unique(rmsk_GRCm38$repFamily)
@@ -803,12 +813,6 @@ write.csv(annotation_output,paste0(out_dir,"annotation_in_progress.csv"))
 #   cnames_ncRNA=c('source','contents','Description')
 # }
   
-  
-### fix table has NA's 
-annotation_output_ncRNA=annotation_output[rnames_ncRNA,cnames_ncRNA]
-write.table(annotation_output,file=paste0(annodir,"Annotations.txt"), sep = "\t", row.names = T, col.names = T, append = F, quote= FALSE)
-write.table(annotation_output_ncRNA,file=paste0(annodir,"ncRNA_Annotations.txt"), sep = "\t", row.names = T, col.names = T, append = F, quote= FALSE)
-
 
 #############################################################################
 ## Identify CLIP peak Gene Location
