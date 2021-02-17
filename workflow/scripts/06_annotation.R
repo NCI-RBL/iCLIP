@@ -23,53 +23,49 @@ library(tidyr)
 # library(RColorBrewer)
 
 args <- commandArgs(trailingOnly = TRUE)
-peak_type = args[1] #params$PeakIdnt
-peak_unique = args[2] #peak_unique
-peak_all = args[3] #params$PeaksFracMM
-join_junction = args[4]
-read_depth = args[5]
-DEmethod = args [6]
-sample_id = args[7]
-nt_merge = args[8]
-out_dir = args[9]
+ref_species = args[1]
+soyeong_flag = args[2]
+soyeong_path = args[3]
+alias_path = args[4]
+gencode_path = args[5]
+refseq_path = args[6]
+canonical_path = args[7]
+intron_path = args[8]
+rmsk_path = args[9]
+out_dir = args[10]
+reftable_path = args[11]
+
+peaks_in = "/Volumes/data/iCLIP/marco/inprogress/peaks_KO_fCLIP.txt"
 
 
-#testing information
-testing="Y"
-if(testing=="Y"){
-  peak_type = "all"
-  peak_unique = "/Volumes/data/iCLIP/marco/13_counts/WT_fCLIP_50_unique.txt"
-  peak_all = "/Volumes/data/iCLIP/marco/13_counts/WT_fCLIP_50_all.txt"
-  join_junction = "TRUE"
-  read_depth=5
-  DEmethod='MAnorm'
-  sample_id = "KO"
-  nt_merge = "50nt"
-  out_dir = "/Volumes/data/iCLIP/marco/inprogress/"
-  peaks_in = "/Volumes/data/iCLIP/marco/inprogress/peaks_KO_fCLIP.txt"
-  ref_dir = "/Volumes/iCLIP/ref/annotations/"
-  ref_species = "mm10" ### need better name, match to snakemake
-  
-  ### fix need to figure out how to keep all this info - maybe a config? dict?
-  alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
-  if(ref_species == "mm10"){
-    gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt")
-    refseq_path = paste0(ref_dir, "/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
-    canonical_path = paste0(ref_dir,"/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
-    intron_path = paste0(ref_dir, "/mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
-    rmsk_path = paste0(ref_dir,"/mm10/repeatmasker/rmsk_GRCm38.txt")
-    soyeong_flag = "Y" #Y or N
-  } else if (ref_species == "hg38"){
-    gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
-    refseq_path = paste0(ref_dir, "/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
-    canonical_path = paste0(ref_dir,"/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
-    intron_path = paste0(ref_dir,"/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
-    rmsk_path = paste0(ref_dir,"/hg38/repeatmasker/rmsk_GRCh38.txt")
-    soyeong_flag = "N" #always now (for now)
-  } else{
-    quit()
-  }
-}
+# #testing information
+# testing="Y"
+# if(testing=="Y"){
+#   out_dir = "/Volumes/data/iCLIP/marco/inprogress/"
+#   peaks_in = "/Volumes/data/iCLIP/marco/inprogress/peaks_KO_fCLIP.txt"
+#   ref_dir = "/Volumes/iCLIP/ref/annotations/"
+#   ref_species = "mm10" ### need better name, match to snakemake
+#   
+#   ### fix need to figure out how to keep all this info - maybe a config? dict?
+#   alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
+#   if(ref_species == "mm10"){
+#     gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt")
+#     refseq_path = paste0(ref_dir, "/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
+#     canonical_path = paste0(ref_dir,"/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
+#     intron_path = paste0(ref_dir, "/mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
+#     rmsk_path = paste0(ref_dir,"/mm10/repeatmasker/rmsk_GRCm38.txt")
+#     soyeong_flag = "Y" #Y or N
+#   } else if (ref_species == "hg38"){
+#     gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
+#     refseq_path = paste0(ref_dir, "/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
+#     canonical_path = paste0(ref_dir,"/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
+#     intron_path = paste0(ref_dir,"/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
+#     rmsk_path = paste0(ref_dir,"/hg38/repeatmasker/rmsk_GRCh38.txt")
+#     soyeong_flag = "N" #always now (for now)
+#   } else{
+#     quit()
+#   }
+# }
 
 ##########################################################################################
 ############### Annotation info
@@ -145,6 +141,10 @@ peaks_oppo$strand=gsub("\\+","pos",peaks_oppo$strand)
 peaks_oppo$strand=gsub("\\-","+",peaks_oppo$strand)
 peaks_oppo$strand=gsub("pos","-",peaks_oppo$strand)
 
+#write output
+write.csv(peaks,paste0(out_dir,"/annotation/peaks.csv"))
+write.csv(peaks_oppo,paste0(out_dir,"/annotation/peaks_opp.csv"))
+
 ##########################################################################################
 ############### GENCODE ANNOTATION
 ##########################################################################################
@@ -211,6 +211,8 @@ ref_gencode = ReplaceType(ref_gencode,"gene_type", type_list,"ncRNA")
 ref_gencode_t = subset(ref_gencode, feature == 'transcript')
 ref_gencode_e = subset( ref_gencode, feature == "exon")
 #ref_gencode_FTR = ref_gencode[ref_gencode$feature%in%c("3UTR","5UTR",'CDS','UTR'),]
+
+write.csv(ref_gencode_t,paste0(out_dir,"ref_gencode.csv"))
 
 ##########################################################################################
 ############### REFSEQ ANNOTATION
@@ -307,7 +309,7 @@ ref_refseq_only = ReplaceType(ref_refseq_only,"gene_type", type_list,"ncRNA")
 #     ref_refseq$gene_type=gsub('tRNA','ncRNA',ref_refseq$gene_type)
 #     ref_refseq$gene_type=gsub('ribozyme','ncRNA',ref_refseq$gene_type)
 #   }
-########### UPDATE ###############
+write.csv(ref_refseq,paste0(out_dir,"ref_refseq.csv"))
 
 
 ##########################################################################################
@@ -365,7 +367,8 @@ intron_exon=rbind(ref_gencode_e[,c('chr','feature','start','end','strand','trans
                   introns[,c('chr','feature','start','end','strand','transcript_id','exon_number')])
 intron_exon$ID=paste0(intron_exon$chr,':',intron_exon$start,'-',intron_exon$end)
 
-###phil why is this flag set? none of the following code is used with flag  
+###phil why is this flag set? none of the following code is used with flag
+###phil this file doesn't exist
 calcIntron=0
 if (calcIntron==1){
   gtf <- makeTxDbFromGFF(paste0(Ref,"/hg38/Gencode_V32/fromUCSC/KnownGene/hg38.KnownGene.gtf")) #change me!
@@ -522,7 +525,8 @@ gencodeLNCRNA<-function(){
                                                           'gene_type','gene_type_ALL','feature',
                                                           'transcript_id','transcript_type',
                                                           'transcript_name','score')])
-  head(lncRNA_ref_gencode)
+  write.csv(lncRNA_ref_gencode,paste0(out_dir,"/annotation/ref_lncRNA.csv"))
+  
   return(lncRNA_ref_gencode)
 }
 
@@ -552,7 +556,7 @@ gencodeAnno<-function(rowid){
     content = paste0(unique(df_sub$transcript_type),collapse = ', ')
   }
   
-  write.table(df_sub, file=paste0(outdir,"/annotation/",rowid,".bed"), 
+  write.table(df_sub, file=paste0(outdir,rowid,".bed"), 
               sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
   
   
@@ -593,7 +597,7 @@ rmskAnno<-function(rowid){
       setnames(c('chr','start','end','name','swScore','strand'))
     df_sub$type='yRNA'
     
-    write.table(df_sub,file=paste0(out_dir,"/annotation/",rowid,".bed"), 
+    write.table(df_sub,file=paste0(out_dir,rowid,".bed"), 
                 sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
     
   }
@@ -604,7 +608,7 @@ rmskAnno<-function(rowid){
 SYAnno<-function(rowid,ref_species){
   #read bedfile
   file_name = ref_table[rowid,"SY_1"]
-  df_sub = read.table(paste0(ref_dir,"mm10/additional_anno/",file_name))
+  df_sub = read.table(paste0(soyeong_path,file_name))
   
   #if the file is a .gtf.1 then filter
   if (grepl(".gtf.1",file_name)){
@@ -625,7 +629,7 @@ SYAnno<-function(rowid,ref_species){
   }
   
   write.table(df_sub,
-              file=paste0(outdir,"/annotation/",rowid,".bed"), 
+              file=paste0(outdir,rowid,".bed"), 
               sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
 
   return(list(df_sub,content))
@@ -650,7 +654,6 @@ annotation_output=data.frame()
 
 ###phil - review the reftable to fill in missing data
 #input data from annotation df
-reftable_path = paste0("/Volumes/sevillas2/git/iCLIP/workflow/scripts/reftable.txt")
 ref_table = read.csv(reftable_path, header = TRUE, sep="\t", row.names = 1)
 
 for (rowid in rownames(ref_table)){
@@ -812,27 +815,3 @@ write.table(annotation_output[rnames_ncRNA,cnames_ncRNA],
 #   rnames_ncRNA=c('yRNA','snRNA','snoRNA','srpRNA','tRNA','7SK RNA','scRNA','miRNA','rRNA_gencode','rRNA_rmsk','lncRNA')
 #   cnames_ncRNA=c('source','contents','Description')
 # }
-  
-
-
-
-flag = "run"
-
-if (flag=="R"){
-  Peaksdata2=read.csv("/Volumes/sevillas2/git/iCLIP/workflow/scripts/peakstest.csv")
-  peaks = Peaksdata2[,c('chr','start','end','strand')]
-  WriteClassTable = T
-  species = "hg38"
-  outdir = "/Volumes/data/iCLIP/marco/14_annotation/"
-  Ref = "/Volumes/iCLIP/ref/CLIP_Anno"
-  CLIPannotation(peaks,WriteClassTable,species,outdir,Ref)
-} else if (flag == "local") {
-  Peaksdata2=read.csv("/home/sevillas2/git/iCLIP/workflow/scripts/peakstest.csv")
-  peaks = Peaksdata2[,c('chr','start','end','strand')]
-  WriteClassTable = T
-  species = "hg38"
-  outdir = "/data/sevillas2/iCLIP/marco/14_annotation/"
-  Ref = "/data/RBL_NCI/iCLIP/ref/CLIP_Anno"
-  CLIPannotation(peaks,WriteClassTable,species,outdir,Ref)
-}
-
