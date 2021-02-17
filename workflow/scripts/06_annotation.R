@@ -35,7 +35,6 @@ rmsk_path = args[9]
 out_dir = args[10]
 reftable_path = args[11]
 
-peaks_in = "/Volumes/data/iCLIP/marco/inprogress/peaks_KO_fCLIP.txt"
 
 
 # #testing information
@@ -114,36 +113,6 @@ alias_anno[(grepl('_',alias_anno$Refseq2)|(alias_anno$Refseq2%in%""))==F,'Refseq
 #   quit(status = 1)
 # }
 
-##########################################################################################
-############### Peak info
-##########################################################################################
-#read in peaks file (for testing, will be called in RMD?) 
-peaks = read.csv(peaks_in)
-
-#merge peaks with ref
-peaks_alias = merge(peaks,alias_anno[,c('chr','aliasNCBI2')],by.x='chr',by.y='aliasNCBI2',all.x=T)
-
-###phil why are we doing both? 
-#clean
-peaks_alias=peaks_alias[,colnames(peaks_alias)%in%"chr"==F]
-peaks_alias=peaks_alias[is.na(peaks_alias$chr)==F,]
-
-#rename col
-colnames(peaks_alias)=gsub('chr.y','chr',colnames(peaks_alias))
-
-###phil this col is the same as ID - is it necessary? 
-#add IDmod
-peaks_alias$IDmod=paste0(peaks_alias$chr,":",peaks_alias$start,"-",peaks_alias$end)
-
-###phil why are we switching positive and negative?
-peaks_oppo=peaks 
-peaks_oppo$strand=gsub("\\+","pos",peaks_oppo$strand) 
-peaks_oppo$strand=gsub("\\-","+",peaks_oppo$strand)
-peaks_oppo$strand=gsub("pos","-",peaks_oppo$strand)
-
-#write output
-write.csv(peaks,paste0(out_dir,"/annotation/peaks.csv"))
-write.csv(peaks_oppo,paste0(out_dir,"/annotation/peaks_opp.csv"))
 
 ##########################################################################################
 ############### GENCODE ANNOTATION
