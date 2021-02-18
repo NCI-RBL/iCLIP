@@ -302,7 +302,6 @@ canonical = select(canonical, -c("#chrom"))
 ##########################################################################################
 ############### introns
 ##########################################################################################
-
 introns=fread(intron_path, 
               header=F, sep="\t",stringsAsFactors = F,data.table=F, 
               col.names = c('chr','start','end','attribute','V5','strand'))
@@ -567,11 +566,11 @@ rmskAnno<-function(rowid){
       select(c('genoName','genoStart','genoEnd','repName','swScore','strand')) %>%
       setnames(c('chr','start','end','name','swScore','strand'))
     df_sub$type='yRNA'
-    
-    write.table(df_sub,file=paste0(out_dir,rowid,".bed"), 
-                sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-    
   }
+  
+  write.table(df_sub,file=paste0(out_dir,rowid,".bed"), 
+              sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+  
   content = paste0(unique(df_sub$name),collapse = ", ")
   return(list(df_sub,content))
 }
