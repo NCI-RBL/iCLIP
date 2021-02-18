@@ -21,6 +21,10 @@ properties:
   fastq_dir:
     type: string
     description: /path/to/fastq/files
+  multiplex_flag:
+    types: string
+    enum: ["Y","N","y","n"]
+    description: determine whether or not samples are multiplexed
   mismatch_allowance:
     types: number
     enum: [1,2,3]
