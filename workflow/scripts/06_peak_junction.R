@@ -240,10 +240,10 @@ if (join_junction==TRUE) {
                     file=paste0(out_dir, sample_id,"_", nt_merge,"_peakDepth.bed"), 
                     sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
       write.table(FtrCount_splice_junc[FtrCount_splice_junc$strand%in%"+", c('chr','start','end','ID','ID','strand')],
-                  file=paste0(out_dir,sample_id,"_",nt_merge,"_peakDepth.P.bed"), 
+                  file=paste0(out_dir,sample_id,"_",nt_merge,"_peakDepth_P.bed"), 
                   sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
       write.table(FtrCount_splice_junc[FtrCount_splice_junc$strand%in%"-", c('chr','start','end','ID','ID','strand')],
-                  file=paste0(out_dir,sample_id,"_",nt_merge,"_peakDepth.N.bed"), 
+                  file=paste0(out_dir,sample_id,"_",nt_merge,"_peakDepth_N.bed"), 
                   sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
     } else{
       print("MANORM skipped")
@@ -263,4 +263,4 @@ if (join_junction==TRUE) {
 }
 
 #write final junction output
-write.csv(FtrCount_splice_junc,paste0(out_dir,"peaks_",sample_id,".txt"))
+write.csv(FtrCount_splice_junc,paste0(out_dir,sample_id,"_",nt_merge,"_peakjunction.txt"))
