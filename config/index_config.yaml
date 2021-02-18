@@ -4,9 +4,24 @@ hg38:
     50bp: '/data/RBL_NCI/iCLIP/index/hg38_splice50bp.nix'
     75bp: '/data/RBL_NCI/iCLIP/index/hg38_splice75bp.nix'
     150bp: 'tbd'
+  gencode_path: '/data/RBL_NCI/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt'
+  refseq_path: '/data/RBL_NCI/iCLIP/ref/annotations/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt'
+  canonical_path: '/data/RBL_NCI/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt'
+  intron_path: '/data/RBL_NCI/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed'
+  rmsk_path: '/data/RBL_NCI/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCh38.txt'
+  alias_path: '/data/RBL_NCI/iCLIP/ref/annotations/hg38/hg38.chromAlias.txt'
 mm10:
   std: '/data/RBL_NCI/iCLIP/index/mm10.nix'
   spliceaware:
     50bp: '/data/RBL_NCI/iCLIP/index/mm10_splice50bp.nix'
     75bp: '/data/RBL_NCI/iCLIP/index/mm10_splice75bp.nix'
     150bp: 'tbd'
+  gencode_path: '/data/RBL_NCI/iCLIP/ref/annotations/mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt'
+  refseq_path: '/data/RBL_NCI/iCLIP/ref/annotations/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt'
+  canonical_path: '/data/RBL_NCI/iCLIP/ref/annotations/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt'
+  intron_path: '/data/RBL_NCI/iCLIP/ref/annotations/mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed'
+  rmsk_path: '/data/RBL_NCI/iCLIP/ref/annotations/mm10/repeatmasker/rmsk_GRCm38.txt'
+  sy_path: '/data/RBL_NCI/iCLIP/ref/annotations/mm10/additional_anno/'
+  alias_path: '/data/RBL_NCI/iCLIP/ref/annotations/mm10/mm10.chromAlias.txt'
+
+
