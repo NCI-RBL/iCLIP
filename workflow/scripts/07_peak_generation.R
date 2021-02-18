@@ -3,27 +3,30 @@ testing = "Y"
 
 if (testing=="Y"){
   
-  out_dir = "/Volumes/data/iCLIP/mm10/"
-  peaks_in = (paste0(out_dir,"/14_peaks/peaks_Ro_Clip.txt"))
+  out_dir = "/Volumes/data/iCLIP/marco"
+  peaks_in = (paste0(out_dir,"/14_peaks/peaks_KO_fClip.txt"))
   ref_species="mm10"
-  ref_gencode = (paste0(out_dir,"/15_annotation/ref_gencode.csv")) 
-  ref_refseq = (paste0(out_dir,"/15_annotation/ref_refseq.csv")) 
-  ref_lncra = (paste0(out_dir,"/15_annotation/ref_lncra.csv")) 
-  ref_alias = (paste0(out_dir,"/15_annotation/ref_alias.csv")) 
+  gencode_path = (paste0(out_dir,"/15_annotation/ref_gencode.csv")) 
+  refseq_path = (paste0(out_dir,"/15_annotation/ref_refseq.csv")) 
+  lncra_path = (paste0(out_dir,"/15_annotation/ref_lncRNA.csv")) 
+  alias_path = (paste0(out_dir,"/15_annotation/ref_alias.csv")) 
   
   
 }
 
 ##########################################################################################
-############### alias info
+############### read in references info
 ##########################################################################################
-alias_anno = read.csv(ref_alias)
+#ref_gencode = read.csv(gencode_path)
+#ref_refseq = read.csv(refseq_path)
+#ref_alias = read.csv(alias_path)
 
 ##########################################################################################
 ############### Peak info
 ##########################################################################################
-#read in peaks file generated from 06_peak_junction.R
+#read in peaks and alias file generated from 06_peak_junction.R
 peaks = read.csv(peaks_in)
+alias_anno = read.csv(alias_path)
 
 #merge peaks with ref
 peaks_alias = merge(peaks,alias_anno[,c('chr','aliasNCBI2')],by.x='chr',by.y='aliasNCBI2',all.x=T)
@@ -47,27 +50,55 @@ peaks_oppo$strand=gsub("\\+","pos",peaks_oppo$strand)
 peaks_oppo$strand=gsub("\\-","+",peaks_oppo$strand)
 peaks_oppo$strand=gsub("pos","-",peaks_oppo$strand)
 
+##########################################################################################
+############### 
+##########################################################################################
+
 bam_anno2=function(peaksTable,Annotable,ColumnName){
-  
-  p=peaksTable[,c('chr','start','end','ID','ID2','strand')]
+  #testing
+  peaksTable = peaks[,c('chr','start','end','ID','ID2','strand')]
+  ref_lncra = read.csv(lncra_path)
+  Annotable = ref_lncra[,c('chr','start','end','strand',
+                            'ensembl_gene_id','transcript_id',
+                            'external_gene_name','gene_type','gene_type_ALL')]
+  ColumnName = c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
   
   ###phil why are we adding multiple chr cols?
-  a=Annotable[,c('chr','start','end','chr','chr','strand',ColumnName)]
+  #anno_output = Annotable[,c('chr','start','end','chr','chr','strand',ColumnName)] %>%
+  anno_output = Annotable[,c('chr','start','end','strand',ColumnName)] %>%
+    rename(
+      chr_anno = chr,
+      start_anno = start,
+      end_anno = end,
+      strand_anno = strand
+    )
   
+  ###phil why are we clearing these?
   #clear chr cols 4,5
-  a[,4:5]=""
-  colnames(a)[colnames(a)%in%c('chr','start','end','strand')]=paste0(c('chr','start','end','strand'),'_anno')
-  
-  write.table(a,file=paste0(out_dir,"/",misc,"/annotable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
-  write.table(p,file=paste0(out_dir,"/",misc,"/peakstable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
+  #anno_output[,4:5]=""
+
+  #output bed files
+  write.table(anno_output,
+              file = paste0(out_dir,"/14_peaks/annotable.bed"), 
+              sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
+  write.table(peaksTable,
+              file = paste0(out_dir,"/14_peaks/peakstable.bed"), 
+              sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
   
   ### fix bedtools should run be called from snakemake, not within R
   #remove lines with illegal characters
-  system(paste0("cat ",out_dir,misc,"/peakstable.bed | awk '$2 !~ /e/' > ",out_dir,misc,"/peakstable.bed"))
+  ###fix output into snakemake
+  cmd = dQuote("NA")
+  system(paste0("cat ",out_dir,"/14_peaks/peakstable.bed | awk '$2 !~ /e/' > ",out_dir,"/14_peaks/peakstable_edited.bed"))
+  system(paste0("cat ",out_dir,"/14_peaks/peakstable.bed | awk '$2 != ",cmd,"' > ",out_dir,"/14_peaks/peakstable_edited.bed"))
   
-  system(paste0('bedtools intersect -a ',gsub(" ","\\\\ ",out_dir),misc,'/peakstable.bed -b ',gsub(" ","\\\\ ",out_dir),misc,'/annotable.bed -wao -s > ',gsub(" ","\\\\ ",out_dir),misc,'/peaks_mm10_OL.txt'))
-  ab_OL=fread(paste0(out_dir,misc,"/peaks_mm10_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-  colnames(ab_OL)=c(paste0(colnames(p)),paste0(colnames(a)),'ntOL')
+  system(paste0('bedtools intersect -a ',
+                gsub(" ","\\\\ ",out_dir),'/14_peaks/peakstable_edited.bed -b ', 
+                gsub(" ","\\\\ ",out_dir),'/14_peaks/annotable.bed -wao -s > ',
+                gsub(" ","\\\\ ",out_dir),'/14_peaks/peaks_OL.txt'))
+  
+  ab_OL=fread(paste0(out_dir,"/14_peaks/peaks_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+  colnames(ab_OL)=c(paste0(colnames(peaksTable)),paste0(colnames(anno_output)),'ntOL')
   
   ab_OL$width=ab_OL$end-ab_OL$start
   ab_OL$width_anno=ab_OL$end_anno-ab_OL$start_anno
@@ -87,8 +118,8 @@ bam_anno2=function(peaksTable,Annotable,ColumnName){
   colnames(ab_OL_colapsed)=colnames(ab_OL_double)
   
   for(x in 1:length(u)){
-    p=u[x]
-    pam=ab_OL_double[ab_OL_double$ID%in%p,]
+    peaksTable=u[x]
+    pam=ab_OL_double[ab_OL_double$ID%in%peaksTable,]
     ab_OL_colapsed[x,colnames(ab_OL_double)%in%c(ColumnName)==F]=(pam[1,colnames(ab_OL_double)%in%c(ColumnName)==F,drop=T])
     
     for (cx in 1:length(ColumnName)) {
@@ -104,7 +135,7 @@ bam_anno2=function(peaksTable,Annotable,ColumnName){
   ### fix R shouldn't be removing files
   #system(paste0('rm ',gsub(" ","\\\\ ",out_dir),'/',misc,'/annotable.bed'))
   #system(paste0('rm ',gsub(" ","\\\\ ",out_dir),'/',misc,'/peakstable.bed'))
-  #system(paste0('rm ',gsub(" ","\\\\ ",out_dir),'/',misc,'/peaks_mm10_OL.txt'))
+  #system(paste0('rm ',gsub(" ","\\\\ ",out_dir),'/',misc,'/peaks_OL.txt'))
   
   return(ab_OL) 
 }
@@ -137,8 +168,8 @@ rpmsk_anno=function(ColumnName,Annotable,peaksTable){
   peaksTable_colapsed=as.data.frame(matrix(nrow=length(u),ncol=ncol(peaksTable_double)));
   colnames(peaksTable_colapsed)=colnames(peaksTable_double)
   for(x in 1:length(u)){
-    p=u[x]
-    pam=peaksTable_double[peaksTable_double$ID%in%p,]
+    peaksTable=u[x]
+    pam=peaksTable_double[peaksTable_double$ID%in%peaksTable,]
     peaksTable_colapsed[x,colnames(peaksTable_double)%in%c(ColumnName)==F]=(pam[1,colnames(peaksTable_double)%in%c(ColumnName)==F,drop=T])
     
     peaksTable_colapsed[x,ColumnName]=paste(sort(unique((pam[,ColumnName]))), collapse =" | ")
@@ -163,24 +194,23 @@ annotatePeaks(peaks, "same_")
 annotatePeaks(peaks_oppo, "oppo_")
 xopp = 1 #same
 xopp = 2 #oppo
+
 annotatePeaks<-function(nmeprfix){
-  if (xopp==1) {
-      peaks=peaks
-      nmeprfix='Same_'
-    } else if (xopp==2) {
-      peaks=peaks_oppo
-      nmeprfix='Oppo_'
-    }
-    
+  ref_lncra = read.csv(lncra_path)
+  ref_refseq = read.csv(ref_refseq)
+  
   if (species=='hg38'){
     p=bam_anno2(peaks,
-                  rbind(mm10[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')],
+                  rbind(ref_lncra[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')],
                         ref_refseq[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')],### added anno for chrm not in gencode
                         lncRNA_ref_gencode[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')]
                   ), c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL'))
     } else if (species=='mm10'){
+      ###phil removed rbind here - not binding anything
       p=bam_anno2(peaks,
-                  rbind(mm10[,c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')]),c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL'))
+                  ref_lncra[,c('chr','start','end','strand','ensembl_gene_id',
+                               'transcript_id','external_gene_name','gene_type','gene_type_ALL')]),
+      c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL'))
     }
     
     PeaksdataOut = merge(peaks,
@@ -390,10 +420,10 @@ annotatePeaks<-function(nmeprfix){
     write.table(a,file=paste0(out_dir,"/",misc,"/annotable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
     write.table(p,file=paste0(out_dir,"/",misc,"/peakstable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
     
-    system(paste0('bedtools intersect -a ',gsub(" ","\\\\ ",out_dir),'/',misc,'/peakstable.bed -b ',gsub(" ","\\\\ ",out_dir),'/',misc,'/annotable.bed -wao -s  >',gsub(" ","\\\\ ",out_dir),'/',misc,'/peaks_mm10_OL.txt'))
+    system(paste0('bedtools intersect -a ',gsub(" ","\\\\ ",out_dir),'/',misc,'/peakstable.bed -b ',gsub(" ","\\\\ ",out_dir),'/',misc,'/annotable.bed -wao -s  >',gsub(" ","\\\\ ",out_dir),'/',misc,'/peaks_OL.txt'))
     
     ### fix - writing same files again
-    exoninof=fread(paste0(out_dir,"/",misc,"/peaks_mm10_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+    exoninof=fread(paste0(out_dir,"/",misc,"/peaks_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
     colnames(exoninof)=c(paste0(colnames(p)),paste0(colnames(a)),'ntOL')
     exoninof=exoninof[exoninof$ntOL>0,]
     exoninof$width_anno=exoninof$end_anno-exoninof$start_anno
