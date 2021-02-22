@@ -1276,7 +1276,7 @@ rule feature_counts_allreads:
             --minOverlap 1 \
             -s 1 \
             -T 8 \
-            -o {output.out_all} \
+            -o {output.out_unique} \
             {input.bam};
         featureCounts -F SAF \
             -a {input.saf} \
@@ -1287,7 +1287,7 @@ rule feature_counts_allreads:
             --minOverlap 1 \
             -s 1 \
             -T 8 \
-            -o {output.out_unique} \
+            -o {output.out_all} \
             {input.bam}
         """   
 
