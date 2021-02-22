@@ -79,7 +79,7 @@ else:
     nova_index = index_list[nova_ref]['spliceaware'][str(splice_bp)+'bp']
 
 #reference selection
-sy_path = ""
+sy_path = "EMPTY"
 if (nova_ref == "mm10"):
     genome_ref = "GENCODE mm10 v23"
     if(sy_flag == "Y"):
@@ -88,7 +88,7 @@ elif (nova_ref=="hg38"):
     genome_ref = "GENCODE hg38 v32"
     sy_flag = "N"
 gen_path = index_list[nova_ref]['gencode_path']
-refseq_path = index_list[nova_ref]['refseq_path']
+rseq_path = index_list[nova_ref]['refseq_path']
 can_path = index_list[nova_ref]['canonical_path']
 intron_path = index_list[nova_ref]['intron_path']
 rmsk_path = index_list[nova_ref]['rmsk_path']
@@ -325,12 +325,15 @@ rule all:
         expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
 
         #Count features
-        expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_unique.txt'), sp=sp_list),
-        expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt'), sp=sp_list),
+        expand(join(out_dir,'13_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'13_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+
 
         #In progress
-        expand(join(out_dir,'14_peaks/peaks_{sp}.txt'),sp=sp_list),
-        join(out_dir,'15_annotation','annotations.txt'),
+        #expand(join(out_dir,'14_peaks/{sp}_' + str(nt_merge) + '_peakjunction.txt'),sp=sp_list),
+        #join(out_dir,'15_annotation','annotations.txt'),
 
         # #Annotation
         # #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
@@ -1248,20 +1251,21 @@ rule create_safs:
             awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > {output.unique}
         """
 
-rule feature_counts_unique:
+rule feature_counts_allreads:
     """
     Unique reads (fractional counts correctly count splice reads for each peak. 
     When peaks counts are combined for peaks connected by splicing in Rscript)
     """
-     input:
+    input:
         bam = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
-        saf = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '_unique.SAF')
+        saf = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '_all.SAF')
     params:
-        rname='ic_saf',
+        rname='ic_allreads',
     envmodules:
         config['subread']  
     output:
-        o1 = join(out_dir,'13_counts','{sp}_' + str(nt_merge) + '_unique.txt')
+        out_unique = join(out_dir,'13_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
+        out_all = join(out_dir,'13_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
     shell:
         """
         featureCounts -F SAF \
@@ -1272,28 +1276,8 @@ rule feature_counts_unique:
             --minOverlap 1 \
             -s 1 \
             -T 8 \
-            -o {output.o1} \
-            {input.bam}
-        """   
-
-rule feature_counts_all:
-    """
-    Include Multimap reads - MM reads given fractional count based on # of mapping 
-    locations. All spliced reads also get fractional count. So Unique reads can get 
-    fractional count when spliced peaks combined in R script the summed counts give 
-    whole count for the unique alignement in combined peak.
-    """
-     input:
-        bam = join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'),
-        saf = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '_all.SAF')
-    params:
-        rname='ic_saf',
-    envmodules:
-        config['subread']  
-    output:
-        o1 = join(out_dir,'13_counts/{sp}_' + str(nt_merge) + '_all.txt')
-    shell:
-        """
+            -o {output.out_all} \
+            {input.bam};
         featureCounts -F SAF \
             -a {input.saf} \
             -M \
@@ -1303,17 +1287,59 @@ rule feature_counts_all:
             --minOverlap 1 \
             -s 1 \
             -T 8 \
-            -o {output.o1} \
+            -o {output.out_unique} \
+            {input.bam}
+        """   
+
+rule feature_counts_uniquereads:
+    """
+    Include Multimap reads - MM reads given fractional count based on # of mapping 
+    locations. All spliced reads also get fractional count. So Unique reads can get 
+    fractional count when spliced peaks combined in R script the summed counts give 
+    whole count for the unique alignement in combined peak.
+    """
+     input:
+        bam = join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'),
+        saf = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '_unique.SAF'),
+    params:
+        rname='ic_saf',
+    envmodules:
+        config['subread']  
+    output:
+        out_unique = join(out_dir,'13_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
+        out_all = join(out_dir,'13_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
+    shell:
+        """
+        featureCounts -F SAF \
+            -a {input.saf} \
+            -O \
+            -J \
+            --fraction \
+            --minOverlap 1 \
+            -s 1 \
+            -T 8 \
+            -o {output.out_unique} \
+            {input.bam};
+        featureCounts -F SAF \
+            -a {input.saf} \
+            -M \
+            -O \
+            -J \
+            --fraction \
+            --minOverlap 1 \
+            -s 1 \
+            -T 8 \
+            -o {output.out_all} \
             {input.bam}
         """  
 
-rule merge_peaks_file:
+rule peak_junctions:
     input:
         unique = join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),
         all = join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt')
     params:
-        rname = 'ic_peaks',
-        script = join(out_dir,source_dir,'workflow/scripts/06_peak_junction.R'),
+        rname = 'ic_junc',
+        script = join(source_dir,'workflow','scripts','06_peak_junction.R'),
         p_type = peak_id,
         junc = sp_junc,
         r_depth= min_count,
@@ -1324,7 +1350,10 @@ rule merge_peaks_file:
     envmodules:
         config['R'],
     output:
-        o1 = join(out_dir,'14_peaks','peaks_{sp}.txt')
+        o1 = join(out_dir,'14_peaks','{sp}_' + str(nt_merge) + '_peakjunction.txt'),
+        bed = join(out_dir,'14_peaks','{sp}_' + str(nt_merge) + '_peakDepth.bed'),
+        pbed = join(out_dir,'14_peaks','{sp}_' + str(nt_merge) + '_peakDepth_P.bed'),
+        nbed = join(out_dir,'14_peaks','{sp}_' + str(nt_merge) + '_peakDepth_N.bed'),
     shell:
         '''
         Rscript {params.script} \
@@ -1353,16 +1382,20 @@ rule annotations:
         s_path = sy_path,
         a_path = alias_path,
         g_path = gen_path,
-        rs_path = refseq_path,
+        rs_path = rseq_path,
         c_path = can_path,
         i_path = intron_path,
         r_path = rmsk_path,
         base = join(out_dir,'15_annotation/'),
-        a_config = join(source_dir,"config","annotation_config.txt"),        
+        a_config = join(source_dir,"config","annotation_config_hg.txt"),        
     envmodules:
         config['R']
     output:
-        o1 = join(out_dir,'15_annotation','annotations.txt')
+        anno = join(out_dir,'15_annotation','annotations.txt'),
+        ncRNA = join(out_dir,'15_annotation','ncRNA_annotations.txt'),
+        alias = join(out_dir,'15_annotation','ref_alias.csv'),
+        refseq = join(out_dir,'15_annotation','ref_refseq.csv'),
+        lncRNA = join(out_dir,'15_annotation','ref_lncRNA.csv'),
     shell:
         """
         Rscript {params.script} \
@@ -1376,9 +1409,28 @@ rule annotations:
             {params.i_path} \
             {params.r_path} \
             {params.base} \
-            {params.a_config} 
+            {params.a_config}
         """
 
+rule peak_calling:
+        '''
+        
+        '''
+        input:
+            f1 = join(out_dir,'14_peaks','{sp}_' + str(nt_merge) + '_peakjunction.txt'),
+        params:
+            rname = "ic_peaks",
+            script = join(source_dir,'workflow','scripts','07_peak_generation.R'),
+        envmodules:
+            config['R'],
+        output:
+            annobed = join(out_dir, '15_annotation','{sp}_' + str(nt_merge) + '_annotable.bed'),
+            peaksbed = join(out_dir, '15_annotation','{sp}_' + str(nt_merge) + '_peakstable.bed'),
+            OL = join(out_dir,'14_peaks', '{sp}_' + str(nt_merge) + '_peaks_OL.txt'),
+        shell:
+            '''
+            Rscript {params.script}
+            '''
 
 if (DE_method=="LALA"):
     def set_contrasts():
@@ -1431,6 +1483,7 @@ if (DE_method=="LALA"):
             awk '$6=="+"' {input.f1} > {output.o1};
             awk '$6=="-"' {input.f1} > {output.o2};
             '''
+    
     rule manorm:
         '''
         expand(join(out_dir,'{pairOfSamples}/{sampleid}.{strand}.bed", pairOfSamples=keys, sampleid=values, strand = c["p","n"]
