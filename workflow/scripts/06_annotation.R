@@ -537,20 +537,19 @@ rmskAnno<-function(rowid){
   family_list = c("rRNA","snRNA", "srpRNA","tRNA")
   class_list =c("Satellite","Low_complexity","LTR",'Simple_repeat','Unknown','Other')
   
-  sycol=c('chr','start','end','name','swScore','strand')
-  mm10col=c('chr','start','end','transcript_name','score','strand')
-  rmskcol=c('chr','start','end','name','swScore','strand')
+  mm10col=c('chr','start','end','transcript_name','score','strand','type')
+  rmskcol=c('chr','start','end','name','swScore','strand','type')
   
   if(rowid %in% family_list){
     df_sub = subset(rmsk_GRCm38, repFamily == rowid) %>%
-      select(c('genoName','genoStart','genoEnd','repName','swScore','strand')) %>%
-      setnames(c('chr','start','end','name','swScore','strand'))
+      select(mm10col) %>%
+      setnames(rmskcol)
   } else if (rowid %in% class_list){
     df_sub = subset(rmsk_GRCm38, repClass == rowid)
   } else if(rowid== "7SK RNA"){
     df_sub = subset(rmsk_GRCm38, repFamily == 'RNA') %>%
-      select(c('genoName','genoStart','genoEnd','repName','swScore','strand')) %>%
-      setnames(c('chr','start','end','name','swScore','strand'))
+      select(mm10col) %>%
+      setnames(rmskcol)
     df_sub$type='7SKRNA'
   } else if (rowid == "LINE SINE"){
     df_sub = subset(rmsk_GRCm38, repClass == c("LINE","SINE"))
@@ -558,13 +557,13 @@ rmskAnno<-function(rowid){
     df_sub = subset(rmsk_GRCm38, repClass == "DNA")
   } else if (rowid == "scRNA"){
     df_sub = subset(rmsk_GRCm38, repFamily == 'scRNA' & grepl("HY",rmsk_GRCm38$repName)==FALSE) %>%
-      select(c('genoName','genoStart','genoEnd','repName','swScore','strand')) %>%
-      setnames(c('chr','start','end','name','swScore','strand'))
+      select(mm10col) %>%
+      setnames(rmskcol)
     df_sub$type='scRNA'
   } else if (rowid == "yRNA"){
     df_sub = subset(rmsk_GRCm38, repFamily == 'scRNA' & grepl("HY",rmsk_GRCm38$repName)==TRUE) %>%
-      select(c('genoName','genoStart','genoEnd','repName','swScore','strand')) %>%
-      setnames(c('chr','start','end','name','swScore','strand'))
+      select(mm10col) %>%
+      setnames(rmskcol)
     df_sub$type='yRNA'
   }
   
