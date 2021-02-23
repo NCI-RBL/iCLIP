@@ -569,7 +569,7 @@ rmskAnno<-function(rowid){
   }
   
   write.table(df_sub,file=paste0(out_dir,rowid,".bed"), 
-              sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+              sep = "\t", row.names = F, append = F, quote= FALSE)
   
   content = paste0(unique(df_sub$name),collapse = ", ")
   return(list(df_sub,content))
