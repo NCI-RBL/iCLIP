@@ -38,26 +38,29 @@ reftable_path = args[11]
 #testing information
 testing="N"
 if(testing=="Y"){
-  out_dir = "/Volumes/data/iCLIP/mm10/15_annotation/"
-  ref_dir = "/Volumes/RBL_NCI-1/iCLIP/ref/annotations/"
-  ref_species = "mm10" ### need better name, match to snakemake
+  ref_dir = "/Volumes/RBL_NCI/iCLIP/ref/annotations/"
+  ref_species = "hg38" ### need better name, match to snakemake
 
   ### fix need to figure out how to keep all this info - maybe a config? dict?
   alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
   if(ref_species == "mm10"){
+    out_dir = "/Volumes/data/iCLIP/mm10/15_annotation/"
     gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt")
     refseq_path = paste0(ref_dir, "/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
     canonical_path = paste0(ref_dir,"/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
     intron_path = paste0(ref_dir, "/mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
     rmsk_path = paste0(ref_dir,"/mm10/repeatmasker/rmsk_GRCm38.txt")
     soyeong_flag = "Y" #Y or N
+    reftable_path = "/Volumes/sevillas2/git/iCLIP/config/annotation_config_mm10.txt"
   } else if (ref_species == "hg38"){
+    out_dir = "/Volumes/data/iCLIP/marco/15_annotation/"
     gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
     refseq_path = paste0(ref_dir, "/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
     canonical_path = paste0(ref_dir,"/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
     intron_path = paste0(ref_dir,"/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
     rmsk_path = paste0(ref_dir,"/hg38/repeatmasker/rmsk_GRCh38.txt")
     soyeong_flag = "N" #always now (for now)
+    reftable_path = "/Volumes/sevillas2/git/iCLIP/config/annotation_config_hg.txt"
   } 
 }
 
@@ -428,7 +431,9 @@ rmsk_GRCm38=fread(rmsk_path, header=T, sep="\t",stringsAsFactors = F,
 # SY_LC_path = paste0(ref_dir,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_LC.bed")
 # SY_other_path = paste0(ref_dir,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_other.bed")
 # SY_unknown_path = paste0(ref_dir,"/mm10/AdditionalAnno/from_Soyeong/mm10_annotation/mm10_unknown.bed")
-
+##########################################################################################
+############### Annotation functions
+##########################################################################################
 gencodeLNCRNA<-function(){
   ###phil in this subset we're not just using the transcripts (ref_gencode_t) but everything... why?
   lncRNA_ref_gencode_exon = subset(ref_gencode, gene_type_ALL == "lncRNA" & feature == "exon")
@@ -534,43 +539,62 @@ gencodeAnno<-function(rowid){
 }
 
 rmskAnno<-function(rowid){
+  
+  #define family and class lists
   family_list = c("rRNA","snRNA", "srpRNA","tRNA")
-  class_list =c("Satellite","Low_complexity","LTR",'Simple_repeat','Unknown','Other')
   
-  mm10col=c('chr','start','end','transcript_name','score','strand','type')
-  rmskcol=c('chr','start','end','name','swScore','strand','type')
-  
-  if(rowid %in% family_list){
-    df_sub = subset(rmsk_GRCm38, repFamily == rowid) %>%
-      select(mm10col) %>%
-      setnames(rmskcol)
-  } else if (rowid %in% class_list){
-    df_sub = subset(rmsk_GRCm38, repClass == rowid)
-  } else if(rowid== "7SK RNA"){
-    df_sub = subset(rmsk_GRCm38, repFamily == 'RNA') %>%
-      select(mm10col) %>%
-      setnames(rmskcol)
-    df_sub$type='7SKRNA'
-  } else if (rowid == "LINE SINE"){
-    df_sub = subset(rmsk_GRCm38, repClass == c("LINE","SINE"))
-  } else if (rowid == "rRNA_DNA"){
-    df_sub = subset(rmsk_GRCm38, repClass == "DNA")
-  } else if (rowid == "scRNA"){
-    df_sub = subset(rmsk_GRCm38, repFamily == 'scRNA' & grepl("HY",rmsk_GRCm38$repName)==FALSE) %>%
-      select(mm10col) %>%
-      setnames(rmskcol)
-    df_sub$type='scRNA'
-  } else if (rowid == "yRNA"){
-    df_sub = subset(rmsk_GRCm38, repFamily == 'scRNA' & grepl("HY",rmsk_GRCm38$repName)==TRUE) %>%
-      select(mm10col) %>%
-      setnames(rmskcol)
-    df_sub$type='yRNA'
+  #remove other from hg38 - not found in rmsk_GRCm38
+  if(ref_species=="hg38"){
+    class_list =c("Satellite","Low_complexity","LTR",'Simple_repeat','Unknown')
+  }else{
+    class_list =c("Satellite","Low_complexity","LTR",'Simple_repeat','Unknown','Other')
   }
   
-  write.table(df_sub,file=paste0(out_dir,rowid,".bed"), 
-              sep = "\t", row.names = F, append = F, quote= FALSE)
+  #if annotation id (rowid) is in the defined annotaiton list, subset, and outuput bed
+  annotation_list = c(family_list,class_list,"7SK RNA","LINE SINE","rRNA_DNA",
+                      "scRNA", "yRNA")
   
-  content = paste0(unique(df_sub$name),collapse = ", ")
+  if(rowid %in% annotation_list){
+    #define cols to select and new col names
+    rmskcol=c('genoName','genoStart','genoEnd','repName','swScore','strand')
+    newcolnames=c('chr','start','end','transcript_name','score','strand')
+    
+    #if in the family or class list
+    if(rowid %in% family_list){
+      df_sub = subset(rmsk_GRCm38, repFamily == rowid) %>%
+        select(rmskcol) %>%
+        setnames(newcolnames)
+    } else if (rowid %in% class_list){
+      df_sub = subset(rmsk_GRCm38, repClass == rowid)
+      #Special handling  
+    } else if(rowid== "7SK RNA"){
+      df_sub = subset(rmsk_GRCm38, repFamily == 'RNA') %>%
+        select(rmskcol) %>%
+        setnames(newcolnames)
+      rowid="7SKRNA"
+    } else if (rowid == "LINE SINE"){
+      df_sub = subset(rmsk_GRCm38, repClass == c("LINE","SINE"))
+    } else if (rowid == "rRNA_DNA"){
+      df_sub = subset(rmsk_GRCm38, repClass == "DNA")
+    } else if (rowid == "scRNA"){
+      df_sub = subset(rmsk_GRCm38, repFamily == 'scRNA' & grepl("HY",rmsk_GRCm38$repName)==FALSE) %>%
+        select(rmskcol) %>%
+        setnames(newcolnames)
+    } else if (rowid == "yRNA"){
+      df_sub = subset(rmsk_GRCm38, repFamily == 'scRNA' & grepl("HY",rmsk_GRCm38$repName)==TRUE) %>%
+        select(rmskcol) %>%
+        setnames(newcolnames)
+    } 
+    df_sub$type=rowid
+    write.table(df_sub,file=paste0(out_dir,rowid,".bed"), 
+                sep = "\t", row.names = F, append = F, quote= FALSE)
+    
+    content = paste0(unique(df_sub$name),collapse = ", ")
+  } else{
+    df_sub=data.frame()
+    content=""
+  }
+  
   return(list(df_sub,content))
 }
    
@@ -630,6 +654,7 @@ for (rowid in rownames(ref_table)){
   #determine source to use
   ref_selection =  ref_table[rowid,"selection"]
   print(paste0(rowid,"-",ref_selection))
+  
   ### Gencode annotations
   if(ref_selection=="Gencode"){
     return_list = gencodeAnno(rowid)
@@ -756,11 +781,11 @@ write.table(annotation_output[rnames_ncRNA,cnames_ncRNA],
 #   write.table(rRNA_BK00964[,rmskcol],file=paste0(out_dir,"rRNA_BK00964.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
 #   
 #   
-#   write.table(snRNA_ref_gencode[,mm10col],file=paste0(out_dir,"snRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(snoRNA_ref_gencode[,mm10col],file=paste0(out_dir,"snoRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(miRNA_ref_gencode[,mm10col],file=paste0(out_dir,"mirNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(rRNA_ref_gencode[,mm10col],file=paste0(out_dir,"rRNA_gencode.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(lncRNA_ref_gencode[,mm10col],file=paste0(out_dir,"lncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+#   write.table(snRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"snRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+#   write.table(snoRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"snoRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+#   write.table(miRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"mirNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+#   write.table(rRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"rRNA_gencode.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+#   write.table(lncRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"lncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
 #   
 #   write.table(tRNA_sy[,rmskcol],file=paste0(out_dir,"tRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
 #   write.table(sncRNA_sy[,c('chr','start','end','name','V6','strand')],file=paste0(out_dir,"sncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
@@ -775,11 +800,11 @@ write.table(annotation_output[rnames_ncRNA,cnames_ncRNA],
 #   write.table(scRNA_rmsk[,rmskcol],file=paste0(out_dir,"scRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
 #   write.table(rRNA_rmsk[,rmskcol],file=paste0(out_dir,"rRNA_rmsk.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
 #   
-#   write.table(snRNA_ref_gencode[,mm10col],file=paste0(out_dir,"snRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(snoRNA_ref_gencode[,mm10col],file=paste0(out_dir,"snoRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(miRNA_ref_gencode[,mm10col],file=paste0(out_dir,"mirNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(rRNA_ref_gencode[,mm10col],file=paste0(out_dir,"rRNA_gencode.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(lncRNA_ref_gencode[,mm10col],file=paste0(out_dir,"lncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+#   write.table(snRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"snRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+#   write.table(snoRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"snoRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+#   write.table(miRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"mirNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+#   write.table(rRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"rRNA_gencode.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+#   write.table(lncRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"lncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
 #   
 #   rnames_ncRNA=c('yRNA','snRNA','snoRNA','srpRNA','tRNA','7SK RNA','scRNA','miRNA','rRNA_gencode','rRNA_rmsk','lncRNA')
 #   cnames_ncRNA=c('source','contents','Description')
