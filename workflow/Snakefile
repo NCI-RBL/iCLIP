@@ -94,6 +94,12 @@ intron_path = index_list[nova_ref]['intron_path']
 rmsk_path = index_list[nova_ref]['rmsk_path']
 alias_path = index_list[nova_ref]['alias_path']
 
+#annotation config
+if (nova_ref == "mm10"):
+    annotation_config = join(source_dir,'config','annotation_config_mm10.txt')
+elif (nova_ref == "hg38"):
+    annotation_config = join(source_dir,'config','annotation_config_hg38.txt')
+
 #junctions
 if (sp_junc=="Y"):
     sp_junc = "TRUE"
@@ -1387,7 +1393,7 @@ rule annotations:
         i_path = intron_path,
         r_path = rmsk_path,
         base = join(out_dir,'15_annotation/'),
-        a_config = join(source_dir,"config","annotation_config_hg.txt"),        
+        a_config = annotation_config,       
     envmodules:
         config['R']
     output:
