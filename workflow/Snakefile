@@ -332,8 +332,8 @@ rule all:
 
 
         #In progress
-        #expand(join(out_dir,'14_peaks/{sp}_' + str(nt_merge) + '_peakjunction.txt'),sp=sp_list),
-        #join(out_dir,'15_annotation','annotations.txt'),
+        expand(join(out_dir,'14_peaks/{sp}_' + str(nt_merge) + '_peakjunction.txt'),sp=sp_list),
+        join(out_dir,'15_annotation','annotations.txt'),
 
         # #Annotation
         # #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
@@ -1335,8 +1335,8 @@ rule feature_counts_uniquereads:
 
 rule peak_junctions:
     input:
-        unique = join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_unique.txt'),
-        all = join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_all.txt')
+        unique = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
+        all = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt')
     params:
         rname = 'ic_junc',
         script = join(source_dir,'workflow','scripts','06_peak_junction.R'),
@@ -1373,7 +1373,7 @@ rule annotations:
     generate annotation table for the project
     """
     input:
-        expand(join(out_dir,'13_counts/{sp}_'+ str(nt_merge) +'_unique.txt'), sp=sp_list),
+        expand(join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
     params:
         rname='ic_anno',
         script = join(source_dir,'workflow','scripts','06_annotation.R'),
