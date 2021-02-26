@@ -1,9 +1,22 @@
 library(dplyr)
 library(data.table)
 
-testing = "Y"
+args <- commandArgs(trailingOnly = TRUE)
+out_dir = args[1]
+anno_dir = args[2]
+peaks_in = args[3]
+ref_species = args[4]
+gencode_path = args[5]
+refseq_path = args[6]
+lncra_path = args[7]
+alias_path = args[8]
 
-if (testing=="Y"){
+sample_id = "KO_fCLIP"
+nt_merge = "50nt"
+
+testing = "confirm"
+
+if (testing=="new"){
   
   out_dir = "/Volumes/data/iCLIP/marco/14_peaks/"
   anno_dir = "/Volumes/data/iCLIP/marco/15_annotation/"
@@ -19,6 +32,20 @@ if (testing=="Y"){
   sample_id = "KO_fClip"
   nt_merge = "50nt"
   
+} else if (testing=="confirm"){
+  out_dir = "/Volumes/data/iCLIP/confirm/14_peaks/"
+  anno_dir = "/Volumes/data/iCLIP/confirm/14_peaks_phil/allreadpeaks/annotation/"
+  
+  peaks_in = paste0("/Volumes/data/iCLIP/confirm/14_peaks_phil/KO1_CLIP_allPeaks50nt_peakDepth5_MD16.txt")
+  
+  ref_species="hg38"
+  gencode_path = (paste0(anno_dir,"rRNA_gencode.bed")) 
+  #refseq_path = (paste0(anno_dir,"ref_refseq.csv")) 
+  lncra_path = (paste0(anno_dir,"lncRNA.bed")) 
+  #alias_path = (paste0(anno_dir,"ref_alias.csv")) 
+  
+  sample_id = "KO_fClip"
+  nt_merge = "50nt"
 }
 ##########################################################################################
 ############### Peak info
@@ -34,7 +61,7 @@ peaks_alias = merge(peaks,alias_anno[,c('chr','aliasNCBI2')],by.x='chr',by.y='al
 peaks_alias = select(peaks_alias, -c("chr"))
 
 ###phil should this be to chr.y? there is no col chr anymore (deleted above)
-peaks_alias=peaks_alias[is.na(peaks_alias$chr)==F,]
+#peaks_alias=peaks_alias[is.na(peaks_alias$chr)==F,]
 
 #rename col
 colnames(peaks_alias)=gsub('chr.y','chr',colnames(peaks_alias))
@@ -49,39 +76,38 @@ peaks_oppo$strand=gsub("\\+","pos",peaks_oppo$strand)
 peaks_oppo$strand=gsub("\\-","+",peaks_oppo$strand)
 peaks_oppo$strand=gsub("pos","-",peaks_oppo$strand)
 
-
-##################################################################################################
 ##################################################################################################
 ############### reference, annotation table
 ##################################################################################################
 #read in references
 ref_lncra = read.csv(lncra_path)
-ref_refseq = read.csv(ref_refseq)
-ref_gencode = read.csv(ref_gencode)
+ref_refseq = read.csv(refseq_path)
+ref_gencode = read.csv(gencode_path)
 
 ### Add Column that combines all additional annotations
-YRNA_rmsk = fread(paste0(anno_dir, "yRNA.bed"))
-srpRNA_rmsk = fread(paste0(anno_dir, "srpRNA.bed"))
-SKRNA_rmsk = fread(paste0(anno_dir, "SKRNA.bed"))
-scRNA_rmsk = fread(paste0(anno_dir, "scRNA.bed"))
+YRNA_rmsk = read.csv(paste0(anno_dir, "yRNA.bed"),header=TRUE,sep="\t")
+srpRNA_rmsk = read.csv(paste0(anno_dir, "srpRNA.bed"),header=TRUE,sep="\t")
+SKRNA_rmsk = read.csv(paste0(anno_dir, "7SKRNA.bed"),header=TRUE,sep="\t")
+scRNA_rmsk = read.csv(paste0(anno_dir, "scRNA.bed"),header=TRUE,sep="\t")
 
 #we should think about how to organize this - we should pull in from anno_config? 
 #can also call the annotation script into this if we dont need to create BEDS
 ###phil this assumes that SY flag - is there no option here? if so need to update previous code
-annocol=c('chr','start','end','strand','type','name')
+annocol=c("chr","start","end","strand","type","transcript_name")
+
 if(ref_species == "mm10"){
   #pull in references
-  tRNA_sy = fread(paste0(anno_dir, "tRNA.bed"))
-  sncRNA_sy = fread(paste0(anno_dir, "sncRNA.bed"))
-  rRNA_BK00964 = fread(paste0(anno_dir, "rRNA.bed"))
+  tRNA_sy = read.csv(paste0(anno_dir, "tRNA.bed"),header=TRUE,sep="\t")
+  sncRNA_sy = read.csv(paste0(anno_dir, "sncRNA.bed"),header=TRUE,sep="\t")
+  rRNA_BK00964 = read.csv(paste0(anno_dir, "rRNA.bed"),header=TRUE,sep="\t")
   
   Anno_RNA_comb=rbind(YRNA_rmsk[,annocol],srpRNA_rmsk[,annocol],
                       tRNA_sy[,annocol],sncRNA_sy[,annocol],rRNA_BK00964[,annocol],
                       SKRNA_rmsk[,annocol],scRNA_rmsk[,annocol],rRNA_rmsk[,annocol])
 } else if (ref_species == "hg38"){
   #pull in references
-  rRNA_rmsk = fread(paste0(anno_dir, "rRNA.bed"))
-  tRNA_rmsk = fread(paste0(anno_dir, "tRNA.bed"))
+  rRNA_rmsk = read.csv(paste0(anno_dir, "rRNA.bed"),header=TRUE,sep="\t")
+  tRNA_rmsk = read.csv(paste0(anno_dir, "tRNA.bed"),header=TRUE,sep="\t")
   
   Anno_RNA_comb = rbind(YRNA_rmsk[,annocol],srpRNA_rmsk[,annocol],
                         SKRNA_rmsk[,annocol],scRNA_rmsk[,annocol],
@@ -91,15 +117,24 @@ if(ref_species == "mm10"){
 ##################################################################################################
 ############### call peaks
 ##################################################################################################
+###phil designations - 1 = "same" 2 = "oppo"? same strand and complementary strand?
+#xopp = 1 #same
+#xopp = 2 #oppo
+
 #merge references depending on species, run annotation
 bam_anno2=function(peaksTable,Annotable,ColumnName,pass_n){
   #testing
-  #peaksTable = peaks[,c('chr','start','end','ID','ID2','strand')]
-  #anno_dir = "/data/sevillas2/iCLIP/marco/15_annotation/"
-  #ColumnName = colSelect
-  #Annotable = rbind(ref_gencode[,colMerge],
-  #      ref_refseq[,colMerge],
-  #      ref_lncra[,colMerge])
+  if(testing=="Y"){
+    peaksTable=select(peaks,c("chr","start","end","strand","ID","ID2","Length","Counts_Unique","Counts_fracMM"))
+    
+    colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id',
+                 'external_gene_name','gene_type','gene_type_ALL')
+    Annotable = rbind(ref_gencode[,colMerge], ref_refseq[,colMerge], ref_lncra[,colMerge])
+    
+    ColumnName = c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
+    
+    pass_n =  "pass1"
+  }
   
   ###phil why are we adding multiple chr cols?
   #anno_output = Annotable[,c('chr','start','end','chr','chr','strand',ColumnName)] %>%
@@ -111,81 +146,106 @@ bam_anno2=function(peaksTable,Annotable,ColumnName,pass_n){
       strand_anno = strand
     )
   
-  ###phil why are we clearing these?
+
+  ###phil why are we clearing these? we could only input the ones we want
   #clear chr cols 4,5
-  #anno_output[,4:5]=""
+  anno_output= anno_output[,c("chr_anno","start_anno","end_anno","strand_anno")]
   
   #set file prefix
-  file_prefix = paste0(sample_id,"_",nt_merge,"_",pass_n)
+  file_prefix = paste0(sample_id,"_",nt_merge,"_",pass_n,"_")
   
+  ###phil there are non chrm found in the peaksTable - need to remove for merge
   #output bed files
-  write.table(anno_output,
+  anno_dir = "/Volumes/data/iCLIP/marco/15_annotation/"
+  write.table(Annotable,
               file = paste0(anno_dir,file_prefix,"annotable.bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
-  write.table(peaksTable,
+  write.table(subset(peaksTable,chr %in% unique(anno_output$chr)),
               file = paste0(anno_dir,file_prefix,"peakstable.bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
   
   #remove lines with illegal characters, remove NAs
   cmd = dQuote("NA")
-  system(paste0("cat ",anno_dir,file_prefix,"peakstable.bed | awk '$2 !~ /e/' | awk '$2 != ", cmd, "' > ",
-                anno_dir,file_prefix,"peakstable_clean.bed"))
+  anno_dir = "/data/sevillas2/iCLIP/marco/15_annotation/"
+  paste0("cat ",anno_dir,file_prefix,"peakstable.bed | awk '$2 !~ /e/' | awk '$2 != ", cmd, "' > ",
+         anno_dir,file_prefix,"peakstable_clean.bed")
+  #system(paste0("cat ",anno_dir,file_prefix,"peakstable.bed | awk '$2 !~ /e/' | awk '$2 != ", cmd, "' > ",
+  #              anno_dir,file_prefix,"peakstable_clean.bed"))
+  #cat /data/sevillas2/iCLIP/marco/15_annotation/KO_fClip_50nt_pass1_peakstable.bed | awk '$2 !~ /e/' | awk '$2 != "NA"' > /data/sevillas2/iCLIP/marco/15_annotation/KO_fClip_50nt_pass1_peakstable_clean.bed
   
+  ###phil i think we can do this with GRRanges? 
   #merge bedfiles into output text
-  system(paste0('bedtools intersect -a ', 
-                anno_dir, file_prefix,'peakstable_clean.bed -b ', 
-                anno_dir, file_prefix,'annotable.bed -wao -s > ',
-                out_dir, file_prefix,'peaks_OL.txt'))
+  #system(paste0('bedtools intersect -a ', 
+   #             anno_dir, file_prefix,'peakstable_clean.bed -b ', 
+    #            anno_dir, file_prefix,'annotable.bed -wao -s > ',
+     #           out_dir, file_prefix,'peaks_OL.txt'))
+  out_dir = "/data/sevillas2/iCLIP/marco/14_peaks/"
+  paste0('bedtools intersect -a ', 
+         anno_dir, file_prefix,'peakstable_clean.bed -b ', 
+         anno_dir, file_prefix,'annotable.bed -wao -s > ',
+         out_dir, file_prefix,'peaks_OL.txt')
+  #bedtools intersect -a /data/sevillas2/iCLIP/marco/15_annotation/KO_fClip_50nt_pass1_peakstable_clean.bed -b /data/sevillas2/iCLIP/marco/15_annotation/KO_fClip_50nt_pass1_annotable.bed -wao -s > /data/sevillas2/iCLIP/marco/14_peaks/KO_fClip_50nt_pass1_peaks_OL.txt
   
-  ###phil need to figure out where the differences are - must be an error in either the peakstable or annotable
   #read in merged file
-  ab_OL=fread(paste0(out_dir,file_prefix,"peaks_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
-  colnames(ab_OL)=c(paste0(colnames(peaksTable)),paste0(colnames(anno_output)),'ntOL')
+  out_dir = "/Volumes/data/iCLIP/marco/14_peaks/"
+  ab_OL = read.csv(paste0(out_dir,file_prefix,"peaks_OL.txt"), 
+                   header=F, sep="\t",stringsAsFactors = F)
+  colnames(ab_OL) = c(paste0(colnames(peaksTable)),
+                      paste0(colnames(Annotable)),'ntOL')
+  head(ab_OL)
   
   #add width
   ab_OL$width = ab_OL$end-ab_OL$start
   ab_OL$width_anno = ab_OL$end_anno-ab_OL$start_anno
   
-  ###phil db is all 0... everything is removed? 
+  ###phil what do we do if everything is 0?
   #subset 
   ab_OL=ab_OL[ab_OL$ntOL>0,]
-  
-  ab_OL$OLper_anno = ab_OL$ntOL/ab_OL$width_anno
-  ab_OL$OLper = ab_OL$ntOL/ab_OL$width
-  
-  #subset
-  ab_OL=ab_OL[(ab_OL$OLper_anno>.75 | ab_OL$OLper>.51), ]
-  
-  #ID duplicates and uniques
-  dup=unique(ab_OL[duplicated(ab_OL$ID),'ID'])
-  ab_OL_single=ab_OL[!(ab_OL$ID%in%dup),]
-  ab_OL_double=ab_OL[(ab_OL$ID%in%dup),]
-  
-  u=unique(ab_OL_double$ID)
-  ab_OL_colapsed=as.data.frame(matrix(nrow=length(u),ncol=ncol(ab_OL_double)));
-  colnames(ab_OL_colapsed)=colnames(ab_OL_double)
-  
-  #for every unique id
-  for(x in 1:length(u)){
-    peaksTable = u[x]
-    pam = ab_OL_double[ab_OL_double$ID%in%peaksTable,]
-    ab_OL_colapsed[x,colnames(ab_OL_double)%in%c(ColumnName)==F]=(pam[1,colnames(ab_OL_double)%in%c(ColumnName)==F,drop=T])
+  if (nrow(ab_OL)>0){
+    #add nt / width in annotation and read
+    ab_OL$OLper_anno = ab_OL$ntOL/ab_OL$width_anno
+    ab_OL$OLper = ab_OL$ntOL/ab_OL$width
     
-    for (cx in 1:length(ColumnName)) {
-      ab_OL_colapsed[x,ColumnName[cx]]=paste(sort(unique((pam[,ColumnName[cx]]))), collapse =",")
+    #subset
+    ab_OL=ab_OL[(ab_OL$OLper_anno>.75 | ab_OL$OLper>.51), ]
+    
+    #ID duplicates and unique
+    dup=unique(ab_OL[duplicated(ab_OL$ID),'ID'])
+    ab_OL_single=ab_OL[!(ab_OL$ID%in%dup),]
+    ab_OL_double=ab_OL[(ab_OL$ID%in%dup),]
+    
+    unique_list=unique(ab_OL_double$ID)
+    ab_OL_colapsed=as.data.frame(matrix(nrow=length(unique_list),ncol=ncol(ab_OL_double)));
+    colnames(ab_OL_colapsed)=colnames(ab_OL_double)
+    
+    #for every unique id
+    for(x in 1:length(unique_list)){
+      peaksTable = unique_list[x]
+      pam = ab_OL_double[ab_OL_double$ID%in%peaksTable,]
+      ab_OL_colapsed[x,colnames(ab_OL_double)%in%c(ColumnName)==F]=(pam[1,colnames(ab_OL_double)%in%c(ColumnName)==F,drop=T])
+      
+      for (cx in 1:length(ColumnName)) {
+        ab_OL_colapsed[x,ColumnName[cx]]=paste(sort(unique((pam[,ColumnName[cx]]))), collapse =",")
+      }
     }
+    
+    ab_OL_colapsed=rbind(ab_OL_colapsed,ab_OL_single)
+    ab_OL_colapsed=ab_OL_colapsed[!is.na(ab_OL_colapsed$ID),]
+    ab_OL_colapsed[(ab_OL_colapsed$ntOL<=0),ColumnName]=NA
+    
+    ###fix rename variable
+    ab_OL=ab_OL_colapsed
+  } else{
+    print("DO SOMETHING")
   }
-  
-  ab_OL_colapsed=rbind(ab_OL_colapsed,ab_OL_single)
-  ab_OL_colapsed=ab_OL_colapsed[!is.na(ab_OL_colapsed$ID),]
-  ab_OL_colapsed[(ab_OL_colapsed$ntOL<=0),ColumnName]=NA
-  ab_OL=ab_OL_colapsed
   
   return(ab_OL) 
 }
 
+#covers 1123 through 1342, 1397 through 13404
 peak_calling<-function(peak_in,xopp,nmeprfix){
-  colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')
+  colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id',
+               'external_gene_name','gene_type','gene_type_ALL')
   colSelect = c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
   if (ref_species=='hg38'){
     p=bam_anno2(peaks,
@@ -273,15 +333,21 @@ peak_calling<-function(peak_in,xopp,nmeprfix){
     pam_2=pam$type ### Bitype from Annotation
     pam_2=as.data.frame(strsplit(pam_2,','));colnames(pam_2)='a';pam_2$a=as.character(pam_2$a)
     
+    ###phil - if we are doing this for all cases, we should remove them in the anno script
     #remove misc_RNA catagory : these are covered by additional annotations (mostly yRNA)
     if (grepl('misc_RNA',pam_1)) {pam_1[pam_1$a%in%'misc_RNA','a']=NA}
     
+    ###phil - same here - this should all be handled in anno script
     #lincRNA are from an older Gencode version (VM18 or older) so don't use    
     if (grepl('lncRNA',pam_1)&grepl('lincRNA',pam_2)) {pam_1[pam_2$a%in%'lincRNA',]='lncRNA'}
     
+    ###phil same as above
     #change ribozyme (gencode) to RNA type from additional anno
     if (grepl('ribozyme',pam_1)) {pam_1[pam_1$a%in%'ribozyme',]=unique(pam_2$a)}
     
+    ###phil - my hope would be all of this would be unnnecessary; we should have the
+    #annotations set up to be exactly as we want to avoid having to do so much manipulation
+    #to the actual peak data before adding on the annotation
     #combine all rna types subtypes into ncRNA
     pam_c=rbind(pam_1,pam_2)
     pam_c=pam_c[!is.na(pam_c$a),,drop=F]
@@ -299,7 +365,7 @@ peak_calling<-function(peak_in,xopp,nmeprfix){
                   "sncRNA")
     pam_c2 = ReplaceType(pam_c,"a", type_list,"ncRNA")
     
-    #phil what if the length isn't greater than 1? keep the full file? 
+    ###phil what if the length isn't greater than 1? keep the full file? 
     if (length(pam_c$a)>1) {pam_c=pam_c[order(pam_c$a),,drop=F]}
     if (length(pam_c2$a)>1) {pam_c2=pam_c2[order(pam_c2$a),,drop=F]}
     
@@ -310,13 +376,16 @@ peak_calling<-function(peak_in,xopp,nmeprfix){
     pam_G1=pam$external_gene_name ### gene name from gencode
     pam_G1=as.data.frame(strsplit(pam_G1,','));colnames(pam_G1)='a';pam_G1$a=as.character(pam_G1$a)
     
+    ###phil this is confusing - what do annotation are we using? isngt anno a combo from gencode?
     pam_G2=pam$name ### gene name from annotation
     pam_G2=as.data.frame(strsplit(pam_G2,','));colnames(pam_G2)='a';pam_G2$a=as.character(pam_G2$a)
     
+    ###phil is this for the same reason as the mirna above? 
     if (grepl('sk',pam_G1)&grepl('7SK',pam_G2)) {
       pam_G2[pam_G2$a%in%'7SK',]=NA
     }
     
+    #merge gene names from "gencode" and "annotation"
     pam_gmerge=rbind(pam_G1,pam_G2)
     pam_gmerge=pam_gmerge[!is.na(pam_gmerge$a),,drop=F]
     pam_gmerge=paste(unique(pam_gmerge$a),collapse = ',')
@@ -327,7 +396,7 @@ peak_calling<-function(peak_in,xopp,nmeprfix){
     peaksTable_colapsed[x,'type_comb']=pam_c
     peaksTable_colapsed[x,'gene_name_comb']=pam_gmerge
     
-    remove('pam_1','pam_2','pam_c','pam_c2','pam_G1','pam_G2','pam_gmerge','pam')
+    #remove('pam_1','pam_2','pam_c','pam_c2','pam_G1','pam_G2','pam_gmerge','pam')
   }
   
   ###fix p variable swap
@@ -350,14 +419,12 @@ peak_calling<-function(peak_in,xopp,nmeprfix){
   PeaksdataOut=peaksTable_colapsed
   
   ###phil why are we creating NA cols?
-  peaksTable[,paste0(nmeprfix,'feature')]=NA
-  peaksTable[,paste0(nmeprfix,'exon_number')]=NA
-  peaksTable[,paste0(nmeprfix,'exon_LargeOL')]=NA
-  peaksTable[,paste0(nmeprfix,'intron_number')]=NA
-  peaksTable[,paste0(nmeprfix,'intron_LargeOL')]=NA
-  peaksTable[,paste0(nmeprfix,'intron_5pStart')]=NA
-  peaksTable[,paste0(nmeprfix,'intron_length')]=NA
-  peaksTable[,paste0(nmeprfix,'exon_length')]=NA
+  col_list = c("feature","exon_number","exon_LargeOL","intron_number","intron_LargeOL",
+               "intron_5pStart","intron_length","exon_length")
+  for (col_names in col_list){
+    peaksTable[,paste0(nmeprfix,col_names)]=NA
+  }
+  
   return(peaksTable)
 }
 
@@ -379,6 +446,7 @@ peak_oppo = peak_calling(peaks,2,"oppo_")
 # A second column was added to idenify if the peak also overlapped with the 5'UTR 3'UTR or CDS (Column: Featrue 2)
 
 ##########################################################################################
+#lines 1368 through 1395, 1406 through 1490
 IE_calling <- function(peak_in,xopp,nmeprfix){
   #create annotation table
   ColumnName = c("feature","exon_number")
@@ -387,11 +455,16 @@ IE_calling <- function(peak_in,xopp,nmeprfix){
     select(c('chr','start','end','transcript_id','transcript_id','strand',ColumnName))
   colnames(anno_tmp)[colnames(anno_tmp)%in%c('chr','start','end','strand')]=paste0(c('chr','start','end','strand'),'_anno')
   
+  ###fix renaming of variables 
+  #this relates to the "PeaksdataOut" previously
+  peaksTable=peak_in
+  
   #run bam_anno 
-  exoninof = bam_anno2(PeaksdataOut[,c('chr','start','end','ID','ID2','strand')],
+  exoninof = bam_anno2(peak_in[,c('chr','start','end','ID','ID2','strand')],
                        anno_tmp,
                        colSelect,
                        "pass3")
+  
   
   ###phil was there a reason for not using bam_anno2?  
   # Annotable=intron_exon[grep('protein_coding',intron_exon$gene_type),]
@@ -419,7 +492,7 @@ IE_calling <- function(peak_in,xopp,nmeprfix){
   # 
   # ### fix - writing same files again
   ###phil are there differences between this and the bam_anno2 function? If not we can run together
-  # exoninof=fread(paste0(out_dir,"/",misc,"/peaks_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+  # exoninof=read.csv(paste0(out_dir,"/",misc,"/peaks_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
   # colnames(exoninof)=c(paste0(colnames(p)),paste0(colnames(a)),'ntOL')
   # exoninof=exoninof[exoninof$ntOL>0,]
   # exoninof$width_anno=exoninof$end_anno-exoninof$start_anno
@@ -453,24 +526,132 @@ IE_calling <- function(peak_in,xopp,nmeprfix){
     peaksTable[,paste0(nmeprfix,'Intron_start_dist')]=NA
     peaksTable[,paste0(nmeprfix,'Intron_5pStart')]=NA
     peaksTable[,paste0(nmeprfix,'Exn_5pStart')]=NA
-    
   }
+  
+  #for each peak in table
+  for (x in 1:nrow(peaksTable)) {
+    
+    #subset ids
+    l=peaksTable[x,c('ID','ID2')]
+    g=exoninof[exoninof$ID%in%l$ID,]
+    
+    #if there are ids in both lists
+    ###fix we can handle this better
+    if (nrow(g)>0) {
+      
+      #split into exon and intron
+      g_e=g[g$feature%in%'exon',]
+      g_i=g[g$feature%in%'intron',]
+      
+      
+      gname=paste(unique(g$feature),collapse = ",")
+      gname=gsub('NA,',"",gname);gname=gsub(',NA',"",gname)
+      peaksTable[x,paste0(nmeprfix,'feature')]=gsub('NA,',"",gname)
+      
+      ###phil we need to handle all the else statements
+      #if there are exons
+      if (nrow(g_e)>0) {
+        gname=paste(unique(g_e$exon_number),collapse = ",")
+        gname=gsub('NA,',"",gname);gname=gsub(',NA',"",gname)
+        peaksTable[x,paste0(nmeprfix,'exon_number')]=gsub('NA,',"",gname)
+        
+        peaksTable[x,paste0(nmeprfix,'exon_LargeOL')]=max(g_e$ntOL/(g_e$end-g_e$start))
+        
+        #if the same
+        if (xopp==1) {
+          g_e[g_e[,paste0(nmeprfix,'feature_Distance')]<0,paste0(nmeprfix,'feature_Distance')]=0
+          peaksTable[x,paste0(nmeprfix,'Exn_start_dist')]=mean(as.numeric(g_e[,paste0(nmeprfix,'feature_Distance')]))
+        } else{
+          print("NEED UPDATE")
+        }
+      } else{
+        print("NEED UPDATE")
+      }
+      ###fix create function to loop both sets
+      if (nrow(g_i)>0) {
+        gname=paste(unique(g_i$exon_number),collapse = ",")
+        gname=gsub('NA,',"",gname);gname=gsub(',NA',"",gname)
+        peaksTable[x,paste0(nmeprfix,'intron_number')]=gsub('NA,',"",gname)
+        
+        peaksTable[x,paste0(nmeprfix,'intron_LargeOL')]=max(g_i$ntOL/(g_i$end-g_i$start))
+        
+        if (xopp==1) {
+          g_i[g_i[,paste0(nmeprfix,'feature_Distance')]<0,paste0(nmeprfix,'feature_Distance')]=0
+          peaksTable[x,paste0(nmeprfix,'Intron_start_dist')]=mean(as.numeric(g_i[,paste0(nmeprfix,'feature_Distance')]))
+        } else{
+          print("NEED UPDATE")
+        }
+      } else{
+        print ("NEED UPDATE")
+      }
+    ###phil why do we have different cols depending on the strand - can we make these the same?
+    } else {
+      if (xopp==1) {peaksTable[x,paste0(nmeprfix,c("feature",'exon_number','intron_number','Exn_start_dist','Intron_start_dist'))]=NA}
+      if (xopp==2) {peaksTable[x,paste0(nmeprfix,c("feature",'exon_number','intron_number'))]=NA}
+    } 
+  }
+  
+  ###phil what is this fixing?
+  # to fix this Get introns from refseqNCBI
+  peaksTable[is.na(peaksTable[,paste0(nmeprfix,'feature')]) & 
+               peaksTable[,paste0(nmeprfix,'gene_type')]%in%'protein_coding',paste0(nmeprfix,'feature')]='exon'
+  peaksTable_inex=peaksTable[grep(',',peaksTable[,paste0(nmeprfix,'feature')]),]
+  
+  ###fix renaming of variables
+  PeaksdataOut=peaksTable
+  
+  return(PeaksdataOut)
 }
 
+intronexon_same = peak_calling(peak_same,1,"same_")
+intronexon_opposite = peak_calling(peak_oppo,2,"oppo_")
 
-rpmsk_anno=function(ColumnName,Annotable,peaksTable){
+#############################################################################################################
+#############################################################################################################
+### IDENTIFY PEAKS IN REPEAT REGIONS   
+
+# Annotate all repeat regions/Classes identified in Repeatmasker Annotation file (UCSC Table browser)  
+# Data was not filtered based on any of the identified Repeats.  
+#  1) LINE/SINE   
+#  2) LTR   
+#  3) DNA   
+#  4) Satalites   
+#  5) Simple Repeats   
+#  6) Low Complexity   
+#  7) Other   
+#  8) Unknown  
+#############################################################################################################
+#############################################################################################################
+#prewritten function
+rpmsk_anno <- function(ColumnName,Annotable,peaksTable){
+  
+  ###fix variable in fucntion is the same as global variable
   s=peaksTable
+  
+  #create id and start df
   s=separate(s,ID,into=c('chr','start'),sep=":",remove=F)
   s=separate(s,start,into=c('start','end'),sep="-",remove=F)
   
-  s.GR <- GRanges(seqnames = as.character(s$chr), ranges=IRanges(start = as.numeric(s$start), end = as.numeric(s$end)),strand = s$strand,ID=s$ID )
+  #create granges obj for peaks
+  s.GR <- GRanges(seqnames = as.character(s$chr), 
+                  ranges=IRanges(start = as.numeric(s$start),
+                                 end = as.numeric(s$end)),
+                  strand = s$strand,ID=s$ID )
   
-  anno.GR <- GRanges(seqnames = as.character(Annotable$genoName), ranges=IRanges(start = as.numeric(Annotable$genoStart), end = as.numeric(Annotable$genoEnd)),strand = Annotable$strand,repClass=Annotable$repClass,repName=Annotable$repName )
+  #create granges obj for annotation
+  anno.GR <- GRanges(seqnames = as.character(Annotable$genoName), 
+                     ranges=IRanges(start = as.numeric(Annotable$genoStart), 
+                                    end = as.numeric(Annotable$genoEnd)),
+                     strand = Annotable$strand,repClass=Annotable$repClass,repName=Annotable$repName )
   
+  ###fix variable renames
   q =s.GR
   s=anno.GR
+  
+  #find annotation overlaps
   xo=as.data.frame(GenomicRanges::findOverlaps(q,s,type = "any",ignore.strand=F))
   
+  #run query
   qh=as.data.frame(q[xo$queryHits],row.names = NULL)
   sh=as.data.frame(s[xo$subjectHits],row.names = NULL);colnames(sh)=paste0(colnames(sh),"_repeat")
   rmskinfo=cbind(qh,sh)
@@ -502,328 +683,255 @@ rpmsk_anno=function(ColumnName,Annotable,peaksTable){
   return(peaksTable) 
 }
 
-### fix designations - 1 = "same" 2 = "oppo"? same strand and complementary strand?
-xopp = 1 #same
-xopp = 2 #oppo
-
-
-
-
-for (x in 1:nrow(peaksTable)) {
-  l=peaksTable[x,c('ID','ID2')]
-  g=exoninof[exoninof$ID%in%l$ID,]
+rpmsk_calling <- function(peaks_in,nmeprfix){
+  ###fix variable names
+  PeaksdataOut=peaks_in[!is.na(peaks_in$ID),]
   
-  if (nrow(g)>0) {
-    g_e=g[g$feature%in%'exon',]
-    g_i=g[g$feature%in%'intron',]
+  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_LINE_SINE'),rmsk_GRCm38_LISI,PeaksdataOut)
+  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_LTR'),rmsk_GRCm38_LTR,PeaksdataOut)
+  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_DNA'),rmsk_GRCm38_DNA,PeaksdataOut)
+  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Satalites'),rmsk_GRCm38_sat,PeaksdataOut)
+  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Simple_Repeats'),rmsk_GRCm38_SR,PeaksdataOut)
+  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Low_Complexity'),rmsk_GRCm38_LowComplx,PeaksdataOut)
+  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Other'),rmsk_GRCm38_Other,PeaksdataOut)
+  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Unknown'),rmsk_GRCm38_unknown,PeaksdataOut)
+  
+  p=PeaksdataOut
+  p[,paste0(nmeprfix,'Repeat_comb')]=NA
+  repcol=paste0(nmeprfix,c('Repeat_LINE_SINE','Repeat_LTR','Repeat_DNA',
+                           'Repeat_Satalites','Repeat_Simple_Repeats','Repeat_Low_Complexity',
+                           'Repeat_Other','Repeat_Unknown'))
+  
+  dup=p[rowSums((p[,repcol]>0),na.rm = T)>0,'ID']
+  
+  peaksTable_single=p[!(p$ID%in%dup),]
+  peaksTable_double=p[(p$ID%in%dup),]
+  
+  u=unique(peaksTable_double$ID)
+  peaksTable_colapsed=as.data.frame(matrix(nrow=length(u),ncol=ncol(peaksTable_double)));
+  colnames(peaksTable_colapsed)=colnames(peaksTable_double)
+  
+  
+  for(x in 1:length(u)){
+    p=u[x]
+    pam=peaksTable_double[peaksTable_double$ID%in%p,]
+    pam_c=((pam[1,repcol,drop=F]))
     
+    pmat=as.data.frame(matrix(nrow=length(pam_c),ncol=1));colnames(pmat)='a'
+    pmat$a=t(pam_c)
+    pmat=pmat[is.na(pmat)==F,]
+    pmat=paste(unique(pmat),collapse = ',')
     
-    gname=paste(unique(g$feature),collapse = ",")
-    gname=gsub('NA,',"",gname);gname=gsub(',NA',"",gname)
-    peaksTable[x,paste0(nmeprfix,'feature')]=gsub('NA,',"",gname)
+    peaksTable_colapsed[x,colnames(peaksTable_double)]=(pam[1,colnames(peaksTable_double),drop=T])
+    peaksTable_colapsed[x,paste0(nmeprfix,'Repeat_comb')]=pmat
     
-    if (nrow(g_e)>0) {
-      gname=paste(unique(g_e$exon_number),collapse = ",")
-      gname=gsub('NA,',"",gname);gname=gsub(',NA',"",gname)
-      peaksTable[x,paste0(nmeprfix,'exon_number')]=gsub('NA,',"",gname)
-      
-      peaksTable[x,paste0(nmeprfix,'exon_LargeOL')]=max(g_e$ntOL/(g_e$end-g_e$start))
-      
-      if (xopp==1) {
-        g_e[g_e[,paste0(nmeprfix,'feature_Distance')]<0,paste0(nmeprfix,'feature_Distance')]=0
-        peaksTable[x,paste0(nmeprfix,'Exn_start_dist')]=mean(as.numeric(g_e[,paste0(nmeprfix,'feature_Distance')]))
-      }
-    }
-    
-    if (nrow(g_i)>0) {
-      gname=paste(unique(g_i$exon_number),collapse = ",")
-      gname=gsub('NA,',"",gname);gname=gsub(',NA',"",gname)
-      peaksTable[x,paste0(nmeprfix,'intron_number')]=gsub('NA,',"",gname)
-      
-      peaksTable[x,paste0(nmeprfix,'intron_LargeOL')]=max(g_i$ntOL/(g_i$end-g_i$start))
-      
-      if (xopp==1) {
-        g_i[g_i[,paste0(nmeprfix,'feature_Distance')]<0,paste0(nmeprfix,'feature_Distance')]=0
-        peaksTable[x,paste0(nmeprfix,'Intron_start_dist')]=mean(as.numeric(g_i[,paste0(nmeprfix,'feature_Distance')]))
-      }
-    }
   }
-  if (nrow(g)==0) {
-    if (xopp==1) {peaksTable[x,paste0(nmeprfix,c("feature",'exon_number','intron_number','Exn_start_dist','Intron_start_dist'))]=NA}
-    if (xopp==2) {peaksTable[x,paste0(nmeprfix,c("feature",'exon_number','intron_number'))]=NA}
-  } 
+  
+  
+  peaksTable_colapsed=rbind(peaksTable_colapsed,peaksTable_single)
+  peaksTable_colapsed=peaksTable_colapsed[!is.na(peaksTable_colapsed$ID),]
+  
+  ###fix variable naming
+  p=peaksTable_colapsed
+  PeaksdataOut=peaksTable_colapsed
+  
+  return(PeaksdataOut)
 }
 
-############################## to fix this Get introns from refseqNCBI
-peaksTable[is.na(peaksTable[,paste0(nmeprfix,'feature')])&peaksTable[,paste0(nmeprfix,'gene_type')]%in%'protein_coding',paste0(nmeprfix,'feature')]='exon'
-##############################
-
-peaksTable_inex=peaksTable[grep(',',peaksTable[,paste0(nmeprfix,'feature')]),]
-
-PeaksdataOut=peaksTable
+rpmsk_same = rpmsk_calling(intronexon_same,"same_")
+rpmsk_opposite = rpmsk_calling(intronexon_same,"oppo_")
 
 ##########################################################################################
-############### TO DO 
+###############
 ##########################################################################################
 
 todo<-function(){
-
-    
-    #############################################################################################################
-    #############################################################################################################
-    ### IDENTIFY PEAKS IN REPEAT REGIONS   
-    
-    # Annotate all repeat regions/Classes identified in Repeatmasker Annotation file (UCSC Table browser)  
-    # Data was not filtered based on any of the identified Repeats.  
-    #  1) LINE/SINE   
-    #  2) LTR   
-    #  3) DNA   
-    #  4) Satalites   
-    #  5) Simple Repeats   
-    #  6) Low Complexity   
-    #  7) Other   
-    #  8) Unknown  
-    #############################################################################################################
-    #############################################################################################################
-    
-    PeaksdataOut=PeaksdataOut[!is.na(PeaksdataOut$ID),]
-    
-    PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_LINE_SINE'),rmsk_GRCm38_LISI,PeaksdataOut)
-    PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_LTR'),rmsk_GRCm38_LTR,PeaksdataOut)
-    PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_DNA'),rmsk_GRCm38_DNA,PeaksdataOut)
-    PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Satalites'),rmsk_GRCm38_sat,PeaksdataOut)
-    PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Simple_Repeats'),rmsk_GRCm38_SR,PeaksdataOut)
-    PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Low_Complexity'),rmsk_GRCm38_LowComplx,PeaksdataOut)
-    PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Other'),rmsk_GRCm38_Other,PeaksdataOut)
-    PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Unknown'),rmsk_GRCm38_unknown,PeaksdataOut)
-    
-    
-    p=PeaksdataOut
-    p[,paste0(nmeprfix,'Repeat_comb')]=NA
-    repcol=paste0(nmeprfix,c('Repeat_LINE_SINE','Repeat_LTR','Repeat_DNA','Repeat_Satalites','Repeat_Simple_Repeats','Repeat_Low_Complexity','Repeat_Other','Repeat_Unknown'))
-    
-    dup=p[rowSums((p[,repcol]>0),na.rm = T)>0,'ID']
-    
-    peaksTable_single=p[!(p$ID%in%dup),]
-    peaksTable_double=p[(p$ID%in%dup),]
-    
-    u=unique(peaksTable_double$ID)
-    peaksTable_colapsed=as.data.frame(matrix(nrow=length(u),ncol=ncol(peaksTable_double)));
-    colnames(peaksTable_colapsed)=colnames(peaksTable_double)
-    
-    
-    for(x in 1:length(u)){
-      p=u[x]
-      pam=peaksTable_double[peaksTable_double$ID%in%p,]
-      pam_c=((pam[1,repcol,drop=F]))
-      
-      pmat=as.data.frame(matrix(nrow=length(pam_c),ncol=1));colnames(pmat)='a'
-      pmat$a=t(pam_c)
-      pmat=pmat[is.na(pmat)==F,]
-      pmat=paste(unique(pmat),collapse = ',')
-      
-      ######################     
-      
-      peaksTable_colapsed[x,colnames(peaksTable_double)]=(pam[1,colnames(peaksTable_double),drop=T])
-      peaksTable_colapsed[x,paste0(nmeprfix,'Repeat_comb')]=pmat
-      
-      remove('p','pam','pam_c')
-    }
-    
-    
-    peaksTable_colapsed=rbind(peaksTable_colapsed,peaksTable_single)
-    peaksTable_colapsed=peaksTable_colapsed[!is.na(peaksTable_colapsed$ID),]
-    
-    p=peaksTable_colapsed
-    PeaksdataOut=peaksTable_colapsed
-    
-    
-    #############################################################################################################
-    #############################################################################################################
-    ### Asigning Clip peak attributes   
-    
-    # Not all Peaks overlap with a single feature so peak assignments were assigned by priority:  
-    # 
-    # ncRNA > Protein coding : Exonic > repeats > Pseudogene > Antisense Feature > Protein Coding : Intronic > lncRNA > no Feature  
-    # 
-    # All annotations from RNA type, Repeat regions, and Intronic/exonic regions are annoted in the Table.   
-    
-    #############################################################################################################
-    #############################################################################################################
-    ### fix with loop
-    PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]=NA
-    PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')] )
-    PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')] )
-    PeaksdataOut[,paste0(nmeprfix,'type_comb')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_comb')] )
-    PeaksdataOut[,paste0(nmeprfix,'type_comb')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_comb')] )
-    PeaksdataOut[,paste0(nmeprfix,'gene_type')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type')] )
-    PeaksdataOut[,paste0(nmeprfix,'gene_type')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type')] )
-    PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')] )
-    PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')] )   
-    
-    # 1. ncRNA        
-    comp=( grepl('ncRNA',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) ) 
-    PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='ncRNA'
-    
-    # 2. protein coding - Exonic
-    comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('protein_coding',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')])&(grepl('exon',PeaksdataOut[,paste0(nmeprfix,'feature')])) )
-    PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='protein_coding: exon'
-    
-    # 3. repeats
-    comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& (is.na(PeaksdataOut[,paste0(nmeprfix,'Repeat_comb')])==F) )
-    PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]="Repeat Element"
-    
-    # 4. Pseudogene
-    comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('pseudogene',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) )
-    PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='pseudogene'
-    
-    # 5. lncRNA-exon
-    comp1=is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])  
-    comp2=grepl('linLcRNA-exon',PeaksdataOut[,paste0(nmeprfix,'type_comb')]) | grepl('lnLcRNA',PeaksdataOut[,paste0(nmeprfix,'type_comb')])
-    comp=comp1&comp2       
-    PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='lnLcRNA-exon'
-    
-    # 6. intron
-    comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('protein_coding',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) )
-    PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='protein_coding: Intron'
-    
-    # 7. lncRNA-intron
-    comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]) & (grepl('linLcRNA-intron',PeaksdataOut[,paste0(nmeprfix,'type_comb')]) ))
-    PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='lnLcRNA-intron'
-    PeaksdataOut[is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]),paste0(nmeprfix,'Comb_type_exon')]='no Feature'
-    PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]=factor(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')], levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lnLcRNA-exon","Antisense Feature","protein_coding: Intron","lnLcRNA-intron","no Feature"))
-    
-    ##############################
-    #### RNA subtypes
-    ##############################
-    
-    p=PeaksdataOut
-    p[,paste0(nmeprfix,'Comb_type_ncRNA')]=NA
-    p1=p[p[,paste0(nmeprfix,'Comb_type_exon')]%in%'ncRNA',]
-    p2=p[!p[,paste0(nmeprfix,'Comb_type_exon')]%in%'ncRNA',]
-    
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=p1[,paste0(nmeprfix,'type_comb')]
-    
-    ### Protein coding + ncRNA annotations -> ncRNA subtype
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('protein_coding,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub(',protein_coding',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    
-    
-    ### any ncRNA takes priority over pseudogene
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('pseudogene,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub(',pseudogene',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    
-    
-    ### any double annotations with lncRNA become second annotation only
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('lnLcRNA,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    p1[p1[,paste0(nmeprfix,'Comb_type_ncRNA')]%in%'linLcRNA-intron,linLcRNA-exon',paste0(nmeprfix,'Comb_type_ncRNA')]="linLcRNA"
-    p1[p1[,paste0(nmeprfix,'Comb_type_ncRNA')]%in%'linLcRNA-exon,linLcRNA-intron',paste0(nmeprfix,'Comb_type_ncRNA')]="linLcRNA"
-    
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('linLcRNA,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('linLcRNA-exon,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('linLcRNA-intron,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    
-    
-    ### fix with loop
-    ### any double annotations with yRNA become yRNA only
-    p1[grep('yRNA',p1[,paste0(nmeprfix,'Comb_type_ncRNA')]),paste0(nmeprfix,'Comb_type_ncRNA')]='yRNA'
-    
-    ### tRNA takes priority over miRNA
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,tRNA',"miRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    
-    ### miRNA takes priority over rRNA
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,rRNA',"miRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    
-    ### snRNA takes priority over 7SKRNA
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,snRNA',"snRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('snRNA,7SKRNA',"snRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    
-    ### snRNA takes priority over 7SKRNA
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,snRNA',"snRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    
-    ### tRNA takes priority over rRNA
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('rRNA,tRNA',"tRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('tRNA,rRNA,',"tRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    
-    ### snoRNA takes priority over miRNA
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,snoRNA',"snoRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('snoRNA,miRNA,',"snoRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    
-    ### scaRNA takes priority over miRNA
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,scaRNA',"scaRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('scaRNA,miRNA,',"scaRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-    
-    PeaksdataOut=rbind(p1,p2)
-    
-    if (xopp==1) {PeaksdataOut_same=PeaksdataOut}
-    if (xopp==2) {PeaksdataOut=merge(PeaksdataOut_same,PeaksdataOut[,colnames(PeaksdataOut)[!colnames(PeaksdataOut)%in%c("chr","start","end","strand","ID2" )]],by='ID')}
-    
-  }### for pos or neg anno
+  #############################################################################################################
+  #############################################################################################################
+  ### Asigning Clip peak attributes   
   
+  # Not all Peaks overlap with a single feature so peak assignments were assigned by priority:  
+  # 
+  # ncRNA > Protein coding : Exonic > repeats > Pseudogene > Antisense Feature > Protein Coding : Intronic > lncRNA > no Feature  
+  # 
+  # All annotations from RNA type, Repeat regions, and Intronic/exonic regions are annoted in the Table.   
   
-  PeaksdataOut$Comb_type_exon_Oppo=NA
-  # PeaksdataOut$type_simple_comb
+  #############################################################################################################
+  #############################################################################################################
+  ### fix with loop
+  PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]=NA
+  PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')] )
+  PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')] )
+  PeaksdataOut[,paste0(nmeprfix,'type_comb')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_comb')] )
+  PeaksdataOut[,paste0(nmeprfix,'type_comb')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_comb')] )
+  PeaksdataOut[,paste0(nmeprfix,'gene_type')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type')] )
+  PeaksdataOut[,paste0(nmeprfix,'gene_type')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type')] )
+  PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')] )
+  PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')] )   
   
   # 1. ncRNA        
-  comp=(grepl('ncRNA',PeaksdataOut[,paste0('Same_','type_simple_comb')],fixed = T) )
-  PeaksdataOut[comp,'Comb_type_exon_Oppo']='ncRNA'
+  comp=( grepl('ncRNA',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) ) 
+  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='ncRNA'
   
   # 2. protein coding - Exonic
-  comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])&grepl('protein_coding',PeaksdataOut[,paste0('Same_','type_simple_comb')])&(grepl('exon',PeaksdataOut[,paste0('Same_','feature')])) )
-  PeaksdataOut[comp,'Comb_type_exon_Oppo']=paste0('protein_coding: exon')
+  comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('protein_coding',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')])&(grepl('exon',PeaksdataOut[,paste0(nmeprfix,'feature')])) )
+  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='protein_coding: exon'
   
   # 3. repeats
-  comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])&(is.na(PeaksdataOut[,paste0('Same_','Repeat_comb')])==F) )
-  PeaksdataOut[comp,'Comb_type_exon_Oppo']="Repeat Element"
+  comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& (is.na(PeaksdataOut[,paste0(nmeprfix,'Repeat_comb')])==F) )
+  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]="Repeat Element"
   
   # 4. Pseudogene
-  comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('pseudogene',PeaksdataOut[,paste0('Same_','type_simple_comb')]))
-  PeaksdataOut[comp,'Comb_type_exon_Oppo']='pseudogene'
+  comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('pseudogene',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) )
+  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='pseudogene'
   
-  # 5. Antisense - non LncRNA
-  comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
-  PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
-  
-  # 6. lncRNA-exon
-  comp1=is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])
-  comp2=((PeaksdataOut[,paste0('Same_','type_comb')]%in%c('linLcRNA-exon')) | (PeaksdataOut[,paste0('Same_','type_comb')]%in%c('lnLcRNA')) )
+  # 5. lncRNA-exon
+  comp1=is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])  
+  comp2=grepl('linLcRNA-exon',PeaksdataOut[,paste0(nmeprfix,'type_comb')]) | grepl('lnLcRNA',PeaksdataOut[,paste0(nmeprfix,'type_comb')])
   comp=comp1&comp2       
-  PeaksdataOut[comp,'Comb_type_exon_Oppo']='lnLcRNA-exon'
+  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='lnLcRNA-exon'
   
-  # 7. Antisense - LncRNA - exon
-  comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA-intron',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
-  PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
+  # 6. intron
+  comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('protein_coding',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) )
+  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='protein_coding: Intron'
   
-  # 8. intron
-  comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('protein_coding',PeaksdataOut[,paste0('Same_','type_simple_comb')]))
-  PeaksdataOut[comp,'Comb_type_exon_Oppo']=paste0('protein_coding: Intron')
+  # 7. lncRNA-intron
+  comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]) & (grepl('linLcRNA-intron',PeaksdataOut[,paste0(nmeprfix,'type_comb')]) ))
+  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='lnLcRNA-intron'
+  PeaksdataOut[is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]),paste0(nmeprfix,'Comb_type_exon')]='no Feature'
+  PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]=factor(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')], levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lnLcRNA-exon","Antisense Feature","protein_coding: Intron","lnLcRNA-intron","no Feature"))
   
-  # 9. Antisense - LncRNA - intron
-  comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA-exon',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
-  PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
+  ##############################
+  #### RNA subtypes
+  ##############################
   
-  # 10. lncRNA -intron
-  comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo']) & ((PeaksdataOut[,paste0('Same_','type_comb')]%in%'linLcRNA-intron')==T) )
-  PeaksdataOut[comp,'Comb_type_exon_Oppo']='lnLcRNA-intron'
-  PeaksdataOut[is.na(PeaksdataOut[,'Comb_type_exon_Oppo']),'Comb_type_exon_Oppo']='no Feature'
+  p=PeaksdataOut
+  p[,paste0(nmeprfix,'Comb_type_ncRNA')]=NA
+  p1=p[p[,paste0(nmeprfix,'Comb_type_exon')]%in%'ncRNA',]
+  p2=p[!p[,paste0(nmeprfix,'Comb_type_exon')]%in%'ncRNA',]
+  
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=p1[,paste0(nmeprfix,'type_comb')]
+  
+  ### Protein coding + ncRNA annotations -> ncRNA subtype
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('protein_coding,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub(',protein_coding',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
   
   
-  ### only distances for final annotation_output
-  ## distances to any protein coading annotation
-  PeaksdataOut[grepl('protein_coding',PeaksdataOut$Same_type_comb)==F,c("Same_Exn_start_dist")]=NA
-  PeaksdataOut[grepl('protein_coding',PeaksdataOut$Same_type_comb)==F,c("Same_Intron_start_dist")]=NA
+  ### any ncRNA takes priority over pseudogene
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('pseudogene,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub(',pseudogene',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
   
-  ################################################  
-  ### Revert lnLcRNA to lncRNA  
   
-  PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')]= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')] )
-  PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')] )
-  PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')]= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')] )
-  PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')] )
-  PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
-  PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
-  PeaksdataOut[,'Comb_type_exon_Oppo']=factor(PeaksdataOut[,'Comb_type_exon_Oppo'], levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lncRNA-exon","Antisense Feature","protein_coding: Intron","lncRNA-intron","lncRNA","no Feature"))
+  ### any double annotations with lncRNA become second annotation only
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('lnLcRNA,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  p1[p1[,paste0(nmeprfix,'Comb_type_ncRNA')]%in%'linLcRNA-intron,linLcRNA-exon',paste0(nmeprfix,'Comb_type_ncRNA')]="linLcRNA"
+  p1[p1[,paste0(nmeprfix,'Comb_type_ncRNA')]%in%'linLcRNA-exon,linLcRNA-intron',paste0(nmeprfix,'Comb_type_ncRNA')]="linLcRNA"
   
-  unlink(misc, recursive = TRUE)  
-  return(PeaksdataOut)
-  }
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('linLcRNA,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('linLcRNA-exon,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('linLcRNA-intron,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  
+  
+  ### fix with loop
+  ### any double annotations with yRNA become yRNA only
+  p1[grep('yRNA',p1[,paste0(nmeprfix,'Comb_type_ncRNA')]),paste0(nmeprfix,'Comb_type_ncRNA')]='yRNA'
+  
+  ### tRNA takes priority over miRNA
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,tRNA',"miRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  
+  ### miRNA takes priority over rRNA
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,rRNA',"miRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  
+  ### snRNA takes priority over 7SKRNA
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,snRNA',"snRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('snRNA,7SKRNA',"snRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  
+  ### snRNA takes priority over 7SKRNA
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,snRNA',"snRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  
+  ### tRNA takes priority over rRNA
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('rRNA,tRNA',"tRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('tRNA,rRNA,',"tRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  
+  ### snoRNA takes priority over miRNA
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,snoRNA',"snoRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('snoRNA,miRNA,',"snoRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  
+  ### scaRNA takes priority over miRNA
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,scaRNA',"scaRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('scaRNA,miRNA,',"scaRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  
+  PeaksdataOut=rbind(p1,p2)
+  
+  if (xopp==1) {PeaksdataOut_same=PeaksdataOut}
+  if (xopp==2) {PeaksdataOut=merge(PeaksdataOut_same,PeaksdataOut[,colnames(PeaksdataOut)[!colnames(PeaksdataOut)%in%c("chr","start","end","strand","ID2" )]],by='ID')}
+  
+}### for pos or neg anno
+
+
+PeaksdataOut$Comb_type_exon_Oppo=NA
+# PeaksdataOut$type_simple_comb
+
+# 1. ncRNA        
+comp=(grepl('ncRNA',PeaksdataOut[,paste0('Same_','type_simple_comb')],fixed = T) )
+PeaksdataOut[comp,'Comb_type_exon_Oppo']='ncRNA'
+
+# 2. protein coding - Exonic
+comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])&grepl('protein_coding',PeaksdataOut[,paste0('Same_','type_simple_comb')])&(grepl('exon',PeaksdataOut[,paste0('Same_','feature')])) )
+PeaksdataOut[comp,'Comb_type_exon_Oppo']=paste0('protein_coding: exon')
+
+# 3. repeats
+comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])&(is.na(PeaksdataOut[,paste0('Same_','Repeat_comb')])==F) )
+PeaksdataOut[comp,'Comb_type_exon_Oppo']="Repeat Element"
+
+# 4. Pseudogene
+comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('pseudogene',PeaksdataOut[,paste0('Same_','type_simple_comb')]))
+PeaksdataOut[comp,'Comb_type_exon_Oppo']='pseudogene'
+
+# 5. Antisense - non LncRNA
+comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
+PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
+
+# 6. lncRNA-exon
+comp1=is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])
+comp2=((PeaksdataOut[,paste0('Same_','type_comb')]%in%c('linLcRNA-exon')) | (PeaksdataOut[,paste0('Same_','type_comb')]%in%c('lnLcRNA')) )
+comp=comp1&comp2       
+PeaksdataOut[comp,'Comb_type_exon_Oppo']='lnLcRNA-exon'
+
+# 7. Antisense - LncRNA - exon
+comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA-intron',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
+PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
+
+# 8. intron
+comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('protein_coding',PeaksdataOut[,paste0('Same_','type_simple_comb')]))
+PeaksdataOut[comp,'Comb_type_exon_Oppo']=paste0('protein_coding: Intron')
+
+# 9. Antisense - LncRNA - intron
+comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA-exon',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
+PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
+
+# 10. lncRNA -intron
+comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo']) & ((PeaksdataOut[,paste0('Same_','type_comb')]%in%'linLcRNA-intron')==T) )
+PeaksdataOut[comp,'Comb_type_exon_Oppo']='lnLcRNA-intron'
+PeaksdataOut[is.na(PeaksdataOut[,'Comb_type_exon_Oppo']),'Comb_type_exon_Oppo']='no Feature'
+
+
+### only distances for final annotation_output
+## distances to any protein coading annotation
+PeaksdataOut[grepl('protein_coding',PeaksdataOut$Same_type_comb)==F,c("Same_Exn_start_dist")]=NA
+PeaksdataOut[grepl('protein_coding',PeaksdataOut$Same_type_comb)==F,c("Same_Intron_start_dist")]=NA
+
+################################################  
+### Revert lnLcRNA to lncRNA  
+
+PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')]= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')] )
+PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')] )
+PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')]= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')] )
+PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')] )
+PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
+PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
+PeaksdataOut[,'Comb_type_exon_Oppo']=factor(PeaksdataOut[,'Comb_type_exon_Oppo'], levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lncRNA-exon","Antisense Feature","protein_coding: Intron","lncRNA-intron","lncRNA","no Feature"))
+
+unlink(misc, recursive = TRUE)  
+return(PeaksdataOut)
+}
