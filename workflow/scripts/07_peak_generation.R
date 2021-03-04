@@ -11,39 +11,23 @@ refseq_path = args[6]
 lncra_path = args[7]
 alias_path = args[8]
 
-sample_id = "KO_fCLIP"
-nt_merge = "50nt"
-
 testing = "confirm"
 
-if (testing=="new"){
-  
-  out_dir = "/Volumes/data/iCLIP/marco/14_peaks/"
-  anno_dir = "/Volumes/data/iCLIP/marco/15_annotation/"
-  
-  peaks_in = (paste0(out_dir,"KO_fClip_50nt_peakjunction.txt"))
-  
-  ref_species="hg38"
-  gencode_path = (paste0(anno_dir,"ref_gencode.csv")) 
-  refseq_path = (paste0(anno_dir,"ref_refseq.csv")) 
-  lncra_path = (paste0(anno_dir,"ref_lncRNA.csv")) 
-  alias_path = (paste0(anno_dir,"ref_alias.csv")) 
-  
-  sample_id = "KO_fClip"
-  nt_merge = "50nt"
-  
-} else if (testing=="confirm"){
+if (testing=="confirm"){
+
   out_dir = "/Volumes/data/iCLIP/confirm/14_peaks/"
   anno_dir = "/Volumes/data/iCLIP/confirm/14_peaks_phil/allreadpeaks/annotation/"
   
   peaks_in = paste0("/Volumes/data/iCLIP/confirm/14_peaks_phil/KO1_CLIP_allPeaks50nt_peakDepth5_MD16.txt")
   
-  ref_species="hg38"
+  ref_dir = "/Volumes/RBL_NCI/iCLIP/ref/annotations/"
   gencode_path = (paste0(anno_dir,"rRNA_gencode.bed")) 
   #refseq_path = (paste0(anno_dir,"ref_refseq.csv")) 
   lncra_path = (paste0(anno_dir,"lncRNA.bed")) 
   #alias_path = (paste0(anno_dir,"ref_alias.csv")) 
+  rmsk_path = paste0(ref_dir,"/mm10/repeatmasker/rmsk_GRCm38.txt")
   
+  ref_species="hg38"
   sample_id = "KO_fClip"
   nt_merge = "50nt"
 }
@@ -81,7 +65,7 @@ peaks_oppo$strand=gsub("pos","-",peaks_oppo$strand)
 ##################################################################################################
 #read in references
 ref_lncra = read.csv(lncra_path)
-ref_refseq = read.csv(refseq_path)
+#ref_refseq = read.csv(refseq_path) #not using
 ref_gencode = read.csv(gencode_path)
 
 ### Add Column that combines all additional annotations
@@ -90,7 +74,7 @@ srpRNA_rmsk = read.csv(paste0(anno_dir, "srpRNA.bed"),header=TRUE,sep="\t")
 SKRNA_rmsk = read.csv(paste0(anno_dir, "7SKRNA.bed"),header=TRUE,sep="\t")
 scRNA_rmsk = read.csv(paste0(anno_dir, "scRNA.bed"),header=TRUE,sep="\t")
 
-#we should think about how to organize this - we should pull in from anno_config? 
+#phil we should think about how to organize this - we should pull in from anno_config? 
 #can also call the annotation script into this if we dont need to create BEDS
 ###phil this assumes that SY flag - is there no option here? if so need to update previous code
 annocol=c("chr","start","end","strand","type","transcript_name")
@@ -622,13 +606,17 @@ intronexon_opposite = peak_calling(peak_oppo,2,"oppo_")
 #  8) Unknown  
 #############################################################################################################
 #############################################################################################################
+#read in rmsk
+rmsk_GRCm38=fread(rmsk_path, header=T, sep="\t",stringsAsFactors = F,
+                  data.table=F)
+
 #prewritten function
 rpmsk_anno <- function(ColumnName,Annotable,peaksTable){
   
-  ###fix variable in fucntion is the same as global variable
+  ###fix variable
   s=peaksTable
   
-  #create id and start df
+  #create df of ids and start location
   s=separate(s,ID,into=c('chr','start'),sep=":",remove=F)
   s=separate(s,start,into=c('start','end'),sep="-",remove=F)
   
@@ -657,27 +645,47 @@ rpmsk_anno <- function(ColumnName,Annotable,peaksTable){
   rmskinfo=cbind(qh,sh)
   rmskinfo=rmskinfo[,c('ID','repClass_repeat')];colnames(rmskinfo)[colnames(rmskinfo)%in%'repClass_repeat']= ColumnName      
   
+  ###fix variable
+  #merge rmskinfo with peakstable
   peaksTable=merge(peaksTable[,!colnames(peaksTable)%in%ColumnName],rmskinfo,by='ID',all.x=T)
   
+  #check dups and unique peaks
   dup=unique(peaksTable[duplicated(peaksTable$ID),'ID'])
   peaksTable_single=peaksTable[!(peaksTable$ID%in%dup),]
-  peaksTable_double=peaksTable[(peaksTable$ID%in%dup),]
   
+  peaksTable_double=peaksTable[(peaksTable$ID%in%dup),]
   u=unique(peaksTable_double$ID)
-  peaksTable_colapsed=as.data.frame(matrix(nrow=length(u),ncol=ncol(peaksTable_double)));
+  
+  #collapse duplicate peaks
+  peaksTable_colapsed=as.data.frame(matrix(nrow=length(u),ncol=ncol(peaksTable_double)))
   colnames(peaksTable_colapsed)=colnames(peaksTable_double)
+  
+  #for each unique peak
   for(x in 1:length(u)){
-    peaksTable=u[x]
-    pam=peaksTable_double[peaksTable_double$ID%in%peaksTable,]
-    peaksTable_colapsed[x,colnames(peaksTable_double)%in%c(ColumnName)==F]=(pam[1,colnames(peaksTable_double)%in%c(ColumnName)==F,drop=T])
+    ###fix variable
+    ###fix code similarly to above - function?
+    peaksTable = u[x]
+    pam = peaksTable_double[peaksTable_double$ID%in%peaksTable,]
     
+    #if the cols of double are not in ColumnName list
+    ###phil what is the purpose of this? 
+    peaksTable_colapsed[x,colnames(peaksTable_double)%in%c(ColumnName)==F] = (pam[1,colnames(peaksTable_double)%in%c(ColumnName)==F,drop=T])
+    
+    #past the uqique values of the col to collapsed table
     peaksTable_colapsed[x,ColumnName]=paste(sort(unique((pam[,ColumnName]))), collapse =" | ")
   }
   
-  peaksTable_colapsed=rbind(peaksTable_colapsed,peaksTable_single)
-  peaksTable_colapsed=peaksTable_colapsed[!is.na(peaksTable_colapsed$ID),]
+  #bind collapsed and unqiue
+  peaksTable_colapsed = rbind(peaksTable_colapsed,peaksTable_single)
+  
+  #if there is no ID remove
+  peaksTable_colapsed = peaksTable_colapsed[!is.na(peaksTable_colapsed$ID),]
+  
+  ###phil why are we adding NA columns
   peaksTable_colapsed[is.na(peaksTable_colapsed[,ColumnName]),ColumnName]=NA
   peaksTable_colapsed[peaksTable_colapsed[,ColumnName]%in%"",ColumnName]=NA
+  
+  ###fix variable naming
   peaksTable=peaksTable_colapsed
   
   return(peaksTable) 
@@ -687,15 +695,23 @@ rpmsk_calling <- function(peaks_in,nmeprfix){
   ###fix variable names
   PeaksdataOut=peaks_in[!is.na(peaks_in$ID),]
   
-  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_LINE_SINE'),rmsk_GRCm38_LISI,PeaksdataOut)
-  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_LTR'),rmsk_GRCm38_LTR,PeaksdataOut)
-  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_DNA'),rmsk_GRCm38_DNA,PeaksdataOut)
-  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Satalites'),rmsk_GRCm38_sat,PeaksdataOut)
-  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Simple_Repeats'),rmsk_GRCm38_SR,PeaksdataOut)
-  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Low_Complexity'),rmsk_GRCm38_LowComplx,PeaksdataOut)
-  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Other'),rmsk_GRCm38_Other,PeaksdataOut)
-  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_Unknown'),rmsk_GRCm38_unknown,PeaksdataOut)
+  rpmsk_list = c("LTR","DNA","Satellite","Simple_repeat","Low_complexity","Other","Unknown")
+  rpmsk_names = c("Repeat_LTR","Repeat_DNA","Repeat_Satalites","Repeat_Simple_Repeats",
+                  "Repeat_Low_Complexity","Repeat_Other","Repeat_Unknown")
+  i = 1
   
+  for(find_type in rpmsk_list){
+    rmsk_subset = subset(rmsk_GRCm38, repClass == find_type)
+    PeaksdataOut=rpmsk_anno(paste0(nmeprfix,rpmsk_names[i]),rmsk_subset,PeaksdataOut)
+    i = i+1
+  }
+  
+  #run with final list
+  PeaksdataOut=rpmsk_anno(paste0(nmeprfix,'Repeat_LINE_SINE'),
+                          rmsk_GRCm38[rmsk_GRCm38$repClass%in%c('LINE','SINE'),],
+                          PeaksdataOut)
+
+  ###fix variable naming  
   p=PeaksdataOut
   p[,paste0(nmeprfix,'Repeat_comb')]=NA
   repcol=paste0(nmeprfix,c('Repeat_LINE_SINE','Repeat_LTR','Repeat_DNA',
@@ -704,6 +720,7 @@ rpmsk_calling <- function(peaks_in,nmeprfix){
   
   dup=p[rowSums((p[,repcol]>0),na.rm = T)>0,'ID']
   
+  #run duplicated and unique
   peaksTable_single=p[!(p$ID%in%dup),]
   peaksTable_double=p[(p$ID%in%dup),]
   
@@ -711,24 +728,34 @@ rpmsk_calling <- function(peaks_in,nmeprfix){
   peaksTable_colapsed=as.data.frame(matrix(nrow=length(u),ncol=ncol(peaksTable_double)));
   colnames(peaksTable_colapsed)=colnames(peaksTable_double)
   
-  
+  #for each unique id
   for(x in 1:length(u)){
     p=u[x]
     pam=peaksTable_double[peaksTable_double$ID%in%p,]
     pam_c=((pam[1,repcol,drop=F]))
     
-    pmat=as.data.frame(matrix(nrow=length(pam_c),ncol=1));colnames(pmat)='a'
+    pmat=as.data.frame(matrix(nrow=length(pam_c),ncol=1))
+    
+    ###fix col name 
+    colnames(pmat)='a'
     pmat$a=t(pam_c)
+    
+    #remove na's
     pmat=pmat[is.na(pmat)==F,]
+    
+    #paste uniques
     pmat=paste(unique(pmat),collapse = ',')
     
+    ###phil what is this doing?
     peaksTable_colapsed[x,colnames(peaksTable_double)]=(pam[1,colnames(peaksTable_double),drop=T])
     peaksTable_colapsed[x,paste0(nmeprfix,'Repeat_comb')]=pmat
     
   }
   
-  
+  #bind collapsed with single
   peaksTable_colapsed=rbind(peaksTable_colapsed,peaksTable_single)
+  
+  #remove na's
   peaksTable_colapsed=peaksTable_colapsed[!is.na(peaksTable_colapsed$ID),]
   
   ###fix variable naming
