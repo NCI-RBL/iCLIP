@@ -20,15 +20,9 @@ DEmethod = args [6]
 sample_id = args[7]
 nt_merge = args[8]
 out_dir = args[9]
-anno_dir = args[2]
-rmsk_path = args[7]
-
-out_dir = args[3]
-ref_species = args[4]
-sample_id = args[5] 
-nt_merge = args[6]
-
-out_file = args[8]
+anno_dir = args[10]
+rmsk_path = args[11]
+ref_species = args[12]
 
 if(is.na(peak_type)){
   
@@ -37,13 +31,12 @@ if(is.na(peak_type)){
   peak_all = "/Volumes/data/iCLIP/marco/13_counts/allreadpeaks/KO_fCLIP_50nt_allFracMMCounts.txt"
   
   #output
-  out_dir = "/Volumes/data/iCLIP/confirm/16_peaks_annotated/"
-  out_file = "/Volumes/data/iCLIP/confirm/16_peaks_annotated/KO_fCLIP_50nt_peakannotation_coomplete.txt"
-  out_dir = "/Volumes/data/iCLIP/marco/14_peaks/"
-  
+  out_dir = "/Volumes/data/iCLIP/confirm/15_peak_annotation/"
+  out_file = "/Volumes/data/iCLIP/confirm/15_peak_annotation/KO_fCLIP_50nt_peakannotation_coomplete.txt"
+
   #project annotation files
   rmsk_path = "/Volumes/RBL_NCI/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCm38.txt"
-  anno_dir = "/Volumes/data/iCLIP/confirm/15_annotation/"
+  anno_dir = "/Volumes/data/iCLIP/confirm/14_project_annotation/"
 
   #feature information
   join_junction = "TRUE"
