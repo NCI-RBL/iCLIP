@@ -1,36 +1,55 @@
 library(dplyr)
 library(data.table)
+#TO DO
+#fix variables
+#remove all paths and link directly in snakemake
+# fix arg list
 
 args <- commandArgs(trailingOnly = TRUE)
-out_dir = args[1]
+peaks_in = args[1]
 anno_dir = args[2]
-peaks_in = args[3]
+out_dir = args[3]
 ref_species = args[4]
-gencode_path = args[5]
-refseq_path = args[6]
-lncra_path = args[7]
-alias_path = args[8]
+sample_id = args[5] 
+nt_merge = args[6]
+rmsk_path = args[7]
+out_file = args[8]
 
-testing = "confirm"
+#testing
+if (is.na(peaks_in)){
 
-if (testing=="confirm"){
-
-  out_dir = "/Volumes/data/iCLIP/confirm/14_peaks/"
-  anno_dir = "/Volumes/data/iCLIP/confirm/14_peaks_phil/allreadpeaks/annotation/"
+  #input file is from peak_junction file 
+  peaks_in = paste0("/Volumes/data/iCLIP/confirm/14_peaks/KO2_fCLIP_50nt_peakjunction.txt")
   
-  peaks_in = paste0("/Volumes/data/iCLIP/confirm/14_peaks_phil/KO1_CLIP_allPeaks50nt_peakDepth5_MD16.txt")
+  #project annotation files
+  anno_dir = "/Volumes/data/iCLIP/confirm/15_annotation/"
+  rmsk_path = "/Volumes/RBL_NCI/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCm38.txt"
   
-  ref_dir = "/Volumes/RBL_NCI/iCLIP/ref/annotations/"
-  gencode_path = (paste0(anno_dir,"rRNA_gencode.bed")) 
-  #refseq_path = (paste0(anno_dir,"ref_refseq.csv")) 
-  lncra_path = (paste0(anno_dir,"lncRNA.bed")) 
-  #alias_path = (paste0(anno_dir,"ref_alias.csv")) 
-  rmsk_path = paste0(ref_dir,"/mm10/repeatmasker/rmsk_GRCm38.txt")
+  #output
+  out_dir = "/Volumes/data/iCLIP/confirm/16_peaks_annotated/"
+  out_file = "/Volumes/data/iCLIP/confirm/16_peaks_annotated/KO_fCLIP_50nt__annotated_peak.csv"
   
+  #feature information
   ref_species="hg38"
   sample_id = "KO_fClip"
   nt_merge = "50nt"
 }
+
+#annotation paths
+gencode_path = paste0(anno_dir,"rRNA_gencode.bed")
+lncra_path = paste0(anno_dir,"lncRNA.bed")
+alias_path = paste0(anno_dir,"ref_alias.csv") 
+YRNA_path = paste0(anno_dir, "yRNA.bed")
+srpRNA_path = paste0(anno_dir, "srpRNA.bed")
+SKRNA_path = paste0(anno_dir, "7SKRNA.bed")
+scRNA_path = paste0(anno_dir, "scRNA.bed")
+tRNA_path = paste0(anno_dir, "tRNA.bed")
+sncRNA_path = paste0(anno_dir, "sncRNA.bed")
+rRNA_BK00964_path = paste0(anno_dir, "rRNA.bed")
+rRNA_rmsk_path = paste0(anno_dir, "rRNA.bed")
+tRNA_rmsk_path = paste0(anno_dir, "tRNA.bed")
+
+
 ##########################################################################################
 ############### Peak info
 ##########################################################################################
@@ -69,10 +88,10 @@ ref_lncra = read.csv(lncra_path)
 ref_gencode = read.csv(gencode_path)
 
 ### Add Column that combines all additional annotations
-YRNA_rmsk = read.csv(paste0(anno_dir, "yRNA.bed"),header=TRUE,sep="\t")
-srpRNA_rmsk = read.csv(paste0(anno_dir, "srpRNA.bed"),header=TRUE,sep="\t")
-SKRNA_rmsk = read.csv(paste0(anno_dir, "7SKRNA.bed"),header=TRUE,sep="\t")
-scRNA_rmsk = read.csv(paste0(anno_dir, "scRNA.bed"),header=TRUE,sep="\t")
+YRNA_rmsk = read.csv(YRNA_path,header=TRUE,sep="\t")
+srpRNA_rmsk = read.csv(srpRNA_path,header=TRUE,sep="\t")
+SKRNA_rmsk = read.csv(SKRNA_path,header=TRUE,sep="\t")
+scRNA_rmsk = read.csv(scRNA_path,header=TRUE,sep="\t")
 
 #phil we should think about how to organize this - we should pull in from anno_config? 
 #can also call the annotation script into this if we dont need to create BEDS
@@ -81,17 +100,17 @@ annocol=c("chr","start","end","strand","type","transcript_name")
 
 if(ref_species == "mm10"){
   #pull in references
-  tRNA_sy = read.csv(paste0(anno_dir, "tRNA.bed"),header=TRUE,sep="\t")
-  sncRNA_sy = read.csv(paste0(anno_dir, "sncRNA.bed"),header=TRUE,sep="\t")
-  rRNA_BK00964 = read.csv(paste0(anno_dir, "rRNA.bed"),header=TRUE,sep="\t")
+  tRNA_sy = read.csv(tRNA_path,header=TRUE,sep="\t")
+  sncRNA_sy = read.csv(sncRNA_path,header=TRUE,sep="\t")
+  rRNA_BK00964 = read.csv(rRNA_BK00964_path,header=TRUE,sep="\t")
   
   Anno_RNA_comb=rbind(YRNA_rmsk[,annocol],srpRNA_rmsk[,annocol],
                       tRNA_sy[,annocol],sncRNA_sy[,annocol],rRNA_BK00964[,annocol],
                       SKRNA_rmsk[,annocol],scRNA_rmsk[,annocol],rRNA_rmsk[,annocol])
 } else if (ref_species == "hg38"){
   #pull in references
-  rRNA_rmsk = read.csv(paste0(anno_dir, "rRNA.bed"),header=TRUE,sep="\t")
-  tRNA_rmsk = read.csv(paste0(anno_dir, "tRNA.bed"),header=TRUE,sep="\t")
+  rRNA_rmsk = read.csv(rRNA_rmsk_path,header=TRUE,sep="\t")
+  tRNA_rmsk = read.csv(tRNA_rmsk_path,header=TRUE,sep="\t")
   
   Anno_RNA_comb = rbind(YRNA_rmsk[,annocol],srpRNA_rmsk[,annocol],
                         SKRNA_rmsk[,annocol],scRNA_rmsk[,annocol],
@@ -140,7 +159,6 @@ bam_anno2=function(peaksTable,Annotable,ColumnName,pass_n){
   
   ###phil there are non chrm found in the peaksTable - need to remove for merge
   #output bed files
-  anno_dir = "/Volumes/data/iCLIP/marco/15_annotation/"
   write.table(Annotable,
               file = paste0(anno_dir,file_prefix,"annotable.bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
@@ -150,28 +168,17 @@ bam_anno2=function(peaksTable,Annotable,ColumnName,pass_n){
   
   #remove lines with illegal characters, remove NAs
   cmd = dQuote("NA")
-  anno_dir = "/data/sevillas2/iCLIP/marco/15_annotation/"
-  paste0("cat ",anno_dir,file_prefix,"peakstable.bed | awk '$2 !~ /e/' | awk '$2 != ", cmd, "' > ",
-         anno_dir,file_prefix,"peakstable_clean.bed")
-  #system(paste0("cat ",anno_dir,file_prefix,"peakstable.bed | awk '$2 !~ /e/' | awk '$2 != ", cmd, "' > ",
-  #              anno_dir,file_prefix,"peakstable_clean.bed"))
-  #cat /data/sevillas2/iCLIP/marco/15_annotation/KO_fClip_50nt_pass1_peakstable.bed | awk '$2 !~ /e/' | awk '$2 != "NA"' > /data/sevillas2/iCLIP/marco/15_annotation/KO_fClip_50nt_pass1_peakstable_clean.bed
-  
+  system(paste0("cat ",anno_dir,file_prefix,"peakstable.bed | awk '$2 !~ /e/' | awk '$2 != ", cmd, "' > ",
+                anno_dir,file_prefix,"peakstable_clean.bed"))
+
   ###phil i think we can do this with GRRanges? 
-  #merge bedfiles into output text
-  #system(paste0('bedtools intersect -a ', 
-   #             anno_dir, file_prefix,'peakstable_clean.bed -b ', 
-    #            anno_dir, file_prefix,'annotable.bed -wao -s > ',
-     #           out_dir, file_prefix,'peaks_OL.txt'))
-  out_dir = "/data/sevillas2/iCLIP/marco/14_peaks/"
-  paste0('bedtools intersect -a ', 
-         anno_dir, file_prefix,'peakstable_clean.bed -b ', 
-         anno_dir, file_prefix,'annotable.bed -wao -s > ',
-         out_dir, file_prefix,'peaks_OL.txt')
-  #bedtools intersect -a /data/sevillas2/iCLIP/marco/15_annotation/KO_fClip_50nt_pass1_peakstable_clean.bed -b /data/sevillas2/iCLIP/marco/15_annotation/KO_fClip_50nt_pass1_annotable.bed -wao -s > /data/sevillas2/iCLIP/marco/14_peaks/KO_fClip_50nt_pass1_peaks_OL.txt
+  # merge bedfiles into output text
+  system(paste0('bedtools intersect -a ', 
+                anno_dir, file_prefix,'peakstable_clean.bed -b ', 
+                anno_dir, file_prefix,'annotable.bed -wao -s > ',
+                out_dir, file_prefix,'peaks_OL.txt'))
   
   #read in merged file
-  out_dir = "/Volumes/data/iCLIP/marco/14_peaks/"
   ab_OL = read.csv(paste0(out_dir,file_prefix,"peaks_OL.txt"), 
                    header=F, sep="\t",stringsAsFactors = F)
   colnames(ab_OL) = c(paste0(colnames(peaksTable)),
@@ -413,6 +420,7 @@ peak_calling<-function(peak_in,xopp,nmeprfix){
 }
 
 ### fix designations - 1 = "same" 2 = "oppo"? same strand and complementary strand?
+#can prob  be more descriptive
 peak_same = peak_calling(peaks,1,"same_")
 peak_oppo = peak_calling(peaks,2,"oppo_")
 
@@ -769,97 +777,180 @@ rpmsk_same = rpmsk_calling(intronexon_same,"same_")
 rpmsk_opposite = rpmsk_calling(intronexon_same,"oppo_")
 
 ##########################################################################################
-###############
+###############Assigning Clip peak attributes by strand
 ##########################################################################################
+# Not all Peaks overlap with a single feature so peak assignments were assigned by priority:
+# ncRNA > Protein coding : Exonic > repeats > Pseudogene > Antisense Feature > Protein Coding : Intronic > lncRNA > no Feature  
+# All annotations from RNA type, Repeat regions, and Intronic/exonic regions are annoted in the Table
 
-todo<-function(){
-  #############################################################################################################
-  #############################################################################################################
-  ### Asigning Clip peak attributes   
+peak_attributes <- function(PeaksdataOut,nmeprfix){
+  #convert lincRNA and lncRNA types
+  col_list = c("type_simple_comb","type_comb","gene_type","gene_type_ALL")
+  type_start = c("lincRNA","lncRNA")
+  type_end = c("linLcRNA","lnLcRNA")
   
-  # Not all Peaks overlap with a single feature so peak assignments were assigned by priority:  
-  # 
-  # ncRNA > Protein coding : Exonic > repeats > Pseudogene > Antisense Feature > Protein Coding : Intronic > lncRNA > no Feature  
-  # 
-  # All annotations from RNA type, Repeat regions, and Intronic/exonic regions are annoted in the Table.   
+  #for each col selected
+  for (cols_to_change in col_list){
+    
+    #change the type (type_list) to new id (change_list)
+    for (i in range(1:length(type_start))){
+      PeaksdataOut[,paste0(nmeprfix,cols_to_change)] = gsub(type_start[i],
+                                                            type_end[i],
+                                                            PeaksdataOut[,paste0(nmeprfix,cols_to_change)] )
+    }
+  }
   
-  #############################################################################################################
-  #############################################################################################################
-  ### fix with loop
-  PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]=NA
-  PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')] )
-  PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')] )
-  PeaksdataOut[,paste0(nmeprfix,'type_comb')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_comb')] )
-  PeaksdataOut[,paste0(nmeprfix,'type_comb')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_comb')] )
-  PeaksdataOut[,paste0(nmeprfix,'gene_type')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type')] )
-  PeaksdataOut[,paste0(nmeprfix,'gene_type')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type')] )
-  PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')] )
-  PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')] )   
+  #replaced above
+  #PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')] )
+  #PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')] )
   
-  # 1. ncRNA        
-  comp=( grepl('ncRNA',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) ) 
-  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='ncRNA'
+  #PeaksdataOut[,paste0(nmeprfix,'type_comb')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_comb')] )
+  #PeaksdataOut[,paste0(nmeprfix,'type_comb')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'type_comb')] )
+  
+  #PeaksdataOut[,paste0(nmeprfix,'gene_type')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type')] )
+  #PeaksdataOut[,paste0(nmeprfix,'gene_type')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type')] )
+  
+  #PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')]= gsub('lincRNA',"linLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')] )
+  #PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')]= gsub('lncRNA',"lnLcRNA",PeaksdataOut[,paste0(nmeprfix,'gene_type_ALL')] )   
+  
+  AddTypetoComb <- function(df_in,subset_df,type_id){
+    df_in[subset_df,paste0(nmeprfix,'Comb_type_exon')]=type_id
+    return(df_in)
+  }
+  
+  #create column
+  PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]="TBD"
+  
+  # 1. ncRNA
+  PeaksdataOut = AddTypetoComb(PeaksdataOut,
+                               subset(PeaksdataOut, paste0(nmeprfix,type_simple_somb) == "ncRNA"),
+                               "ncRNA")
   
   # 2. protein coding - Exonic
-  comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('protein_coding',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')])&(grepl('exon',PeaksdataOut[,paste0(nmeprfix,'feature')])) )
-  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='protein_coding: exon'
+  PeaksdataOut = AddTypetoComb(PeaksdataOut,
+                               subset(PeaksdataOut, paste0(nmeprfix,Comb_type_exon) == "TBD" & 
+                                        paste0(nmeprfix,'type_simple_comb') == "protein_coding" & 
+                                        paste0(nmeprfix,'feature') == "exon"),
+                               "protein_coding: exon")
   
   # 3. repeats
-  comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& (is.na(PeaksdataOut[,paste0(nmeprfix,'Repeat_comb')])==F) )
-  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]="Repeat Element"
-  
+  ###phil check the repeat_comb is correct
+  PeaksdataOut = AddTypetoComb(PeaksdataOut,
+                               subset(PeaksdataOut, paste0(nmeprfix,Comb_type_exon) == "TBD" &
+                                        Repeat_comb == TRUE),
+                               "Repeat Element")
   # 4. Pseudogene
-  comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('pseudogene',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) )
-  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='pseudogene'
+  PeaksdataOut = AddTypetoComb(PeaksdataOut,
+                               subset(PeaksdataOut, paste0(nmeprfix,Comb_type_exon) == "TBD" &
+                                        type_simple_comb == "pseudogene"),
+                               "pseudogene")
   
   # 5. lncRNA-exon
-  comp1=is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])  
-  comp2=grepl('linLcRNA-exon',PeaksdataOut[,paste0(nmeprfix,'type_comb')]) | grepl('lnLcRNA',PeaksdataOut[,paste0(nmeprfix,'type_comb')])
-  comp=comp1&comp2       
-  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='lnLcRNA-exon'
+  PeaksdataOut = AddTypetoComb(PeaksdataOut,
+                               subset(PeaksdataOut, paste0(nmeprfix,Comb_type_exon) == "TBD" &
+                                        paste0(nmeprfix,'type_comb') == "linLcRNA-exon" | 
+                                        paste0(nmeprfix,'type_comb') == "lnLcRNA"),
+                               "lnLcRNA-exon")
   
   # 6. intron
-  comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])& grepl('protein_coding',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) )
-  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='protein_coding: Intron'
+  PeaksdataOut = AddTypetoComb(PeaksdataOut,
+                               subset(PeaksdataOut, paste0(nmeprfix,Comb_type_exon) == "TBD" &
+                                        paste0(nmeprfix,'type_simple_comb') == "protein_coding"),
+                               "protein_coding: Intron")
   
   # 7. lncRNA-intron
-  comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]) & (grepl('linLcRNA-intron',PeaksdataOut[,paste0(nmeprfix,'type_comb')]) ))
-  PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='lnLcRNA-intron'
-  PeaksdataOut[is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]),paste0(nmeprfix,'Comb_type_exon')]='no Feature'
-  PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]=factor(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')], levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lnLcRNA-exon","Antisense Feature","protein_coding: Intron","lnLcRNA-intron","no Feature"))
+  PeaksdataOut = AddTypetoComb(PeaksdataOut,
+                               subset(PeaksdataOut, paste0(nmeprfix,Comb_type_exon) == "TBD" &
+                                        paste0(nmeprfix,'type_comb') == "linLcRNA-intron"),
+                               "lnLcRNA-intron")
   
-  ##############################
-  #### RNA subtypes
-  ##############################
+  #all other features
+  PeaksdataOut = AddTypetoComb(PeaksdataOut,
+                               subset(PeaksdataOut, paste0(nmeprfix,Comb_type_exon) == "TBD"),
+                               "no feature")
   
+  #create factor of col
+  PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')] = 
+    factor(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')], 
+           levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene",
+                      "lnLcRNA-exon","Antisense Feature","protein_coding: Intron","lnLcRNA-intron","no Feature"))
+  
+  #replaced above
+  # # 1. ncRNA        
+  # comp = ( grepl('ncRNA',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) ) 
+  # PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='ncRNA'
+  # 
+  # # 2. protein coding - Exonic
+  # PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]=NA
+  # comp=(is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]) &
+  #         grepl('protein_coding',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) &
+  #         (grepl('exon',PeaksdataOut[,paste0(nmeprfix,'feature')])))
+  # PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='protein_coding: exon'
+  # 
+  # # 3. repeats
+  # comp =(is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]) &
+  #          (is.na(PeaksdataOut[,paste0(nmeprfix,'Repeat_comb')])==F) )
+  # PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]="Repeat Element"
+  # 
+  # # 4. Pseudogene
+  # comp = (is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])
+  #         & grepl('pseudogene',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]))
+  # PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='pseudogene'
+  # 
+  # # 5. lncRNA-exon
+  # comp1 = is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')])  
+  # comp2 = grepl('linLcRNA-exon',PeaksdataOut[,paste0(nmeprfix,'type_comb')]) |
+  #   grepl('lnLcRNA',PeaksdataOut[,paste0(nmeprfix,'type_comb')])
+  # comp = comp1&comp2       
+  # PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='lnLcRNA-exon'
+  # 
+  # # 6. intron
+  # comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]) &
+  #          grepl('protein_coding',PeaksdataOut[,paste0(nmeprfix,'type_simple_comb')]) )
+  # PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='protein_coding: Intron'
+  # 
+  # # 7. lncRNA-intron
+  # comp=( is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]) &
+  #          (grepl('linLcRNA-intron',PeaksdataOut[,paste0(nmeprfix,'type_comb')]) ))
+  # PeaksdataOut[comp,paste0(nmeprfix,'Comb_type_exon')]='lnLcRNA-intron'
+  # 
+  # 
+  # #all other features
+  # PeaksdataOut[is.na(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')]),paste0(nmeprfix,'Comb_type_exon')]='no Feature'
+  # PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')] = 
+  #   factor(PeaksdataOut[,paste0(nmeprfix,'Comb_type_exon')], 
+  #          levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene",
+  #                     "lnLcRNA-exon","Antisense Feature","protein_coding: Intron","lnLcRNA-intron","no Feature"))
+  
+  ###fix variable swap
   p=PeaksdataOut
-  p[,paste0(nmeprfix,'Comb_type_ncRNA')]=NA
-  p1=p[p[,paste0(nmeprfix,'Comb_type_exon')]%in%'ncRNA',]
-  p2=p[!p[,paste0(nmeprfix,'Comb_type_exon')]%in%'ncRNA',]
   
+  #create col
+  p[,paste0(nmeprfix,'Comb_type_ncRNA')]=NA
+  
+  #seleect ncRNA
+  ###fix variable
+  p1=subset(p, paste0(nmeprfix,'Comb_type_exon') == 'ncRNA')
+  
+  #make col type_comb with prefix  
   p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=p1[,paste0(nmeprfix,'type_comb')]
   
-  ### Protein coding + ncRNA annotations -> ncRNA subtype
-  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('protein_coding,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub(',protein_coding',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  
-  
-  ### any ncRNA takes priority over pseudogene
-  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('pseudogene,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub(',pseudogene',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  
-  
-  ### any double annotations with lncRNA become second annotation only
-  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('lnLcRNA,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  #merge linLcRNA  
   p1[p1[,paste0(nmeprfix,'Comb_type_ncRNA')]%in%'linLcRNA-intron,linLcRNA-exon',paste0(nmeprfix,'Comb_type_ncRNA')]="linLcRNA"
   p1[p1[,paste0(nmeprfix,'Comb_type_ncRNA')]%in%'linLcRNA-exon,linLcRNA-intron',paste0(nmeprfix,'Comb_type_ncRNA')]="linLcRNA"
   
-  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('linLcRNA,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('linLcRNA-exon,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('linLcRNA-intron,',"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  ###phil why are we removing all of theses types? 
+  #remove types
+  type_list = c("protein_coding,",",protein_coding","pseudogene,",",pseudogene","lnLcRNA,",'linLcRNA,',
+                'linLcRNA-exon,',"linLcRNA-intron,")
+  ### Protein coding + ncRNA annotations -> ncRNA subtype
+  ### any ncRNA takes priority over pseudogene
+  ### any double annotations with lncRNA become second annotation only
+  for (type_id in type_list){
+    p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub(type_list,"",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
+    
+  }  
   
-  
-  ### fix with loop
   ### any double annotations with yRNA become yRNA only
   p1[grep('yRNA',p1[,paste0(nmeprfix,'Comb_type_ncRNA')]),paste0(nmeprfix,'Comb_type_ncRNA')]='yRNA'
   
@@ -888,77 +979,187 @@ todo<-function(){
   p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,scaRNA',"scaRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
   p1[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('scaRNA,miRNA,',"scaRNA",p1[,paste0(nmeprfix,'Comb_type_ncRNA')])
   
+  #select not ncRNA
+  p2=p[!p[,paste0(nmeprfix,'Comb_type_exon')]%in%'ncRNA',]
+  
+  ###fix variable
   PeaksdataOut=rbind(p1,p2)
   
-  if (xopp==1) {PeaksdataOut_same=PeaksdataOut}
-  if (xopp==2) {PeaksdataOut=merge(PeaksdataOut_same,PeaksdataOut[,colnames(PeaksdataOut)[!colnames(PeaksdataOut)%in%c("chr","start","end","strand","ID2" )]],by='ID')}
+  return(PeaksdataOut)
+}
   
-}### for pos or neg anno
+peak_attrib_same = peak_attributes(rpmsk_same,"same_")
+peak_attrib_oppo = peak_attributes(rpmsk_opposite,"oppo_")
 
+###fix variable swap
+#merge attributes
+PeaksdataOut = merge(peak_attrib_same,
+                     peak_attrib_oppo[,colnames(peak_attrib_oppo)[!colnames(peak_attrib_oppo) %in% 
+                                                                          c("chr","start","end","strand","ID2" )]],
+                                   by='ID')
+##########################################################################################
+###############Assigning Clip peak attributes - merged strands
+##########################################################################################  
+#create column
+PeaksdataOut$Comb_type_exon_Oppo="no feature"
 
-PeaksdataOut$Comb_type_exon_Oppo=NA
-# PeaksdataOut$type_simple_comb
+#select subset of df, input specific type
+AddTypetoComb <- function(df_in,subset_df,type_id){
+  df_in[subset_df,paste0(nmeprfix,'Comb_type_exon_Oppo')]=type_id
+  return(df_in)
+}
 
+###phil - i tried to make this more readable but not sure if it is; we can keep the old
+#way if you prefer
+###fix variable naming
 # 1. ncRNA        
-comp=(grepl('ncRNA',PeaksdataOut[,paste0('Same_','type_simple_comb')],fixed = T) )
-PeaksdataOut[comp,'Comb_type_exon_Oppo']='ncRNA'
+PeaksdataOut = AddTypetoComb(PeaksdataOut, 
+                             subset(PeaksdataOut,paste0('Same_','type_simple_comb') == "ncRNA"), 
+                             'ncRNA')
 
 # 2. protein coding - Exonic
-comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])&grepl('protein_coding',PeaksdataOut[,paste0('Same_','type_simple_comb')])&(grepl('exon',PeaksdataOut[,paste0('Same_','feature')])) )
-PeaksdataOut[comp,'Comb_type_exon_Oppo']=paste0('protein_coding: exon')
-
+PeaksdataOut = AddTypetoComb(PeaksdataOut, 
+                            subset(PeaksdataOut, Comb_type_exon_Oppo == "no feature" & 
+                                     paste0('Same_','type_simple_comb') == 'protein_coding' & 
+                                     paste0('Same_','feature') == 'exon'),
+                             'protein_coding: exon')
 # 3. repeats
-comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])&(is.na(PeaksdataOut[,paste0('Same_','Repeat_comb')])==F) )
-PeaksdataOut[comp,'Comb_type_exon_Oppo']="Repeat Element"
-
+PeaksdataOut = AddTypetoComb(PeaksdataOut, 
+                             is.na(PeaksdataOut[,paste0('Same_','Repeat_comb')])==FALSE %>%
+                               subset(Comb_type_exon_Oppo == "no feature"),
+                             "Repeat Element")
 # 4. Pseudogene
-comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('pseudogene',PeaksdataOut[,paste0('Same_','type_simple_comb')]))
-PeaksdataOut[comp,'Comb_type_exon_Oppo']='pseudogene'
+PeaksdataOut = AddTypetoComb(PeaksdataOut, 
+                             subset(PeaksdataOut, Comb_type_exon_Oppo == "no feature" & 
+                                      paste0('Same_','type_simple_comb') == "pseudogene"),
+                             "pseudogene")
 
 # 5. Antisense - non LncRNA
-comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
-PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
-
+PeaksdataOut = AddTypetoComb(PeaksdataOut, 
+                             subset(PeaksdataOut, Comb_type_exon_Oppo == "no feature" & 
+                                      paste0('Oppo_','Comb_type_exon') == "no feature" &
+                                    !(paste0('Oppo_','Comb_type_exon') == "lnLcRNA")),
+                             "Antisense Feature")
 # 6. lncRNA-exon
-comp1=is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])
-comp2=((PeaksdataOut[,paste0('Same_','type_comb')]%in%c('linLcRNA-exon')) | (PeaksdataOut[,paste0('Same_','type_comb')]%in%c('lnLcRNA')) )
-comp=comp1&comp2       
-PeaksdataOut[comp,'Comb_type_exon_Oppo']='lnLcRNA-exon'
+PeaksdataOut = AddTypetoComb(PeaksdataOut, 
+                             subset(PeaksdataOut, Comb_type_exon_Oppo == "no feature" & 
+                                      paste0('Same_','type_comb') == "linLcRNA-exon" |
+                                      paste0('Same_','type_comb') == "lnLcRNA"),
+                             'lnLcRNA-exon')
 
 # 7. Antisense - LncRNA - exon
-comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA-intron',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
-PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
+PeaksdataOut = AddTypetoComb(PeaksdataOut, 
+                             subset(PeaksdataOut, Comb_type_exon_Oppo == "no feature" & 
+                                      !(paste0('Oppo_','Comb_type_exon') == "no feature") &
+                                      !(paste0('Oppo_','Comb_type_exon') == "lnLcRNA-intron")),
+                             'Antisense Feature')
 
 # 8. intron
-comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('protein_coding',PeaksdataOut[,paste0('Same_','type_simple_comb')]))
-PeaksdataOut[comp,'Comb_type_exon_Oppo']=paste0('protein_coding: Intron')
+PeaksdataOut = AddTypetoComb(PeaksdataOut, 
+                             subset(PeaksdataOut, Comb_type_exon_Oppo == "no feature" & 
+                                      paste0('Same_','type_simple_comb') == 'protein_coding'),
+                             'protein_coding: Intron')
 
 # 9. Antisense - LncRNA - intron
-comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA-exon',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
-PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
+PeaksdataOut = AddTypetoComb(PeaksdataOut, 
+                             subset(PeaksdataOut, Comb_type_exon_Oppo == "no feature" & 
+                                      !(paste0('Oppo_','Comb_type_exon') == "no feature") &
+                                      !(paste0('Oppo_','Comb_type_exon') == 'lnLcRNA-exon')),
+                             'Antisense Feature')
 
 # 10. lncRNA -intron
-comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo']) & ((PeaksdataOut[,paste0('Same_','type_comb')]%in%'linLcRNA-intron')==T) )
-PeaksdataOut[comp,'Comb_type_exon_Oppo']='lnLcRNA-intron'
-PeaksdataOut[is.na(PeaksdataOut[,'Comb_type_exon_Oppo']),'Comb_type_exon_Oppo']='no Feature'
+PeaksdataOut = AddTypetoComb(PeaksdataOut, 
+                             subset(PeaksdataOut, Comb_type_exon_Oppo == "no feature" & 
+                                      paste0('Same_','type_comb') == 'linLcRNA-intron'),
+                             'lnLcRNA-intron')
+
+#replaced above
+# # 1. ncRNA        
+# comp=(grepl('ncRNA',PeaksdataOut[,paste0('Same_','type_simple_comb')],fixed = T) )
+# PeaksdataOut[comp,'Comb_type_exon_Oppo']='ncRNA'
+# 
+# # 2. protein coding - Exonic
+# comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])&grepl('protein_coding',PeaksdataOut[,paste0('Same_','type_simple_comb')])&(grepl('exon',PeaksdataOut[,paste0('Same_','feature')])) )
+# PeaksdataOut[comp,'Comb_type_exon_Oppo']=paste0('protein_coding: exon')
+# 
+# # 3. repeats
+# comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])&(is.na(PeaksdataOut[,paste0('Same_','Repeat_comb')])==F) )
+# PeaksdataOut[comp,'Comb_type_exon_Oppo']="Repeat Element"
+# 
+# # 4. Pseudogene
+# comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('pseudogene',PeaksdataOut[,paste0('Same_','type_simple_comb')]))
+# PeaksdataOut[comp,'Comb_type_exon_Oppo']='pseudogene'
+# 
+# # 5. Antisense - non LncRNA
+# comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
+# PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
+# 
+# # 6. lncRNA-exon
+# comp1=is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])
+# comp2=((PeaksdataOut[,paste0('Same_','type_comb')]%in%c('linLcRNA-exon')) | (PeaksdataOut[,paste0('Same_','type_comb')]%in%c('lnLcRNA')) )
+# comp=comp1&comp2       
+# PeaksdataOut[comp,'Comb_type_exon_Oppo']='lnLcRNA-exon'
+# 
+# # 7. Antisense - LncRNA - exon
+# comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA-intron',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
+# PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
+# 
+# # 8. intron
+# comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& grepl('protein_coding',PeaksdataOut[,paste0('Same_','type_simple_comb')]))
+# PeaksdataOut[comp,'Comb_type_exon_Oppo']=paste0('protein_coding: Intron')
+# 
+# # 9. Antisense - LncRNA - intron
+# comp=( is.na(PeaksdataOut[,'Comb_type_exon_Oppo'])& ((PeaksdataOut[,paste0('Oppo_','Comb_type_exon')]%in%'no Feature')==F) & (grepl('lnLcRNA-exon',PeaksdataOut[,paste0('Oppo_','Comb_type_exon')])==F) )
+# PeaksdataOut[comp,'Comb_type_exon_Oppo']='Antisense Feature'
+# 
+# # 10. lncRNA -intron
+# comp=(is.na(PeaksdataOut[,'Comb_type_exon_Oppo']) & ((PeaksdataOut[,paste0('Same_','type_comb')]%in%'linLcRNA-intron')==T) )
+# PeaksdataOut[comp,'Comb_type_exon_Oppo']='lnLcRNA-intron'
+# PeaksdataOut[is.na(PeaksdataOut[,'Comb_type_exon_Oppo']),'Comb_type_exon_Oppo']='no Feature'
+# 
+# 
+# ### only distances for final annotation_output
+# ## distances to any protein coading annotation
+# PeaksdataOut[grepl('protein_coding',PeaksdataOut$Same_type_comb)==F,c("Same_Exn_start_dist")]=NA
+# PeaksdataOut[grepl('protein_coding',PeaksdataOut$Same_type_comb)==F,c("Same_Intron_start_dist")]=NA
+# 
+# ### Revert lnLcRNA to lncRNA  
+# 
+# PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')]= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')] )
+# PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')] )
+# PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')]= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')] )
+# PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')] )
+# PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
+# PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
+# PeaksdataOut[,'Comb_type_exon_Oppo']=factor(PeaksdataOut[,'Comb_type_exon_Oppo'], levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lncRNA-exon","Antisense Feature","protein_coding: Intron","lncRNA-intron","lncRNA","no Feature"))
 
 
 ### only distances for final annotation_output
-## distances to any protein coading annotation
+## distances to any protein coding annotation
+###phil this is grabbing any non protein coding 'same type combo' and making two NA columns - we never fill these
 PeaksdataOut[grepl('protein_coding',PeaksdataOut$Same_type_comb)==F,c("Same_Exn_start_dist")]=NA
 PeaksdataOut[grepl('protein_coding',PeaksdataOut$Same_type_comb)==F,c("Same_Intron_start_dist")]=NA
 
-################################################  
+###phil - is conversion necessary if we're going to swap them back?
 ### Revert lnLcRNA to lncRNA  
+PeaksdataOut$Same_Comb_type_exon[PeaksdataOut$Same_Comb_type_exon == "lnLcRNA-exon"] <- "lncRNA"
+PeaksdataOut$Oppo_Comb_type_exon[PeaksdataOut$Oppo_Comb_type_exon == "lnLcRNA-exon"] <- "lncRNA"
 
-PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')]= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')] )
-PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')] )
-PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')]= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')] )
-PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')] )
-PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
-PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
-PeaksdataOut[,'Comb_type_exon_Oppo']=factor(PeaksdataOut[,'Comb_type_exon_Oppo'], levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lncRNA-exon","Antisense Feature","protein_coding: Intron","lncRNA-intron","lncRNA","no Feature"))
+PeaksdataOut$Same_Comb_type_exon[PeaksdataOut$Same_Comb_type_exon == "lnLcRNA-intron"] <- "lncRNA"
+PeaksdataOut$Oppo_Comb_type_exon[PeaksdataOut$Oppo_Comb_type_exon == "lnLcRNA-intron"] <- "lncRNA"
 
-unlink(misc, recursive = TRUE)  
-return(PeaksdataOut)
-}
+###phil the original code had Same_Comb_type_exon as Comb_type_exon_Oppo - is this right?
+#if so we need to rename col - this is confusing
+PeaksdataOut$Oppo_Comb_type_exon[PeaksdataOut$Oppo_Comb_type_exon == "lnLcRNA-exon"] <- "lncRNA"
+PeaksdataOut$Oppo_Comb_type_exon[PeaksdataOut$Oppo_Comb_type_exon == "lnLcRNA-intron"] <- "lncRNA"
+
+write.csv(PeaksdataOut,out_file)
+###phil - we dont need to factor this since it's the end of the script
+#PeaksdataOut[,'Comb_type_exon_Oppo']=factor(PeaksdataOut[,'Comb_type_exon_Oppo'], 
+                                            # levels = c("ncRNA", "protein_coding: exon", 
+                                            #            "Repeat Element","pseudogene","lncRNA-exon",
+                                            #            "Antisense Feature","protein_coding: Intron",
+                                            #            "lncRNA-intron","lncRNA","no Feature"))
+
+
+
