@@ -1587,6 +1587,7 @@ if (params$JoinJunc==TRUE) {
 #write out for junction annotation 
 write.csv(Peaksdata2_anno,paste0(file_id,"peakannotation_junctions.txt"))
 
+###phil we are creating this file and then dont use it - read from the BAM file directly
 #write out for mapq
 write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID')],
             file=paste0(file_id,"peakannotation_mapq_IN.txt"), 
