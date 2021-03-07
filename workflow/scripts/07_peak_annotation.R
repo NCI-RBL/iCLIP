@@ -276,6 +276,7 @@ if (join_junction==TRUE) {
       write.table(FtrCount_splice_junc[, c('chr','start','end','ID','ID','strand')],
                     file=paste0(out_dir, file_id,"peakDepth.bed"), 
                     sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+      ###fix output dir should be manorm
       write.table(FtrCount_splice_junc[FtrCount_splice_junc$strand%in%"+", c('chr','start','end','ID','ID','strand')],
                   file=paste0(out_dir,file_id,"_peakDepth_P.bed"), 
                   sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
@@ -1587,12 +1588,8 @@ if (params$JoinJunc==TRUE) {
 #write out for junction annotation 
 write.csv(Peaksdata2_anno,paste0(file_id,"peakannotation_junctions.txt"))
 
-###phil we are creating this file and then dont use it - read from the BAM file directly
 #write out for mapq
 write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID')],
             file=paste0(file_id,"peakannotation_mapq_IN.txt"), 
             sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
 
-##########################################################################################
-##############################  Add annotations to junctions
-##########################################################################################  
