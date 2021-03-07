@@ -32,9 +32,20 @@ params:
     value: x
   OutDIR2:
     value: x
+  peak_in:
+    value: "/Volumes/data/iCLIP/marco/inprogress/peaks_KO_fCLIP.txt"
+
 
 ---
+#update params
+peak_in - _peakjunction.txt
+peak_annotation - _peakannotation.txt
+ncRNA_annotation - ncRNA_Annotations.txt
+peak_junction_annotation - input from peakannotatation_junctions.txt
+peak_mapq - peakannotation_mapqscore.txt
+out_dir - /Volumes/data/iCLIP/confirm/
 
+##TODO determine what is actually needed from this list
 ```{r echo=F, message=FALSE, warning=FALSE}
 #Load libraries
 source(file.path(params$AnnoScript))
@@ -65,444 +76,215 @@ library('gplots')
 library(ggpubr)
 library(circlize)
 library('regioneR')
+library(GenomicAlignments)
+
 ```
 
 
 # Identification of CLIP peaks: `r toString(params$samplename)`    
 
-```{r include=F ,echo=F,warning=F,message=FALSE}
-rm(list=setdiff(ls(), "params"))
-
-if(params$species=='mm10'){
-  refGTF='GENCODE mm10 v23'
-  species = "mouse"
-} else if (params$species=='hg38'){
-  refGTF='GENCODE hg38 v32'
-  species = "human"
-} else{
-  quit()
-}
-
-incd_rRNA=T
-OUT=paste0(params$OutDIR,"/annotation/")
-blank_theme <- theme_minimal()+
-  theme(
-  axis.title.x = element_blank(),
-  axis.title.y = element_blank(),
-  panel.border = element_blank(),
-  panel.grid=element_blank(),
-  axis.ticks = element_blank(),
-  plot.title=element_text(size=14, face="bold")
-  )
-```
-
 **Select CLIP peaks**
 
-  Identify peaks using bedtools merge on All reads (unique and Multimapping) and count number of reads that overlap with the identified peaks.
+Identify peaks using bedtools merge on All reads (unique and Multimapping) and count number of reads that overlap with the identified peaks.
   
-  Peaks with > `r toString(params$readdepth)` (unique + Multi-Mapped:fraction) reads were assessed.  
+Peaks with > `r toString(params$readdepth)` (unique + Multi-Mapped:fraction) reads were assessed.  
+
+#remove - added to 07_peak_annotation - remove this
+<!-- Peaksdata2 = read.csv(params$peak_in) -->
+
+<!-- #read in peaks file, with annotation info (generated from 07_peak_annotation.R) -->
+<!-- Peaksdata2_anno = read.csv(params$peak_annotation) -->
+<!-- Peaksdata2_anno = Peaksdata2_anno[,c('chr','start','end','strand')] -->
+
+<!-- ###fix variable swapping -->
+<!-- Peaksdata2_annox = Peaksdata2_anno -->
+
+<!-- #merge peak junction and peak annotation information -->
+<!-- Peaksdata2_anno = merge(Peaksdata2, -->
+<!--                         Peaksdata2_anno[,!colnames(Peaksdata2_anno)%in%c('chr','start','end','strand')], -->
+<!--                         by='ID') -->
+
+###phil moved to 07_peak_annotation.R - remove this
+<!-- if (params$JoinJunc==TRUE) { -->
+
+<!--   ###recreate original code (line 226) -->
+<!--   #Junc_peaks=unique(c(Junc_PL_merged$ID_Peaks1,Junc_PL_merged$ID_Peaks2)) -->
+<!--   Junc_peaks = subset(Peaksdata2,TBD = "TBD") -->
+
+<!--   #select peaks with junction -->
+<!--   Peaksdata2_anno_trns_exon=( Peaksdata2_anno[Peaksdata2_anno$ID%in%Junc_peaks,]) -->
+
+<!--   #create new df -->
+<!--   CollapsedOut=as.data.frame(matrix(nrow = (1),ncol = ncol(Peaksdata2_anno_trns_exon))) -->
+<!--   colnames(CollapsedOut)=colnames(Peaksdata2_anno_trns_exon) -->
+<!--   CollapsedOut$IDmerge=NA -->
+
+<!--   ###recreate original code (174) -->
+<!--   #PGene_TBL2=(matrix(nrow=nrow(PGene_TBL_unique),ncol=ncol(PGene_TBL_unique)+4)) -->
+<!--   PGene_TBL2 = subset(Peaksdata2,TBD = "TBD") -->
+
+<!--   #for each unique peak -->
+<!--   for (x in 1:nrow(PGene_TBL2)) { -->
+
+<!--     #select row -->
+<!--     Trnsc=PGene_TBL2[x,] -->
+
+<!--     #split ID -->
+<!--     TrnscUL=unlist(unique(str_split(Trnsc$ID_comb,pattern = ","))) -->
+
+<!--     #create df of id annotation information -->
+<!--     d2=Peaksdata2_anno_trns_exon[Peaksdata2_anno_trns_exon$ID%in%TrnscUL,] -->
+
+<!--     #if the line isn't in the annotation file -->
+<!--     ###phil - we should prob do some error handling here; we shouldn't have instances -->
+<!--     #where this is true, unless there are no peaks? and then this whole thing should stop, right?  -->
+<!--     if (nrow(d2)==0) { -->
+<!--       next -->
+<!--     } else{ -->
+<!--       print("ERROR") -->
+<!--     } -->
+
+<!--     #Positive strand -->
+<!--     ###fix variables -->
+<!--     if (unique(d2$strand)=="+") { -->
+<!--       d5=d2[d2$start%in%min(d2$start),]  -->
+<!--       dmax=d2[d2$Counts_fracMM%in%max(d2$Counts_fracMM),] -->
+
+<!--       ###phil need error  handling here -->
+<!--       if (nrow(dmax)>1) { -->
+<!--         dmax=dmax[dmax$start%in%min(dmax$start),] -->
+<!--       } else{ -->
+<!--         print ("TBD") -->
+<!--       } -->
+<!--     #negative strand -->
+<!--     } else if (unique(d2$strand)=="-") { -->
+<!--       d5=d2[d2$start%in%max(d2$start),] -->
+<!--       dmax=d2[d2$Counts_fracMM%in%max(d2$Counts_fracMM),] -->
+
+<!--       ###phil need error handling here -->
+<!--       if (nrow(dmax)>1) { -->
+<!--         dmax=dmax[dmax$start%in%max(dmax$start),] -->
+<!--       } else{ -->
+<!--         print("TBD") -->
+<!--       } -->
+<!--     } -->
+
+<!--     ### collapse all columns  -->
+<!--     d3 = (apply(d2 ,2, function(x){paste(unique(x[!is.na(x)]),collapse = ',')})) -->
+<!--     d3[d3==""]<-NA -->
+
+<!--     cols=c('Counts_Unique','Counts_fracMM','Length') -->
+<!--     d3=as.data.frame(t(d3)) -->
+<!--     d3[1,cols] = t(as.data.frame(colSums(d2[,cols])))    -->
+<!--     d3[,cols] = as.numeric(d3[,cols]) -->
+<!--     d3$IDmerge=d3$ID -->
+
+<!--     ## Select summary annotation based on Max(dmax) expression peak or 5'(d5) peak    -->
+<!--     danno=dmax # d5 dmax -->
+<!--     cols_AnnotSelect=c('Same_Comb_type_exon', 'Same_Comb_type_ncRNA', -->
+<!--                        'Oppo_Comb_type_exon','Oppo_Comb_type_ncRNA','Comb_type_exon_Oppo') -->
+<!--     d3[,cols_AnnotSelect]= (danno[,cols_AnnotSelect]) -->
+
+<!--     # Select ID for 5' most read or max counts -->
+<!--     d3$start=d5$start -->
+<!--     d3$end=d5$end -->
+<!--     d3$ID=paste0(dmax$chr,":",dmax$start,"-",dmax$end)    -->
+
+<!--     ## if count < readdepth skip -->
+<!--     if (d3$Counts_fracMM<params$readdepth) { -->
+<!--       next -->
+<!--     } -->
+
+<!--     CollapsedOut=rbind(CollapsedOut[,colnames(CollapsedOut)],d3[1,colnames(CollapsedOut)]) -->
+<!--   } -->
+
+<!--   #remove rows without id -->
+<!--   CollapsedOut = complete.cases(CollapsedOut[,"ID"]) -->
+
+<!--   ###fix variable we dont want to overwrite the original -->
+<!--   #subset for all non-junction peaks -->
+<!--   Peaksdata2_anno$IDmerge=NA -->
+<!--   Peaksdata2_anno=subset(Peaksdata2_anno, !(ID%in%Junc_peaks)) -->
+
+<!--   #merge non-junction peaks (Peaksdata2_anno) with junction peaks (CollapsedOut) -->
+<!--   Peaksdata2_anno=(rbind(Peaksdata2_anno,CollapsedOut)) -->
+
+<!--   #### Re filter reads after combing counts of spliced reads -->
+<!--   Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$Counts_fracMM>=params$readdepth,] -->
+
+<!-- } else if (params$JoinJunc==FALSE) { -->
+
+<!--   ###phil need to fill else statement -->
+<!--   # collapse exon -->
+<!--   if (params$Condense==TRUE) { -->
+<!--     Peaksdata2_anno_trns_exon = subset(Peaksdata2_anno, !(Same_feature == "") & -->
+<!--                                          Comb_type_exon_Oppo == 'protein_coding: exon') -->
+<!--     #create list -->
+<!--     trns=Peaksdata2_anno_trns_exon$Same_ensembl_gene_id -->
+
+<!--     ###fix variable naming -->
+<!--     trns=trns[grep(",",trns)] -->
+<!--     trns=c(Peaksdata2_anno_trns_exon$Same_ensembl_gene_id,unlist(strsplit(trns,","))) -->
+
+<!--     #remove dups -->
+<!--     dupGeneName=unique(trns[duplicated(trns)]) -->
+
+<!--     #create df -->
+<!--     CollapsedOut = as.data.frame(matrix( nrow = 1, -->
+<!--                           ncol = ncol(Peaksdata2_anno_trns_exon)+1)) -->
+<!--     colnames(CollapsedOut)=c(colnames(Peaksdata2_anno_trns_exon),'IDmerge') -->
+
+<!--     #for each unique val -->
+<!--     for (x in 1:length(dupGeneName)) { -->
+<!--       d1=dupGeneName[x] -->
+<!--       d2=Peaksdata2_anno_trns_exon[grep(d1,Peaksdata2_anno_trns_exon$Same_ensembl_gene_id),] -->
+<!--       d2ID=paste0(d2$chr[1],":",min(d2$start),"-",max(d2$end)) -->
+
+<!--       #positive strand -->
+<!--       if (unique(d2$strand)=="+") { -->
+<!--         d3=d2[d2$start%in%min(d2$start),] -->
+<!--         #negative strand -->
+<!--       } else if (unique(d2$strand)=="-") { -->
+<!--         d3=d2[d2$start%in%max(d2$start),] -->
+<!--       } -->
+
+<!--       d3[,'start']=min(d2$start) -->
+<!--       d3[,'end']=max(d2$end) -->
+<!--       d3$IDmerge=paste(d2$ID,collapse = ",") -->
+
+<!--       trns=trns[grep(",",d2$Same_ensembl_gene_id)] -->
+<!--       d3$Same_ensembl_gene_id = paste0(unique(c(d2$Same_ensembl_gene_id,unlist(strsplit(trns,",")))), -->
+<!--                                        collapse = ",") -->
+<!--       trns=trns[grep(",",d2$Same_gene_name_comb)] -->
+<!--       d3$Same_gene_name_comb=paste0(unique(c(d2$Same_gene_name_comb,unlist(strsplit(trns,",")))), -->
+<!--                                     collapse = ",") -->
+<!--       trns=trns[grep(",",d2$`Opposite Strand: Host_gene_ensembl_id`)] -->
+<!--       d3$Oppo_ensembl_gene_id=paste0(unique(c(d2$Oppo_ensembl_gene_id,unlist(strsplit(trns,",")))), -->
+<!--                                      collapse = ",") -->
+<!--       trns=trns[grep(",",d2$Oppo_gene_name_comb)] -->
+<!--       d3$Oppo_gene_name_comb=paste0(unique(c(d2$Oppo_gene_name_comb,unlist(strsplit(trns,",")))), -->
+<!--                                     collapse = ",") -->
+<!--       CollapsedOut=rbind(CollapsedOut,d3) -->
+<!--     } -->
+
+<!--     #remove rownames, col -->
+<!--     rownames(CollapsedOut)=NULL -->
+<!--     CollapsedOut=CollapsedOut[-1,] -->
+<!--     CollapsedOutID= unique(unlist(strsplit(CollapsedOut$IDmerge,","))) -->
+
+<!--     ###fix we dont want to overwrite original df -->
+<!--     Peaksdata2_anno$IDmerge=NA -->
+<!--     Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$ID%in%CollapsedOutID==F,] -->
+<!--     Peaksdata2_anno=(rbind(Peaksdata2_anno,CollapsedOut)) -->
+<!--   } -->
+<!-- } -->
 
 
-```{r fig.asp=.5, fig.align='center',fig.height=6, fig.width=12}
-#############################################
-########## Feature Counts
-#############################################
-
-if (params$PeakIdnt=='Unique') {
-  fname="UniquePeaks"
-} else if (params$PeakIdnt=='MultiMap') {
-  fname="MultiMapPeaks"
-} else if (params$PeakIdnt=='all') {
-  fname="allPeaks"
-} else{
-  quit()
-}
-
-#unique reads
-FtrCount_uniq=read.delim(paste0(params$PeaksUniq), header=T, sep="\t",stringsAsFactors = F,comment.char = '#');colnames(FtrCount_uniq)[7]='Counts';
-FtrCount_uniq$Start=as.numeric(FtrCount_uniq$Start)-1;FtrCount_uniq$End=as.numeric(FtrCount_uniq$End)
-FtrCount_uniq=FtrCount_uniq[!is.na(FtrCount_uniq$Start),]
-FtrCount_uniq$Start=FtrCount_uniq$Start+1
-FtrCount_uniq$ID=paste0(FtrCount_uniq$Chr,":",FtrCount_uniq$Start,"-",FtrCount_uniq$End)
-FtrCount_uniq$ID2=paste0(FtrCount_uniq$Chr,":",FtrCount_uniq$Start,"-",FtrCount_uniq$End,"_",FtrCount_uniq$Strand)
-
-#all reads
-FtrCount_frac=read.delim(paste0(params$PeaksFracMM), header=T, sep="\t",stringsAsFactors = F,comment.char = '#');colnames(FtrCount_frac)[7]='Counts';
-FtrCount_frac$Start=as.numeric(FtrCount_frac$Start)-1;FtrCount_frac$End=as.numeric(FtrCount_frac$End)
-FtrCount_frac=FtrCount_frac[!is.na(FtrCount_frac$Start),]
-FtrCount_frac$Start=FtrCount_frac$Start+1
-
-FtrCount_frac$ID=paste0(FtrCount_frac$Chr,":",FtrCount_frac$Start,"-",FtrCount_frac$End)
-
-## Combine Files
-FtrCount=merge(FtrCount_uniq[,(colnames(FtrCount_uniq)%in%"Geneid")==F],FtrCount_frac[,c('ID','Counts')],by='ID',suffixes=c("_Unique","_fracMM"),all.x=T)
-colnames(FtrCount)[which(colnames(FtrCount)%in%c('Chr','Start','End','Strand'))]=c('chr','start','end','strand')
-FtrCount=FtrCount[duplicated(FtrCount)==F,]
-```
-
-```{r fig.asp=.5, fig.align='center',fig.height=6, fig.width=12}
-#############################################
-########## Junctions
-#############################################
-
-if (params$JoinJunc==TRUE) {
-  if (params$PeakIdnt!="Unique") {
-    FtrCount_fracJCount = read.delim(paste0(params$PeaksFracMM,".jcounts"),
-                                     header=T,sep="\t",stringsAsFactors = F,comment.char = '#') 
-  }  else {
-    FtrCount_fracJCount=read.delim(paste0(params$PeaksUniq,".jcounts"), 
-                                   header=T,sep="\t",stringsAsFactors = F,comment.char = '#')
-  } 
-
-  colnames(FtrCount_fracJCount)[ncol(FtrCount_fracJCount)]='counts'
-  FtrCount_fracJCount = FtrCount_fracJCount[is.na(FtrCount_fracJCount$PrimaryGene)==F,]
-  FtrCount_fracJCount = merge(FtrCount_fracJCount, 
-                              FtrCount[,c("ID","strand")],by.x="PrimaryGene",by.y="ID",all.x=T)
-  FtrCount_fracJCount = separate(FtrCount_fracJCount,
-                                 PrimaryGene,into=c('chr','start','end'),sep = ":|-",remove = F)
-
-  ### remove junctions where spliceing is within peak
-  first = FtrCount_fracJCount$Site1_location >=FtrCount_fracJCount$start&FtrCount_fracJCount$Site1_location<=FtrCount_fracJCount$end
-  second = FtrCount_fracJCount$Site2_location>=FtrCount_fracJCount$start&FtrCount_fracJCount$Site2_location<=FtrCount_fracJCount$end
-  FtrCount_fracJCount=FtrCount_fracJCount[first!=second,]
-  FtrCount_fracJCount$JunctionID = paste0(FtrCount_fracJCount$Site1_chr,':',
-                                          FtrCount_fracJCount$Site1_location,'-', 
-                                          FtrCount_fracJCount$Site2_location)
-
-  jcount1.GR = GRanges(seqnames = as.character(FtrCount_fracJCount$Site1_chr), 
-                       ranges=IRanges(start = as.numeric(FtrCount_fracJCount$Site1_location), 
-                                      end = as.numeric(FtrCount_fracJCount$Site1_location)),
-                       strand = FtrCount_fracJCount$strand,
-                       PrimaryGene=FtrCount_fracJCount$PrimaryGene,
-                       count=FtrCount_fracJCount$counts,
-                       JunctionID=FtrCount_fracJCount$JunctionID)
-  jcount2.GR = GRanges(seqnames = as.character(FtrCount_fracJCount$Site2_chr),
-                       ranges=IRanges(start = as.numeric(FtrCount_fracJCount$Site2_location),
-                                      end = as.numeric(FtrCount_fracJCount$Site2_location)),
-                       strand = FtrCount_fracJCount$strand,
-                       PrimaryGene=FtrCount_fracJCount$PrimaryGene,
-                       count=FtrCount_fracJCount$counts,
-                       JunctionID=FtrCount_fracJCount$JunctionID)
-  
-  FtrCount.GR=GRanges(seqnames = as.character(FtrCount$chr), 
-                      ranges=IRanges(start = as.numeric(FtrCount$start), 
-                                     end = as.numeric(FtrCount$end)),
-                      strand = FtrCount$strand,
-                      ID=FtrCount$ID)
-  ### Junction 1 ID
-  q = jcount1.GR
-  s = FtrCount.GR
-  xo=as.data.frame(GenomicRanges::findOverlaps(q,s,type = "any",ignore.strand=F))
-  qh=as.data.frame(q[xo$queryHits],row.names = NULL)
-  colnames(qh)=paste0(colnames(qh),"_Junction1")
-  sh=as.data.frame(s[xo$subjectHits],row.names = NULL)
-  colnames(sh)=paste0(colnames(sh),"_Peaks1")
-  Junc_PL1=cbind(qh,sh)
-  remove(q,s,xo,qh,sh)  
-  
-  ### Junction 2 ID
-  q = jcount2.GR
-  s = FtrCount.GR
-  xo=as.data.frame(GenomicRanges::findOverlaps(q,s,type = "any",ignore.strand=F))
-  qh=as.data.frame(q[xo$queryHits],row.names = NULL)
-  colnames(qh)=paste0(colnames(qh),"_Junction2")
-  sh=as.data.frame(s[xo$subjectHits],row.names = NULL)
-  colnames(sh)=paste0(colnames(sh),"_Peaks2")
-  Junc_PL2=cbind(qh,sh)
-  remove(q,s,xo,qh,sh)  
-
-  ### identify PEAK ID for Site1 and Site2 location of splice junction
-  Junc_PL = cbind(Junc_PL1,Junc_PL2)          
-  Junc_PLOut = Junc_PL[,c('PrimaryGene_Junction1','JunctionID_Junction1','strand_Peaks1','ID_Peaks1','ID_Peaks2')]
-    
-  ### Identify peaks that are linked between splice juntions
-  ##### Remove Peaks where PrimaryGene - Peak1, Peak2 are duplicated
-  ############## Junction ID can be off by a few NT because different splice start/end in peak
-  Junc_PLOut=Junc_PLOut[duplicated(Junc_PLOut[,c(1,4,5)])==F,]
-  
-  ##################################################
-  ##### Combine by primaryGene ID - Junction ID acts as ID to distinguish all possible junctions
-  ##### get all unique PrimaryGene_Junction
-  d=unique(Junc_PLOut$PrimaryGene_Junction1)
-  
-  PGene_TBL=(matrix(nrow=length(d),ncol=(3)))
-  colnames(PGene_TBL)=c('PrimaryGene_Junction1','JunctionID_Junction1','ID_comb')
-  for (x in 1:length(d)) {
-    PrimGene=d[x]
-    g=Junc_PL[Junc_PL$PrimaryGene_Junction1%in%PrimGene,]
-    
-    PGene_TBL[x,'PrimaryGene_Junction1']=unique(g$PrimaryGene_Junction1)
-    PGene_TBL[x,'JunctionID_Junction1']=paste(unique(sort(g$JunctionID_Junction1)),collapse = ",")
-      PGene_TBL[x,'ID_comb']=paste(unique(c(g$ID_Peaks1,g$ID_Peaks2)),collapse = ",")
-  }
-  
-  remove('d','PrimGene','g','x')
-  
-  PGene_TBL=as.data.frame(PGene_TBL)
-  PGene_TBL=PGene_TBL[duplicated(PGene_TBL)==F,]
-  
-  ##################################################
-  ##### Combine all connected peaks
-  ##### get all unique PrimaryGene_Junction
-
-  d2=unique(PGene_TBL$PrimaryGene_Junction1)
-  PGene_TBL2=(matrix(nrow=nrow(PGene_TBL),ncol=ncol(PGene_TBL)+4));colnames(PGene_TBL2)=c(colnames(PGene_TBL),'chr','start','end','linkedID')
-  
-  for (x in 1:length(d2)) {
-    a=PGene_TBL[x,]
-    id=unlist(str_split (a$ID_comb,pattern = ","))
-    idcomb=PGene_TBL[grep(paste(id,collapse = "|"),PGene_TBL$ID_comb),]
-    
-    ## look again to see if more locations with found connected peaks
-    id2=sort(unique(unlist(str_split (idcomb$ID_comb,pattern = ","))))
-    
-    ## If new peaks come up check until no new peaks  
-    while (FALSE%in%(id2%in%id)) {
-      id=id2
-      
-      # xxx2 Look Again
-      idcomb=PGene_TBL[grep(paste(id2,collapse = "|"),PGene_TBL$ID_comb),]
-      
-      # xxx3 Get Peak IDS to end while loop
-      id2=sort(unique(unlist(str_split (idcomb$ID_comb,pattern = ","))))
-    }
-    
-    id2_coord = separate(as.data.frame(id2),1,sep = ":|-",
-                         into = c('chr','start','end'))
-    id2_coord$start=as.numeric(id2_coord$star)
-    id2_coord$end=as.numeric(id2_coord$end)
-    PGene_TBL2[x,'PrimaryGene_Junction1']=paste(sort(unique(idcomb$PrimaryGene_Junction1)),collapse = ',')
-    PGene_TBL2[x,'JunctionID_Junction1']=paste(sort(unique(idcomb$JunctionID_Junction1)),collapse = ',')
-    PGene_TBL2[x,'ID_comb']=paste(sort(unique(idcomb$ID_comb)),collapse = ',')
-    PGene_TBL2[x,'chr']=unique(id2_coord$chr)
-    PGene_TBL2[x,'start']=min((id2_coord[,c('start','end')]))
-    PGene_TBL2[x,'end']=max((id2_coord[,c('start','end')]))
-  }
-  
-  remove('d2','a','id','idcomb','x')
-  
-  PGene_TBL2=as.data.frame(PGene_TBL2)
-  PGene_TBL2=PGene_TBL2[duplicated(PGene_TBL2)==F,]
-  PGene_TBL2$linkedID=paste0(PGene_TBL2$chr,":",PGene_TBL2$start,"-",PGene_TBL2$end)
-  
-  ##################################################
-  ##### check no reeated peaks 
-  ##### get all unique PrimaryGene_Junction
-  length(unique(PGene_TBL2$PrimaryGene_Junction1))
-  d3=unique(PGene_TBL2$PrimaryGene_Junction1)
-  PGene_TBL3 = (matrix(nrow=nrow(PGene_TBL2),
-                       ncol=ncol(PGene_TBL2)+1));colnames(PGene_TBL3)=c(colnames(PGene_TBL2),"nrows")
-  
-  for (x in 1:length(d3)) {
-    a2=PGene_TBL2[x,]
-    id2=unlist(str_split (a2$ID_comb,pattern = ","))
-    idcomb2=PGene_TBL2[grep(paste(id2,collapse = "|"),PGene_TBL2$ID_comb),]
-    
-    PGene_TBL3[x,1:3]=as.matrix(a2[,1:3])
-    PGene_TBL3[x,'nrows']=nrow(idcomb2)
-  }
-  remove('d3','a2','id2','idcomb2','x')
-  PGene_TBL3=as.data.frame(PGene_TBL3)
-  
-  # #######################################################
-  # ##### Get all peaks with junctions
-  Junc_peaks=unique(c(Junc_PL$ID_Peaks1,Junc_PL$ID_Peaks2))
-
-  FtrCount_Junc_peaks=FtrCount[FtrCount$ID%in%Junc_peaks,]
-  FtrCount=FtrCount[FtrCount$ID%in%Junc_peaks==F,]
-  
-  ######################################################################
-  ### Trim peaks without Splicing
-  FtrCount=FtrCount[FtrCount$Counts_fracMM>=params$readdepth,]
-  
-  FtrCount=rbind(FtrCount,FtrCount_Junc_peaks)
-} else if (params$JoinJunc==FALSE) {
-  FtrCount=FtrCount[FtrCount$Counts_fracMM>=params$readdepth,]
-}
-
-FtrCount=FtrCount[duplicated(FtrCount)==F,]
-FtrCount=FtrCount[!FtrCount$chr%in%c('chrM'),]
-FtrCount=FtrCount[duplicated(FtrCount)==F,]
-```
-
-```{r}
-######################################################################
-###MAnorm
-######################################################################
-if (params$DEmethod=='MAnorm') {
-  FtrCount$Counts_fracMM>
-    write.table(FtrCount[, c('chr','start','end','ID','ID','strand')],
-                file=paste0(params$OutDIR2, samplename,"_", ntmerge,"_peakDepth.bed"), 
-                sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-    write.table(FtrCount[FtrCount$strand%in%"+", c('chr','start','end','ID','ID','strand')],
-                file=paste0(params$OutDIR2,samplename,"_",ntmerge,"_peakDepth.P.bed"), 
-                sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-    write.table(FtrCount[FtrCount$strand%in%"-", c('chr','start','end','ID','ID','strand')],
-                file=paste0(params$OutDIR2,samplename,"_",ntmerge,"_peakDepth.N.bed"), 
-                sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-}
-
-```
-### fix ^
-
-```{r, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=T,include=F}
-##############################################
-#### Select Samtools or Feature Counts
-##############################################
- 
-peaks2=FtrCount
-
-```
-
-#SPLIT FILE POINT - calls R file
-```{r Annotations, fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,echo=F,results=F,eval=T, include=F}
-#### if no Variant identification....
-source(file.path(params$AnnoScript))
-colnames(peaks2)[which(colnames(peaks2)%in%c("V1","V2","V3","V6"))]=c('chr','start','end','strand')
-Peaksdata2=peaks2
-
-Peaksdata2_anno = CLIPannotation(Peaksdata2[,c('chr','start','end','strand')],T,
-                                 params$species,params$OutDIR,params$AnnoFiles)
-
-Peaksdata2_annox = Peaksdata2_anno
-Peaksdata2_anno = merge(Peaksdata2,
-                        Peaksdata2_anno[,!colnames(Peaksdata2_anno)%in%c('chr','start','end','strand')],
-                        by='ID')
-```
-
-```{r CombExons, fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,echo=F,results=F,eval=T, include=F}
-
-if (params$JoinJunc==TRUE) {
-  Peaksdata2_anno_trns_exon=( Peaksdata2_anno[Peaksdata2_anno$ID%in%Junc_peaks,])
-  
-  # CollapsedOut=as.data.frame(matrix(nrow = nrow(PGene_TBL2),ncol = ncol(Peaksdata2_anno_trns_exon)))
-  CollapsedOut=as.data.frame(matrix(nrow = (1),ncol = ncol(Peaksdata2_anno_trns_exon)))
-  colnames(CollapsedOut)=colnames(Peaksdata2_anno_trns_exon)
-  CollapsedOut$IDmerge=NA
-  
-  for (x in 1:nrow(PGene_TBL2)) {
-    
-    Trnsc=PGene_TBL2[x,]
-    TrnscUL=unlist(unique(str_split(Trnsc$ID_comb,pattern = ",")))
-    d2=Peaksdata2_anno_trns_exon[Peaksdata2_anno_trns_exon$ID%in%TrnscUL,]
-    
-    if (nrow(d2)==0) {
-      next
-    }
-    
-    #Positive strand
-    if (unique(d2$strand)=="+") {
-      d5=d2[d2$start%in%min(d2$start),] 
-      dmax=d2[d2$Counts_fracMM%in%max(d2$Counts_fracMM),]
-      
-      if (nrow(dmax)>1) {
-        dmax=dmax[dmax$start%in%min(dmax$start),]
-      }
-    #negative strand
-    } else if (unique(d2$strand)=="-") {
-      d5=d2[d2$start%in%max(d2$start),]
-      dmax=d2[d2$Counts_fracMM%in%max(d2$Counts_fracMM),]
-      
-      if (nrow(dmax)>1) {
-        dmax=dmax[dmax$start%in%max(dmax$start),]
-      }
-    }
-    
-    #############################################################
-    ### collapse all columns 
-    d3 = (apply(d2 ,2, function(x){paste(unique(x[!is.na(x)]),collapse = ',')}))
-    d3[d3==""]<-NA
-    
-    cols=c('Counts_Unique','Counts_fracMM','Length')
-    d3=as.data.frame(t(d3))
-    d3[1,cols] = t(as.data.frame(colSums(d2[,cols])))   
-    d3[,cols] = as.numeric(d3[,cols])
-    d3$IDmerge=d3$ID
-    
-    ########################   
-    ## Select summary annotation based on Max(dmax) expression peak or 5'(d5) peak   
-    danno=dmax # d5 dmax
-    cols_AnnotSelect=c('Same_Comb_type_exon','Same_Comb_type_ncRNA','Oppo_Comb_type_exon','Oppo_Comb_type_ncRNA','Comb_type_exon_Oppo')
-    d3[,cols_AnnotSelect]= (danno[,cols_AnnotSelect])
-    
-    # Select ID for 5' most read or max counts
-    d3$start=d5$start
-    d3$end=d5$end
-    d3$ID=paste0(dmax$chr,":",dmax$start,"-",dmax$end)   
-    
-    #############################################################
-    ## if count < readdepth skip
-    if (d3$Counts_fracMM<params$readdepth) {
-      next
-    }
-    
-    CollapsedOut=rbind(CollapsedOut[,colnames(CollapsedOut)],d3[1,colnames(CollapsedOut)])
-  }
-
-  CollapsedOut=CollapsedOut[is.na(CollapsedOut$ID)==F,]
-  Peaksdata2_anno$IDmerge=NA
-  Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$ID%in%Junc_peaks==F,]
-  Peaksdata2_anno=(rbind(Peaksdata2_anno,CollapsedOut))
-  
-  
-  ######################################################################
-  #### Re filter reads after combing counts of spliced reads
-  Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$Counts_fracMM>=params$readdepth,]
-} else if (params$JoinJunc==FALSE) {
-  
-  ########################################################
-  #### collapse exon
-  ########################################################
-  if (params$Condense==TRUE) {
-    Peaksdata2_anno_trns=Peaksdata2_anno[(Peaksdata2_anno$Same_feature)%in%""==F,]
-    Peaksdata2_anno_trns_exon=Peaksdata2_anno_trns[Peaksdata2_anno_trns$Comb_type_exon_Oppo%in%'protein_coding: exon',]
-    trns=Peaksdata2_anno_trns_exon$Same_ensembl_gene_id
-    trns=trns[grep(",",trns)]
-    trns=c(Peaksdata2_anno_trns_exon$Same_ensembl_gene_id,unlist(strsplit(trns,",")))
-    dupGeneName=unique(trns[duplicated(trns)])
-    CollapsedOut = as.data.frame(matrix( nrow = 1,
-                          ncol = ncol(Peaksdata2_anno_trns_exon)+1));colnames(CollapsedOut)=c(colnames(Peaksdata2_anno_trns_exon),
-                                                                                              'IDmerge')
-    for (x in 1:length(dupGeneName)) {
-      d1=dupGeneName[x]
-      d2=Peaksdata2_anno_trns_exon[grep(d1,Peaksdata2_anno_trns_exon$Same_ensembl_gene_id),]
-      d2ID=paste0(d2$chr[1],":",min(d2$start),"-",max(d2$end))
-      
-      if (unique(d2$strand)=="+") {
-        d3=d2[d2$start%in%min(d2$start),]
-      } else if (unique(d2$strand)=="-") {
-        d3=d2[d2$start%in%max(d2$start),]
-      }
-      
-      d3[,'start']=min(d2$start)
-      d3[,'end']=max(d2$end)
-      d3$IDmerge=paste(d2$ID,collapse = ",")
-      
-      trns=trns[grep(",",d2$Same_ensembl_gene_id)]
-      d3$Same_ensembl_gene_id = paste0(unique(c(d2$Same_ensembl_gene_id,unlist(strsplit(trns,",")))),
-                                       collapse = ",")
-      trns=trns[grep(",",d2$Same_gene_name_comb)]
-      d3$Same_gene_name_comb=paste0(unique(c(d2$Same_gene_name_comb,unlist(strsplit(trns,",")))),
-                                    collapse = ",")
-      trns=trns[grep(",",d2$`Opposite Strand: Host_gene_ensembl_id`)]
-      d3$Oppo_ensembl_gene_id=paste0(unique(c(d2$Oppo_ensembl_gene_id,unlist(strsplit(trns,",")))),
-                                     collapse = ",")
-      trns=trns[grep(",",d2$Oppo_gene_name_comb)]
-      d3$Oppo_gene_name_comb=paste0(unique(c(d2$Oppo_gene_name_comb,unlist(strsplit(trns,",")))),
-                                    collapse = ",")
-      CollapsedOut=rbind(CollapsedOut,d3)
-    }
-    rownames(CollapsedOut)=NULL
-    CollapsedOut=CollapsedOut[-1,]
-    CollapsedOutID= unique(unlist(strsplit(CollapsedOut$IDmerge,",")))
-    Peaksdata2_anno$IDmerge=NA
-    Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$ID%in%CollapsedOutID==F,]
-    Peaksdata2_anno=(rbind(Peaksdata2_anno,CollapsedOut))
-  }
-}
-```
-
+#Generate Peak Counts graphics
 ```{r ,fig.align='center',echo=F,warning=F,eval=T,include=T}
+###fix variable
+Peaksdata2_anno = read.csv(params$peak_annotated)
+
 if (params$PeakIdnt=='Unique'){
   x = ggplot(Peaksdata2_anno, aes(x=Counts_Unique)) +
     geom_histogram(bins = 30) +
@@ -521,6 +303,8 @@ if (params$PeakIdnt=='Unique'){
   ggplotly(x,tooltip = c("x", "y"))
 }
 ```
+
+###phil we should remove any text that you don't want to include for read-ability
 <br/>    
   <br/>    
   
@@ -547,7 +331,7 @@ Peaks were annotated by whether they overlap with Host gene intron/exon region
   
   
 ```{r echo=F,results='asis',eval=T}
-Classification_ncRNA=read.delim(paste0(OUT,"ncRNA_Annotations.txt"), header=T, sep="\t",stringsAsFactors = F)
+Classification_ncRNA=read.delim(params$ncRNA_annotation, header=T, sep="\t",stringsAsFactors = F)
 kable(Classification_ncRNA[,1:3])
 ```
 
@@ -568,9 +352,12 @@ Data was not filtered based on any of the identified Repeats.
 8) Unknown   
 <br>
   
+#Plot repeat region peaks
 ```{r echo=F,warning=F, include=T,eval=T,fig.align='center'}
+###phil - we should breakdown this calc - not sure what it's showing
 p=as.data.frame(((colSums(is.na(Peaksdata2_anno[,grep('Same_Repeat_',colnames(Peaksdata2_anno))])==F)/nrow(Peaksdata2_anno))*100))
-p$Repeat_Type=rownames(p);colnames(p)=c('Frequency','Repeat_Type')
+p$Repeat_Type=rownames(p)
+colnames(p)=c('Frequency','Repeat_Type')
 p=p[rownames(p)%in%'Same_Repeat_comb'==F,]
 p$Repeat_Type=gsub("Same_Repeat_","",p$Repeat_Type)
 
@@ -586,49 +373,49 @@ ggplot(p) +
   theme(axis.text.x = element_text(angle = -45))
 ```
 
-SPLIT FILE LOCATION
-```{r fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=F,include=F}
-## Calculate average MAPQ for each peak   
-write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID')],file=paste0(params$OutDIR,"/MAPQ/CLIP_",samplename,"_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_mapq_IN.txt"), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
+###phil - removed handled in 08_mapq_calculation.R
+<!-- write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID')], -->
+<!--             file=paste0(params$OutDIR,"/MAPQ/CLIP_",samplename,"_", -->
+<!--                         params$PeakIdnt,"Peaks",ntmerge,'_peakDepth', -->
+<!--                         params$readdepth,params$NameAdd,"_mapq_IN.txt"),  -->
+<!--             sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "") -->
 
-library(GenomicAlignments)
-if (calcMAPQ==TRUE {
-  param <- ScanBamParam(what=c("mapq", "flag"))
-  Bam=readGAlignments(paste0(INbam,samplename,'_Clip_iCountcutadpt_all.unique.NH.mm.ddup.bam'),use.names=T,index='./bam/ddup/Ro/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.bam.bai', param=param)
-  # colnames(as.data.frame(Bam))
-  mcols(Bam)$qname=names(Bam)
-  
-  glist=function(i){
-    PL=i
-    GRanges(seqnames = as.character(PL[1]), ranges=IRanges(start = as.numeric(PL[2]), end = as.numeric(PL[3])),strand = PL[4])
-  }
-  gout=apply(Peaksdata2_RP[,c('chr','start','end','strand','ID')],1,glist)
+<!-- if (calcMAPQ==TRUE { -->
+<!--   param <- ScanBamParam(what=c("mapq", "flag")) -->
+<!--   Bam=readGAlignments(paste0(INbam,samplename,'_Clip_iCountcutadpt_all.unique.NH.mm.ddup.bam'),use.names=T,index='./bam/ddup/Ro/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.bam.bai', param=param) -->
+<!--   # colnames(as.data.frame(Bam)) -->
+<!--   mcols(Bam)$qname=names(Bam) -->
 
-  mapq=function(i){
-    out1=as.data.frame(matrix(nrow=1,ncol=2));
-    q=i
-    s = Bam
-    xo=as.data.frame(GenomicRanges::findOverlaps(q,s,type = "any",ignore.strand=F))
-   sh=as.data.frame(s[xo$subjectHits],row.names = NULL)
-    mean(sh$mapq,na.rm = T)
-  }
-  system.time({outl=mclapply(gout,mapq,mc.cores=3)}  )
-  
-  Peaksdata2_RP$Avg_mapq=unlist(outl )
-  Peaksdata2_anno=Peaksdata2_RP
-  
-  write.table(Peaksdata2_RP[,c('ID','Avg_mapq')],
-              file=paste0(params$OutDIR,"CLIP_",
-                          params$PeakIdnt,"Peaks",
-                          ntmerge,'_peakDepth',
-                          params$readdepth,params$NameAdd,"_mapq.txt"), 
-              sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
-} else if (calcMAPQ==FALSE) {
-  CLIP_Peaks_mapq=fread(paste0(inMAPQ,"CLIP_Peaks_mapq.txt"), 
-                        header=T, sep="\t",stringsAsFactors = F,data.table=F)
-  Peaksdata2_anno= merge(Peaksdata2_anno,CLIP_Peaks_mapq,by="ID",all.x = T)
-}
-```
+<!--   glist=function(i){ -->
+<!--     PL=i -->
+<!--     GRanges(seqnames = as.character(PL[1]), ranges=IRanges(start = as.numeric(PL[2]), end = as.numeric(PL[3])),strand = PL[4]) -->
+<!--   } -->
+<!--   gout=apply(Peaksdata2_RP[,c('chr','start','end','strand','ID')],1,glist) -->
+
+<!--   mapq=function(i){ -->
+<!--     out1=as.data.frame(matrix(nrow=1,ncol=2)); -->
+<!--     q=i -->
+<!--     s = Bam -->
+<!--     xo=as.data.frame(GenomicRanges::findOverlaps(q,s,type = "any",ignore.strand=F)) -->
+<!--    sh=as.data.frame(s[xo$subjectHits],row.names = NULL) -->
+<!--     mean(sh$mapq,na.rm = T) -->
+<!--   } -->
+<!--   system.time({outl=mclapply(gout,mapq,mc.cores=3)}  ) -->
+
+<!--   Peaksdata2_RP$Avg_mapq=unlist(outl ) -->
+<!--   Peaksdata2_anno=Peaksdata2_RP -->
+
+<!--   write.table(Peaksdata2_RP[,c('ID','Avg_mapq')], -->
+<!--               file=paste0(params$OutDIR,"CLIP_", -->
+<!--                           params$PeakIdnt,"Peaks", -->
+<!--                           ntmerge,'_peakDepth', -->
+<!--                           params$readdepth,params$NameAdd,"_mapq.txt"),  -->
+<!--               sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "") -->
+<!-- } else if (calcMAPQ==FALSE) { -->
+<!--   CLIP_Peaks_mapq=fread(paste0(inMAPQ,"CLIP_Peaks_mapq.txt"),  -->
+<!--                         header=T, sep="\t",stringsAsFactors = F,data.table=F) -->
+<!--   Peaksdata2_anno= merge(Peaksdata2_anno,CLIP_Peaks_mapq,by="ID",all.x = T) -->
+<!-- } -->
 
 
 <br>   
@@ -650,9 +437,20 @@ if (calcMAPQ==TRUE {
   <br>  
   
   
+
 ## Overview of Ro targets by CLIP peak catagory   
     ```{r , echo=F, include=T, eval=T, fig.align='default', fig.ncol=2, fig.height=3.5, fig.width=7, out.height=200, out.width="50%", fig.show="hold", layout='l-screen', results = FALSE, message=FALSE , warning=F}
+###phil we'll need to figure out how these graphs will work since we're running 
+    #these as a merge now
+
+###fix variable
+#read in peak_junction > pean_annotation > mapq file
+###phil 
+Peaksdata2_anno = read.csv(params$peak_mapq)
+    
 if (params$PeakIdnt=='Unique'){
+  
+  #plot peak counts and width
   x1 = ggplot(Peaksdata2_anno,
               aes(x=Counts_Unique,y=Length,color=Comb_type_exon_Oppo,
                   text=Same_external_gene_name))+geom_point(size=1) + 
@@ -670,6 +468,7 @@ if (params$PeakIdnt=='Unique'){
       xlab("Peak Counts (unique)")+ggtitle("Distribution of peak counts") +
       labs(color='RNA Type') +
     scale_color_brewer(palette = "Dark2")
+    
 } else if (params$PeakIdnt=='MultiMap'){
   x1 = ggplot(Peaksdata2_anno,
               aes(x=Counts_MM,y=Length,color=Comb_type_exon_Oppo,
@@ -737,13 +536,80 @@ x4 = ggplot(Peaksdata2_anno,
   labs(color='RNA Type') +
   scale_color_brewer(palette = "Dark2") 
 
+###fix need to label each graph, can prob write a function later
 x1;x2;x3;x4;x5
 ```
 
 
 <br>  
   <br>   
-  
+
+```{r}
+###phil a number of the graphs below is using a similar df - included them all here so we can 
+#make universal edits, see if any of these can be merged, and prob avoid re-writing cols (p$Same_Comb_type_exon=p$Comb_type_exon_Oppo)
+#and just make edits to that col, since this is "p" is a tmp variable 
+
+#version 1
+###fix variable names
+p=Peaksdata2_anno
+p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
+p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
+p[is.na(p$Comb_type_exon),'Same_Comb_type_exon']='no Feature'
+colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
+#phil why are we clearing this col?
+p$RNA=''
+
+#version 2
+p=Peaksdata2_anno
+p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
+p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
+p=p[p$Same_Comb_type_exon%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
+p$RNA=""
+
+#version 3
+p=Peaksdata2_anno
+p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
+###phil - this isn't being run since this variable is never set
+if (incd_rRNA==FALSE) {
+  p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
+}
+p[is.na(p$Same_Comb_type_exon),'Same_Comb_type_exon']='no Feature'
+colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
+p$RNA=''
+
+#version 4
+p=Peaksdata2_anno
+p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
+if (incd_rRNA==FALSE) {
+  p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
+}
+p=p[p$Same_Comb_type_exon%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
+p$RNA="" 
+
+#version 5
+p=Peaksdata2_anno
+colnames(p)[colnames(p)%in%'Comb_type_exon_Oppo']='RNA_Type'
+p$RNA=''
+
+#version 6
+p=Peaksdata2_anno
+p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
+p[p$Same_Comb_type_ncRNA%in%'rRNA','Same_Comb_type_exon']='rRNA'
+p[p$Same_Comb_type_ncRNA%in%'yRNA','Same_Comb_type_exon']='yRNA'
+
+#version 7 
+p=Peaksdata2_anno
+if (incd_rRNA==F) {
+  p=subset(p,!(Oppo_Comb_type_ncRNA == 'rRNA'))
+}
+
+#version 8
+p=Peaksdata2_anno
+if (incd_rRNA==F) {
+  p=subset(p,!(Oppo_Comb_type_ncRNA == 'rRNA'))
+}
+p = subset(p,Oppo_Comb_type_exon == 'ncRNA'))
+```
   <!-- ##  Peak Attributes    -->
   
   ##  Number of peaks assigned to each catagory  
@@ -751,11 +617,10 @@ x1;x2;x3;x4;x5
   **Peak counts do not include rRNA peaks**   
   
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
+#version 1
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-
-p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
-
+p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
 p[is.na(p$Comb_type_exon),'Same_Comb_type_exon']='no Feature'
 colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
 p$RNA=''
@@ -773,13 +638,14 @@ ggplotly(gg)
   
   
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
+#version 2
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
-
+p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
 p=p[p$Same_Comb_type_exon%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
+p$RNA=""
+ 
 if (nrow(p)>0) {
-  p$RNA=""
   gg=ggplot(p,aes(fill=Same_Comb_type_ncRNA,x=RNA) ) + 
     geom_bar(width=.5)+theme_classic() +
     ggtitle("Number of peaks by catagory : ncRNA only\n(Determined by unique reads only)") +  labs(fill='ncRNA Type') +
@@ -798,16 +664,16 @@ if (nrow(p)>0) {
   **Peak counts do include rRNA peaks**   
   
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
+#version 3
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-
-if (incd_rRNA==F) {
-  p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
+if (incd_rRNA==FALSE) {
+  p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
 }
-
 p[is.na(p$Same_Comb_type_exon),'Same_Comb_type_exon']='no Feature'
 colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
 p$RNA=''
+
 gg = ggplot(p,aes(fill=RNA_Type,x=RNA) ) +
   geom_bar(position="stack",width=.5) +
   theme_classic() +
@@ -821,16 +687,17 @@ ggplotly(gg)
   <!-- <br/>      -->
   
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
+#version 4
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
 if (incd_rRNA==FALSE) {
-  p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
+  p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
 }
+p=subset(p,Same_Comb_type_exon == c("ncRNA","Same_Comb_type_ncRNA"))
+p$RNA="" 
 
-p=p[p$Same_Comb_type_exon%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
-
+###phil we need error handling here
 if (nrow(p)>0) {
-  p$RNA=""
   gg=ggplot(p,aes(fill=Same_Comb_type_ncRNA,x=RNA) ) +
     geom_bar(width=.5)+theme_classic()+ggtitle("ncRNA only: # of peaks per catagory") + 
     labs(fill='RNA Type') +
@@ -844,12 +711,12 @@ if (nrow(p)>0) {
 
 <!-- ## Calculate average MAPQ for each peak    -->
   
-  <!-- We can plot the avarage Mapping Quality (MAPQ) of each peak to identify the confidence of read mapping. We see that repeat regions have generally lower mapping quality.     -->
+  <!-- We can plot the average Mapping Quality (MAPQ) of each peak to identify the confidence of read mapping. We see that repeat regions have generally lower mapping quality.     -->
   
   <!-- <br>   -->
 ```{r fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=F,incude=T}
-### fix p = repeated multiple times
-
+### fix variable
+#version 5
 p=Peaksdata2_anno
 colnames(p)[colnames(p)%in%'Comb_type_exon_Oppo']='RNA_Type'
 p$RNA=''
@@ -867,21 +734,25 @@ gg=ggplot(p,aes(x=RNA_Type,y=Avg_mapq,fill=RNA_Type) ) +
   theme(axis.text.x = element_text(angle = -45))
 gg
 
-############################################
-
+### fix variable
 p=Peaksdata2_anno
+
+#select repeat elements
 p=p[p$Comb_type_exon_Oppo%in%'Repeat Element',]
 
+###phil add comment
 p=p[,c('ID','Avg_mapq',colnames(p)[grep('Same_Repeat_',colnames(p))])]
+
+###phil add comment, i'm not sure what we're filtering
 p2=p[,colnames(p)[grep('Same_Repeat_',colnames(p))]]
 p2[,colnames(p2)[grep('Same_Repeat_',colnames(p2))]]=as.numeric(is.na(p2[,colnames(p2)[grep('Same_Repeat_',colnames(p2))]])==F)
-
 p2[p2[,colnames(p2)[grep('Same_Repeat_',colnames(p2))]]==0]=NA
-p2=(p2*p$Avg_mapq)
 
+###phil we're going to need an IF here - in the instance we don't do mapq then 
+#we need to skip this whole section i think?
+p2=(p2*p$Avg_mapq)
 p2=melt.data.frame(p2,id.vars = NULL)
 p2$variable=gsub("Same_Repeat_","",p2$variable)
-
 
 gg = ggplot(p2,aes(x=variable,y=value,fill=variable) ) +
   geom_violin()+theme_classic() +
@@ -894,9 +765,11 @@ gg = ggplot(p2,aes(x=variable,y=value,fill=variable) ) +
   theme(axis.text.x = element_text(angle = -45)) + 
   scale_fill_brewer(palette = "Paired")
 gg
-############################################
+
+###fix variable
 p=Peaksdata2_anno
 p=p[p$Comb_type_exon_Oppo%in%'Repeat Element',]
+subset(p, Comb_type_exon_Oppo == 'Repeat Element')
 p=p[,c('ID','Avg_mapq',colnames(p)[grep('Oppo_Repeat_',colnames(p))])]
 p2=p[,colnames(p)[grep('Oppo_Repeat_',colnames(p))]]
 p2[,colnames(p2)[grep('Oppo_Repeat_',colnames(p2))]]=as.numeric(is.na(p2[,colnames(p2)[grep('Oppo_Repeat_',colnames(p2))]])==F)
@@ -928,7 +801,7 @@ gg
   <!-- <br>   -->
   
 ```{r fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=F,incude=T}
-
+###phil - same as above - if statement for MAPQ
 p=Peaksdata2_anno
 p=p[p$Comb_type_exon_Oppo%in%'ncRNA',]
 if (nrow(p)>0) {
@@ -957,7 +830,7 @@ if (nrow(p)>0) {
   <br>   
   <br>   
   
-  ## Number of reads assigned to each catagory   
+  ## Number of reads assigned to each category   
   
   #### Counts for RNA biotype  
   
@@ -966,20 +839,33 @@ if (nrow(p)>0) {
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,include=T,eval=T}
 # brewer.pal(n = 8, name = "Dark2")
 
-nc_color=c("#1B9E77","#1fb487",
-           "#2bdba6" ,
+nc_color=c("#1B9E77","#1fb487","#2bdba6" ,
            "#D95F02", "#7570B3" ,"#E7298A", "#66A61E", "#E6AB02", "#A6761D", "#666666")
 
+#version 6
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-p$Same_Comb_type_exon=as.character(p$Same_Comb_type_exon)
 p[p$Same_Comb_type_ncRNA%in%'rRNA','Same_Comb_type_exon']='rRNA'
 p[p$Same_Comb_type_ncRNA%in%'yRNA','Same_Comb_type_exon']='yRNA'
 
-p$Same_Comb_type_exon=factor(p$Same_Comb_type_exon, levels = c("ncRNA","rRNA","yRNA", "protein_coding: exon", "Repeat Element","pseudogene","Antisense Feature","protein_coding: Intron","lncRNA","no Feature"))
+###phil - we should avoid hardcoding levels in the instance we expand this list later, or a 
+#dataset doesnt have one of these... do we need factors?
+p$Same_Comb_type_exon = factor(p$Same_Comb_type_exon, 
+                               levels = c("ncRNA","rRNA","yRNA", 
+                                          "protein_coding: exon", "Repeat Element",
+                                          "pseudogene","Antisense Feature",
+                                          "protein_coding: Intron","lncRNA",
+                                          "no Feature"))
 
 u=unique(p$Same_Comb_type_exon)
-pcount=data.frame(u,1:length(u));colnames(pcount)=c('RNA_Type','Counts_All');pcount$Counts_Unique=NA;pcount$Counts_MM=NA;pcount$Peak_count=NA
+pcount=data.frame(u,1:length(u));colnames(pcount)=c('RNA_Type','Counts_All')
+
+###phil - you don't need to NA a col to add it... you can just add the name
+#we should only use NA if we are going to have empty rows (in this case i dont
+#think that we should?)
+#pcount$Counts_Unique=NA
+#pcount$Counts_MM=NA
+#pcount$Peak_count=NA
 
 for (x in 1:length(u)) {
   pam=p[p$Same_Comb_type_exon%in%u[x],]
@@ -989,6 +875,8 @@ for (x in 1:length(u)) {
   pcount[x,'Peak_count']=nrow(pam)
   
 }
+###phil why are we adding this empty col again? if you want the x label to be blank
+#we can add this with xlab in ggplot
 pcount$RNA=""
 
 ### fix check MM vs unique? will this work? 
@@ -1019,20 +907,34 @@ ggplotly(gg)
   
   #### Counts for ncRNA      
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,include=T,eval=T}
-
+#version 6
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-p$Same_Comb_type_exon=as.character(p$Same_Comb_type_exon)
 p[p$Same_Comb_type_ncRNA%in%'rRNA','Same_Comb_type_exon']='rRNA'
 p[p$Same_Comb_type_ncRNA%in%'yRNA','Same_Comb_type_exon']='yRNA'
 
-p$Same_Comb_type_exon=factor(p$Same_Comb_type_exon, levels = c("ncRNA","rRNA","yRNA", "protein_coding: exon", "Repeat Element","pseudogene","Antisense Feature","protein_coding: Intron","lncRNA","no Feature"))
-
-p=p[p$Same_Comb_type_exon%in%'ncRNA',]
+###phil - we should avoid hardcoding levels in the instance we expand this list later, or a 
+#dataset doesnt have one of these... do we need factors?
+p$Same_Comb_type_exon = factor(p$Same_Comb_type_exon, 
+                               levels = c("ncRNA","rRNA","yRNA", 
+                                          "protein_coding: exon", "Repeat Element",
+                                          "pseudogene","Antisense Feature",
+                                          "protein_coding: Intron","lncRNA",
+                                          "no Feature"))
+p=subset(p, Same_Comb_type_exon == 'ncRNA')
 if (nrow(p)>0) {
   
-  u=unique(p$Same_Comb_type_ncRNA)
-  pcount=data.frame(u,1:length(u));colnames(pcount)=c('Same_RNA_Subtype','Counts_All');pcount$Counts_Unique=NA;pcount$Counts_MM=NA;pcount$Peak_count=NA
+  u = unique(p$Same_Comb_type_ncRNA)
+  
+  #create new df
+  pcount = data.frame(u,1:length(u))
+  colnames(pcount)=c('Same_RNA_Subtype','Counts_All')
+  
+  #same note as above
+  pcount$Counts_Unique=NA
+  pcount$Counts_MM=NA
+  pcount$Peak_count=NA
+
   for (x in 1:length(u)) {
     pam=p[p$Same_Comb_type_ncRNA%in%u[x],]
     pcount[x,1]=u[x]
@@ -1076,50 +978,70 @@ if (nrow(p)>0) {
   
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=F}
 
+#version 7
 p=Peaksdata2_anno
 if (incd_rRNA==F) {
-  p=p[!p$Oppo_Comb_type_ncRNA%in%'rRNA',]
+  p=susbet(p,!(Oppo_Comb_type_ncRNA == 'rRNA'))
 }
 
-u=unique(p$Oppo_Comb_type_exon)
-pcount=data.frame(u,1:length(u));colnames(pcount)=c('RNA_Type','Counts_All');pcount$Counts_Unique=NA;pcount$Counts_MM=NA;pcount$Peak_count=NA
-for (x in 1:length(u)) {
-  pam=p[p$Oppo_Comb_type_exon%in%u[x],]
-  pcount[x,1]=u[x]
-  pcount[x,'Counts_Unique']=colSums(pam[,'Counts_Unique',drop=F],na.rm = T)
-  pcount[x,'Counts_fracMM']=colSums(pam[,'Counts_fracMM',drop=F],na.rm = T)
-  pcount[x,'Peak_count']=nrow(pam)
+###phil repeating similar code as above - can prob functionize this
+#added if statement here
+if(nrow(p)>0){
+  u=unique(p$Oppo_Comb_type_exon)
+  pcount=data.frame(u,1:length(u))
+  colnames(pcount)=c('RNA_Type','Counts_All')
   
+  #same note as above
+  #pcount$Counts_Unique=NA
+  #pcount$Counts_MM=NA
+  #pcount$Peak_count=NA
+  
+  for (x in 1:length(u)) {
+    pam=p[p$Oppo_Comb_type_exon%in%u[x],]
+    pcount[x,1]=u[x]
+    pcount[x,'Counts_Unique']=colSums(pam[,'Counts_Unique',drop=F],na.rm = T)
+    pcount[x,'Counts_fracMM']=colSums(pam[,'Counts_fracMM',drop=F],na.rm = T)
+    pcount[x,'Peak_count']=nrow(pam)
+    
+  }
+  pcount$RNA=""
+  
+  gg = ggplot(pcount,aes(fill=RNA_Type,x=RNA,y=Counts_Unique) ) +
+    geom_bar(stat='identity',position="stack",width=.5) +
+    theme_classic() +
+    ggtitle("BioType - # of reads (unique) by catagory)") +
+    scale_fill_brewer(palette = "Dark2") 
+  ggplotly(gg)
+  
+  gg = ggplot(pcount,aes(fill=RNA_Type,x=RNA,y=Counts_fracMM) ) +
+    geom_bar(stat='identity',position="stack",width=.5) +
+    theme_classic() +
+    ggtitle("BioType - # of reads (Unique + Scaled Multimap) by catagory)") +
+    scale_fill_brewer(palette = "Dark2")
+  ggplotly(gg)
 }
-pcount$RNA=""
-
-gg = ggplot(pcount,aes(fill=RNA_Type,x=RNA,y=Counts_Unique) ) +
-  geom_bar(stat='identity',position="stack",width=.5) +
-  theme_classic() +
-  ggtitle("BioType - # of reads (unique) by catagory)") +
-  scale_fill_brewer(palette = "Dark2") 
-ggplotly(gg)
-
-gg = ggplot(pcount,aes(fill=RNA_Type,x=RNA,y=Counts_fracMM) ) +
-  geom_bar(stat='identity',position="stack",width=.5) +
-  theme_classic() +
-  ggtitle("BioType - # of reads (Unique + Scaled Multimap) by catagory)") +
-  scale_fill_brewer(palette = "Dark2")
-ggplotly(gg)
+###phil need else statement - prob should just print something?
 ```
 
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=F}
+#version 8
 p=Peaksdata2_anno
 if (incd_rRNA==F) {
-  p=p[!p$Oppo_Comb_type_ncRNA%in%'rRNA',]
+  p=subset(p,!(Oppo_Comb_type_ncRNA == 'rRNA'))
 }
-
-p=p[p$Oppo_Comb_type_exon%in%'ncRNA',]
+p = subset(p,Oppo_Comb_type_exon == 'ncRNA')
 
 if (nrow(p)>0) {
   u=unique(p$Oppo_Comb_type_ncRNA)
-  pcount=data.frame(u,1:length(u));colnames(pcount)=c('RNA_Subtype','Counts_All');pcount$Counts_Unique=NA;pcount$Counts_MM=NA;pcount$Peak_count=NA
+  
+  pcount=data.frame(u,1:length(u))
+  colnames(pcount)=c('RNA_Subtype','Counts_All')
+  
+  #same note
+  pcount$Counts_Unique=NA
+  pcount$Counts_MM=NA
+  pcount$Peak_count=NA
   
   for (x in 1:length(u)) {
     pam=p[p$Oppo_Comb_type_ncRNA%in%u[x],]
@@ -1155,10 +1077,21 @@ if (nrow(p)>0) {
   
   <!-- ## Identify Alternative Mapping locations for Multimapped reads -->
 ```{r fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=F,include=F}
-library(GenomicAlignments)
-### fix write out table
-write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID','Same_gene_name_comb','Same_ensembl_gene_id','Counts_Unique','Counts_MM','Same_Comb_type_ncRNA','Same_Comb_type_exon')],file=paste0(params$OutDIR,"/ALTmap/CLIP_",samplename,"_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_ALT_IN.txt"), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
+###phil we write out this table but don't use it?
+#file=paste0(params$OutDIR,"/ALTmap/CLIP_",samplename,"_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',
+#params$readdepth,params$NameAdd,"_ALT_IN.txt"), 
+write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID',
+                               'Same_gene_name_comb','Same_ensembl_gene_id',
+                               'Counts_Unique','Counts_MM',
+                               'Same_Comb_type_ncRNA','Same_Comb_type_exon')],
+            file=paste0(out_diparams$OutDIR,"/ALTmap/CLIP_",samplename,"_",
+                        params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',
+                        params$readdepth,params$NameAdd,"_ALT_IN.txt"), 
+            sep = "\t", row.names = FALSE, 
+            col.names = T, append = F, quote= FALSE,na = "")
 
+###phil - do we need this code since it's set to False?
+#SSC did not clean or review
 calcALTLOC=F
 if (calcALTLOC==T) {
   
@@ -1174,7 +1107,6 @@ if (calcALTLOC==T) {
                                Same_Comb_type_ncRNA=Peaksdata2_anno$Same_Comb_type_ncRNA,
                                Same_Comb_type_exon=Peaksdata2_anno$Same_Comb_type_exon)
   
-  ##############################################
   q = Peaksdata2_anno.GR
   s = BamMM
   xo=as.data.frame(GenomicRanges::findOverlaps(q,s,type = "any",ignore.strand=T),row.names = NULL)
@@ -1185,12 +1117,14 @@ if (calcALTLOC==T) {
   colnames(sh)=paste0(colnames(sh),"_bam")
   bamMM_anno=cbind(qh,sh)
   
-  ##############################################
   
   Peaksdata2_MM=Peaksdata2_anno[Peaksdata2_anno$Counts_MM>1,]
   Peaksdata2_MM=Peaksdata2_MM[Peaksdata2_MM$Same_Comb_type_exon%in%'ncRNA',]
   out=as.data.frame(matrix(nrow=nrow(Peaksdata2_MM),ncol=12));
-  colnames(out)=c("ID","Peak_type","Number_ALLMM","MultiMappers_ncRNA_type",'Number_MMinpeak','Number_MMoutpeak',"Number_AltMappings",'Number_Altlocations',"Altlocations","Number_Altlocations_SamePeaktype","Number_Altlocations_DifferentPeaktype","Perc_DifferentPeaktype")
+  colnames(out)=c("ID","Peak_type","Number_ALLMM","MultiMappers_ncRNA_type",
+                  'Number_MMinpeak','Number_MMoutpeak',"Number_AltMappings",
+                  'Number_Altlocations',"Altlocations","Number_Altlocations_SamePeaktype",
+                  "Number_Altlocations_DifferentPeaktype","Perc_DifferentPeaktype")
   
   for (x in 1:nrow(Peaksdata2_MM)) {
     
@@ -1258,7 +1192,8 @@ if (calcALTLOC==T) {
   Peaksdata2_alt=merge(Peaksdata2_anno,Peaksdata2_alt,by='ID',all.x=T)
 }
 
-### fix - presenting variable then calling, output name should be through snakemake
+###phil - i assumed that we were using this one instead, but we have not generated this file...
+###need to figure out where this code comes from, generate this output and continue
 calcALTLOC=F
 if (calcALTLOC==F) {
   
@@ -1268,6 +1203,7 @@ if (calcALTLOC==F) {
   Peaksdata2_alt=merge(Peaksdata2_anno,Peaksdata2_alt,by='ID',all.x=T)
 }
 
+###fix variable swap
 Peaksdata2_anno=Peaksdata2_alt
 
 ```
@@ -1276,10 +1212,14 @@ Peaksdata2_anno=Peaksdata2_alt
 ```{r ,fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=F,include=F}
 if (RunMAnorm==TRUE) {
   
-  PeaksPVal=fread(paste0('./peaks_ctk/',
-                         samplename,'/',
-                         samplename,'_Clip_iCountcutadpt_all.unique.NH.mm.ddup.unique.sig.boundary.bed'),
+  ###input bed file
+  #paste0('./peaks_ctk/',
+   #                      samplename,'/',
+  #                       samplename,'_Clip_iCountcutadpt_all.unique.NH.mm.ddup.unique.sig.boundary.bed')
+  ###phil i don't know where this bed file is coming from?
+  PeaksPVal=fread(manorm_bed_path,
                   header=T, sep="\t",stringsAsFactors = F,data.table=F)
+  
   colnames(PeaksPVal)=c('chr','start','end','anno','count','strand')
   PeaksPVal=separate(PeaksPVal,anno,sep='\\]\\[',into=c('CDKpeak','PH','PH0','Pval'))
   PeaksPVal$PH=gsub("PH=","",PeaksPVal$PH);PeaksPVal$PH=as.numeric(PeaksPVal$PH)
@@ -1555,7 +1495,7 @@ ggplot(CombMethod,
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
 if (incd_rRNA==F) {
-  p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
+  p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
 }
 
 colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
@@ -1579,7 +1519,7 @@ gg
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
 # if (incd_rRNA==F) {
-#   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
+#   p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
 # }
 
 p=p[p$Same_Comb_type_exon%in%'ncRNA',]
@@ -1612,7 +1552,7 @@ Does include rRNA
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
 # if (incd_rRNA==F) {
-#   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
+#   p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
 # }
 
 colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
@@ -1636,7 +1576,7 @@ gg
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
 # if (incd_rRNA==F) {
-#   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
+#   p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
 # }
 
 p=p[p$Same_Comb_type_exon%in%'ncRNA',]
@@ -1668,7 +1608,7 @@ theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(s
 <!-- p=Peaksdata2_anno -->
 <!-- p$Same_Comb_type_exon=p$Comb_type_exon_Oppo -->
 <!-- # if (incd_rRNA==F) { -->
-<!-- #   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',] -->
+<!-- #   p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA')) -->
 <!-- # } -->
 
 <!-- colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type' -->
@@ -1690,7 +1630,7 @@ theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(s
 <!-- p=Peaksdata2_anno -->
 <!-- p$Same_Comb_type_exon=p$Comb_type_exon_Oppo -->
 <!-- # if (incd_rRNA==F) { -->
-<!-- #   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',] -->
+<!-- #   p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA')) -->
 <!-- # } -->
 
 <!-- p=p[p$Same_Comb_type_exon%in%'ncRNA',] -->
@@ -1715,7 +1655,7 @@ theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(s
 <!-- p=Peaksdata2_anno -->
 <!-- p$Same_Comb_type_exon=p$Comb_type_exon_Oppo -->
 <!-- if (incd_rRNA==F) { -->
-<!--   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',] -->
+<!--   p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA')) -->
 <!-- } -->
 
 <!-- colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type' -->
@@ -1732,7 +1672,7 @@ theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(s
 <!-- p=Peaksdata2_anno -->
 <!-- p$Same_Comb_type_exon=p$Comb_type_exon_Oppo -->
 <!-- if (incd_rRNA==F) { -->
-<!--   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',] -->
+<!--   p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA')) -->
 <!-- } -->
 
 <!-- p=p[p$Same_Comb_type_exon%in%'ncRNA',] -->
@@ -1757,7 +1697,7 @@ theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(s
 p=Peaksdata2_anno
 p=p[p$Comb_type_exon_Oppo%in%'Antisense Feature',]
 if (incd_rRNA==F) {
-  p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
+  p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
 }
 
 colnames(p)[colnames(p)%in%'Oppo_Comb_type_exon']='RNA_Type'
@@ -1778,7 +1718,7 @@ ggplot(p,
 
 p=Peaksdata2_anno
 if (incd_rRNA==F) {
-  p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
+  p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
 }
 p$transition=paste0(p$Same_Comb_type_exon,'->\n',p$Oppo_Comb_type_exon)
 p=p[p$Comb_type_exon_Oppo%in%'Antisense Feature',]
@@ -2273,7 +2213,7 @@ write.table(WT_Peaks_unique,file=paste0(params$OutDIR,samplename,"uniqueCLIP_",p
                                                                             <!-- p=setApeaks_Only -->
                                                                               <!-- p$Same_Comb_type_exon=p$`Allpeaks_Both Strand: RNA_type_Classification` -->
                                                                                 <!--   # if (incd_rRNA==F) { -->
-                                                                                <!-- #   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',] -->
+                                                                                <!-- #   p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA')) -->
                                                                                 <!-- # } -->
                                                                                 <!-- # p$all=as.character(p$`Allpeaks_Both Strand: RNA_type_Classification`) -->
                                                                                 <!-- # p[p$`Allpeaks_Same Strand: ncRNA_Classification`%in%'rRNA','Allpeaks_Both Strand: RNA_type_Classification']='rRNA' -->
@@ -2284,7 +2224,7 @@ write.table(WT_Peaks_unique,file=paste0(params$OutDIR,samplename,"uniqueCLIP_",p
                                                                                 
                                                                                 
                                                                                 <!-- u=unique(p$Same_Comb_type_exon) -->
-                                                                                  <!-- pcount=data.frame(u,1:length(u));colnames(pcount)=c('RNA_Type','Counts_fracMM');pcount$Counts_Unique=NA;pcount$Counts_MM=NA;pcount$Peak_count=NA -->
+                                                                                  <!-- pcount=data.frame(u,1:length(u));colnames(pcount)=c('RNA_Type','Counts_fracMM');  pcount$Counts_Unique=NA   pcount$Counts_MM=NA   pcount$Peak_count=NA -->
                                                                                     <!-- for (x in 1:length(u)) { -->
                                                                                         <!--   pam=p[p$Same_Comb_type_exon%in%u[x],] -->
                                                                                           <!--   pcount[x,1]=u[x] -->
@@ -2338,7 +2278,7 @@ write.table(WT_Peaks_unique,file=paste0(params$OutDIR,samplename,"uniqueCLIP_",p
                                                                                                 <!-- ######################## -->
                                                                                                 
                                                                                                 <!--  u=unique(p$Same_Comb_type_ncRNA) -->
-                                                                                                  <!-- pcount=data.frame(u,1:length(u));colnames(pcount)=c('RNA_Type','Counts_fracMM');pcount$Counts_Unique=NA;pcount$Counts_MM=NA;pcount$Peak_count=NA -->
+                                                                                                  <!-- pcount=data.frame(u,1:length(u));colnames(pcount)=c('RNA_Type','Counts_fracMM');  pcount$Counts_Unique=NA   pcount$Counts_MM=NA   pcount$Peak_count=NA -->
                                                                                                     <!-- for (x in 1:length(u)) { -->
                                                                                                         <!--   pam=p[p$Same_Comb_type_ncRNA%in%u[x],] -->
                                                                                                           <!--   pcount[x,1]=u[x] -->
@@ -2391,7 +2331,7 @@ write.table(WT_Peaks_unique,file=paste0(params$OutDIR,samplename,"uniqueCLIP_",p
                                                                                                         <!-- # p=setApeaks_Only -->
                                                                                                         <!-- # p$Allpeaks_Same_Comb_type_exon -->
                                                                                                         <!-- # # if (incd_rRNA==F) { -->
-                                                                                                        <!-- # #   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',] -->
+                                                                                                        <!-- # #   p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA')) -->
                                                                                                         <!-- # # } -->
                                                                                                         <!-- # p$Same_Comb_type_exon=as.character(p$Same_Comb_type_exon) -->
                                                                                                         <!-- # p[p$Same_Comb_type_ncRNA%in%'rRNA','Same_Comb_type_exon']='rRNA' -->
