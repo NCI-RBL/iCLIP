@@ -1346,49 +1346,14 @@ rule feature_counts_uniquereads:
             {input.bam}
         """  
 
-rule peak_junctions:
-    input:
-        unique = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
-        all = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt')
-    params:
-        rname = 'ic_junc',
-        script = join(source_dir,'workflow','scripts','06_peak_junction.R'),
-        p_type = peak_id,
-        junc = sp_junc,
-        r_depth= min_count,
-        d_method=DE_method,
-        sp = "{sp}",
-        n_merge = nt_merge,
-        base = join(out_dir,'14_peaks/'),
-    envmodules:
-        config['R'],
-    output:
-        o1 = join(out_dir,'14_peaks','{sp}_' + str(nt_merge) + '_peakjunction.txt'),
-        bed = join(out_dir,'14_peaks','{sp}_' + str(nt_merge) + '_peakDepth.bed'),
-        pbed = join(out_dir,'14_peaks','{sp}_' + str(nt_merge) + '_peakDepth_P.bed'),
-        nbed = join(out_dir,'14_peaks','{sp}_' + str(nt_merge) + '_peakDepth_N.bed'),
-    shell:
-        '''
-        Rscript {params.script} \
-            {params.p_type} \
-            {input.unique} \
-            {input.all} \
-            {params.junc} \
-            {params.r_depth} \
-            {params.d_method} \
-            {params.sp} \
-            {params.n_merge} \
-            {params.base}
-        '''
-
-rule annotations:
+rule project_annotations:
     """
-    generate annotation table for the project
+    generate annotation table once per project
     """
     input:
         expand(join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
     params:
-        rname='ic_anno',
+        rname='ic_proj_anno',
         script = join(source_dir,'workflow','scripts','06_annotation.R'),
         ref_sp = nova_ref,
         s_flag = sy_flag,
@@ -1399,16 +1364,16 @@ rule annotations:
         c_path = can_path,
         i_path = intron_path,
         r_path = rmsk_path,
-        base = join(out_dir,'15_annotation/'),
+        base = join(out_dir,'14_project_annotation/'),
         a_config = annotation_config,       
     envmodules:
         config['R']
     output:
-        anno = join(out_dir,'15_annotation','annotations.txt'),
-        ncRNA = join(out_dir,'15_annotation','ncRNA_annotations.txt'),
-        alias = join(out_dir,'15_annotation','ref_alias.csv'),
-        refseq = join(out_dir,'15_annotation','ref_refseq.csv'),
-        lncRNA = join(out_dir,'15_annotation','ref_lncRNA.csv'),
+        anno = join(out_dir,'14_project_annotation','annotations.txt'),
+        ncRNA = join(out_dir,'14_project_annotation','ncRNA_annotations.txt'),
+        alias = join(out_dir,'14_project_annotation','ref_alias.csv'),
+        refseq = join(out_dir,'14_project_annotation','ref_refseq.csv'),
+        lncRNA = join(out_dir,'14_project_annotation','ref_lncRNA.csv'),
     shell:
         """
         Rscript {params.script} \
@@ -1425,103 +1390,151 @@ rule annotations:
             {params.a_config}
         """
 
-rule peak_calling:
+rule peak_annotations:
+    '''
+    find peak junctions, annotations peaks, merges junction and annotation information
+
+    additional outputs if MANORM
+    _peakDepth.bed
+    _peakDepth_P.bed
+    _peakDepth_N.bed
+
+    '''
+    input:
+        unique = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
+        all = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
+        anno = join(out_dir,'14_project_annotation','annotations.txt'),
+    params:
+        rname = 'ic_peak_anno',
+        script = join(source_dir,'workflow','scripts','07_peak_annotation.R'),
+        p_type = peak_id,
+        junc = sp_junc,
+        r_depth= min_count,
+        d_method=DE_method,
+        sp = "{sp}",
+        n_merge = nt_merge,
+        base = join(out_dir,'15_peak_annotation/'),
+        anno_dir = join(out_dir,'14_project_annotation/'),
+        ref_sp = nova_ref,
+        masker_path = rmsk_path
+    envmodules:
+        config['R'],
+    output:
+        o1 = join(out_dir,'15_peak_annotation','{sp}_' + str(nt_merge) + '_peakjunction.txt'),
+        o2 = join(out_dir,'15_peak_annotation','{sp}_' + str(nt_merge) + '_peakannotation.txt'),
+        o3 = join(out_dir,'15_peak_annotation','{sp}_' + str(nt_merge) + '_peakannotation_junctions.txt'),
+        o4 = join(out_dir,'15_peak_annotation','{sp}_' + str(nt_merge) + 'peakannotation_mapq_IN.txt'),
+        o5 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth.bed'), ###need to add if statement for MANORM only
+        o6 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth_P.bed'), ###need to add if statement for MANORM only
+        o7 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth_N.bed'),
+    shell:
         '''
-        
+        Rscript {params.script} \
+            {params.p_type} \
+            {input.unique} \
+            {input.all} \
+            {params.junc} \
+            {params.r_depth} \
+            {params.d_method} \
+            {params.sp} \
+            {params.n_merge} \
+            {params.base}
+            {params.anno_dir} \
+            {params.ref_sp} \
+            {params.masker.path} \
+            {output.o1}
         '''
+
+if (mapq==TRUE):
+    rule peak_mapq:
         input:
-            f1 = join(out_dir,'14_peaks','{sp}_' + str(nt_merge) + '_peakjunction.txt'),
+            bam = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
+            peak = join(out_dir,'15_peak_annotation','{sp}_' + str(nt_merge) + 'peakannotation_mapq_IN.txt'),
         params:
-            rname = "ic_peaks",
-            script = join(source_dir,'workflow','scripts','07_peak_generation.R'),
+            rname = 'ic_peak_mapq',
+            script = join(source_dir,'workflow','scripts','08_peak_mapq.R'),
         envmodules:
             config['R'],
         output:
-            annobed = join(out_dir, '15_annotation','{sp}_' + str(nt_merge) + '_annotable.bed'),
-            peaksbed = join(out_dir, '15_annotation','{sp}_' + str(nt_merge) + '_peakstable.bed'),
-            OL = join(out_dir,'14_peaks', '{sp}_' + str(nt_merge) + '_peaks_OL.txt'),
+            o1 = join(out_dir,'16_peak_mapq','{sp}_' + str(nt_merge) + '_peakannotation_mapqscore.txt'),
         shell:
             '''
-            Rscript {params.script}
+            Rscript {params.script} \
+                {input.bam} \
+                {input.peak} \
+                {output.o1}
             '''
 
-if (DE_method=="LALA"):
-    def set_contrasts():
-        #read in contrast list as df
-        #multiplex_id   #sampleid_1 #sampleid_2
-        contrast_list = ""
-        return(contrast_list)
-
-
-    '''
-    Rscript -e 'library(rmarkdown); \
-        rmarkdown::render("{params.R}",
-            output_file = "{output.html}", \
-            params = list(
-                samplename = "{params.samp}", \
-                PeaksUniq = "{input.unique}", \
-                PeaksFracMM = "{input.all}", \
-                OutDIR = "{params.base}", \
-                readdepth = "{params.depth}", \
-                PeakIdnt = "{params.peakid}", \
-                DEmethod = "{params.de_meth}", \
-                species = "{params.n_ref}", \
-                ntmerge = "{params.nt_merge}", \
-                JoinJunc = "{params.s_aware}", \
-                AnnoFiles = "{params.annof}", \
-                AnnoScript = "{params.annos}", \
-                OutDIR2 = "{params.base2}"))'
-                '''
-    def manorm_cmd(contrast_df):
-        contrast_df = ""
-        cmd = ""
-        #for each row in df
-            #file_in = join(output_dir,multiplex.col,'12_bed',sample1.col + '.bed')
-            #file_out = join(output_dir,multiplex.col,'16_manorm',sample1.col + '.P.bed')
-            #cmd = cmd + "awk '$6=="+"' " + file_in "> " + file_out " "
-        #return(cmd)
-
-    rule create_pbeds:
+if (DE_method=="MANORM"):
+    rule create_beds:
         '''
-        expand(join(out_dir,'{mp}/16_manorm/{sp}.p.bed'),zip,mp=mp_list,sp=sp_list)
-        expand(join(out_dir,'{mp}/16_manorm/{sp}.n.bed'),zip,mp=mp_list,sp=sp_list)
+        phil - should this be unique or all bed?
+        later to do - only run for samples that are going to be compared
         '''
         input:
-            f1 = join(out_dir,'{mp}/12_bed/{sp}.unique.bed'),
+            f1 = join(out_dir,'12_bed/{sp}.unique.bed'),
+        params:
+            rname = "ic_beds"
         output:
-            o1 = join(out_dir,'{mp}/16_manorm/{sp}.p.bed'),
-            o2 = join(out_dir,'{mp}/16_manorm/{sp}.n.bed'),
+            o1 = join(out_dir,'16_manorm/{sp}.p.bed'),
+            o2 = join(out_dir,'16_manorm/{sp}.n.bed'),
         shell:
             '''
             awk '$6=="+"' {input.f1} > {output.o1};
             awk '$6=="-"' {input.f1} > {output.o2};
             '''
-    
-    rule manorm:
+
+    def manorm_contrast_lists():
+        #read in contrast list as df
+
+        #perfrom check of df
+        #comparisons aren't duplicated
+        #all sample names exist
+
+        #create contrast lists from each col
+        #sampleid_1 #sampleid_2
+        contrast_list = ""
+
+        #return contrast lists
+        return(contrast_list1, contrast_lists2)
+
+    if(DE_method=="MANORM"):
+        (ct_list1,ct_list2) = manorm_conrast_lists()
+
+    rule all:
+        expand(join(out_dir,'16_manorm/manorm_{sp1}_{sp2}_p.txt'),zip,ct_list1,ct_list2)
+
+    rule manorm_p:
         '''
-        expand(join(out_dir,'{pairOfSamples}/{sampleid}.{strand}.bed", pairOfSamples=keys, sampleid=values, strand = c["p","n"]
+        f1 /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/input/WT_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed
+        f2 /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/input/KO_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed
+        f3 /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/input/WT_CLIP.dedup.i.bam.P.bed 
+        f4 /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/input/KO_CLIP.dedup.i.bam.P.bed
+        base /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/WTvsKO/
+        name1 WT_50nt_peakDepth5Test_Pos
+        name2 KO_50nt_peakDepth5Test_Pos
         '''
         input:
-            s1_r = join(out_dir,'{mp}/15_annotation/{sample1}.RNAME.bed'), #{sample1}WT_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed,
-            s2_r = join(out_dir,'{mp}/15_annotation/{sample2}.RNAME.bed'), #{sample2}KO_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed,
-            s1_p = join(out_dir,'{mp}/16_manorm/{sample1}.p.bed'), #{sample1}WT_CLIP.dedup.i.bam.P.bed
-            s2_p = join(out_dir,'{mp}/16_manorm/{sample2}.p.bed'), #{sample2}WT_CLIP.dedup.i.bam.P.bed
+            f1 = join(out_dir,'16_manorm','{sp1}_{sp2}','{sp1}.p.bed'),
+            f2 = join(out_dir,'16_manorm','{sp1}_{sp2}','{sp2}.p.bed'),
+            f3 = join(out_dir,'16_manorm','{sp1}_{sp2}','{sp1}_' + str(nt_merge) + '_peakDepth_P.bed'),
+            f4 = join(out_dir,'16_manorm','{sp1}_{sp2}','{sp2}_' + str(nt_merge) + '_peakDepth_P.bed'),
         params:
-            name1 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample1}'),
-            name2 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample2}'),
-            base = join(out_dir,'{mp}/16manorm/') #/data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/WTvsKO/
+            rname = "ic_manorm_p",
+            base = join(out_dir,'16_manorm/{sp1}_{sp2}/'),
+            name1 = '{sp1}_Pos',
+            name2 = '{sp2}_Pos'
         envmodules:
-            config['MANorm'],
+            config['MANORM']
         output:
-            o1 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample1}.txt'),
-            o2 = join(out_dir,'{mp}','16_manorm','{sample1}vs{sample2}','{sample2}.txt'),
+            o1 = join(out_dir,'16_manorm','{sp1}_{sp2}', 'manorm_{sp1}_{sp2}_p.txt')
         shell:
             '''
             manorm \
-                --p1 {input.s1_r} \
-                --p2 {input.s2_r} \
-                --r1 {input.s1_p} \
-                --r2 {input.s2_p} \
+                --p1 {intput.f1} \
+                --p2 {input.f2} \
+                --r1 {input.f3} \
+                --r2 {input.f4} \
                 --s1 0 \
                 --s2 0 \
                 -p 1 \
@@ -1529,64 +1542,39 @@ if (DE_method=="LALA"):
                 -n 10000 \
                 -s \
                 -o {params.base} \
-                --name1 {params.name1} \
+                --name1  {params.name1} \
                 --name2 {params.name2}
             '''
 
-
-    rule manorm:
-        """
-        """
+    rule manorm_n:
         input:
-            
+            f1 = join(out_dir,'16_manorm/{sp1}.n.bed'),
+            f2 = join(out_dir,'16_manorm/{sp2}.n.bed'),
+            f3 = join(out_dir,'16_manorm','{sp1}_' + str(nt_merge) + '_peakDepth_N.bed'),
+            f4 = join(out_dir,'16_manorm','{sp2}_' + str(nt_merge) + '_peakDepth_N.bed'),
         params:
+            rname = "ic_manorm_n",
+            base = join(out_dir,'16_manorm/{sp1}_{sp2}/'),
+            name1 = '{sp1}_Neg',
+            name2 = '{sp2}_Neg'
         envmodules:
+            config['MANORM']
         output:
+            o1 = join(out_dir,'16_manorm/manorm_{sp1}_{sp2}_n.txt')
         shell:
-            """
-            #step 1
-            pbed_cmd
-            awk '$6=="+"' {sample1} WT_CLIP.dedup.i.bam.bed > {sample1}WT_CLIP.dedup.i.bam.P.bed
-            awk '$6=="+"' {sample2}KO_CLIP.dedup.i.bam.bed > {sample2}KO_CLIP.dedup.i.bam.P.bed
-
-            #step2
-            manorm_cmd
+            '''
             manorm \
-            --p1 {sample1}WT_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed \
-            --p2 {sample2}KO_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed \
-            --r1 {sample1}WT_CLIP.dedup.i.bam.P.bed \
-            --r2 {sample2}KO_CLIP.dedup.i.bam.P.bed \
-            --s1 0 \
-            --s2 0 \
-            -p 1 \
-            -d 25 \
-            -n 10000 \
-            -s \
-            -o /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/WTvsKO/ \
-            --name1 WT_50nt_peakDepth5Test_Pos \
-            --name2 KO_50nt_peakDepth5Test_Pos
-
-            #step 3
-            pbed_cmd
-            awk '$6=="-"' {sample1} WT_CLIP.dedup.i.bam.bed > {sample1}WT_CLIP.dedup.i.bam.N.bed
-            awk '$6=="-"' {sample2}KO_CLIP.dedup.i.bam.bed > {sample2}KO_CLIP.dedup.i.bam.N.bed
-
-            #step4
-            manorm_cmd
-            manorm \
-            --p1 {sample1}WT_allPeaksforMAnrom_50nt_peakDepth5Test.N.bed \
-            --p2 {sample2}KO_allPeaksforMAnrom_50nt_peakDepth5Test.N.bed \
-            --r1 {sample1}WT_CLIP.dedup.i.bam.N.bed \
-            --r2 {sample2}KO_CLIP.dedup.i.bam.N.bed \
-            --s1 0 \
-            --s2 0 \
-            -p 1 \
-            -d 25 \
-            -n 10000 \
-            -s \
-            -o /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/WTvsKO/ \
-            --name1 WT_50nt_peakDepth5Test_Neg \
-            --name2 KO_50nt_peakDepth5Test_Neg
-
-
-            """
+                --p1 {intput.f1} \
+                --p2 {input.f2} \
+                --r1 {input.f3} \
+                --r2 {input.f4} \
+                --s1 0 \
+                --s2 0 \
+                -p 1 \
+                -d 25 \
+                -n 10000 \
+                -s \
+                -o {params.base} \
+                --name1  {params.name1} \
+                --name2 {params.name2}
+            '''
