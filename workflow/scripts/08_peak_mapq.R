@@ -5,12 +5,13 @@
 #calcmapq true or false
 args <- commandArgs(trailingOnly = TRUE)
 bam_in = args[1]
-output_file = args[9]
+peaks_in = args[2]
+output_file = args[3]
 
 #testing
 if(is.na(bam_in)){
   bam_in = paste0('/Volumes/data/iCLIP/confirm/TBD/KO_fClip_iCountcutadpt_all.unique.NH.mm.ddup.bam')
-  output_file = "testing.csv"
+  output_file = "_peakannotation_mapscore.txt"
 }
 
 glist=function(i){
@@ -47,9 +48,15 @@ if (calcMAPQ==TRUE) {
               file=output_file, 
               sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
 } else if (calcMAPQ==FALSE) {
-  ###phil if we aren't running mapq, then we don't need any output, right?
-  print ("TBD")
-  #CLIP_Peaks_mapq=fread(paste0(inMAPQ,"CLIP_Peaks_mapq.txt"), 
-               #         header=T, sep="\t",stringsAsFactors = F,data.table=F)
-  #Peaksdata2_anno= merge(Peaksdata2_anno,CLIP_Peaks_mapq,by="ID",all.x = T)
+  ###phil the output on this should be peaks_mapq_in right? original line 997 is wrong
+  #will need to add avg_mapq col for this to work?
+  CLIP_Peaks_mapq=fread(params$peaks_in, 
+                       header=T, sep="\t",stringsAsFactors = F,data.table=F)
+  Peaksdata2_anno=fread(params$peaks_junction,
+                        header=T, sep="\t",stringsAsFactors = F,data.table=F)
+  Peaksdata2_RP= merge(Peaksdata2_anno,CLIP_Peaks_mapq,by="ID",all.x = T)
+  Peaksdata2_RP$Avg_mapq=""
+  write.table(Peaksdata2_RP[,c('ID','Avg_mapq')],
+              file=output_file, 
+              sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
 }
