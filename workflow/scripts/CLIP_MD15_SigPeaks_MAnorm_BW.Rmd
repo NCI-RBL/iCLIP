@@ -13,35 +13,57 @@ output: html_document
 #   PeakIdnt: "all" #MultiMap, Unique, all
 #   NameAdd: "Teststudio" ##"_SpliceAware_FullGenome_Transcme.SplicTrans_CollapseExons"
 params:
-  INpeaksAnno: INpeaks
-  INMAnorm: INMAnorm
-  contrasts: contrasts
-  outDIR: outDIR
-  readdepth: readdepth
-  ntmerge: ntmerge
+  INpeaksAnno: 
+    value: x
+  INMAnorm:
+    value: x
+  contrasts:
+    value: x
+  OutDIR: 
+    value: x
+  ntmerge: 
+    value: x
+  readdepth:
+    value: x
+  species:
+    value: x
   Condense: FALSE
   JoinJunc: TRUE
-  PeakIdnt: PeakIdnt #MultiMap, Unique, all
-  NameAdd: NameAdd
+  PeakIdnt: FALSE
+  NameAdd: FALSE
+  sample_id:
+    value: "WT"
+  background_id:
+    value: "KO"
+  sample_pos:
+    value: "WT_50nt_peakDepth5Test_Pos_MAvalues.xls"
+  sample_neg:
+    value: "KO_"
+  peaks_mval_path:
+    value: "WT_KO_manorm_values.txt"
+  output_text:
+    value: "WTvsKO_CLIP_MAnormSigPeaks_Peaks_50nt_peakDepth_MD15.txt"
+  output_text2: 
+    value: "WTvsKO_CLIP_MAnorm_Peaks_50nt_peakDepth_MD15.txt"
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r echo=F, message=FALSE, warning=FALSE, include=F,eval=F}
-rmarkdown::render('fCLIP_WT_MD14_Pval.Rmd',
-                  encoding=encoding,
-                  output_file=paste0('fCLIP_',params$samplename,'_peakDepth',params$readdepth,params$NameAdd,'_MD14.html'))
+###phil not sure what this file is?
+#rmarkdown::render('fCLIP_WT_MD14_Pval.Rmd',
+#                  encoding=encoding,
+#                  output_file=paste0('fCLIP_',params$samplename,'_peakDepth',params$readdepth,params$NameAdd,'_MD14.html'))
 ```
 
  
 ```{r echo=F, message=FALSE, warning=FALSE, include=F, R.options=T}
-rm(list=setdiff(ls(), c("params",'Peaksdata2_annox')))
-
+###todo parse list as needed
 library(rmarkdown)
 library(stringr)
 library(rtracklayer)
 library(VariantAnnotation,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(trackViewer)
 library(rmarkdown)
-# library(vcfR)
 library(ggplot2,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
 library("viridis",quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
 library(edgeR,quietly = T,verbose = F)
@@ -65,16 +87,14 @@ library(RColorBrewer)
 library('gplots')
 library(ggpubr)
 library(circlize)
-# library("Rgb")
 library('regioneR')
 library(scales)
+library(dplyr)
+```
 
-
-contrast=fread(params$contrasts, header=F, sep="\t",stringsAsFactors = F,data.table=F)
-samplename=contrast[1,1]
-background=contrast[1,2]
-PosMAnorm= paste0(params$INMAnorm,samplename,"_50nt_peakDepth5Test_Pos_MAvalues.xls")
-NegMAnorm= paste0(params$INMAnorm,samplename,"_50nt_peakDepth5Test_Neg_MAvalues.xls")
+```{r}
+samplename=params$sample
+background=params$background
   
 INbam<-params$INbam 
 INbamMM=params$INbamMM 
@@ -101,7 +121,6 @@ blank_theme <- theme_minimal()+
 incd_rRNA=T
 
 
-species=params$species
 ```
 
 # Differencial CLIP peaks identified by MAnorm (`r samplename`-`r background`)  
@@ -114,64 +133,76 @@ MAnorm used to identify Peaks preferentially expressed in the `r (samplename)` s
 ## Identify preferentialy expressed CLIP peaks  
 
 <!-- MAnorm calculates normalized counts and pvalues for peaks identified in WT sample    -->
+###phil code moved to 09_manorm.R - keeping RMD's only for plotting
 
 ```{r ,fig.asp=.5, fig.align='center',echo=F,warning=F,eval=T,include=F}
-SmplA_Peaks=fread(paste0(params$INpeaksAnno,samplename,"_CLIP_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD15.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
-  SmplA_Peaks$`Both Strand: RNA_type_Classification`=factor(SmplA_Peaks$`Both Strand: RNA_type_Classification`, levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lncRNA-exon","Antisense Feature","protein_coding: Intron","lncRNA-intron","lncRNA","no Feature"))
 
-
-SmplA_Peaks=separate(SmplA_Peaks,col = ID,into = c('chr','start'),sep = ':',remove = F)
-SmplA_Peaks=separate(SmplA_Peaks,col = start,into = c('start','end'),sep = '-',remove = F)
-SmplA_Peaks$start=as.numeric(SmplA_Peaks$start);SmplA_Peaks$end=as.numeric(SmplA_Peaks$end)
-SmplA_Peaks$Length=SmplA_Peaks$end-SmplA_Peaks$start
-
-SmplA_Peaks.GR <- GRanges(seqnames = as.character(SmplA_Peaks$chr), ranges=IRanges(start = as.numeric(SmplA_Peaks$start), end = as.numeric(SmplA_Peaks$end)),strand = SmplA_Peaks$strand,ID=SmplA_Peaks$ID )
-
-
-SmplB_Peaks=fread(paste0(params$INpeaksAnno,background,"_CLIP_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD15.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
-
-SmplB_Peaks=separate(SmplB_Peaks,col = ID,into = c('chr','start'),sep = ':',remove = F)
-SmplB_Peaks=separate(SmplB_Peaks,col = start,into = c('start','end'),sep = '-',remove = F)
-SmplB_Peaks$start=as.numeric(SmplB_Peaks$start);SmplB_Peaks$end=as.numeric(SmplB_Peaks$end)
-SmplB_Peaks$Length=SmplB_Peaks$end-SmplB_Peaks$start
-
-SmplB_Peaks.GR <- GRanges(seqnames = as.character(SmplB_Peaks$chr), ranges=IRanges(start = as.numeric(SmplB_Peaks$start), end = as.numeric(SmplB_Peaks$end)),strand = SmplB_Peaks$strand,ID=SmplB_Peaks$ID )
-
-
-Neg_MAval=fread(paste0( NegMAnorm), header=T, sep="\t",stringsAsFactors = F,data.table=F)
-      colnames(Neg_MAval)=gsub("_Neg","",colnames(Neg_MAval))
-      Neg_MAval$strand="-"
-Pos_MAval=fread(paste0(PosMAnorm), header=T, sep="\t",stringsAsFactors = F,data.table=F)
-      colnames(Pos_MAval)=gsub("_Pos","",colnames(Pos_MAval))
-      Pos_MAval$strand="+"
-
-MAval=rbind(Neg_MAval,Pos_MAval)
-MAval$start=MAval$start-1
-MAval$ID=paste0(MAval$chr,':',MAval$start,'-',MAval$end)
-MAval$Peak_Group=gsub("_Neg","",MAval$Peak_Group)
-MAval$Peak_Group=gsub("_Pos","",MAval$Peak_Group)
-colnames(MAval)=gsub(paste0('_',ntmerge,'_peakDepth',params$readdepth,params$NameAdd),"",colnames(MAval))
-colnames(MAval)=gsub(paste0('_',ntmerge,'_peakDepth',params$readdepth,'Test'),"",colnames(MAval))
-
-SmplA_Peaks_MAval=merge(SmplA_Peaks,MAval,by='ID',suffixes=c("","_MAnorm"),all.x=T)
-
-SmplA_Peaks_MAval[is.na(SmplA_Peaks_MAval$FC),'FC']=max(SmplA_Peaks_MAval$FC)
-SmplA_Peaks_MAval[is.na(SmplA_Peaks_MAval$P_value),'P_value']=1e-10
-
-SmplA_Peaks_MAval$FC=log2(SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)]+1)-log2(SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',background)]+1)
-SmplA_Peaks_MAval$logPval=-log10(as.numeric(SmplA_Peaks_MAval$P_value))
-
-  SmplA_Peaks_MAval$`Both Strand: RNA_type_Classification`=factor(SmplA_Peaks_MAval$`Both Strand: RNA_type_Classification`, levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lncRNA-exon","Antisense Feature","protein_coding: Intron","lncRNA-intron","lncRNA","no Feature"))
+# SmplA_Peaks=fread(paste0(params$INpeaksAnno,samplename,"_CLIP_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD15.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
+#   SmplA_Peaks$`Both Strand: RNA_type_Classification`=factor(SmplA_Peaks$`Both Strand: RNA_type_Classification`, levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lncRNA-exon","Antisense Feature","protein_coding: Intron","lncRNA-intron","lncRNA","no Feature"))
+# 
+# 
+# SmplA_Peaks=separate(SmplA_Peaks,col = ID,into = c('chr','start'),sep = ':',remove = F)
+# SmplA_Peaks=separate(SmplA_Peaks,col = start,into = c('start','end'),sep = '-',remove = F)
+# SmplA_Peaks$start=as.numeric(SmplA_Peaks$start);SmplA_Peaks$end=as.numeric(SmplA_Peaks$end)
+# SmplA_Peaks$Length=SmplA_Peaks$end-SmplA_Peaks$start
+# 
+# SmplA_Peaks.GR <- GRanges(seqnames = as.character(SmplA_Peaks$chr), ranges=IRanges(start = as.numeric(SmplA_Peaks$start), end = as.numeric(SmplA_Peaks$end)),strand = SmplA_Peaks$strand,ID=SmplA_Peaks$ID )
+# 
+# 
+# SmplB_Peaks=fread(paste0(params$INpeaksAnno,background,"_CLIP_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD15.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F)
+# 
+# SmplB_Peaks=separate(SmplB_Peaks,col = ID,into = c('chr','start'),sep = ':',remove = F)
+# SmplB_Peaks=separate(SmplB_Peaks,col = start,into = c('start','end'),sep = '-',remove = F)
+# SmplB_Peaks$start=as.numeric(SmplB_Peaks$start);SmplB_Peaks$end=as.numeric(SmplB_Peaks$end)
+# SmplB_Peaks$Length=SmplB_Peaks$end-SmplB_Peaks$start
+# 
+# SmplB_Peaks.GR <- GRanges(seqnames = as.character(SmplB_Peaks$chr), ranges=IRanges(start = as.numeric(SmplB_Peaks$start), end = as.numeric(SmplB_Peaks$end)),strand = SmplB_Peaks$strand,ID=SmplB_Peaks$ID )
+# 
+# 
+# Neg_MAval=fread(paste0( NegMAnorm), header=T, sep="\t",stringsAsFactors = F,data.table=F)
+#       colnames(Neg_MAval)=gsub("_Neg","",colnames(Neg_MAval))
+#       Neg_MAval$strand="-"
+# Pos_MAval=fread(paste0(PosMAnorm), header=T, sep="\t",stringsAsFactors = F,data.table=F)
+#       colnames(Pos_MAval)=gsub("_Pos","",colnames(Pos_MAval))
+#       Pos_MAval$strand="+"
+# 
+# MAval=rbind(Neg_MAval,Pos_MAval)
+# MAval$start=MAval$start-1
+# MAval$ID=paste0(MAval$chr,':',MAval$start,'-',MAval$end)
+# MAval$Peak_Group=gsub("_Neg","",MAval$Peak_Group)
+# MAval$Peak_Group=gsub("_Pos","",MAval$Peak_Group)
+# colnames(MAval)=gsub(paste0('_',ntmerge,'_peakDepth',params$readdepth,params$NameAdd),"",colnames(MAval))
+# colnames(MAval)=gsub(paste0('_',ntmerge,'_peakDepth',params$readdepth,'Test'),"",colnames(MAval))
+# 
+# SmplA_Peaks_MAval=merge(SmplA_Peaks,MAval,by='ID',suffixes=c("","_MAnorm"),all.x=T)
+# 
+# SmplA_Peaks_MAval[is.na(SmplA_Peaks_MAval$FC),'FC']=max(SmplA_Peaks_MAval$FC)
+# SmplA_Peaks_MAval[is.na(SmplA_Peaks_MAval$P_value),'P_value']=1e-10
+# 
+# SmplA_Peaks_MAval$FC=log2(SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)]+1)-log2(SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',background)]+1)
+# SmplA_Peaks_MAval$logPval=-log10(as.numeric(SmplA_Peaks_MAval$P_value))
+# 
+#   SmplA_Peaks_MAval$`Both Strand: RNA_type_Classification`=factor(SmplA_Peaks_MAval$`Both Strand: RNA_type_Classification`, levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lncRNA-exon","Antisense Feature","protein_coding: Intron","lncRNA-intron","lncRNA","no Feature"))
 
 ```
 
 ```{r ,fig.asp=.5, fig.align='center',fig.height=3.5, fig.width=7,echo=F,warning=F,eval=T,include=T}
+#read in peaks
+SmplA_Peaks_MAval = peaks_mval_path
 
-g=ggplot(SmplA_Peaks_MAval,aes(x=FC,y=logPval,color=`Both Strand: RNA_type_Classification`,
-                            text=paste0('ID: ',ID,'\nHostGene: ',`Same Strand: Host_gene_name`,
-                                        '\n ',samplename,' normalized Reads: ', SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)],
-                                        '\n ',background,' normalized Reads: ', SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',background)])
-                            ))+geom_point(size=2)+
+#graph Fold change : pvalue
+###not sure if g_text will work like this - but help with readability
+g_text = paste0('ID: ',ID,'\nHostGene: ',`Same Strand: Host_gene_name`,
+                           '\n ',samplename,' normalized Reads: ',
+                           SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)],
+                                        '\n ',background,' normalized Reads: ',
+                           SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',background)])
+g = ggplot(SmplA_Peaks_MAval,
+           aes(x=FC, 
+               y=logPval, 
+               color=`Both Strand: RNA_type_Classification`,
+               text=g_text)) + 
+  geom_point(size=2) +
   theme_classic()+
   xlab(paste0("log<sub>2</sub> Fold Change (",samplename,"-",background,")"))+
   ylab(paste0("-log<sub>10</sub> P-Value"))+
@@ -179,43 +210,46 @@ g=ggplot(SmplA_Peaks_MAval,aes(x=FC,y=logPval,color=`Both Strand: RNA_type_Class
   geom_hline(yintercept=-log10(.005),size=.5,col='black',linetype="dashed")+
   geom_vline(xintercept=(1),size=.5,col='black',linetype="dashed")+
   geom_vline(xintercept=(-1),size=.5,col='black',linetype="dashed")+
-  scale_color_brewer(palette = "Dark2") 
+  scale_color_brewer(palette = "Dark2")
 ggplotly(g,tooltip = c("text"))
 
-
-
-
-g=ggplot(SmplA_Peaks_MAval,aes(x=log2(SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)]),y=FC,color=logPval,
-                            text=paste0('ID: ',ID,
-                                        '\nHostGene: ',`Same Strand: Host_gene_name`,
-                                        '\n ',samplename,' normalized Reads: ', SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)],
-                                        '\n ',background,' normalized Reads: ', SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',background)],
-                                        '\n P-value: ',`P_value`)
-                            ))+geom_point(size=2)+
-  theme_classic()+
-  xlab(paste0("log<sub>2</sub> normalized Counts (",samplename,")"))+
-  ylab(paste0("log<sub>2</sub> Fold Change (",samplename,"-",background,")"))+
+#graph normalized counts : fold change
+g_text = paste0('ID: ',ID, 
+                '\nHostGene: ',`Same Strand: Host_gene_name`,'\n ',
+                samplename,' normalized Reads: ', 
+                SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)],'\n ',
+                background,' normalized Reads: ', 
+                SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',background)], 
+                '\n P-value: ',`P_value`)
+g = ggplot(SmplA_Peaks_MAval,
+         aes(x=log2(SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)]),
+             y=FC,
+             color=logPval,
+             text=g_text)) + 
+  geom_point(size=2) +
+  theme_classic() +
+  xlab(paste0("log<sub>2</sub> normalized Counts (",samplename,")")) +
+  ylab(paste0("log<sub>2</sub> Fold Change (",samplename,"-",background,")")) +
   scale_colour_gradient(  low = ("blue"),  high = ("red"),
-                           na.value = "grey50",guide = "colourbar")+
-    geom_hline(yintercept=(1),size=.5,col='black',linetype="dashed")+
+                           na.value = "grey50",guide = "colourbar") +
+  geom_hline(yintercept=(1),size=.5,col='black',linetype="dashed") +
   geom_hline(yintercept=(-1),size=.5,col='black',linetype="dashed")
-    
 ggplotly(g,tooltip = c("text"))
 
-
-
-
-g=ggplot(SmplA_Peaks_MAval,aes(x=log2(SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)]),y=FC,color=`Both Strand: RNA_type_Classification`,
-                            text=paste0('ID: ',ID,
-                                        '\nHostGene: ',SmplA_Peaks_MAval[,'Same Strand: Host_gene_name'],
-                                        '\n ',samplename,' normalized Reads: ', SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)],
-                                        '\n ',background,' normalized Reads: ', SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',background)],
-                                        '\n P-value: ',SmplA_Peaks_MAval[,'P_value'])
-                            ))+geom_point(size=2)+
-  theme_classic()+
-  xlab(paste0("log<sub>2</sub> normalized Counts  (",samplename,")"))+
-  ylab(paste0("log<sub>2</sub> Fold Change (",samplename,"-",background,")"))+
-    labs(color='RNA Type')+
+#graph normalized counts : fold change by RNA type
+g_text = paste0('ID: ',ID, '\nHostGene: ', SmplA_Peaks_MAval[,'Same Strand: Host_gene_name'],'\n ',
+                samplename,' normalized Reads: ', SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)],'\n',
+                background,' normalized Reads: ', SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',background)],
+                '\n P-value: ',SmplA_Peaks_MAval[,'P_value'])
+g=ggplot(SmplA_Peaks_MAval,
+         aes(x=log2(SmplA_Peaks_MAval[,paste0('normalized_read_density_in_',samplename)]),
+             y=FC,color=`Both Strand: RNA_type_Classification`,
+             text=g_text)) + 
+  geom_point(size=2) +
+  theme_classic() +
+  xlab(paste0("log<sub>2</sub> normalized Counts  (",samplename,")")) +
+  ylab(paste0("log<sub>2</sub> Fold Change (", samplename,"-",background,")")) +
+  labs(color='RNA Type') +
   geom_hline(yintercept=(1),size=.5,col='black',linetype="dashed")+
   geom_hline(yintercept=(-1),size=.5,col='black',linetype="dashed")+
   scale_color_brewer(palette = "Dark2") 
@@ -224,39 +258,56 @@ ggplotly(g,tooltip = c("text"))
 ```
 
 ```{r ,fig.asp=.5, fig.align='center',echo=F,warning=F,eval=T,include=T}
-
-SmplA_peaks_DEG=SmplA_Peaks_MAval[SmplA_Peaks_MAval$P_value<.05&(SmplA_Peaks_MAval$FC)>1,'ID']
-SmplA_Peaks_DEGtable=SmplA_Peaks_MAval[SmplA_Peaks_MAval$ID%in%SmplA_peaks_DEG,]
-
-if (length(SmplA_peaks_DEG)!=nrow(SmplA_Peaks_DEGtable)) {DEGTable_does_not_match_DEGlist}
+#filter peaks
+SmplA_Peaks_DEGtable = subset(SmplA_Peaks_MAval,P_value<.05 & FC>1)
 ```
 
 <br>   
 <br>  
 
-**Peaks with a P-value < .05 and fold change > 1 were selected, resulting in `r toString(length(SmplA_peaks_DEG))` peaks.**  
+**Peaks with a P-value < .05 and fold change > 1 were selected, resulting in `r toString(length(SmplA_Peaks_DEGtable))` peaks.**  
 
 <br>   
 <br>   
 
 ```{r Annotations, fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,echo=F,results=F}
-
-SmplA_Peaks_DEGtable2=SmplA_Peaks_DEGtable[,c("ID","IDmerge","strand","chr","start","end" ,"Length",
+###phil - if there are cols you want to remove, we should do that - it's dangerous to select from a col list like this
+SmplA_Peaks_DEGtable2 = SmplA_Peaks_DEGtable[,c("ID","IDmerge","strand","chr","start","end" ,"Length",
                           'Counts_Unique', 'Counts_Multimappers_Scaled',
-                          'P_value',paste0('normalized_read_density_in_',samplename),paste0('normalized_read_density_in_',background),'FC',
-"Same Strand: Host_gene_name","Same Strand: Host_gene_ensembl_id","Same Strand: RNA_type",'Same Strand: Repeat_Type',"Same Strand: Intron Exon",'Same Strand: RNA_type_Classification','Same Strand: ncRNA_Classification',"Opposite Strand: Host_gene_name","Opposite Strand: Host_gene_ensembl_id","Opposite Strand: RNA_type",'Opposite Strand: Repeat_Type',"Opposite Strand: Intron Exon",'Opposite Strand: RNA_type_Classification','Opposite Strand: ncRNA_Classification','Both Strand: RNA_type_Classification')]
+                          'P_value',paste0('normalized_read_density_in_',samplename),
+                          paste0('normalized_read_density_in_',background),'FC',
+                          "Same Strand: Host_gene_name","Same Strand: Host_gene_ensembl_id","Same Strand: RNA_type",
+                          'Same Strand: Repeat_Type',"Same Strand: Intron Exon",'Same Strand: RNA_type_Classification',
+                          'Same Strand: ncRNA_Classification',"Opposite Strand: Host_gene_name",
+                          "Opposite Strand: Host_gene_ensembl_id","Opposite Strand: RNA_type",'Opposite Strand: Repeat_Type',
+                          "Opposite Strand: Intron Exon",'Opposite Strand: RNA_type_Classification',
+                          'Opposite Strand: ncRNA_Classification','Both Strand: RNA_type_Classification')]
 
-
+###phil same for this rename; if it's necessary we can do a select (new_name = old_name) to match cols more concretely
 colnames(SmplA_Peaks_DEGtable2)=c("ID","IDmerge","strand","chr","start","end","Length",
                                 'Counts_Unique','Counts_fracMM',
-                                'P_value',paste0('normalized_read_density_in_',samplename),paste0('normalized_read_density_in_',background),'FC',
-                                "Same_gene_name_comb","Same_ensembl_gene_id","Same_type_comb","Same_Repeat_comb",'Same_feature',"Same_Comb_type_exon","Same_Comb_type_ncRNA","Oppo_gene_name_comb","Oppo_ensembl_gene_id","Oppo_type_comb","Oppo_Repeat_comb",'Oppo_feature',"Oppo_Comb_type_exon","Oppo_Comb_type_ncRNA","Comb_type_exon_Oppo")
+                                'P_value',paste0('normalized_read_density_in_',samplename),
+                                paste0('normalized_read_density_in_',background),'FC',
+                                "Same_gene_name_comb","Same_ensembl_gene_id",
+                                "Same_type_comb","Same_Repeat_comb",'Same_feature',
+                                "Same_Comb_type_exon","Same_Comb_type_ncRNA",
+                                "Oppo_gene_name_comb","Oppo_ensembl_gene_id",
+                                "Oppo_type_comb","Oppo_Repeat_comb",'Oppo_feature',
+                                "Oppo_Comb_type_exon","Oppo_Comb_type_ncRNA","Comb_type_exon_Oppo")
 
+###fix variable swap
 Peaksdata2_anno=SmplA_Peaks_DEGtable2
-Peaksdata2_anno$Same_Comb_type_exon=factor(Peaksdata2_anno$Same_Comb_type_exon, levels = c("ncRNA","rRNA","yRNA", "protein_coding: exon", "Repeat Element","pseudogene","Antisense Feature","protein_coding: Intron","lncRNA","no Feature"))
-  Peaksdata2_anno$Comb_type_exon_Oppo=factor(Peaksdata2_anno$Comb_type_exon_Oppo, levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lncRNA-exon","Antisense Feature","protein_coding: Intron","lncRNA-intron","lncRNA","no Feature"))
 
-
+###phil do we need these as factors?
+Peaksdata2_anno$Same_Comb_type_exon = factor(Peaksdata2_anno$Same_Comb_type_exon, 
+                                             levels = c("ncRNA","rRNA","yRNA", "protein_coding: exon", "Repeat Element",
+                                                        "pseudogene","Antisense Feature","protein_coding: Intron",
+                                                        "lncRNA","no Feature"))
+Peaksdata2_anno$Comb_type_exon_Oppo = factor(Peaksdata2_anno$Comb_type_exon_Oppo, 
+                                             levels = c("ncRNA", "protein_coding: exon", 
+                                                        "Repeat Element","pseudogene","lncRNA-exon",
+                                                        "Antisense Feature","protein_coding: Intron",
+                                                        "lncRNA-intron","lncRNA","no Feature"))
 ```
 
 
@@ -282,50 +333,130 @@ Peaksdata2_anno$Same_Comb_type_exon=factor(Peaksdata2_anno$Same_Comb_type_exon, 
 
 
 ```{r , echo=F, include=T, eval=T, fig.align='default', fig.ncol=2, fig.height=3.5, fig.width=7, out.height=200, out.width="50%", fig.show="hold", layout='l-screen', results = FALSE, message=FALSE , warning=F}
+###phil we'll need to update these based on using unique/all - not sure if that means the 
+#graphs should change too...
+#graph peak counts
 if (params$PeakIdnt=='Unique'){
-  x1=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,y=Length,color=Comb_type_exon_Oppo,text=Same_gene_name_comb))+geom_point(size=1)+scale_x_continuous(trans = "log2")+scale_y_continuous(trans = "log2") + theme_classic()+
-  ylab("Peak Width")+xlab("Peak Counts (unique)")+ggtitle("Comparison of peak counts and Peak Width")+  labs(color='RNA Type')+
-  scale_color_brewer(palette = "Dark2") 
+  x1 = ggplot(Peaksdata2_anno,
+              aes(x=Counts_Unique,
+                  y=Length,
+                  color=Comb_type_exon_Oppo,
+                  text=Same_gene_name_comb))+
+    geom_point(size=1)+
+    scale_x_continuous(trans = "log2")+
+    scale_y_continuous(trans = "log2") +
+    theme_classic()+
+    ylab("Peak Width")+
+    xlab("Peak Counts (unique)")+
+    ggtitle("Comparison of peak counts and Peak Width")+
+    labs(color='RNA Type')+
+    scale_color_brewer(palette = "Dark2") 
+} else if (params$PeakIdnt=='MultiMap'){
+  x1 = ggplot(Peaksdata2_anno,
+              aes(x=Counts_MM,
+                  y=Length,
+                  color=Comb_type_exon_Oppo,
+                  text=Same_gene_name_comb))+
+    geom_point(size=1)+
+    scale_x_continuous(trans = "log2")+
+    scale_y_continuous(trans = "log2") + 
+    theme_classic()+
+    ylab("Peak Width")+
+    xlab("Peak Counts (MultiMap)")+
+    ggtitle("Comparison of peak counts and Peak Width")+
+    labs(color='RNA Type')+
+    scale_color_brewer(palette = "Dark2") 
+}else if (params$PeakIdnt=='all'){
+  x1 = ggplot(Peaksdata2_anno,
+              aes(x=Counts_fracMM,
+                  y=Length,
+                  color=Comb_type_exon_Oppo,
+                  text=Same_gene_name_comb))+
+    geom_point(size=1)+
+    scale_x_continuous(trans = "log2")+
+    scale_y_continuous(trans = "log2") + 
+    theme_classic()+
+    ylab("Peak Width")+
+    xlab("Peak Counts (Unique+ FracMM)")+
+    ggtitle("Comparison of peak counts and Peak Width")+
+    labs(color='RNA Type')+
+    scale_color_brewer(palette = "Dark2") 
 }
-if (params$PeakIdnt=='MultiMap'){
-x1=ggplot(Peaksdata2_anno,aes(x=Counts_MM,y=Length,color=Comb_type_exon_Oppo,text=Same_gene_name_comb))+geom_point(size=1)+scale_x_continuous(trans = "log2")+scale_y_continuous(trans = "log2") + theme_classic()+
-  ylab("Peak Width")+xlab("Peak Counts (MultiMap)")+ggtitle("Comparison of peak counts and Peak Width")+  labs(color='RNA Type')+
+
+#graph peak width
+x2 = ggplot(Peaksdata2_anno,
+            aes(x=Length))+
+  geom_histogram(bins = 100)+
+  scale_x_continuous(trans = "log2") + 
+  theme_classic()+ylab("# of peaks")+
+  xlab("Peak Width")+
+  ggtitle("Distribution of peak Width")
+
+#plot peak width log transformed
+x3 = ggplot(Peaksdata2_anno,
+            aes(x=Length,
+                line=Comb_type_exon_Oppo,
+                color=Comb_type_exon_Oppo))+
+  geom_density(size=.5)+
+  scale_x_continuous(trans = "log2") + 
+  theme_classic()+ylab("Density")+
+  xlab("Peak Width")+
+  ggtitle("Distribution of peak Width")+
+  labs(color='RNA Type')+
   scale_color_brewer(palette = "Dark2") 
-}
 
-if (params$PeakIdnt=='all'){
-x1=ggplot(Peaksdata2_anno,aes(x=Counts_fracMM,y=Length,color=Comb_type_exon_Oppo,text=Same_gene_name_comb))+geom_point(size=1)+scale_x_continuous(trans = "log2")+scale_y_continuous(trans = "log2") + theme_classic()+
-  ylab("Peak Width")+xlab("Peak Counts (Unique+ FracMM)")+ggtitle("Comparison of peak counts and Peak Width")+  labs(color='RNA Type')+
-  scale_color_brewer(palette = "Dark2") 
-}
-
-x2=ggplot(Peaksdata2_anno,aes(x=Length))+geom_histogram(bins = 100)+scale_x_continuous(trans = "log2") + theme_classic()+ylab("# of peaks")+xlab("Peak Width")+ggtitle("Distribution of peak Width")
-
-x3=ggplot(Peaksdata2_anno,aes(x=Length,line=Comb_type_exon_Oppo,color=Comb_type_exon_Oppo))+geom_density(size=.5)+scale_x_continuous(trans = "log2") + theme_classic()+ylab("Density")+xlab("Peak Width")+ggtitle("Distribution of peak Width")+  labs(color='RNA Type')+
-  scale_color_brewer(palette = "Dark2") 
-
-
-x4=ggplot(Peaksdata2_anno,aes(x=Length,line=Comb_type_exon_Oppo,color=Comb_type_exon_Oppo))+geom_freqpoly(bins = 100)+scale_x_continuous(trans = "log2") + theme_classic()+ylab("# of peaks")+xlab("Peak Width")+ggtitle("Distribution of peak Width")+  labs(color='RNA Type')+
+#plot peak width log transformed by RNA type
+x4 = ggplot(Peaksdata2_anno,
+            aes(x=Length,
+                line=Comb_type_exon_Oppo,
+                color=Comb_type_exon_Oppo))+
+  geom_freqpoly(bins = 100)+
+  scale_x_continuous(trans = "log2") + 
+  theme_classic()+ylab("# of peaks")+
+  xlab("Peak Width")+
+  ggtitle("Distribution of peak Width")+
+  labs(color='RNA Type')+
   scale_color_brewer(palette = "Dark2") 
 
+###phil same here unique/mm/all
 if (params$PeakIdnt=='Unique'){
-
-x5=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,line=Comb_type_exon_Oppo,color=Comb_type_exon_Oppo))+geom_density()+scale_x_continuous(trans = "log2") + theme_classic()+ylab("Density")+xlab("Peak Counts (unique)")+ggtitle("Distribution of peak counts")+  labs(color='RNA Type')+
-  scale_color_brewer(palette = "Dark2") 
+  x5=ggplot(Peaksdata2_anno,
+            aes(x=Counts_Unique,
+                line=Comb_type_exon_Oppo,
+                color=Comb_type_exon_Oppo))+
+    geom_density()+
+    scale_x_continuous(trans = "log2") + 
+    theme_classic()+ylab("Density")+
+    xlab("Peak Counts (unique)")+
+    ggtitle("Distribution of peak counts")+
+    labs(color='RNA Type')+
+    scale_color_brewer(palette = "Dark2") 
+} else if (params$PeakIdnt=='MultiMap'){
+  x5 = ggplot(Peaksdata2_anno,
+              aes(x=Counts_Unique,
+                  line=Comb_type_exon_Oppo,
+                  color=Comb_type_exon_Oppo))+
+    geom_density()+scale_x_continuous(trans = "log2") + 
+    theme_classic()+ylab("Density")+
+    xlab("Peak Counts (Counts_MM)")+
+    ggtitle("Distribution of peak counts")+
+    labs(color='RNA Type')+
+    scale_color_brewer(palette = "Dark2") 
+} else if (params$PeakIdnt=='all'){
+  x5 = ggplot(Peaksdata2_anno,
+              aes(x=Counts_Unique,
+                  line=Comb_type_exon_Oppo,
+                  color=Comb_type_exon_Oppo))+
+    geom_density()+scale_x_continuous(trans = "log2") + 
+    theme_classic()+ylab("Density")+
+    xlab("Peak Counts (Unique+ FracMM)")+
+    ggtitle("Distribution of peak counts")+ 
+    labs(color='RNA Type')+
+    scale_color_brewer(palette = "Dark2") 
 }
-if (params$PeakIdnt=='MultiMap'){
 
-  x5=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,line=Comb_type_exon_Oppo,color=Comb_type_exon_Oppo))+geom_density()+scale_x_continuous(trans = "log2") + theme_classic()+ylab("Density")+xlab("Peak Counts (Counts_MM)")+ggtitle("Distribution of peak counts")+  labs(color='RNA Type')+
-  scale_color_brewer(palette = "Dark2") 
-}
-if (params$PeakIdnt=='all'){
-
-  x5=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,line=Comb_type_exon_Oppo,color=Comb_type_exon_Oppo))+geom_density()+scale_x_continuous(trans = "log2") + theme_classic()+ylab("Density")+xlab("Peak Counts (Unique+ FracMM)")+ggtitle("Distribution of peak counts")+  labs(color='RNA Type')+
-  scale_color_brewer(palette = "Dark2") 
-}
+#print all graphs
 x1;x2;x3;x4;x5
-
-
 ```
 
 <br>  
@@ -338,24 +469,31 @@ x1;x2;x3;x4;x5
 
 **Peak counts do not include rRNA peaks**   
 
- 
+###phil - this whole section is very similar to what we're doing in MD15_BW
+#if its necessary to repeat, we may want to think about pulling this code into an R
+#script, and then pulling the images back into the RMD files. it'll save us the comp
+#of having to run the same code twice
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
 
-
+###fix variable swap
 p=Peaksdata2_anno
+
+###phil we are doing the same thing as with MD15_BW - not sure why we are swapping cols?
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-
-  p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
-
-
+p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA'))
 p[is.na(p$Comb_type_exon),'Same_Comb_type_exon']='no Feature'
 colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
+###phil same q - why are we clearing the col
 p$RNA=''
-gg=ggplot(p,aes(fill=RNA_Type,x=RNA) )+geom_bar(position="stack",width=.5)+theme_classic()+ggtitle("Number of peaks by catagory\n(Determined by unique reads only)")+
- scale_fill_brewer(palette = "Dark2") 
+
+#plot number of unique peaks
+gg = ggplot(p,
+            aes(fill=RNA_Type
+                ,x=RNA))+
+  geom_bar(position="stack",width=.5)+
+  theme_classic()+ggtitle("Number of peaks by catagory\n(Determined by unique reads only)")+
+  scale_fill_brewer(palette = "Dark2") 
 ggplotly(gg)
-
-
 ```
 
 
@@ -365,24 +503,24 @@ ggplotly(gg)
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
 
-
+###fix variable swap
 p=Peaksdata2_anno
-
-
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-  p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
-
+p=subset(p,!(Same_Comb_type_ncRNA == 'rRNA')) ###todo fix these later with %>%
 p=p[p$Same_Comb_type_exon%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
-if (nrow(p)>0) {
-  
-
 p$RNA=""
-gg=ggplot(p,aes(fill=Same_Comb_type_ncRNA,x=RNA) )+geom_bar(width=.5)+theme_classic()+
-  ggtitle("Number of peaks by catagory : ncRNA only\n(Determined by unique reads only)")+  labs(fill='ncRNA Type')+
- scale_color_brewer(palette = "Paired")+ 
-  scale_fill_brewer(palette = "Paired") +  blank_theme+ 
-  coord_polar("y",start=0)
-(gg)
+
+###phil - need an else here
+if (nrow(p)>0) {
+  gg=ggplot(p,
+            aes(fill=Same_Comb_type_ncRNA,x=RNA) )+
+    geom_bar(width=.5)+
+    theme_classic()+
+    ggtitle("Number of peaks by catagory : ncRNA only\n(Determined by unique reads only)")+  labs(fill='ncRNA Type')+
+    scale_color_brewer(palette = "Paired")+ 
+    scale_fill_brewer(palette = "Paired") +  blank_theme+ 
+    coord_polar("y",start=0)
+  gg
 }
 
 ```       
@@ -876,27 +1014,36 @@ theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(s
 <br>   
 <br> 
 
-
+###phil repeated section ends
 
 ```{r ,fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=T,include=F}
-
-
-
+###fix variable 
+###phil - same as before; if we need to actively call these cols and rename them we should use
+#something like select / rename to do it
 Peaksdata3_anno=Peaksdata2_anno[,c("ID","IDmerge","strand","chr","start","end","Length",
                                 'Counts_Unique','Counts_fracMM',
-                                'P_value',paste0('normalized_read_density_in_',samplename),paste0('normalized_read_density_in_',background),'FC',
-                                "Same_gene_name_comb","Same_ensembl_gene_id","Same_type_comb","Same_Repeat_comb",'Same_feature',"Same_Comb_type_exon","Same_Comb_type_ncRNA","Oppo_gene_name_comb","Oppo_ensembl_gene_id","Oppo_type_comb","Oppo_Repeat_comb",'Oppo_feature',"Oppo_Comb_type_exon","Oppo_Comb_type_ncRNA","Comb_type_exon_Oppo"
-)]
-
+                                'P_value',paste0('normalized_read_density_in_',samplename),
+                                paste0('normalized_read_density_in_',background),'FC',
+                                "Same_gene_name_comb","Same_ensembl_gene_id","Same_type_comb",
+                                "Same_Repeat_comb",'Same_feature',"Same_Comb_type_exon",
+                                "Same_Comb_type_ncRNA","Oppo_gene_name_comb",
+                                "Oppo_ensembl_gene_id","Oppo_type_comb","Oppo_Repeat_comb",
+                                'Oppo_feature',"Oppo_Comb_type_exon","Oppo_Comb_type_ncRNA",
+                                "Comb_type_exon_Oppo")]
 
 colnames(Peaksdata3_anno)=c("ID","IDmerge","strand","chr","start","end" ,"Length",
-                        
                           'Counts_Unique', 'Counts_Multimappers_Scaled',
-                          'P_value',paste0(samplename,'-normalized_Count'),paste0(background,'-normalized_Count'),'FC',
-"Same Strand: Host_gene_name","Same Strand: Host_gene_ensembl_id","Same Strand: RNA_type",'Same Strand: Repeat_Type',"Same Strand: Intron Exon",'Same Strand: RNA_type_Classification','Same Strand: ncRNA_Classification',"Opposite Strand: Host_gene_name","Opposite Strand: Host_gene_ensembl_id","Opposite Strand: RNA_type",'Opposite Strand: Repeat_Type',"Opposite Strand: Intron Exon",'Opposite Strand: RNA_type_Classification','Opposite Strand: ncRNA_Classification','Both Strand: RNA_type_Classification'
-)
-
-
+                          'P_value',paste0(samplename,'-normalized_Count'),
+                          paste0(background,'-normalized_Count'),'FC',
+                          "Same Strand: Host_gene_name","Same Strand: Host_gene_ensembl_id",
+                          "Same Strand: RNA_type",'Same Strand: Repeat_Type',
+                          "Same Strand: Intron Exon",'Same Strand: RNA_type_Classification',
+                          'Same Strand: ncRNA_Classification',"Opposite Strand: Host_gene_name",
+                          "Opposite Strand: Host_gene_ensembl_id","Opposite Strand: RNA_type",
+                          'Opposite Strand: Repeat_Type',"Opposite Strand: Intron Exon",
+                          'Opposite Strand: RNA_type_Classification','Opposite Strand: ncRNA_Classification',
+                          'Both Strand: RNA_type_Classification')
+###fix variable
 Peaksdata4=Peaksdata3_anno
 
 ```
@@ -907,34 +1054,48 @@ Peaksdata4=Peaksdata3_anno
 <br>  
 
 ```{r ,fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=T,include=F}
+#Peaksdata4=Peaksdata4[,colnames(Peaksdata4)[!colnames(Peaksdata4)%in%c('chr','start','end')]]
+Peaksdata4=select(Peaksdata4,-c('chr','start','end'))
 
-Peaksdata4=Peaksdata4[,colnames(Peaksdata4)[!colnames(Peaksdata4)%in%c('chr','start','end')]]
+#output
+write.table(Peaksdata4,
+            file=output_text, 
+            sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
 
-write.table(Peaksdata4,file=paste0(params$outDIR,samplename,"vs",background,"_CLIP_MAnormSigPeaks_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD15.txt"), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
+###phil same issue as above
+SmplA_Peaks_MAval_out = SmplA_Peaks_MAval[,c("ID","IDmerge","strand","chr","start",
+                                             "end" ,"Length",'Counts_Unique',
+                                             'Counts_Multimappers_Scaled',
+                                             'P_value',
+                                             paste0('normalized_read_density_in_',samplename),
+                                             paste0('normalized_read_density_in_',background),
+                                             'FC', "Same Strand: Host_gene_name",
+                                             "Same Strand: Host_gene_ensembl_id","Same Strand: RNA_type",
+                                             'Same Strand: Repeat_Type',"Same Strand: Intron Exon",
+                                             'Same Strand: RNA_type_Classification',
+                                             'Same Strand: ncRNA_Classification',
+                                             "Opposite Strand: Host_gene_name","Opposite Strand: Host_gene_ensembl_id",
+                                             "Opposite Strand: RNA_type",'Opposite Strand: Repeat_Type',
+                                             "Opposite Strand: Intron Exon",'Opposite Strand: RNA_type_Classification',
+                                             'Opposite Strand: ncRNA_Classification','Both Strand: RNA_type_Classification')]
+#rename, subset
+SmplA_Peaks_MAval_out = SmplA_Peaks_MAval_out %>%
+    rename(
+      !!paste0('normalized_read_density_in_',samplename) :=  paste0(samplename,'-normalized_Count'),
+      !!paste0('normalized_read_density_in_',background) :=  paste0(background,'-normalized_Count'),
+    ) %>%
+  select(-c("chr","start","end"))
 
-
-SmplA_Peaks_MAval_out=SmplA_Peaks_MAval[,c("ID","IDmerge","strand","chr","start","end" ,"Length",
-                          'Counts_Unique', 'Counts_Multimappers_Scaled',
-                          'P_value',paste0('normalized_read_density_in_',samplename),paste0('normalized_read_density_in_',background),'FC',
-"Same Strand: Host_gene_name","Same Strand: Host_gene_ensembl_id","Same Strand: RNA_type",'Same Strand: Repeat_Type',"Same Strand: Intron Exon",'Same Strand: RNA_type_Classification','Same Strand: ncRNA_Classification',"Opposite Strand: Host_gene_name","Opposite Strand: Host_gene_ensembl_id","Opposite Strand: RNA_type",'Opposite Strand: Repeat_Type',"Opposite Strand: Intron Exon",'Opposite Strand: RNA_type_Classification','Opposite Strand: ncRNA_Classification','Both Strand: RNA_type_Classification'
-)]
-
-colnames(SmplA_Peaks_MAval_out)[colnames(SmplA_Peaks_MAval_out)%in%c(paste0('normalized_read_density_in_',samplename),paste0('normalized_read_density_in_',background))]=c(paste0(samplename,'-normalized_Count'),paste0(background,'-normalized_Count'))
-
-
-SmplA_Peaks_MAval_out=SmplA_Peaks_MAval_out[,colnames(SmplA_Peaks_MAval_out)[!colnames(SmplA_Peaks_MAval_out)%in%c('chr','start','end')]]
-
-write.table(SmplA_Peaks_MAval_out,file=paste0(params$outDIR,samplename,"vs",background,"_CLIP_MAnorm_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD15.txt"), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
+#write out
+write.table(SmplA_Peaks_MAval_out,
+            file=output_text2, 
+            sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
 
 ```
 
-
-
-
-
 ### Counts Table :    
-`r paste0(samplename,"vs",background,"_CLIP_MAnorm_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD15.txt")`"   
-`r paste0(samplename,"vs",background,"_CLIP_MAnormSigPeaks_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD15.txt")`"   
+`r paste0(output_text2)`"   
+`r paste0(output_text)`"   
 
 **Columns:**  
 "ID" - CLIP peak location  
