@@ -65,7 +65,7 @@ tRNA_rmsk_path = paste0(anno_dir, "tRNA.bed")
 file_id = paste0(sample_id,"_",nt_merge,"_")
 
 ##########################################################################################
-##############################  unique reads
+############### unique reads
 ##########################################################################################
 FtrCount_uniq=read.delim(peak_unique, header=T, sep="\t",
                          stringsAsFactors = F,comment.char = '#')
@@ -77,7 +77,7 @@ FtrCount_uniq$ID=paste0(FtrCount_uniq$Chr,":",FtrCount_uniq$Start,"-",FtrCount_u
 FtrCount_uniq$ID2=paste0(FtrCount_uniq$Chr,":",FtrCount_uniq$Start,"-",FtrCount_uniq$End,"_",FtrCount_uniq$Strand)
 
 ##########################################################################################
-##############################  all reads
+############### all reads
 ##########################################################################################
 FtrCount_frac=read.delim(peak_all, header=T, sep="\t",
                          stringsAsFactors = F,comment.char = '#')
@@ -88,11 +88,11 @@ FtrCount_frac=FtrCount_frac[!is.na(FtrCount_frac$Start),]
 FtrCount_frac$ID=paste0(FtrCount_frac$Chr,":",FtrCount_frac$Start,"-",FtrCount_frac$End)
 
 ##########################################################################################
-##############################  merge
+############### merge
 ##########################################################################################
 FtrCount_merged=merge(FtrCount_uniq[,(colnames(FtrCount_uniq) %in% "Geneid")==F],
-               FtrCount_frac[,c('ID','Counts')],
-               by='ID',suffixes=c("_Unique","_fracMM"),all.x=T)
+                      FtrCount_frac[,c('ID','Counts')],
+                      by='ID',suffixes=c("_Unique","_fracMM"),all.x=T)
 colnames(FtrCount_merged)[which(colnames(FtrCount_merged)%in%c('Chr','Start','End','Strand'))]=c('chr','start','end','strand')
 FtrCount_merged=FtrCount_merged[duplicated(FtrCount_merged)==F,]
 
@@ -109,7 +109,7 @@ if (join_junction==TRUE) {
                                      header=TRUE,sep="\t",stringsAsFactors = FALSE,comment.char = '#') 
   }  else {
     FtrCount_fracJCount = read.delim(paste0(peak_all,".jcounts"), 
-                                   header=TRUE,sep="\t",stringsAsFactors = FALSE,comment.char = '#')
+                                     header=TRUE,sep="\t",stringsAsFactors = FALSE,comment.char = '#')
   } 
   
   #rename last col
@@ -136,20 +136,26 @@ if (join_junction==TRUE) {
                                                    FtrCount_fracJCount_merged$Site1_location,'-', 
                                                    FtrCount_fracJCount_merged$Site2_location)
     
+    #create Unique Row/junction ID
+    FtrCount_fracJCount$rID=seq(1,nrow(FtrCount_fracJCount))
+    
+    
     jcount1.GR = GRanges(seqnames = as.character(FtrCount_fracJCount_merged$Site1_chr), 
                          ranges=IRanges(start = as.numeric(FtrCount_fracJCount_merged$Site1_location), 
                                         end = as.numeric(FtrCount_fracJCount_merged$Site1_location)),
                          strand = FtrCount_fracJCount_merged$strand,
                          PrimaryGene=FtrCount_fracJCount_merged$PrimaryGene,
                          count=FtrCount_fracJCount_merged$counts,
-                         JunctionID=FtrCount_fracJCount_merged$JunctionID)
+                         JunctionID=FtrCount_fracJCount_merged$JunctionID,
+                         rID=FtrCount_fracJCount$rID)
     jcount2.GR = GRanges(seqnames = as.character(FtrCount_fracJCount_merged$Site2_chr),
                          ranges=IRanges(start = as.numeric(FtrCount_fracJCount_merged$Site2_location),
                                         end = as.numeric(FtrCount_fracJCount_merged$Site2_location)),
                          strand = FtrCount_fracJCount_merged$strand,
                          PrimaryGene=FtrCount_fracJCount_merged$PrimaryGene,
                          count=FtrCount_fracJCount_merged$counts,
-                         JunctionID=FtrCount_fracJCount_merged$JunctionID)
+                         JunctionID=FtrCount_fracJCount_merged$JunctionID,
+                         rID=FtrCount_fracJCount$rID)
     
     FtrCount.GR=GRanges(seqnames = as.character(FtrCount_merged$chr), 
                         ranges=IRanges(start = as.numeric(FtrCount_merged$start), 
@@ -163,7 +169,7 @@ if (join_junction==TRUE) {
                                                    type = "any",ignore.strand=F))
       qh=as.data.frame(j_in[xo$queryHits],row.names = NULL)
       colnames(qh)=paste0(colnames(qh),j_name)
-
+      
       sh=as.data.frame(Ftr_in[xo$subjectHits],row.names = NULL)
       colnames(sh)=paste0(colnames(sh),p_name)
       
@@ -174,7 +180,8 @@ if (join_junction==TRUE) {
     Junc_PL1 = junctionID(FtrCount.GR, jcount1.GR,"_Junction1","_Peaks1")
     Junc_PL2 = junctionID(FtrCount.GR, jcount2.GR,"_Junction2","_Peaks2")
     #Junc_PL_merged = cbind(Junc_PL1, Junc_PL2)
-    Junc_PL_merged = merge(Junc_PL1, Junc_PL2, by.x="PrimaryGene_Junction1",by.y="PrimaryGene_Junction2",all=TRUE)
+    Junc_PL=merge(Junc_PL1,Junc_PL2,by.x='rID_Junction1',by.y='rID_Junction2')
+    Junc_PL=Junc_PL[(is.na(Junc_PL$ID_Peaks1)|is.na(Junc_PL$ID_Peaks2))==F,]
     
     # identify PEAK ID for Site1 and Site2 location of splice junction
     Junc_PLOut = Junc_PL_merged[,c('PrimaryGene_Junction1','JunctionID_Junction1',
@@ -189,7 +196,7 @@ if (join_junction==TRUE) {
     # get all unique PrimaryGene_Junction
     prim_junct=unique(Junc_PLOut$PrimaryGene_Junction1)
     PGene_TBL = setNames(data.frame(matrix(nrow=length(prim_junct), ncol=3)),
-                           c('PrimaryGene_Junction1','JunctionID_Junction1','ID_comb'))
+                         c('PrimaryGene_Junction1','JunctionID_Junction1','ID_comb'))
     
     for (junctions in 1:length(prim_junct)) {
       PrimGene=prim_junct[junctions]
@@ -273,15 +280,14 @@ if (join_junction==TRUE) {
     if (DEmethod=='MANORM') {
       print("Running MANORM")
       FtrCount_splice_junc$Counts_fracMM >
-      write.table(FtrCount_splice_junc[, c('chr','start','end','ID','ID','strand')],
-                    file=paste0(out_dir, file_id,"peakDepth.bed"), 
+        write.table(FtrCount_splice_junc[, c('chr','start','end','ID','ID','strand')],
+                    file=paste0(out_dir, sample_id,"_", nt_merge,"_peakDepth.bed"), 
                     sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-      ###fix output dir should be manorm
       write.table(FtrCount_splice_junc[FtrCount_splice_junc$strand%in%"+", c('chr','start','end','ID','ID','strand')],
-                  file=paste0(out_dir,file_id,"_peakDepth_P.bed"), 
+                  file=paste0(out_dir,sample_id,"_",nt_merge,"_peakDepth_P.bed"), 
                   sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
       write.table(FtrCount_splice_junc[FtrCount_splice_junc$strand%in%"-", c('chr','start','end','ID','ID','strand')],
-                  file=paste0(out_dir,file_id,"_peakDepth_N.bed"), 
+                  file=paste0(out_dir,sample_id,"_",nt_merge,"_peakDepth_N.bed"), 
                   sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
     } else{
       print("MANORM skipped")
