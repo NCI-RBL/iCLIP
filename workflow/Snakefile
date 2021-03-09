@@ -95,10 +95,7 @@ rmsk_path = index_list[nova_ref]['rmsk_path']
 alias_path = index_list[nova_ref]['alias_path']
 
 #annotation config
-if (nova_ref == "mm10"):
-    annotation_config = join(source_dir,'config','annotation_config_mm10.txt')
-elif (nova_ref == "hg38"):
-    annotation_config = join(source_dir,'config','annotation_config_hg38.txt')
+annotation_config = join(source_dir,'config','annotation_config.txt')
 
 #junctions
 if (sp_junc=="Y"):
