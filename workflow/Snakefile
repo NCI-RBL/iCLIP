@@ -240,6 +240,15 @@ def get_filechunk_size(wildcards):
         return(0)
     return(chunk_size)
 
+#determine which umi separator to use
+#iCount addes rbc: to all demux files; external demux uses an _
+def umi_parameter(wildcards):
+    if(multiplex_flag == 'Y'):
+        umi_sep="rbc:"
+    else:
+        umi_sep="_"
+    return(umi_sep)
+
 #read manifests
 df_multiplex = pd.read_csv(multiplex_manifest,sep="\t")
 df_samples = pd.read_csv(sample_manifest,sep="\t")
@@ -1118,6 +1127,7 @@ rule dedup:
         f1 = join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),
     params:
         rname='ic_dedup',
+        umi = umi_parameter
     envmodules:
         config['umitools']  
     output:
@@ -1127,7 +1137,7 @@ rule dedup:
         """
         umi_tools dedup \
         -I {input.f1} \
-        --method unique --multimapping-detection-method=NH --umi-separator=rbc: \
+        --method unique --multimapping-detection-method=NH --umi-separator={params.umi} \
         -S {output.o1} \
         --log2stderr -L {output.o2};
         """
