@@ -32,34 +32,34 @@ canonical_path = args[6]
 intron_path = args[7]
 rmsk_path = args[8]
 out_dir = args[9]
-reftable_path = args[11]
+reftable_path = args[10]
 
 setwd("../../../../../")
 
 #testing information
-if(is.nat(ref_species)){
-  ref_dir = "RBL_NCI/iCLIP/ref/annotations/"
+if(length(args)==0){
+  ref_dir = "Volumes/RBL_NCI/iCLIP/ref/annotations/"
   ref_species = "hg38" ### need better name, match to snakemake
-  reftable_path = "sevillas2/git/iCLIP/config/annotation_config.txt"
+  reftable_path = "Volumes/sevillas2/git/iCLIP/config/annotation_config.txt"
 
   ### fix need to figure out how to keep all this info - maybe a config? dict?
   alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
   if(ref_species == "mm10"){
-    out_dir = "data/CCBR_Projects/iCLIP/testing/mm10/"
+    out_dir = "Volumes/data/CCBR_Projects/iCLIP/testing/"
     gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt")
-    refseq_path = paste0(ref_dir, "/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
-    canonical_path = paste0(ref_dir,"/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
-    intron_path = paste0(ref_dir, "/mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
-    rmsk_path = paste0(ref_dir,"/mm10/repeatmasker/rmsk_GRCm38.txt")
-    soyeong_path= paste0(ref_dir,'/mm10/AdditionalAnno/')
+    refseq_path = paste0(ref_dir, "mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
+    canonical_path = paste0(ref_dir,"mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
+    intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
+    rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
+    soyeong_path= paste0(ref_dir,'mm10/AdditionalAnno/')
     
   } else if (ref_species == "hg38"){
-    out_dir = "data/CCBR_Projects/iCLIP/testing/hg38/"
+    out_dir = "Volumes/data/CCBR_Projects/iCLIP/testing/"
     gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
-    refseq_path = paste0(ref_dir, "/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
-    canonical_path = paste0(ref_dir,"/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
-    intron_path = paste0(ref_dir,"/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
-    rmsk_path = paste0(ref_dir,"/hg38/repeatmasker/rmsk_GRCh38.txt")
+    refseq_path = paste0(ref_dir, "hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
+    canonical_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
+    intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
+    rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
   } 
 }
 
@@ -82,7 +82,6 @@ removeVersion <- function(ids){
 }
 ref_gencode$transcript_id=removeVersion(ref_gencode$transcript_id)
 ref_gencode$ensembl_gene_id=removeVersion(ref_gencode$ensembl_gene_id)
-
 
 # #remove rows with missing data
 ref_gencode = ref_gencode[!is.na(ref_gencode$chr), ]
