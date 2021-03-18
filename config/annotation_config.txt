@@ -1,0 +1,21 @@
+type	hg38_options	hg38_selection	mm10_options	mm10_selection	mm10_SY	description	rmsk_flag	notes	Status
+7SK RNA	"Gencode, Repeatmasker"	Repeatmasker	"Gencode, Repeatmasker"	Repeatmasker	from_Soyeong/mm10_annotation/mm10_7SKRNA.bed	subset of small nuclear RNA and part of the small nuclear ribonucleoprotein complex (snRNP)	Y		
+lincRNA	Gencode	Gencode	"Gencode, SY"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_linc.gtf.1	Generic long non-coding RNA type	Y		
+lncRNA	Gencode	Gencode	"Gencode, SY"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_linc.gtf.1	long non-coding RNA type with Intronic + Exonic Regions	Y		
+miRNA	Gencode	Gencode	"Gencode, SY"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_miRNA.gtf.1	Micro RNA : A small RNA (~22bp) that silences the expression of target mRNA	Y		
+rRNA	"Gencode,Repeatmasker"	"Gencode,Repeatmasker"	"Gencode,SY,Repeatmasker"	"Gencode,SY,Repeatmasker"	BK000964.3_TPA_rRNA_repeats2.bed.txt	Ribosomal RNA			
+scRNA	"Gencode, Repeatmasker"	Repeatmasker	"Gencode,SY,Repeatmasker"	Repeatmasker	from_Soyeong/mm10_annotation/mm10_scRNA.bed	Small cytoplasmic RNA; remove yRNA	Y		
+sncRNA	Gencode	Gencode	"Gencode, SY"	SY	from_Soyeong/mm10_annotation/mm10_snc.gtf	small non-coading RNA			
+snoRNA	Gencode	Gencode	"Gencode, SY"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_sno.gtf.1	Small nucleolar RNAs : Small RNA molecules that are found in the cell nucleolus and are involved in the post-transcriptional modification of other RNAs	Y		
+snRNA	"Gencode,Repeatmasker"	Gencode	"Gencode, SY, Repeatmasker"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_snRNA.gtf.1	small nuclear RNA : Small RNA molecules that are found in the cell nucleus and are involved in the processing of pre messenger RNAs	Y		
+srpRNA	"Gencode,Repeatmasker"	Repeatmasker	"Gencode, SY, Repeatmasker"	Repeatmasker	from_Soyeong/mm10_annotation/mm10_srpRNA.bed	"signal recognition particle RNA; can be (7SL, 6S, or 4.5S RNA) 4.5S is coveredin scRNA"	Y		
+tRNA	"Gencode,Repeatmasker"	Repeatmasker	"Gencode, SY, Repeatmasker"	SY	from_Soyeong/mm10_annotation/mm10_tRNA.bed	"transfer RNA, which acts as an adaptor molecule for translation of mRNA."	Y		
+yRNA	"Gencode,Repeatmasker"	Repeatmasker	"Gencode, SY, Repeatmasker"	Repeatmasker	from_Soyeong/mm10_annotation/mm10_YRNA.bed	 subset of scRNA	Y		
+LINE SINE	Repeatmasker	Repeatmasker	Repeatmasker	Repeatmasker					
+Satellite	Repeatmasker	Repeatmasker	"Repeatmasker, SY"	Repeatmasker	mm10_sat.bed		N		
+Simple_repeat	Repeatmasker	Repeatmasker	"Repeatmasker, SY"	Repeatmasker	mm10_simple.bed				
+Low_complexity	Repeatmasker	Repeatmasker	"Repeatmasker, SY"	Repeatmasker	mm10_LC.bed		N		
+LTR	Repeatmasker	Repeatmasker	"Repeatmasker, SY"	Repeatmasker	mm10_LTR.bed		N		
+DNA	Repeatmasker	Repeatmasker	"Repeatmasker, SY"	Repeatmasker					
+Other	Repeatmasker	Repeatmasker	"Repeatmasker, SY"	Repeatmasker	from_Soyeong/mm10_annotation/mm10_other.bed	other repeats	N		
+Unknown	Repeatmasker	Repeatmasker	"Repeatmasker, SY"	Repeatmasker	from_Soyeong/mm10_annotation/mm10_unknown.bed		N		
