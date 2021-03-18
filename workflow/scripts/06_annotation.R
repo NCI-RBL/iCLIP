@@ -35,18 +35,18 @@ rmsk_path = args[9]
 out_dir = args[10]
 reftable_path = args[11]
 
+setwd("../../../../../")
+
 #testing information
-testing="Y"
-if(testing=="Y"){
-  ref_dir = "/Volumes/RBL_NCI/iCLIP/ref/annotations/"
-  ref_dir = "/Users/homanpj/Documents/Resources/ref/"
+if(is.nat(ref_species)){
+  ref_dir = "RBL_NCI/iCLIP/ref/annotations/"
   ref_species = "hg38" ### need better name, match to snakemake
-  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iCLIP/config/annotation_config.txt"
-  
+  reftable_path = "sevillas2/git/iCLIP/config/annotation_config.txt"
+
   ### fix need to figure out how to keep all this info - maybe a config? dict?
   alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
   if(ref_species == "mm10"){
-    out_dir = "/Users/homanpj/Desktop/CLIPtest/annotation/mm10/"
+    out_dir = "data/CCBR_Projects/iCLIP/testing/mm10/"
     gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt")
     refseq_path = paste0(ref_dir, "/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
     canonical_path = paste0(ref_dir,"/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
@@ -54,8 +54,9 @@ if(testing=="Y"){
     rmsk_path = paste0(ref_dir,"/mm10/repeatmasker/rmsk_GRCm38.txt")
     soyeong_flag = "Y" #Y or N
     soyeong_path= paste0(ref_dir,'/mm10/AdditionalAnno/')
+    
   } else if (ref_species == "hg38"){
-    out_dir = "/Users/homanpj/Desktop/CLIPtest/annotation/hg38/"
+    out_dir = "data/CCBR_Projects/iCLIP/testing/hg38/"
     gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
     refseq_path = paste0(ref_dir, "/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
     canonical_path = paste0(ref_dir,"/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
