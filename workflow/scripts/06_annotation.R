@@ -66,13 +66,6 @@ if(testing=="Y"){
 }
 
 ##########################################################################################
-############### Annotation info
-##########################################################################################
-#### Lets not include this as part of the script. 
-#### I think if they want to bring in refseq annotations that can be an idditional imput
-
-
-##########################################################################################
 ############### GENCODE ANNOTATION
 ##########################################################################################
 ref_gencode = fread(gencode_path, header=T, sep="\t",stringsAsFactors = F,data.table=F)
@@ -111,10 +104,8 @@ ref_gencode_sno=subset(ref_gencode, gene_type == 'snoRNA')
 ref_gencode_sno$gene_type = 'snoRNA_refGencode'
 ref_gencode_sno$gene_type_ALL = ref_gencode_sno$gene_type
 
-###phil why are we merging these all into ncRNA? Can we leave as separate types?
-## combine all ncRNA
-#### we created a column $gene_type_ALL to keep track of ncRNA sub catagories. 
-#### when we plot CLIP peaks we plot both ncRNA as a single group and ncRNA as subgroups
+# create a column $gene_type_ALL to keep track of ncRNA sub catagories. 
+# when we plot CLIP peaks we plot both ncRNA as a single group and ncRNA as subgroups
 ReplaceType <-function(df_in,col_in,list_in,replace_id){
   for (id in list_in){
     df_in[,col_in]=gsub(id,replace_id,df_in[,col_in])
@@ -125,15 +116,9 @@ ReplaceType <-function(df_in,col_in,list_in,replace_id){
 type_list = c("miRNA","miscRNA","misc_RNA","piRNA","rRNA","siRNA","snRNA","snoRNA","tRNA","ribozyme")
 ref_gencode = ReplaceType(ref_gencode,"gene_type", type_list,"ncRNA")
 
-#create subsets
-### PH - Subsets used to annotate clip peaks seperatly 
-###phil FTR is never used PH-remove FTR
+#create subsets used to annotate clip peaks separately 
 ref_gencode_t = subset(ref_gencode, feature == 'transcript')
 ref_gencode_e = subset( ref_gencode, feature == "exon")
-
-# ref_gencode_te = subset( ref_gencode, feature == c("transcript","exon"))
-
-
 write.csv(ref_gencode_t,paste0(out_dir,"ref_gencode.csv"))
 
 
@@ -145,7 +130,6 @@ canonical=fread(canonical_path, header=T, sep="\t",stringsAsFactors = F,data.tab
 #remove version
 canonical$transcript=removeVersion(canonical$transcript)
 canonical$protein=removeVersion(canonical$protein)
-
 
 #remove #chrom column
 canonical = select(canonical, -c("#chrom"))
@@ -169,12 +153,10 @@ introns=separate(introns,
 #split out transcript id
 introns$transcript_id = removeVersion(introns$transcript_id)
 
-###phil why are we adding 1 to start and exon? 
-### PH - intron table is 0 based while exon starts at 1
-### same for exon number the exon # starts at 0
+# intron table is 0 based while exon starts at 1
+# same for exon number the exon # starts at 0
 introns$start=introns$start+1
 introns$exon_number=as.numeric(introns$exon_number)+1
-
 
 ## add gene type type
 introns=merge(introns,
@@ -187,53 +169,10 @@ intron_exon=rbind(ref_gencode_e[,c('chr','feature','start','end','strand','trans
                   introns[,c('chr','feature','start','end','strand','transcript_id','ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL','transcript_type','transcript_name','score','exon_number')])
 intron_exon$ID=paste0(intron_exon$chr,':',intron_exon$start,'-',intron_exon$end)
 
-###phil why is this flag set? none of the following code is used with flag
-###phil this file doesn't exist
-###PH- I created this early on to Idneify Intron locations from GTF file (only includes exon coordinates)
-### we can extract this section of code and include it as a tool when updating reference GTF
-calcIntron=0
-if (calcIntron==1){
-  gtf <- makeTxDbFromGFF(paste0(Ref,"/hg38/Gencode_V32/fromUCSC/KnownGene/hg38.KnownGene.gtf")) #change me!
-  exons <- exonsBy(gtf, by="gene")
-  
-  #make introns
-  exons <- reduce(exons)
-  exons <- exons[sapply(exons, length) > 1]
-  
-  introns <- lapply(exons, function(x) {
-    
-    #Make a "gene" GRange object
-    gr = GRanges(seqnames=seqnames(x)[1], ranges=IRanges(start=min(start(x)), end=max(end(x))),
-                 strand=strand(x)[1])
-    db = disjoin(c(x, gr))
-    ints = db[countOverlaps(db, x) == 0]
-    
-    #Add an ID
-    if(as.character(strand(ints)[1]) == "-") {
-      ints$exon_id = c(length(ints):1)
-    } else {
-      ints$exon_id = c(1:length(ints))
-    }})
-  
-  introns <- GRangesList(introns)
-  as.data.frame(introns)
-}
-
-#merge exon/intron with ref_gencode_t
-###phil - we merged ref_gencode_exons with the introns from file
-#now we're merging the ref_gencode_transcript... why all the merges
-
-## PH - to save time i have added Gene type to intron table then added to exons
-# intron_exon=merge(introns,
-#                   ref_gencode_t[,c('transcript_id','gene_type')],by='transcript_id',all.x=T)
-
-
-
 ##########################################################################################
 ############### REPEATMASKER
 ##########################################################################################
-# get  repeat regions and extra small RNA locations
-
+# get repeat regions and extra small RNA locations
 rmsk_GRCm38=fread(rmsk_path, header=T, sep="\t",stringsAsFactors = F,
                   data.table=F)
 
@@ -242,12 +181,10 @@ rmsk_GRCm38=fread(rmsk_path, header=T, sep="\t",stringsAsFactors = F,
 ############### Annotation functions
 ##########################################################################################
 gencodeLNCRNA<-function(){
-  ## PH- Simplified function
-  ## What i am trying to do is identfy a subset of lncRNA that have intronic sequences.
-  ## we are then combining the Intronic and Exonic locations and changing the gene_type_ALL from lnc to linc
-  ## finally we will combibne the linc + lnc (no introns) together into one lnc table
+  #identfy a subset of lncRNA that have intronic sequences.
+  # we are then combining the Intronic and Exonic locations and changing the gene_type_ALL from lnc to linc
+  # finally we will combine the linc + lnc (no introns) together into one lnc table
   
-  #####
   #Get all lncRNA transcripts
   lncRNA_ref_gencode= subset(ref_gencode_t, gene_type_ALL == "lncRNA")
   
@@ -275,20 +212,13 @@ gencodeLNCRNA<-function(){
                                                                'transcript_id','transcript_type',
                                                                'transcript_name','score')])
   
-  ##PH- because I have somewhat redefined lncRNA with linc and included exon and intron sequences I am 
-  ## treating lncRNA as separate annotation table and removing these transcripts from ref_gencode_t
-  
+  # somewhat redefined lncRNA with linc and included exon and intron sequences - 
+  # treating lncRNA as separate annotation table and removing these transcripts from ref_gencode_t
   ref_gencode_t=ref_gencode_t[!ref_gencode_t$transcript_id%in%unique(lncRNA_ref_gencode$transcript_id),]
-  
   write.csv(lncRNA_ref_gencode,paste0(out_dir,"ref_lncRNA.csv"))
   
   return(lncRNA_ref_gencode)
 }
-
-
-
-rowid='lincRNA'
-# if(ref_table[ref_table%in%rowid,paste0(ref_species,'_mm10_options')])
 
 gencodeAnno<-function(rowid){
   #introns
@@ -318,17 +248,16 @@ gencodeAnno<-function(rowid){
 
 rmskAnno<-function(rowid){
   #define family and class lists
-  # family_list = c("rRNA","snRNA", "srpRNA","tRNA")
-  #remove other from hg38 - not found in rmsk_GRCm38
   if(ref_species=="hg38"){
     class_list =c("Satellite","Low_complexity","LTR",'Simple_repeat','DNA','Unknown')
   }else{
     class_list =c("Satellite","Low_complexity","LTR",'Simple_repeat','DNA','Unknown','Other')
   }
+  
   family_list=unique(rmsk_GRCm38$repFamily)
   class_list=unique(rmsk_GRCm38$repClass)
-  #if annotation id (rowid) is in the defined annotaiton list, subset, and outuput bed
-  # annotation_list = c(family_list,class_list,"7SK RNA","LINE SINE","rRNA_DNA","scRNA", "yRNA")
+  
+  # if annotation id (rowid) is in the defined annotation list, subset, and outuput bed
   annotation_list=unique(c(class_list,'7SK RNA','yRNA'))
   
   ## PH -elseif statements weren't being recognized for some reason
@@ -341,13 +270,7 @@ rmskAnno<-function(rowid){
       df_sub = subset(rmsk_GRCm38, repClass == rowid) %>%
         select(rmskcol) %>%
         setnames(newcolnames)
-      #Special handling  
     }
-    # if(rowid== "tRNA"){rep family contains tRNA labeling that includes SINE/LINE in repCLASS
-    #   df_sub = subset(rmsk_GRCm38, repFamily == 'tRNA') %>%
-    #     select(rmskcol) %>%
-    #     setnames(newcolnames)
-    # } 
     if(rowid== "7SK RNA"){
       df_sub = subset(rmsk_GRCm38, repFamily == 'RNA') %>%
         select(rmskcol) %>%
@@ -418,10 +341,9 @@ SYAnno<-function(rowid,ref_species){
 
 annotation_output=data.frame()
 
-###phil - review the reftable to fill in missing data
 #input data from annotation df
 ref_table = read.csv(reftable_path, header = TRUE, sep="\t", row.names = 1)
-rowid="lincRNA"
+#rowid="lincRNA"
 for (rowid in rownames(ref_table)){
   #determine source to use
   ref_selection =  ref_table[rowid,paste0(ref_species,"_selection")]
@@ -484,7 +406,6 @@ for (rowid in rownames(ref_table)){
 }
 
 #hard code contents
-###phil need to fix
 if (ref_species=='mm10') {
   annotation_output['snRNA','contents']='U1,U2,U5,U6,U7,U11,U12 and various predicted genes'
   annotation_output['rRNA_Gencode','contents']='5S, 5.8s, predicted gene'
@@ -502,103 +423,3 @@ write.table(annotation_output,
 write.table(annotation_output[rnames_ncRNA,cnames_ncRNA],
             file=paste0(out_dir,"ncRNA_annotations.txt"), 
             sep = "\t", row.names = T, col.names = T, append = F, quote= FALSE)
-
-###phil - this is not a listed family, can't add
-#unique(rmsk_GRCm38$repFamily)
-# SKRNA_rmsk = rmskSelection(rmsk_GRCm38, '7SKRNA')
-# annotation_output['7SK RNA','Repeatmasker']=nrow(SKRNA_rmsk)
-# annotation_output['7SK RNA','contents']=paste0(unique(SKRNA_rmsk$name),collapse = ', ')
-
-
-###phil why are these difference from one another?
-# if (species=='mm10') {
-###phil why are we hardcoding these?
-#     annotation_output['snRNA','contents']='U1,U2,U5,U6,U7,U11,U12 and various predicted genes'
-###phil why is this and the next the only ones pulling from soyeong?
-#     annotation_output['tRNA','contents']=paste0(unique(tRNA_sy$type),collapse = ', ')
-#     annotation_output['sncRNA','contents']=paste0('3 annotations: ',paste0(unique(sncRNA_sy$name),collapse = ', '))
-#     annotation_output['miRNA','contents']=paste0(unique(miRNA_ref_gencode$transcript_type),collapse = ', ')
-#     annotation_output['rRNA_gencode','contents']='5S, 5.8s, predicted gene'
-#     annotation_output['rRNA_rmsk','contents']=paste0(unique(rRNA_rmsk[order(rRNA_rmsk$name),'name']),collapse = ', ')
-#     annotation_output['rRNA_DNA','contents']=paste0(unique(rRNA_BK00964$name),collapse = ', ')
-#     annotation_output['lncRNA','contents']=paste0('Various ',paste0(unique(lncRNA_ref_gencode[lncRNA_ref_gencode$gene_type_ALL%in%'lncRNA','transcript_type']),collapse = ', '))
-#     annotation_output['lincRNA','contents']=paste0('Various ',paste0(unique(lncRNA_ref_gencode[lncRNA_ref_gencode$gene_type_ALL%in%'lncRNA'==F,'transcript_type']),collapse = ', '))
-#   }
-#   if (species=='hg38') {
-#     annotation_output['yRNA','contents']=paste0(unique(YRNA_rmsk$name),collapse = ', ')
-#     annotation_output['snRNA','contents']='U1,U2,U5,U6,U7,U11,U12'
-#     annotation_output['tRNA','contents']=paste0(unique(tRNA_rmsk$type),collapse = ', ')
-#     annotation_output['scRNA','contents']=paste0(unique(scRNA_rmsk$name),collapse = ', ')
-#     annotation_output['miRNA','contents']=paste0(unique(miRNA_ref_gencode$transcript_type),collapse = ', ')
-#     annotation_output['rRNA_gencode','contents']='5S, 5.8s, predicted gene'
-#     annotation_output['rRNA_rmsk','contents']=paste0(unique(rRNA_rmsk[order(rRNA_rmsk$name),'name']),collapse = ', ')
-#     annotation_output['lncRNA','contents']=paste0('Various ',paste0(unique(lncRNA_ref_gencode[lncRNA_ref_gencode$gene_type_ALL%in%'lncRNA','transcript_type']),collapse = ', '))
-#     annotation_output['lincRNA','contents']=paste0('Various ',paste0(unique(lncRNA_ref_gencode[lncRNA_ref_gencode$gene_type_ALL%in%'lncRNA'==F,'transcript_type']),collapse = ', '))
-#   }  
-
-#write table
-
-
-
-# #replaced with code above
-# annotation_output['yRNA','Repeatmasker']=nrow(rmskSelection(rmsk_GRCm38[grepl("HY",rmsk_GRCm38$repName)==TRUE,], 
-#                                                          'scRNA', 'yRNA'))
-# annotation_output['scRNA','Repeatmasker']=nrow(rmskSelection(rmsk_GRCm38[grepl("HY", rmsk_GRCm38$repName)==FALSE,],'scRNA'))  
-# annotation_output['snRNA','Repeatmasker']=nrow(rmskSelection(rmsk_GRCm38,'snRNA'))
-# 
-# annotation_output['srpRNA','Repeatmasker']=nrow(rmskSelection(rmsk_GRCm38,'srpRNA'))
-# annotation_output['srpRNA','contents']=paste0(unique(srpRNA_rmsk$name),collapse = ', ')
-# 
-# annotation_output['tRNA','Repeatmasker']=nrow(rmskSelection(rmsk_GRCm38,'tRNA'))
-# annotation_output['rRNA_rmsk','Repeatmasker']=nrow(rmskSelection(rmsk_GRCm38,'rRNA'))
-# annotation_output['LISI','Repeatmasker']=nrow(subset(rmsk_GRCm38, repClass %in% c('LINE','SINE')))
-# annotation_output['LTR','Repeatmasker']=nrow(subset(rmsk_GRCm38, repClass == 'LTR'))
-# annotation_output['DNA','Repeatmasker']=nrow(subset(rmsk_GRCm38, repClass == 'DNA'))
-# annotation_output['Satalites','Repeatmasker']=nrow(subset(rmsk_GRCm38, repClass == 'Satellite'))
-# annotation_output['Simple Repeats','Repeatmasker']=nrow(subset(rmsk_GRCm38, repClass == 'Simple_repeat'))
-# annotation_output['Low Complexity','Repeatmasker']=nrow(subset(rmsk_GRCm38, repClass == 'Low_complexity'))
-# annotation_output['Other repeats','Repeatmasker']=nrow(subset(rmsk_GRCm38, repClass == 'Other'))  
-# annotation_output['Unknown repeats','Repeatmasker']=nrow(subset(rmsk_GRCm38, repClass == 'Unknown'))
-# annotation_output$Comb=rowSums(annotation_output[,c('Gencode','Repeatmasker')])
-
-###phil is there a time when we would not want to write these?
-#if (WriteClassTable==T) {
-###phil is there a reason for the misc folder being created
-
-# if (species=='mm10'){
-#   write.table(YRNA_rmsk[,rmskcol],file=paste0(out_dir,"yRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(srpRNA_rmsk[,rmskcol],file=paste0(out_dir,"srpRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(SKRNA_rmsk[,rmskcol],file=paste0(out_dir,"SKRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(scRNA_rmsk[,rmskcol],file=paste0(out_dir,"scRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(rRNA_rmsk[,rmskcol],file=paste0(out_dir,"rRNA_rmsk.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(rRNA_BK00964[,rmskcol],file=paste0(out_dir,"rRNA_BK00964.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   
-#   
-#   write.table(snRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"snRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(snoRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"snoRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(miRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"mirNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(rRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"rRNA_gencode.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(lncRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"lncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   
-#   write.table(tRNA_sy[,rmskcol],file=paste0(out_dir,"tRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(sncRNA_sy[,c('chr','start','end','name','V6','strand')],file=paste0(out_dir,"sncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   
-#   rnames_ncRNA=c('yRNA','snRNA','snoRNA','srpRNA','tRNA','7SK RNA','scRNA','sncRNA','miRNA','rRNA_gencode','rRNA_rmsk','rRNA_DNA','lncRNA','lincRNA')
-#   cnames_ncRNA=c('source','contents','Description') 
-# } else if (species=='hg38'){
-#   write.table(YRNA_rmsk[,rmskcol],file=paste0(out_dir,"yRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(srpRNA_rmsk[,rmskcol],file=paste0(out_dir,"srpRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(tRNA_rmsk[,rmskcol],file=paste0(out_dir,"tRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(SKRNA_rmsk[,rmskcol],file=paste0(out_dir,"SKRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(scRNA_rmsk[,rmskcol],file=paste0(out_dir,"scRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(rRNA_rmsk[,rmskcol],file=paste0(out_dir,"rRNA_rmsk.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   
-#   write.table(snRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"snRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(snoRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"snoRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(miRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"mirNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(rRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"rRNA_gencode.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   write.table(lncRNA_ref_gencode[,newcolnames],file=paste0(out_dir,"lncRNA.bed"), sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
-#   
-#   rnames_ncRNA=c('yRNA','snRNA','snoRNA','srpRNA','tRNA','7SK RNA','scRNA','miRNA','rRNA_gencode','rRNA_rmsk','lncRNA')
-#   cnames_ncRNA=c('source','contents','Description')
-# }
