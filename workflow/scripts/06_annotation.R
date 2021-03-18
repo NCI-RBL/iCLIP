@@ -24,15 +24,14 @@ library(tidyr)
 
 args <- commandArgs(trailingOnly = TRUE)
 ref_species = args[1]
-soyeong_flag = args[2]
-soyeong_path = args[3]
-alias_path = args[4]
-gencode_path = args[5]
-refseq_path = args[6]
-canonical_path = args[7]
-intron_path = args[8]
-rmsk_path = args[9]
-out_dir = args[10]
+soyeong_path = args[2]
+alias_path = args[3]
+gencode_path = args[4]
+refseq_path = args[5]
+canonical_path = args[6]
+intron_path = args[7]
+rmsk_path = args[8]
+out_dir = args[9]
 reftable_path = args[11]
 
 setwd("../../../../../")
@@ -52,7 +51,6 @@ if(is.nat(ref_species)){
     canonical_path = paste0(ref_dir,"/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
     intron_path = paste0(ref_dir, "/mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
     rmsk_path = paste0(ref_dir,"/mm10/repeatmasker/rmsk_GRCm38.txt")
-    soyeong_flag = "Y" #Y or N
     soyeong_path= paste0(ref_dir,'/mm10/AdditionalAnno/')
     
   } else if (ref_species == "hg38"){
@@ -62,7 +60,6 @@ if(is.nat(ref_species)){
     canonical_path = paste0(ref_dir,"/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
     intron_path = paste0(ref_dir,"/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
     rmsk_path = paste0(ref_dir,"/hg38/repeatmasker/rmsk_GRCh38.txt")
-    soyeong_flag = "N" #always now (for now)
   } 
 }
 
