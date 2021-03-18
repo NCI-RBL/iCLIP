@@ -9,6 +9,7 @@ hg38:
   canonical_path: '/data/RBL_NCI/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt'
   intron_path: '/data/RBL_NCI/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed'
   rmsk_path: '/data/RBL_NCI/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCh38.txt'
+  sy_path: '/data/RBL_NCI/iCLIP/ref/annotations/mm10/additional_anno/'
   alias_path: '/data/RBL_NCI/iCLIP/ref/annotations/hg38/hg38.chromAlias.txt'
 mm10:
   std: '/data/RBL_NCI/iCLIP/index/mm10.nix'

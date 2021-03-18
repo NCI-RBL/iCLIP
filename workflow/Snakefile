@@ -52,7 +52,6 @@ nt_merge = str(config['nt_merge']) + 'nt'
 peak_id = config['peak_id'].upper()
 DE_method = config['DE_method'].upper()
 sp_junc = config['splice_junction'].upper()
-sy_flag = config['SY_flag'].upper()
 
 #split_params
 def check_split(split_in):
@@ -82,11 +81,10 @@ else:
 sy_path = "EMPTY"
 if (nova_ref == "mm10"):
     genome_ref = "GENCODE mm10 v23"
-    if(sy_flag == "Y"):
-        sy_path = index_list[nova_ref]['sy_path']
 elif (nova_ref=="hg38"):
     genome_ref = "GENCODE hg38 v32"
-    sy_flag = "N"
+
+sy_path = index_list[nova_ref]['sy_path']
 gen_path = index_list[nova_ref]['gencode_path']
 rseq_path = index_list[nova_ref]['refseq_path']
 can_path = index_list[nova_ref]['canonical_path']
@@ -349,10 +347,10 @@ rule all:
         expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
         expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
 
-
         #In progress
-        expand(join(out_dir,'14_peaks/{sp}_' + str(nt_merge) + '_peakjunction.txt'),sp=sp_list),
-        join(out_dir,'15_annotation','annotations.txt'),
+        join(out_dir,'14_project_annotation','annotations.txt'),
+        #expand(join(out_dir,'14_peaks/{sp}_' + str(nt_merge) + '_peakjunction.txt'),sp=sp_list),
+        #join(out_dir,'15_annotation','annotations.txt'),
 
         # #Annotation
         # #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
@@ -1363,7 +1361,6 @@ rule project_annotations:
         rname='ic_proj_anno',
         script = join(source_dir,'workflow','scripts','06_annotation.R'),
         ref_sp = nova_ref,
-        s_flag = sy_flag,
         s_path = sy_path,
         a_path = alias_path,
         g_path = gen_path,
@@ -1385,7 +1382,6 @@ rule project_annotations:
         """
         Rscript {params.script} \
             {params.ref_sp} \
-            {params.s_flag} \
             {params.s_path} \
             {params.a_path} \
             {params.g_path} \
@@ -1397,191 +1393,3 @@ rule project_annotations:
             {params.a_config}
         """
 
-rule peak_annotations:
-    '''
-    find peak junctions, annotations peaks, merges junction and annotation information
-
-    additional outputs if MANORM
-    _peakDepth.bed
-    _peakDepth_P.bed
-    _peakDepth_N.bed
-
-    '''
-    input:
-        unique = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
-        all = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
-        anno = join(out_dir,'14_project_annotation','annotations.txt'),
-    params:
-        rname = 'ic_peak_anno',
-        script = join(source_dir,'workflow','scripts','07_peak_annotation.R'),
-        p_type = peak_id,
-        junc = sp_junc,
-        r_depth= min_count,
-        d_method=DE_method,
-        sp = "{sp}",
-        n_merge = nt_merge,
-        base = join(out_dir,'15_peak_annotation/'),
-        anno_dir = join(out_dir,'14_project_annotation/'),
-        ref_sp = nova_ref,
-        masker_path = rmsk_path
-    envmodules:
-        config['R'],
-    output:
-        o1 = join(out_dir,'15_peak_annotation','{sp}_' + str(nt_merge) + '_peakjunction.txt'),
-        o2 = join(out_dir,'15_peak_annotation','{sp}_' + str(nt_merge) + '_peakannotation.txt'),
-        o3 = join(out_dir,'15_peak_annotation','{sp}_' + str(nt_merge) + '_peakannotation_junctions.txt'),
-        o4 = join(out_dir,'15_peak_annotation','{sp}_' + str(nt_merge) + 'peakannotation_mapq_IN.txt'),
-        o5 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth.bed'), ###need to add if statement for MANORM only
-        o6 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth_P.bed'), ###need to add if statement for MANORM only
-        o7 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth_N.bed'),
-    shell:
-        '''
-        Rscript {params.script} \
-            {params.p_type} \
-            {input.unique} \
-            {input.all} \
-            {params.junc} \
-            {params.r_depth} \
-            {params.d_method} \
-            {params.sp} \
-            {params.n_merge} \
-            {params.base}
-            {params.anno_dir} \
-            {params.ref_sp} \
-            {params.masker.path} \
-            {output.o1}
-        '''
-
-if (mapq==TRUE):
-    rule peak_mapq:
-        input:
-            bam = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
-            peak = join(out_dir,'15_peak_annotation','{sp}_' + str(nt_merge) + 'peakannotation_mapq_IN.txt'),
-        params:
-            rname = 'ic_peak_mapq',
-            script = join(source_dir,'workflow','scripts','08_peak_mapq.R'),
-        envmodules:
-            config['R'],
-        output:
-            o1 = join(out_dir,'16_peak_mapq','{sp}_' + str(nt_merge) + '_peakannotation_mapqscore.txt'),
-        shell:
-            '''
-            Rscript {params.script} \
-                {input.bam} \
-                {input.peak} \
-                {output.o1}
-            '''
-
-if (DE_method=="MANORM"):
-    rule create_beds:
-        '''
-        phil - should this be unique or all bed?
-        later to do - only run for samples that are going to be compared
-        '''
-        input:
-            f1 = join(out_dir,'12_bed/{sp}.unique.bed'),
-        params:
-            rname = "ic_beds"
-        output:
-            o1 = join(out_dir,'16_manorm/{sp}.p.bed'),
-            o2 = join(out_dir,'16_manorm/{sp}.n.bed'),
-        shell:
-            '''
-            awk '$6=="+"' {input.f1} > {output.o1};
-            awk '$6=="-"' {input.f1} > {output.o2};
-            '''
-
-    def manorm_contrast_lists():
-        #read in contrast list as df
-
-        #perfrom check of df
-        #comparisons aren't duplicated
-        #all sample names exist
-
-        #create contrast lists from each col
-        #sampleid_1 #sampleid_2
-        contrast_list = ""
-
-        #return contrast lists
-        return(contrast_list1, contrast_lists2)
-
-    if(DE_method=="MANORM"):
-        (ct_list1,ct_list2) = manorm_conrast_lists()
-
-    rule all:
-        expand(join(out_dir,'16_manorm/manorm_{sp1}_{sp2}_p.txt'),zip,ct_list1,ct_list2)
-
-    rule manorm_p:
-        '''
-        f1 /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/input/WT_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed
-        f2 /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/input/KO_allPeaksforMAnrom_50nt_peakDepth5Test.P.bed
-        f3 /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/input/WT_CLIP.dedup.i.bam.P.bed 
-        f4 /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/input/KO_CLIP.dedup.i.bam.P.bed
-        base /data/RBL_NCI/Wolin/Phil/HaCat_fCLIP2/peaks_MAnorm/WTvsKO/
-        name1 WT_50nt_peakDepth5Test_Pos
-        name2 KO_50nt_peakDepth5Test_Pos
-        '''
-        input:
-            f1 = join(out_dir,'16_manorm','{sp1}_{sp2}','{sp1}.p.bed'),
-            f2 = join(out_dir,'16_manorm','{sp1}_{sp2}','{sp2}.p.bed'),
-            f3 = join(out_dir,'16_manorm','{sp1}_{sp2}','{sp1}_' + str(nt_merge) + '_peakDepth_P.bed'),
-            f4 = join(out_dir,'16_manorm','{sp1}_{sp2}','{sp2}_' + str(nt_merge) + '_peakDepth_P.bed'),
-        params:
-            rname = "ic_manorm_p",
-            base = join(out_dir,'16_manorm/{sp1}_{sp2}/'),
-            name1 = '{sp1}_Pos',
-            name2 = '{sp2}_Pos'
-        envmodules:
-            config['MANORM']
-        output:
-            o1 = join(out_dir,'16_manorm','{sp1}_{sp2}', 'manorm_{sp1}_{sp2}_p.txt')
-        shell:
-            '''
-            manorm \
-                --p1 {intput.f1} \
-                --p2 {input.f2} \
-                --r1 {input.f3} \
-                --r2 {input.f4} \
-                --s1 0 \
-                --s2 0 \
-                -p 1 \
-                -d 25 \
-                -n 10000 \
-                -s \
-                -o {params.base} \
-                --name1  {params.name1} \
-                --name2 {params.name2}
-            '''
-
-    rule manorm_n:
-        input:
-            f1 = join(out_dir,'16_manorm/{sp1}.n.bed'),
-            f2 = join(out_dir,'16_manorm/{sp2}.n.bed'),
-            f3 = join(out_dir,'16_manorm','{sp1}_' + str(nt_merge) + '_peakDepth_N.bed'),
-            f4 = join(out_dir,'16_manorm','{sp2}_' + str(nt_merge) + '_peakDepth_N.bed'),
-        params:
-            rname = "ic_manorm_n",
-            base = join(out_dir,'16_manorm/{sp1}_{sp2}/'),
-            name1 = '{sp1}_Neg',
-            name2 = '{sp2}_Neg'
-        envmodules:
-            config['MANORM']
-        output:
-            o1 = join(out_dir,'16_manorm/manorm_{sp1}_{sp2}_n.txt')
-        shell:
-            '''
-            manorm \
-                --p1 {intput.f1} \
-                --p2 {input.f2} \
-                --r1 {input.f3} \
-                --r2 {input.f4} \
-                --s1 0 \
-                --s2 0 \
-                -p 1 \
-                -d 25 \
-                -n 10000 \
-                -s \
-                -o {params.base} \
-                --name1  {params.name1} \
-                --name2 {params.name2}
-            '''
