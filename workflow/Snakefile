@@ -271,75 +271,75 @@ rule all:
         #check manifest
         join(out_dir,'qc','manifest_clean.txt'),
 
-        #check input fastq files
-        expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
+        # #check input fastq files
+        # expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
         
-        #different inputs for multiplexed or nonmultiplexed pipeline
-        input_all,
+        # #different inputs for multiplexed or nonmultiplexed pipeline
+        # input_all,
         
-        check barcodes
-        expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.png'), mp=samp_dict.keys()),
-        expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.txt'),mp=samp_dict.keys()), 
+        # #check barcodes
+        # expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.png'), mp=samp_dict.keys()),
+        # expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.txt'),mp=samp_dict.keys()), 
         
-        demultiplex samples, rename samples
-        expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
-        expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
+        # #demultiplex samples, rename samples
+        # expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex
+        # expand(join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list), #rename
         
-        Remove adaptors, rename samples
-        expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_trimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list),
-        expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list),
-        expand(join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz'),sp=sp_list),
-        expand(join(out_dir,'01_remove_adaptor','{sp}_removed_seq.fastq.gz'),sp=sp_list),
+        # #Remove adaptors, rename samples
+        # expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_trimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+        # expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+        # expand(join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz'),sp=sp_list),
+        # expand(join(out_dir,'01_remove_adaptor','{sp}_removed_seq.fastq.gz'),sp=sp_list),
 
-        #FastQC
-        expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        # #FastQC
+        # expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
         
-        #Unzip samples
-        expand(join(out_dir,'02_unzip','{sp}.fastq'), sp=sp_list),
+        # #Unzip samples
+        # expand(join(out_dir,'02_unzip','{sp}.fastq'), sp=sp_list),
          
-        #FastQ Screen
-        expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
-        expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
+        # #FastQ Screen
+        # expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
+        # expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
         
-        #Determine file split parameters
-        join(out_dir,'qc','split_params.tsv'),
+        # #Determine file split parameters
+        # join(out_dir,'qc','split_params.tsv'),
         
-        #Merge splits
-        expand(join(out_dir,'07_bam_merged_splits/{sp}.merged.unique.bam'), sp=sp_list),
-        expand(join(out_dir,'07_bam_merged_splits/{sp}.merged.mm.bam'),sp=sp_list),
+        # #Merge splits
+        # expand(join(out_dir,'07_bam_merged_splits/{sp}.merged.unique.bam'), sp=sp_list),
+        # expand(join(out_dir,'07_bam_merged_splits/{sp}.merged.mm.bam'),sp=sp_list),
 
-        #Merge unique and mm
-        expand(join(out_dir,'08_bam_merged','{sp}.merged.bam'), sp=sp_list),
+        # #Merge unique and mm
+        # expand(join(out_dir,'08_bam_merged','{sp}.merged.bam'), sp=sp_list),
 
-        #Sort and index merged
-        expand(join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),sp=sp_list),
-        expand(join(out_dir,'08_bam_merged','{sp}.merged.si.bam.bai'),sp=sp_list),
+        # #Sort and index merged
+        # expand(join(out_dir,'08_bam_merged','{sp}.merged.si.bam'),sp=sp_list),
+        # expand(join(out_dir,'08_bam_merged','{sp}.merged.si.bam.bai'),sp=sp_list),
 
-        #Samstats
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}_samstats.txt'), sp=sp_list),
+        # #Samstats
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}_samstats.txt'), sp=sp_list),
 
-        #MultiQC Report
-        join(out_dir,'qc/multiqc_report.html'),
+        # #MultiQC Report
+        # join(out_dir,'qc/multiqc_report.html'),
 
-        #Alignment stats
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}_aligned.png'), sp=sp_list),
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.png'), sp=sp_list),
+        # #Alignment stats
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}_aligned.png'), sp=sp_list),
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}_unaligned.png'), sp=sp_list),
 
-        #QC Troubleshooting
-        join(out_dir,'qc','qc_report.html'),
+        # #QC Troubleshooting
+        # join(out_dir,'qc','qc_report.html'),
 
-        #Deduplicate
-        expand(join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'), sp=sp_list),
-        expand(join(out_dir,'10_dedup_split/{sp}.dedup.unique.i.bam'), sp=sp_list),
+        # #Deduplicate
+        # expand(join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'), sp=sp_list),
+        # expand(join(out_dir,'10_dedup_split/{sp}.dedup.unique.i.bam'), sp=sp_list),
 
-        #Bed files
-        expand(join(out_dir,'11_bed','{sp}_all.bed'), sp=sp_list),
-        expand(join(out_dir,'11_bed','{sp}_unique.bed'), sp=sp_list),
+        # #Bed files
+        # expand(join(out_dir,'11_bed','{sp}_all.bed'), sp=sp_list),
+        # expand(join(out_dir,'11_bed','{sp}_unique.bed'), sp=sp_list),
 
-        #SAF 
-        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_all.SAF'), sp=sp_list),
-        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
+        # #SAF 
+        # expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_all.SAF'), sp=sp_list),
+        # expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
 
         #Count features
         expand(join(out_dir,'13_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
