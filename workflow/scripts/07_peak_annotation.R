@@ -24,19 +24,19 @@ anno_dir = args[10]
 rmsk_path = args[11]
 ref_species = args[12]
 
-if(is.na(peak_type)){
+if(length(args)==0){
   
   peak_type= "ALL"
   peak_unique = "/Volumes/data/iCLIP/marco/13_counts/allreadpeaks/KO_fCLIP_50nt_uniqueCounts.txt"
   peak_all = "/Volumes/data/iCLIP/marco/13_counts/allreadpeaks/KO_fCLIP_50nt_allFracMMCounts.txt"
   
   #output
-  out_dir = "/Volumes/data/iCLIP/confirm/15_peak_annotation/"
-  out_file = "/Volumes/data/iCLIP/confirm/15_peak_annotation/KO_fCLIP_50nt_peakannotation_coomplete.txt"
+  out_dir = "/Volumes/data/iCLIP/marco/15_peak_annotation/"
+  out_file = "/Volumes/data/iCLIP/marco/15_peak_annotation/KO_fCLIP_50nt_peakannotation_coomplete.txt"
 
   #project annotation files
   rmsk_path = "/Volumes/RBL_NCI/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCm38.txt"
-  anno_dir = "/Volumes/data/iCLIP/confirm/14_project_annotation/"
+  anno_dir = "/Volumes/data/iCLIP/marco/14_project_annotation/"
 
   #feature information
   join_junction = "TRUE"
@@ -48,9 +48,9 @@ if(is.na(peak_type)){
 }
 
 #annotation paths
-gencode_path = paste0(anno_dir,"rRNA_gencode.bed")
+gencode_path = paste0(anno_dir,"ref_gencode.csv")
 lncra_path = paste0(anno_dir,"lncRNA.bed")
-alias_path = paste0(anno_dir,"ref_alias.csv") 
+alias_path = paste0("/Volumes/RBL_NCI/iCLIP/ref/annotations/mm10/mm10.chromAlias.txt") 
 YRNA_path = paste0(anno_dir, "yRNA.bed")
 srpRNA_path = paste0(anno_dir, "srpRNA.bed")
 SKRNA_path = paste0(anno_dir, "7SKRNA.bed")
@@ -137,17 +137,18 @@ if (join_junction==TRUE) {
                                                    FtrCount_fracJCount_merged$Site2_location)
     
     #create Unique Row/junction ID
-    FtrCount_fracJCount$rID=seq(1,nrow(FtrCount_fracJCount))
+    FtrCount_fracJCount_merged$rID=seq(1,nrow(FtrCount_fracJCount_merged))
     
-    
+    ###phil there is a row counts error here; changed the rID from FtrCount_fracJCount$rID
+    #to FtrCount_fracJCount_merged$rID
     jcount1.GR = GRanges(seqnames = as.character(FtrCount_fracJCount_merged$Site1_chr), 
                          ranges=IRanges(start = as.numeric(FtrCount_fracJCount_merged$Site1_location), 
                                         end = as.numeric(FtrCount_fracJCount_merged$Site1_location)),
                          strand = FtrCount_fracJCount_merged$strand,
-                         PrimaryGene=FtrCount_fracJCount_merged$PrimaryGene,
-                         count=FtrCount_fracJCount_merged$counts,
-                         JunctionID=FtrCount_fracJCount_merged$JunctionID,
-                         rID=FtrCount_fracJCount$rID)
+                         PrimaryGene = FtrCount_fracJCount_merged$PrimaryGene,
+                         count = FtrCount_fracJCount_merged$counts,
+                         JunctionID = FtrCount_fracJCount_merged$JunctionID,
+                         rID = FtrCount_fracJCount_merged$rID)
     jcount2.GR = GRanges(seqnames = as.character(FtrCount_fracJCount_merged$Site2_chr),
                          ranges=IRanges(start = as.numeric(FtrCount_fracJCount_merged$Site2_location),
                                         end = as.numeric(FtrCount_fracJCount_merged$Site2_location)),
@@ -155,7 +156,7 @@ if (join_junction==TRUE) {
                          PrimaryGene=FtrCount_fracJCount_merged$PrimaryGene,
                          count=FtrCount_fracJCount_merged$counts,
                          JunctionID=FtrCount_fracJCount_merged$JunctionID,
-                         rID=FtrCount_fracJCount$rID)
+                         rID=FtrCount_fracJCount_merged$rID)
     
     FtrCount.GR=GRanges(seqnames = as.character(FtrCount_merged$chr), 
                         ranges=IRanges(start = as.numeric(FtrCount_merged$start), 
@@ -176,12 +177,10 @@ if (join_junction==TRUE) {
       return(cbind(qh,sh))
     }
     
-    ###phil - this doesn't work - the number of rows are different
     Junc_PL1 = junctionID(FtrCount.GR, jcount1.GR,"_Junction1","_Peaks1")
     Junc_PL2 = junctionID(FtrCount.GR, jcount2.GR,"_Junction2","_Peaks2")
-    #Junc_PL_merged = cbind(Junc_PL1, Junc_PL2)
-    Junc_PL=merge(Junc_PL1,Junc_PL2,by.x='rID_Junction1',by.y='rID_Junction2')
-    Junc_PL=Junc_PL[(is.na(Junc_PL$ID_Peaks1)|is.na(Junc_PL$ID_Peaks2))==F,]
+    Junc_PL_merged = merge(Junc_PL1,Junc_PL2,by.x='rID_Junction1',by.y='rID_Junction2')
+    Junc_PL_merged = Junc_PL_merged[(is.na(Junc_PL_merged$ID_Peaks1)|is.na(Junc_PL_merged$ID_Peaks2))==F,]
     
     # identify PEAK ID for Site1 and Site2 location of splice junction
     Junc_PLOut = Junc_PL_merged[,c('PrimaryGene_Junction1','JunctionID_Junction1',
@@ -307,17 +306,17 @@ if (join_junction==TRUE) {
 }
 
 #write final junction output
-write.csv(FtrCount_splice_junc,paste0(out_dir,file_id,"_peakjunction.txt"))
+write.csv(FtrCount_splice_junc,paste0(out_dir,file_id,"peakjunction.txt"))
 
 ##########################################################################################
 ##############################  Peak info - starts old 07_peak_generation
 ##########################################################################################
 #read in peaks and alias file generated from 06_peak_junction.R
 peaks = FtrCount_splice_junc
-alias_anno = read.csv(alias_path)
+alias_anno = read.csv(alias_path,sep="\t")
 
 #merge peaks with ref
-peaks_alias = merge(peaks,alias_anno[,c('chr','aliasNCBI2')],by.x='chr',by.y='aliasNCBI2',all.x=T)
+peaks_alias = merge(peaks,alias_anno[,c('X..sequenceName','alias.names')],by.x='chr',by.y='alias.names',all.x=T)
 
 #clean
 peaks_alias = select(peaks_alias, -c("chr"))
@@ -342,9 +341,8 @@ peaks_oppo$strand=gsub("pos","-",peaks_oppo$strand)
 ##############################  reference, annotation table
 ##########################################################################################
 #read in references
-ref_lncra = read.csv(lncra_path)
-#ref_refseq = read.csv(refseq_path) #not using
-ref_gencode = read.csv(gencode_path)
+ref_lncra = read.csv(lncra_path,sep="\t")
+ref_gencode = read.csv(gencode_path,sep="\t")
 
 ### Add Column that combines all additional annotations
 YRNA_rmsk = read.csv(YRNA_path,header=TRUE,sep="\t")
@@ -386,12 +384,17 @@ if(ref_species == "mm10"){
 #merge references depending on species, run annotation
 bam_anno2=function(peaksTable,Annotable,ColumnName,pass_n){
   #testing
-  if(testing=="Y"){
+  if(length(args)==0){
     peaksTable=select(peaks,c("chr","start","end","strand","ID","ID2","Length","Counts_Unique","Counts_fracMM"))
     
     colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id',
                  'external_gene_name','gene_type','gene_type_ALL')
-    Annotable = rbind(ref_gencode[,colMerge], ref_refseq[,colMerge], ref_lncra[,colMerge])
+    
+    ###phil is this going to be taking in the project annotation file we created in script 06_annotation? 
+    #annotations.txt? or is this the junctions file (FtrCount_splice_junc) 
+    #or are we going to merge the gencode and lncra?
+    #Annotable = rbind(ref_gencode[,colMerge], ref_refseq[,colMerge], ref_lncra[,colMerge])
+    Annotable = FtrCount_splice_junc
     
     ColumnName = c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
     
@@ -872,7 +875,6 @@ intronexon_opposite = peak_calling(peak_oppo,2,"oppo_")
 rmsk_GRCm38=fread(rmsk_path, header=T, sep="\t",stringsAsFactors = F,
                   data.table=F)
 
-#prewritten function
 rpmsk_anno <- function(ColumnName,Annotable,peaksTable){
   
   ###fix variable
@@ -1034,7 +1036,8 @@ rpmsk_opposite = rpmsk_calling(intronexon_same,"oppo_")
 ##############################  Assigning Clip peak attributes by strand
 ##########################################################################################
 # Not all Peaks overlap with a single feature so peak assignments were assigned by priority:
-# ncRNA > Protein coding : Exonic > repeats > Pseudogene > Antisense Feature > Protein Coding : Intronic > lncRNA > no Feature  
+# ncRNA > Protein coding : Exonic > repeats > Pseudogene > Antisense Feature > 
+#Protein Coding : Intronic > lncRNA > no Feature  
 # All annotations from RNA type, Repeat regions, and Intronic/exonic regions are annoted in the Table
 
 peak_attributes <- function(PeaksdataOut,nmeprfix){
