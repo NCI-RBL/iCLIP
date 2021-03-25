@@ -701,7 +701,7 @@ else:
             set +e
             novoalign -d {params.n_index} \
             -f {input.f1} -F STDFQ -c 56 \
-            -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
+            -t 15,3 -l 20 -x 4 -g 20 -o SAM \
             -R 0 -r All 999 > {output.o1}
             exitcode=$?
             if [ $exitcode -eq 1 ]
