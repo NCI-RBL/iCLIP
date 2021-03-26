@@ -274,11 +274,7 @@ rule all:
         #expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
         
         #different inputs for multiplexed or nonmultiplexed pipeline
-        #input_all,
-        
-        #check barcodes
-        expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.png'), mp=samp_dict.keys()),
-        expand(join(out_dir,'{mp}/00_qc_post/{mp}_barcode.txt'),mp=samp_dict.keys()), 
+        input_all,
         
         #demultiplex samples, rename samples
         #expand(join(out_dir,'{mp}/demux_nomatch5.fastq.gz'),mp=samp_dict.keys()), #demultiplex

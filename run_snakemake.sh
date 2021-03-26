@@ -45,7 +45,7 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
-    cp $f "${output_dir}/log/${log_time}_${strarr[-1]}"
+    cp $f "${output_dir}/log/${log_time}_00_${strarr[-1]}"
   done
 
   #submit jobs to cluster
