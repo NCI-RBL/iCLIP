@@ -1,4 +1,6 @@
 # Global configuration file for the pipeline
+# pipeline info: activeDev 032621
+
 #path to iCLIP directory
 source_dir: "/path/to/iCLIP/"
 
