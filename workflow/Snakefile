@@ -724,7 +724,7 @@ else:
             final = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.final.sam'),
         shell:
             """
-            samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > {output.g1};
+            samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )||($4 == 0)) {{ print }} }}' > {output.g1};
             samtools view -H {input.f1} | cat - {output.g1} > {output.final}
             """
 
