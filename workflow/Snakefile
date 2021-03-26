@@ -8,6 +8,7 @@ Overview
 - SAM and BAM files are created
 - Samples are merged
 
+Pipeline info: activeDev 032621
 '''
 
 report: "report/workflow.rst"

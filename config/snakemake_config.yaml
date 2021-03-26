@@ -1,28 +1,26 @@
 # Global configuration file for the pipeline
-# pipeline info: activeDev 032621
-
-#path to iCLIP directory
-source_dir: "/path/to/iCLIP/"
+#path to source directory
+source_dir: "/home/sevillas2/git/iCLIP/"
 
 #path to output directory
-output_dir: "/path/to/output/dir/"
+output_dir: "/scratch/sevillas2/hg38_no_s_real"
 
 #path to manifest files
-sample_manifest: "/path/to/manifest/samples.tsv"
-multiplex_manifest: "/path/to/manifest/multiplex.tsv"
+sample_manifest: "/data/RBL_NCI/iCLIP/test/sample_hg38_full.tsv"
+multiplex_manifest: "/data/RBL_NCI/iCLIP/test/multiplex_hg38_full.tsv"
 
 #path to fastq files
-fastq_dir: "/path/to/fastq/files/"
+fastq_dir: "/data/RBL_NCI/iCLIP/test/"
 
 #user parameters
 multiplex_flag: "Y" #flag that samples are multiplexed ["Y","N"]
-mismatch_allowance: 2 #number of bp mismatches allowed in demultiplexing [1,2,3]
-split_value: 1000000 #number of sequences to split fastq file [min 3000, default 1000000]
-novoalign_reference: "hg38" #reference organism ["mm10", "hg38"]
-splice_aware: 'y' #whether to run splice_aware part of the pipeline ['y', 'n']
-splice_bp_length: 75 #length of splice index to use [50, 75, 150]
-minimum_count: 3 #minimum number of matches to count as a peak [1,2,3]
-nt_merge: 50 #minimum distance of nucleotides to merge peaks [10,20,30,40,50,60]
+mismatch_allowance: 2 #number of nt mismatches allowed in barcodes; options [1,2]
+split_value: 2000000 #number of sequences in split files [min 3000, default 1000000]
+novoalign_reference: "hg38" #options: mm10 mm10
+splice_aware: 'y' #options: Y or N
+splice_bp_length: 75 # options: if splice_aware = Y, 50,75,150
+minimum_count: 3 #minimum number of matches to count as a true peak
+nt_merge: 50 #minimum distance of nucleotides to merge peaks
 peak_id: "all" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
 DE_method: "manorm" #choose DE method ["manorm","none"]
 splice_junction: "Y" #include splice junctions in peak calls: "manorm" #choose DE method ["manorm","none"]
