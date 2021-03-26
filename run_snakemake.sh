@@ -50,9 +50,9 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
 
   #submit jobs to cluster
   if [[ $pipeline = "cluster" ]]; then
-    sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --output=${output_dir}/log/${log_time}_%j_%x.out --mail-type=BEGIN,END,FAIL \
-    snakemake --use-envmodules --latency-wait 120  -s ${output_dir}/log/${log_time}_Snakefile --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
-    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_cluster_config.yml --keep-going \
+    sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --output=${output_dir}/log/${log_time}_%j_00_%x.out --mail-type=BEGIN,END,FAIL \
+    snakemake --use-envmodules --latency-wait 120  -s ${output_dir}/log/${log_time}_00_Snakefile --configfile ${output_dir}/log/${log_time}_00_snakemake_config.yaml \
+    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_00_cluster_config.yml --keep-going \
     --restart-times 1 --cluster "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
     --job-name={params.rname} --output=${output_dir}/log/${log_time}_{params.rname}.out" -j 500 --rerun-incomplete
@@ -63,8 +63,8 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     if [ -d "/tmp/iCount" ]; then 
       rm -r /tmp/iCount/ 
     fi
-    snakemake -s ${output_dir}/log/${log_time}_Snakefile --use-envmodules --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
-    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_cluster_config.yml --cores 8
+    snakemake -s ${output_dir}/log/${log_time}_00_Snakefile --use-envmodules --configfile ${output_dir}/log/${log_time}_00_snakemake_config.yaml \
+    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_00_cluster_config.yml --cores 8
   fi
 #Unlock pipeline
 elif [[ $pipeline = "unlock" ]]; then
