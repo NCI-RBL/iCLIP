@@ -26,7 +26,7 @@ DE_method: "manorm" #choose DE method ["manorm","none"]
 splice_junction: "Y" #include splice junctions in peak calls: "manorm" #choose DE method ["manorm","none"]
 
 #modules, container parameters
-container_dir: "/data/RBL_NCI/iCLIP/container"
+container_dir: "/data/CCBR_Pipeliner/iCLIP/container"
 bedtools: "bedtools/2.29.2"
 bowtie2: "bowtie/2-2.3.4"
 fastq_screen: "fastq_screen/0.14.0"
