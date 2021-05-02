@@ -30,6 +30,17 @@ source_dir=$(echo $config_source_dir | sed 's:/*$::')
 #Run pipeline on cluster or locally
 if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
 
+  #create output dir
+  if [ -d "${output_dir}" ]
+    then
+      echo
+      echo "Output dir: ${output_dir}"
+    else
+      mkdir "${output_dir}"
+      echo
+      echo "Creating output dir: ${output_dir}"
+    fi
+
   #create log dir
   if [ -d "${output_dir}/log" ]
   then
