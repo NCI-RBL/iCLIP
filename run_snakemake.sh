@@ -83,6 +83,9 @@ elif [[ $pipeline = "unlock" ]]; then
 elif [[ $pipeline = "test" ]]; then
   snakemake -s workflow/Snakefile --configfile .tests/snakemake_config.yaml \
   --printshellcmds --cluster-config config/cluster_config.yml -npr
+#Create DAG
+elif [[ $pipeline = "DAG" ]]; then
+  snakemake -s workflow/Snakefile --configfile .tests/snakemake_config.yaml --rulegraph | dot -Tpdf > dag.pdf
 #Dry-run pipeline
 else
   #run snakemake
