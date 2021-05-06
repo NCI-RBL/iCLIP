@@ -23,9 +23,10 @@ minimum_count: 3 #minimum number of matches to count as a peak [1,2,3]
 nt_merge: 50 #minimum distance of nucleotides to merge peaks [10,20,30,40,50,60]
 peak_id: "all" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
 DE_method: "manorm" #choose DE method ["manorm","none"]
+splice_junction: "Y" #include splice junctions in peak calls: "manorm" #choose DE method ["manorm","none"]
 
 #modules, container parameters
-container_dir: "/data/RBL_NCI/iCLIP/container"
+container_dir: "/data/CCBR_Pipeliner/iCLIP/container"
 bedtools: "bedtools/2.29.2"
 bowtie2: "bowtie/2-2.3.4"
 fastq_screen: "fastq_screen/0.14.0"
@@ -36,7 +37,7 @@ novocraft: "novocraft/4.03.01"
 perl: "perl/5.24.3"
 python: "python/3.7"
 Qt: "Qt/5.13.2"
-singularity: "singularity/3.7.0"
+singularity: "singularity"
 samtools: "samtools/1.11"
 umitools: "umitools/1.1.1"
 subread: "subread/2.0.1"

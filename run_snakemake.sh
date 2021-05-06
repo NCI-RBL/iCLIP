@@ -23,11 +23,23 @@ eval $(parse_yaml config/snakemake_config.yaml "config_")
 log_time=`date +"%Y%m%d_%H%M"`
 s_time=`date +"%Y%m%d_%H%M%S"`
 
-#clean config_output_dir
-output_dir=${config_output_dir}
+#remove trailing / on directories
+output_dir=$(echo $config_output_dir | sed 's:/*$::')
+source_dir=$(echo $config_source_dir | sed 's:/*$::')
 
 #Run pipeline on cluster or locally
 if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
+
+  #create output dir
+  if [ -d "${output_dir}" ]
+    then
+      echo
+      echo "Output dir: ${output_dir}"
+    else
+      mkdir "${output_dir}"
+      echo
+      echo "Creating output dir: ${output_dir}"
+    fi
 
   #create log dir
   if [ -d "${output_dir}/log" ]
@@ -45,17 +57,26 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
-    cp $f "${output_dir}/log/${log_time}_${strarr[-1]}"
+    cp $f "${output_dir}/log/${log_time}_00_${strarr[-1]}"
   done
+
+  # copy workflow dir for archiving
+  if [ -d "${output_dir}/workflow" ]
+  then
+    echo "Using previously generated iCLIP pipeline"
+  else
+    mkdir "${output_dir}/workflow"
+    cp -r "${source_dir}/workflow/" "${output_dir}/"
+  fi
 
   #submit jobs to cluster
   if [[ $pipeline = "cluster" ]]; then
-    sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --output=${output_dir}/log/%j_%x.out --mail-type=BEGIN,END,FAIL \
-    snakemake --use-envmodules --latency-wait 120  -s workflow/Snakefile --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
-    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_cluster_config.yml --keep-going \
+    sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --output=${output_dir}/log/${log_time}_00_%j_%x.out --mail-type=BEGIN,END,FAIL \
+    snakemake --use-envmodules --latency-wait 120  -s ${output_dir}/workflow/Snakefile --configfile ${output_dir}/log/${log_time}_00_snakemake_config.yaml \
+    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_00_cluster_config.yml --keep-going \
     --restart-times 1 --cluster "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
-    --job-name={params.rname} --output=${output_dir}/log/${s_time}_{params.rname}.out" -j 500 --rerun-incomplete
+    --job-name={params.rname} --output=${output_dir}/log/${log_time}_{params.rname}.out" -j 500 --rerun-incomplete
 
   #submit jobs locally
   else
@@ -63,8 +84,8 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     if [ -d "/tmp/iCount" ]; then 
       rm -r /tmp/iCount/ 
     fi
-    snakemake -s workflow/Snakefile --use-envmodules --configfile ${output_dir}/log/${log_time}_snakemake_config.yaml \
-    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_cluster_config.yml --cores 8
+    snakemake -s ${output_dir}/workflow/Snakefile --use-envmodules --configfile ${output_dir}/log/${log_time}_00_snakemake_config.yaml \
+    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_00_cluster_config.yml --cores 8
   fi
 #Unlock pipeline
 elif [[ $pipeline = "unlock" ]]; then
@@ -73,6 +94,9 @@ elif [[ $pipeline = "unlock" ]]; then
 elif [[ $pipeline = "test" ]]; then
   snakemake -s workflow/Snakefile --configfile .tests/snakemake_config.yaml \
   --printshellcmds --cluster-config config/cluster_config.yml -npr
+#Create DAG
+elif [[ $pipeline = "DAG" ]]; then
+  snakemake -s workflow/Snakefile --configfile .tests/snakemake_config.yaml --rulegraph | dot -Tpdf > dag.pdf
 #Dry-run pipeline
 else
   #run snakemake
