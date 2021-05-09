@@ -250,6 +250,22 @@ def umi_parameter(wildcards):
         umi_sep="_"
     return(umi_sep)
 
+def get_split_input(wildcards):
+    if (splice_aware == "N"):
+        f1 = join(out_dir,'04_sam','01_splice_unaware',wildcards.sp + '.split.' + wildcards.n + '.sam'),
+    else:
+        f1 = join(out_dir,'04_sam','06_complete',wildcards.sp + '.split.' + wildcards.n + '.final.sam'),
+    return(f1)
+
+
+def get_dedup_input(wildcards):
+    if "N":
+        f1 = join(out_dir,'11_mapq_score', wildcards.sp + '.final.bam'),
+    else:
+        f1 = join(out_dir,'11_mapq_score', wildcards.sp + '.final.bam'),
+    
+    return(f1)
+
 #read manifests
 df_multiplex = pd.read_csv(multiplex_manifest,sep="\t")
 df_samples = pd.read_csv(sample_manifest,sep="\t")
@@ -294,9 +310,6 @@ rule all:
         expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
         expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
         
-        #Unzip samples
-        #expand(join(out_dir,'02_unzip','{sp}.fastq'), sp=sp_list),
-         
         #FastQ Screen
         expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
         expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
@@ -329,25 +342,29 @@ rule all:
         join(out_dir,'qc','qc_report.html'),
 
         #Deduplicate
-        expand(join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'), sp=sp_list),
-        expand(join(out_dir,'10_dedup_split/{sp}.dedup.unique.i.bam'), sp=sp_list),
+        expand(join(out_dir,'10_dedup_bam/{sp}.dedup.si.bam'), sp=sp_list),
+
+        #MapQ recalculation
+
+        #Bam processing
+        expand(join(out_dir,'12_dedup_split/{sp}.dedup.unique.i.bam'), sp=sp_list),
 
         #Bed files
-        expand(join(out_dir,'11_bed','{sp}_all.bed'), sp=sp_list),
-        expand(join(out_dir,'11_bed','{sp}_unique.bed'), sp=sp_list),
+        expand(join(out_dir,'13_bed','{sp}_all.bed'), sp=sp_list),
+        expand(join(out_dir,'13_bed','{sp}_unique.bed'), sp=sp_list),
 
         #SAF 
-        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_all.SAF'), sp=sp_list),
-        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
+        expand(join(out_dir,'14_SAF/{sp}_'+ str(nt_merge) +'_all.SAF'), sp=sp_list),
+        expand(join(out_dir,'14_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
 
         #Count features
-        expand(join(out_dir,'13_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'13_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'15_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'15_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'15_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'15_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
 
         # #In progress
-        # join(out_dir,'14_project_annotation','annotations.txt'),
+        # join(out_dir,'16_project_annotation','annotations.txt'),
         #expand(join(out_dir,'14_peaks/{sp}_' + str(nt_merge) + '_peakjunction.txt'),sp=sp_list),
         #join(out_dir,'15_annotation','annotations.txt'),
 
@@ -652,26 +669,55 @@ rule split_files:
         split --additional-suffix .fastq -l {params.cmd} --numeric-suffixes=10 {input.f1} {params.base}
         """
 
-if (splice_aware == "N"):
-    rule novoalign:
+rule novoalign_nonsplice:
+    """
+    alignment for non-splice aware pipeline and for splice aware pipeline MAPQ recalculation
+    """
+    input:
+        f1 = join(out_dir,'03_split','{sp}.split.{n}.fastq'),
+    params:
+        rname='12a_novo1',
+        n_index = nova_index,
+    envmodules:
+        config['novocraft']
+    output:
+        o1 = join(out_dir,'04_sam','01_splice_unaware','{sp}.split.{n}.sam'),
+    shell:
         """
-        aligns files to index given; output is a sam file
+        set +e
+        novoalign -d {params.n_index} -k \
+        -f {input.f1} -F STDFQ -c 32 \
+        -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
+        -R 0 -r All 999 > {output.o1}
+        exitcode=$?
+        if [ $exitcode -eq 1 ]
+        then
+            exit 1
+        else
+            exit 0
+        fi
+        """
+
+if (splice_aware == "Y"):
+    rule novoalign_splice1:
+        """
+        aligns to exon masked genome + transcriptome
         """
         input:
-            f1 = join(out_dir,'03_split','{sp}.split.{n}.fastq'),
+            f1 = join(out_dir,'03_split','{sp_st}.split.{n}.fastq'),
         params:
-            rname='12_novo',
+            rname='12a_novo2',
             n_index = nova_index,
         envmodules:
-            config['novocraft']    
+            config['novocraft']   
         output:
-            o1 = join(out_dir,'04_sam','{sp}.split.{n}.sam'),
+            o1 = join(out_dir,'04_sam','02_splice_aware','{sp_st}.split.{n}.splice.sam'),
         shell:
             """
             set +e
-            novoalign -d {params.n_index} -k \
-            -f {input.f1} -F STDFQ -c 32 \
-            -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
+            novoalign -d {params.n_index}\
+            -f {input.f1} -F STDFQ -c 56 \
+            -t 15,3 -l 20 -x 4 -g 20 -o SAM \
             -R 0 -r All 999 > {output.o1}
             exitcode=$?
             if [ $exitcode -eq 1 ]
@@ -681,21 +727,21 @@ if (splice_aware == "N"):
                 exit 0
             fi
             """
-else:
-    rule novoalign_splice:
+    
+    rule novoalign_splice2:
         """
         aligns files to index given; output is a sam file
-        functionally equiv to rule novoalign, expect for output file name
+        To genome + transcriptome
         """
         input:
             f1 = join(out_dir,'03_split','{sp_st}.split.{n}.fastq'),
         params:
-            rname='12_novo',
+            rname='12a_novo3',
             n_index = nova_index,
         envmodules:
             config['novocraft']   
         output:
-            o1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.sam'),
+            o1 = join(out_dir,'04_sam','03_splice_aware','{sp_st}.split.{n}.splice.sam'),
         shell:
             """
             set +e
@@ -717,18 +763,20 @@ else:
         performs cleanup for inserts
         """
         input:
-            f1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.sam'),
+            f1 = join(out_dir,'04_sam','03_splice_aware','{sp_st}.split.{n}.splice.sam'),
         params:
             rname = '12b_sam_cleanup'
         envmodules:
             config['samtools']  
         output:
-            g1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.tmp.sam'),
-            final = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.final.sam'),
+            g1 = join(out_dir,'04_sam','03_splice_aware','{sp_st}.split.{n}.tmp.sam'),
+            final = join(out_dir,'04_sam','03_splice_aware','{sp_st}.split.{n}.splice.final.sam'),
+            unmapped = join(out_dir,'04_sam','04_unmapped','{sp_st}.split.{n}.splice.unmapped.sam'),
         shell:
             """
             samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > {output.g1};
-            samtools view -H {input.f1} | cat - {output.g1} > {output.final}
+            samtools view -H {input.f1} | cat - {output.g1} > {output.final}; 
+            samtools view -f 4 {input.f1} > {output.unmapped};
             """
 
     rule convert_transcript:
@@ -737,15 +785,15 @@ else:
         uses USeq version 8.9.6
         """
         input:
-            f1 = join(out_dir,'04_sam_splice','{sp_st}.split.{n}.splice.final.sam'),
+            f1 = join(out_dir,'04_sam','03_splice_aware','{sp_st}.split.{n}.splice.final.sam'),
         params:
             rname = '12c_convert',
-            base = join(out_dir,'04_sam_genomic','{sp_st}.split.{n}.sam'),
+            base = join(out_dir,'04_sam','05_genomic','{sp_st}.split.{n}.sam'),
             doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
         envmodules:
             config['java']  
         output:
-            o1 = join(out_dir,'04_sam_genomic','{sp_st}.split.{n}.sam.gz'),
+            o1 = join(out_dir,'04_sam','05_genomic','{sp_st}.split.{n}.sam.gz'),
         shell:
             """
             java -Djava.io.tmpdir={params.base} -jar -Xmx50G -jar {params.doc} \
@@ -758,37 +806,44 @@ else:
         unzips sam file
         """
         input:
-            f1 = join(out_dir,'04_sam_genomic','{sp_st}.split.{n}.sam.gz'),
+            f1 = join(out_dir,'04_sam','05_genomic','{sp_st}.split.{n}.sam.gz'),
         params:
             rname = '12d_gzipsam'
         output:
-            o1 = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
+            o1 = join(out_dir,'04_sam','05_genomic','{sp_st}.split.{n}.sam'),
         shell:
             """
             gunzip -c {input.f1} > {output.o1}
             """
 
-    rule novosort:
+    rule merge_unmapped_reads:
         """
-        Q: where does this belong? this step wasn't included in the original pipeline and creates a new BAM file
-
-        samtools view -uS bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.sam 2> bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.convert.err
-        | novosort -  > bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.bam
+        purpose: unmapped reads are removed during genomic coordinates conversion, need to include them in final file
+        convert sam file to bam file
+        merge unmapped reads from cleanup to into final sam
+        convert bam back to sam file
         """
         input:
-            f1 = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
+            converted = join(out_dir,'04_sam','05_genomic','{sp_st}.split.{n}.sam'),
+            unmapped = join(out_dir,'04_sam','04_splice_aware','{sp_st}.split.{n}.splice.unmapped.sam'),
         params:
-            rname = '12e_novosort'
+            rname = '12d_gzipsam',
         envmodules:
-            config['samtools']      
+            config['samtools'],
         output:
-            o1 = join(out_dir,'05_bam','{sp_st}.split.{n}.bam'),
+            bam = join(out_dir,'04_sam','06_complete','{sp_st}.split.{n}.bam'),
+            unmapped = join(out_dir,'04_sam','06_complete','{sp_st}.split.{n}.unmapped.bam'),
+            merged = join(out_dir,'04_sam','06_complete','{sp_st}.split.{n}.merged.bam'),
+            final = join(out_dir,'04_sam','06_complete','{sp_st}.split.{n}.final.sam'),
         shell:
             """
-            samtools view -uS {input.f1} 2> bam/splitNovoAlign/WT/WT_Clip_iCountcutadpt.split.dg.all.convert.err
-            | novosort -  > {output.o1}
+            samtools view -S -b {input.converted} > {output.bam};
+            samtools merge -f {output.merged} {input.unmapped} {output.bam};
+            samtools view -h -o {output.final} {output.merged}; 
             """
-
+else:
+    print ("TEST")
+    
 rule split_mm_unique:
     """
     creates two text files from sam file
@@ -796,11 +851,11 @@ rule split_mm_unique:
     2. MM file with NH:i
     """
     input:
-        f1 = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
+        f1 = get_split_input
     params:
         rname='13_split_mu',
     envmodules:
-        config['samtools']  
+        config['samtools']
     output:
         o1 = join(out_dir,'05_reads','{sp_st}.split.{n}.unique.txt'),
         o2 = join(out_dir,'05_reads','{sp_st}.split.{n}.mm.txt'),
@@ -823,7 +878,7 @@ rule sam_to_header:
     read sam file header, print to header txt
     """
     input:
-        sam = join(out_dir,'04_sam','{sp_st}.split.{n}.sam'),
+        sam = get_split_input
     params:
         rname='14_sam_head',
     envmodules:
@@ -1128,8 +1183,8 @@ rule dedup:
     envmodules:
         config['umitools']  
     output:
-        o1 = join(out_dir,'09_dedup_bam','{sp}.dedup.bam'),
-        o2 = join(out_dir,'09_dedup_bam','{sp}.dedup.log'),
+        o1 = join(out_dir,'10_dedup_bam','{sp}.dedup.bam'),
+        o2 = join(out_dir,'10_dedup_bam','{sp}.dedup.log'),
     shell:
         """
         umi_tools dedup \
@@ -1139,19 +1194,97 @@ rule dedup:
         --log2stderr -L {output.o2};
         """
 
+if (splice_aware == "Y"):
+    rule generate_readids:
+        """
+        TODO
+        """
+        input:
+            f1 = join(out_dir,'10_dedup_bam','{sp}.dedup.bam'),
+        params:
+            rname='28_readids',
+            script = join(source_dir,'workflow','scripts','.py'),
+        envmodules:
+            config['python']  
+        output:
+            o1 = join(out_dir,'11_mapq_score','{sp}.'),
+        shell:
+            """
+            python {params.script}
+            """
+
+    rule subsample_reads:
+        """
+        TODO
+        **subsample "A) splice unaware" BAM and "B) splice aware 1" BAM files using the readids from (C)
+        """
+        input:
+            bam = join(out_dir,'10_dedup_bam','{sp}.dedup.bam'),
+            id = join(out_dir,'11_mapq_score','{sp}.'),
+        params:
+            rname='29_subsample',
+            script = join(source_dir,'workflow','scripts','.py'),
+        envmodules:
+            config['python']  
+        output:
+            o1 = join(out_dir,'11_mapq_score','{sp}.subsample.bam'),
+        shell:
+            """
+            python {params.script}
+            """
+
+    rule mapq_recalc:
+        """
+        TODO
+        **input deduplicate (C) BAM file and the 2 BAMs subset A) and subset B) pysam script for MAPQ correction - outputs D) updated mapq score bam file
+        """
+        input:
+            bam = join(out_dir,'10_dedup_bam','{sp}.dedup.bam'),
+            sub = join(out_dir,'11_mapq_score','{sp}.subsample.bam'),
+        params:
+            rname='30_recalc',
+            script = join(source_dir,'workflow','scripts','.py'),
+        envmodules:
+            config['python']  
+        output:
+            o1 = join(out_dir,'11_mapq_score','{sp}.final.bam'),
+        shell:
+            """
+            python {params.script} {input.sub} {input.bam}
+            """
+
+    rule mapq_stats:
+        """
+        TODO
+        **Use D) for visualization
+        """
+        input:
+            f1 = expand(join(out_dir,'11_mapq_score','{sp}.final.bam'),sp=sp_list),
+        params:
+            rname='31_mapq_stats',
+            script = join(source_dir,'workflow','scripts','.py'),
+        envmodules:
+            config['R']  
+        output:
+            o1 = join(out_dir,'11_mapq_score','report.pdf'),
+        shell:
+            """
+            Rscript {params.script} {input.f1} {output.o1}
+            """
+
 rule sort_index_dedup:
     """
     sort dedup.bam file
     """
     input:
-        f1 = join(out_dir,'09_dedup_bam','{sp}.dedup.bam'),
+        f1 = get_dedup_input
     params:
-        rname='28_si_dedup',
+        rname='32_si_dedup',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
-        o12 = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam.bai'),
+        o1 = join(out_dir,'10_dedup_bam','{sp}.dedup.si.bam'),
+        o12 = join(out_dir,'10_dedup_bam','{sp}.dedup.si.bam.bai'),
     shell:
         """
         samtools sort {input.f1} -o {output.o1};
@@ -1163,13 +1296,13 @@ rule dedup_header:
     cat bam header
     """
     input:
-        f1 = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
+        f1 = join(out_dir,'10_dedup_bam','{sp}.dedup.si.bam'),
     params:
         rname='29_dedup_head',
     envmodules:
         config['samtools']   
     output:
-        o1 = join(out_dir,'09_dedup_bam','{sp}.dedup.header.txt'),
+        o1 = join(out_dir,'10_dedup_bam','{sp}.dedup.header.txt'),
     shell:
         """
         samtools view -H {input.f1} > {output.o1}
@@ -1180,14 +1313,14 @@ rule dedup_unique:
     split dedup file into multimapped and unique files
     """
     input:
-        bam = join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'),
-        h = join(out_dir,'09_dedup_bam/{sp}.dedup.header.txt'),
+        bam = join(out_dir,'10_dedup_bam/{sp}.dedup.si.bam'),
+        h = join(out_dir,'10_dedup_bam/{sp}.dedup.header.txt'),
     params:
         rname='30_split_dedup',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'10_dedup_split/{sp}.dedup.unique.bam'),
+        o1 = join(out_dir,'12_dedup_split/{sp}.dedup.unique.bam'),
     shell:
         """
         set +e
@@ -1206,13 +1339,13 @@ rule index_dedup_unique:
     index deduped unique file
     """
     input:
-        f1 = join(out_dir,'10_dedup_split','{sp}.dedup.unique.bam'),
+        f1 = join(out_dir,'12_dedup_split','{sp}.dedup.unique.bam'),
     params:
         rname='31_index_splitu',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'10_dedup_split','{sp}.dedup.unique.i.bam'),
+        o1 = join(out_dir,'12_dedup_split','{sp}.dedup.unique.i.bam'),
     shell:
         """
         cp {input.f1} {output.o1}; samtools index {output.o1};
@@ -1223,15 +1356,15 @@ rule create_beds:
     create bed file from the deduped unique file and deduped all file
     """
     input:
-        all = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
-        unique = join(out_dir,'10_dedup_split','{sp}.dedup.unique.i.bam'),
+        all = join(out_dir,'10_dedup_bam','{sp}.dedup.si.bam'),
+        unique = join(out_dir,'12_dedup_split','{sp}.dedup.unique.i.bam'),
     params:
         rname='32_bed',
     envmodules:
         config['bedtools']  
     output:
-        all = join(out_dir,'11_bed','{sp}_all.bed'),
-        unique = join(out_dir,'11_bed','{sp}_unique.bed')
+        all = join(out_dir,'13_bed','{sp}_all.bed'),
+        unique = join(out_dir,'13_bed','{sp}_unique.bed')
     shell:
         """
         bedtools bamtobed \
@@ -1245,15 +1378,15 @@ rule create_safs:
     create SAF files from the deduped unique bed and all bed files
     """
     input:
-        all = join(out_dir,'11_bed','{sp}_all.bed'),
-        unique = join(out_dir,'11_bed','{sp}_unique.bed')
+        all = join(out_dir,'13_bed','{sp}_all.bed'),
+        unique = join(out_dir,'13_bed','{sp}_unique.bed')
     params:
         rname='33_saf',
     envmodules:
         config['bedtools']  
     output:
-        all = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '_all.SAF'),
-        unique = join(out_dir,'12_SAF/{sp}_' + str(nt_merge) + '_unique.SAF')
+        all = join(out_dir,'14_SAF/{sp}_' + str(nt_merge) + '_all.SAF'),
+        unique = join(out_dir,'14_SAF/{sp}_' + str(nt_merge) + '_unique.SAF')
     shell:
         """
         bedtools merge \
@@ -1274,15 +1407,15 @@ rule feature_counts_allreads:
     When peaks counts are combined for peaks connected by splicing in Rscript)
     """
     input:
-        bam = join(out_dir,'09_dedup_bam','{sp}.dedup.si.bam'),
-        saf = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '_all.SAF')
+        bam = join(out_dir,'10_dedup_bam','{sp}.dedup.si.bam'),
+        saf = join(out_dir,'14_SAF','{sp}_' + str(nt_merge) + '_all.SAF')
     params:
         rname='34_allreads',
     envmodules:
         config['subread']  
     output:
-        out_unique = join(out_dir,'13_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
-        out_all = join(out_dir,'13_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
+        out_unique = join(out_dir,'15_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
+        out_all = join(out_dir,'15_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
     shell:
         """
         featureCounts -F SAF \
@@ -1316,15 +1449,15 @@ rule feature_counts_uniquereads:
     whole count for the unique alignement in combined peak.
     """
      input:
-        bam = join(out_dir,'09_dedup_bam/{sp}.dedup.si.bam'),
-        saf = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '_unique.SAF'),
+        bam = join(out_dir,'10_dedup_bam/{sp}.dedup.si.bam'),
+        saf = join(out_dir,'14_SAF','{sp}_' + str(nt_merge) + '_unique.SAF'),
     params:
         rname='35_saf',
     envmodules:
         config['subread']  
     output:
-        out_unique = join(out_dir,'13_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
-        out_all = join(out_dir,'13_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
+        out_unique = join(out_dir,'15_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
+        out_all = join(out_dir,'15_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
     shell:
         """
         featureCounts -F SAF \
@@ -1355,7 +1488,7 @@ rule project_annotations:
     generate annotation table once per project
     """
     input:
-        expand(join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'15_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
     params:
         rname='36_proj_anno',
         script = join(source_dir,'workflow','scripts','06_annotation.R'),
@@ -1367,16 +1500,16 @@ rule project_annotations:
         c_path = can_path,
         i_path = intron_path,
         r_path = rmsk_path,
-        base = join(out_dir,'14_project_annotation/'),
+        base = join(out_dir,'16_project_annotation/'),
         a_config = annotation_config,       
     envmodules:
         config['R']
     output:
-        anno = join(out_dir,'14_project_annotation','annotations.txt'),
-        ncRNA = join(out_dir,'14_project_annotation','ncRNA_annotations.txt'),
-        alias = join(out_dir,'14_project_annotation','ref_alias.csv'),
-        refseq = join(out_dir,'14_project_annotation','ref_refseq.csv'),
-        lncRNA = join(out_dir,'14_project_annotation','ref_lncRNA.csv'),
+        anno = join(out_dir,'16_project_annotation','annotations.txt'),
+        ncRNA = join(out_dir,'16_project_annotation','ncRNA_annotations.txt'),
+        alias = join(out_dir,'16_project_annotation','ref_alias.csv'),
+        refseq = join(out_dir,'16_project_annotation','ref_refseq.csv'),
+        lncRNA = join(out_dir,'16_project_annotation','ref_lncRNA.csv'),
     shell:
         """
         Rscript {params.script} \
@@ -1403,9 +1536,9 @@ rule peak_annotations:
 
     '''
     input:
-        unique = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
-        all = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
-        anno = join(out_dir,'14_project_annotation','annotations.txt'),
+        unique = join(out_dir,'15_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
+        all = join(out_dir,'15_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
+        anno = join(out_dir,'16_project_annotation','annotations.txt'),
     params:
         rname = '37_peak_anno',
         script = join(source_dir,'workflow','scripts','07_peak_annotation.R'),
@@ -1416,7 +1549,7 @@ rule peak_annotations:
         sp = "{sp}",
         n_merge = nt_merge,
         base = join(out_dir,'15_peak_annotation/'),
-        anno_dir = join(out_dir,'14_project_annotation/'),
+        anno_dir = join(out_dir,'16_project_annotation/'),
         ref_sp = nova_ref,
         masker_path = rmsk_path
     envmodules:
