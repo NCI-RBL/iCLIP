@@ -73,10 +73,12 @@ split_value = check_split(split_value)
 index_manifest = join(source_dir, 'config', 'index_config.yaml')
 with open(index_manifest) as file:
     index_list = yaml.load(file, Loader=yaml.FullLoader)
-if (splice_aware=='N'):
-    nova_index = index_list[nova_ref]['std']
-else:
-    nova_index = index_list[nova_ref]['spliceaware'][str(splice_bp)+'bp']
+
+#unaware index
+nova_index = index_list[nova_ref]['std']
+if (splice_aware=='Y'):
+    nova_index_masked = index_list[nova_ref]['spliceaware_masked'][str(splice_bp)+'bp']
+    nova_index_unmasked = index_list[nova_ref]['spliceaware_unmasked'][str(splice_bp)+'bp']
 
 #reference selection
 if (nova_ref == "mm10"):
@@ -699,7 +701,7 @@ rule novoalign_nonsplice:
         """
 
 if (splice_aware == "Y"):
-    rule novoalign_splice1:
+    rule novoalign_masked:
         """
         aligns to exon masked genome + transcriptome
         """
@@ -707,7 +709,7 @@ if (splice_aware == "Y"):
             f1 = join(out_dir,'03_split','{sp_st}.split.{n}.fastq'),
         params:
             rname='12a_novo2',
-            n_index = nova_index,
+            n_index = nova_index_masked,
         envmodules:
             config['novocraft']   
         output:
@@ -728,7 +730,7 @@ if (splice_aware == "Y"):
             fi
             """
     
-    rule novoalign_splice2:
+    rule novoalign_unmasked:
         """
         aligns files to index given; output is a sam file
         To genome + transcriptome
@@ -737,7 +739,7 @@ if (splice_aware == "Y"):
             f1 = join(out_dir,'03_split','{sp_st}.split.{n}.fastq'),
         params:
             rname='12a_novo3',
-            n_index = nova_index,
+            n_index = nova_index_unmasked,
         envmodules:
             config['novocraft']   
         output:
