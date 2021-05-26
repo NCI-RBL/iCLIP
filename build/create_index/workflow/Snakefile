@@ -1,0 +1,497 @@
+#Authors:
+# Samantha Sevilla
+# Phil Homan
+
+# Overview
+# Pipeline generates indexes for species selected to be used in iCLIP pipeline
+
+#testing
+#rm -r /data/CCBR_Pipeliner/iCLIP/index/reference/052021/; sh run_snakemake.sh
+
+from os.path import join
+import pandas as pd
+from collections import defaultdict
+import yaml
+
+#config params
+species=config['species']
+out_dir=config['output_dir'].rstrip('/') + '/'
+cont_dir=config['container_dir']
+script_dir="/workflow/scripts/"
+
+#gencode version
+if species=="hg38":
+    gencode_v='32'
+else:
+    gencode_v='23'
+
+splice_list=['46']
+#splice_list=['46','71','146']
+
+#gather all locations within genome and output to text file
+def get_location_list():
+    list_path=join(out_dir, species, 'split_names.txt')
+
+    try:
+        my_file = open(list_path, "r")
+        content = my_file.readlines()
+        
+        loc_list = [s.replace(".fa", "") for s in content]
+        loc_list_clean = [s.replace("\n", "") for s in loc_list]
+
+    except:
+        return(0)
+
+    return(loc_list_clean)
+
+#subset location_list to include only files with sequences
+#input generated from rule transcriptome_list
+def get_clean_location_list():
+    list_path=join(out_dir,species,'05_transcript', 'location_list.txt')
+
+    try:
+        my_file = open(list_path, "r")
+        content = my_file.readlines()
+        
+        loc_list = [s.rsplit("/",1)[1] for s in content]
+        loc_list_newline = [s.replace("\n", "") for s in loc_list]
+        loc_list_clean = [s.replace(".phred", "") for s in loc_list_newline]
+    except:
+        return(0)
+
+    return(loc_list_clean)
+
+location_list = get_location_list()
+location_list_clean = get_clean_location_list()
+
+#local rules
+localrules: spliced_trans, transcriptome_list
+
+rule all:
+    input:
+        #source reference files
+        join(out_dir, species, '01_source', species + '_final.fa'),
+        join(out_dir, species, '01_source', species + '_scaff.gtf'),
+
+        #genome folder
+        join(out_dir,species,'02_split_genome','chrX.fa'),
+
+        #exon annotation
+        join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred'),
+        
+        #masked exon
+        join(out_dir,species,'04_exon_masked',species + '_maskedexon_SplicedTransc.fa'),
+
+        #split exon
+        expand(join(out_dir, species, '05_transcript', '00_phred','{loc}.phred'),loc=location_list),
+
+        #create transcriptome
+        join(out_dir,species,'05_transcript', 'location_list.txt'),
+        
+        expand(join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
+        
+        #expand(join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
+        #expand(join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
+
+        #remove junctions
+        #expand(join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.splices.fasta'), splice=splice_list),
+        #expand(join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.transcripts.fasta'), splice=splice_list),
+
+        #final indices
+        #join(out_dir, species, '07_final', species + '_final.nix'),
+        #expand(join(out_dir,species,'07_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
+        #xpand(join(out_dir,species,'07_final', species + '_final_completed_{splice}.nix'), splice=splice_list),
+
+#download source reference files
+if species=='hg38':
+    rule download_fa:
+        params:
+            rname = '01a_dl_fa',
+            ftp = 'http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_' + gencode_v + '/GRCh38.p13.genome.fa.gz',
+            base = join(out_dir, species, '01_source')
+        output:
+            o1 = join(out_dir, species, '01_source', 'GRCh38.p13.genome.fa.gz'),
+        shell:
+            """
+            wget -P {params.base} {params.ftp}
+            """
+
+    rule download_scaff:
+        params:
+            rname = '01a_dl_scaff',
+            ftp = 'http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_' + gencode_v + '/gencode.v' + gencode_v + '.chr_patch_hapl_scaff.annotation.gtf.gz',
+            base = join(out_dir, species, '01_source')
+        output:
+            o1 = join(out_dir, species, '01_source', 'gencode.v' + gencode_v + '.chr_patch_hapl_scaff.annotation.gtf.gz'),
+        shell:
+            """
+            wget -P {params.base} {params.ftp}
+            """
+
+    rule gunzip_refs:
+        input:
+            f1 = join(out_dir, species,'01_source', 'GRCh38.p13.genome.fa.gz'),
+            f2 = join(out_dir, species, '01_source', 'gencode.v' + gencode_v + '.chr_patch_hapl_scaff.annotation.gtf.gz'),
+        params:
+            rname = '01b_ref_final',
+        output:
+            o1 = join(out_dir, species, '01_source', species + '_final.fa'), 
+            o2 = join(out_dir, species, '01_source', species + '_scaff.gtf'), 
+        shell:
+            """
+            gunzip -c {input.f1} > {output.o1};         
+            gunzip -c {input.f2} > {output.o2}
+            """
+else:
+    rule download_refs:
+        '''
+        this step requires that the rRNA sequence of BK000964.3 has already been downloaded and saved to the location: 
+        /data/CCBR_Pipeliner/iCLIP/reference/GRCm38.p6.genome.gencodeM23_prerRNArepeat.fa
+
+        the file is the FASTA file downloaded from this location: https://www.ncbi.nlm.nih.gov/nuccore/BK000964.3?from=4008&to=5877&report=fasta
+
+        note: this is included in hg38 and therefore does not need to be separately added
+        '''
+        params:
+            rname = '01a_dl_fa',
+            ftp = 'http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M' + gencode_v + '/GRCm38.p6.genome.gencodeM' + gencode_v + '.fa.gz',
+            base = join(out_dir, species, '01_source')
+        output:
+            o1 =  join(out_dir, species, '01_source', 'GRCh38.p13.genome.fa.gz'),
+        shell:
+            """
+            wget -P {params.base} {params.ftp}
+            """
+
+    rule download_scaff:
+        params:
+            rname = '01a_dl_scaff',
+            ftp = 'http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M' + gencode_v + '/gencode.vM' + gencode_v + '.chr_patch_hapl_scaff.annotation.gtf.gz',
+            base = join(out_dir, species, '01_source')
+        output:
+            o1 = join(out_dir, species, '01_source', 'gencode.vM' + gencode_v + '.chr_patch_hapl_scaff.annotation.gtf.gz'),
+        shell:
+            """
+            wget -P {params.base} {params.ftp}
+            """
+
+    rule gunzip_cp_refs:
+        input:
+            f1 = join(out_dir, species,'01_source', 'GRCh38.p13.genome.fa.gz'),
+            f2 = join(out_dir, species, '01_source', 'gencode.vM' + gencode_v + '.chr_patch_hapl_scaff.annotation.gtf.gz'),
+            rrna = '/data/CCBR_Pipeliner/iCLIP/index/reference/source/BK000964.3_TPA_exp.fa'
+        params:
+            rname = '01b_ref_inter',
+        output:
+            o1 = join(out_dir, species, '01_source','gencode.fa'),
+            o2 = join(out_dir, species, '01_source', species + '_scaff.gtf'), 
+            o3 = join(out_dir, species,'01_source', 'BK000964.3_TPA_exp.fa')
+        shell:
+            """
+            gunzip {input.f1} > {output.o1};
+            gunzip {input.f2} > {output.o2};
+            cp {input.rrna} > {output.o3}
+            """
+
+    rule concatonate_refs:
+        input:
+            f1 = join(out_dir, species, '01_source', 'gencode.fa'),
+            f2 = join(out_dir, species, '01_source', 'BK000964.3_TPA_exp.fa')
+        params:
+            rname = '01c_ref_final'
+        output:
+            o1 = join(out_dir, species, '01_source', species + '_final.fa')
+        shell:
+            'cat {input.f1} {input.f2} > {output.o1}'
+
+rule split_genome:
+    '''
+    splits input fa into files by name (chrom, location)
+    include / on base file or output stored in parent dir
+    '''
+    input:
+        f1 = join(out_dir, species,'01_source', species + '_final.fa')
+    params:
+        rname = '02_split_genome',
+        base = join(out_dir, species, '02_split_genome/')
+    envmodules:
+        config['ucsc']
+    output:
+        o1 = join(out_dir,species,'02_split_genome','chrX.fa'), 
+        o2 = join(out_dir,species,'split_names.txt'), 
+    shell:
+        """
+        faSplit byname {input.f1} {params.base};
+        ls {params.base} > {output.o2}
+        """
+
+#create exon annotations
+if species=='hg38':
+    rule exon_annotation:
+        '''
+        '''
+        input:
+            f1 = join(out_dir, species, '01_source', species + '_scaff.gtf'), 
+        params:
+            rname = '03_exon_anno'
+        envmodules:
+            config['ucsc']
+        output:
+            o1 = join(out_dir, species, '03_exon_anno', species + '_scaff.phred'), 
+            o2 = join(out_dir, species, '03_exon_anno', species + '_scaff_sub.phred'),
+            o3 = join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred')
+        shell:
+            """
+            gtfToGenePred -genePredExt {input.f1} {output.o1}; \
+            awk 'BEGIN {{FS="\t"; OFS="\t"}} {{print $12, $1, $2, $3, $4, $5, $6, $7, $8, $9,$10, $11 }}' {output.o1} > {output.o2}; \
+            awk '{{ if($9>1) {{print}} }}' {output.o2} > {output.o3}
+            """
+else:
+    rule exon_annotation:
+        '''
+        combine gencode.v32.chr_patch_hapl_scaff.annotation.gtf.phred2 + BK000964.3.bed.phred2
+        
+        select only Spliced Transcripts
+        '''
+        input:
+            f1 = '/data/CCBR_Pipeliner/iCLIP/index/reference/source/BK000964.bed',
+            f2 = join(out_dir, species, '01_source', species + '_scaff.gtf'), 
+        params:
+            rname = '03_exon_anno'
+        output:
+            o1 = '/data/RBL_NCI/Phil/Reference/Index/novoalign/mm10_rRNA/MakeTranscriptome_genome/BK000964.3.bed.phred',
+            o2 = '/data/RBL_NCI/Phil/Reference/Index/novoalign/mm10_rRNA/MakeTranscriptome_genome/BK000964.3.bed.phred2',
+            o3 = join(out_dir, species, '03_exon_anno', species + '_scaff.phred'), 
+            o4 = join(out_dir, species, '03_exon_anno', species + '_scaff_sub.phred'),
+            o5 = join(out_dir, species, '03_exon_anno', species + '_scaff_sub+BK00964.phred'),
+            o6 = join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred')
+        shell:
+            """
+            bedToGenePred {input.f1} {output.o1}; \
+            awk 'BEGIN {{FS="\t"; OFS="\t"}} {{print $1, $2, $2, $3, $4, $5, $6, $7, $8, $9,$10, $5*0 }}' {output.o1} > {output.o2}; \
+            gtfToGenePred -genePredExt {input.f2} {output.o3}; \
+            awk 'BEGIN {{FS="\t"; OFS="\t"}} {{print $12, $1, $2, $3, $4, $5, $6, $7, $8, $9,$10, $11 }}' {output.o3} > {output.o4}; \
+            cat {output.o4} {output.o2} > {output.o5}; \
+            awk '{{ if($9>1) {{print}} }}' {output.o5} > {output.o6}
+            """
+
+rule masked_exon:
+    '''
+    input phred and split_genome folder
+    make Exon masked genome
+    '''
+        input:
+            f1 = join(out_dir,species,'02_split_genome','chrX.fa'),
+            f2 = join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred')
+        params:
+            rname = '04_masked_exon',
+            doc = join(cont_dir,'USeq_8.9.6','Apps/MaskExonsInFastaFiles'),
+            in_base = join(out_dir,species,'02_split_genome'),
+            out_base = join(out_dir,species,'04_exon_masked')
+        envmodules:
+            config['java']
+        output:
+            o1 = join(out_dir,species,'04_exon_masked',species + '_maskedexon.fa')
+        shell:
+            """
+            java -Xmx50G -jar {params.doc} \
+            -f {params.in_base} \
+            -u  {input.f2} \
+            -s {params.out_base}; \
+            awk 'FNR==0{{print ""}}1' {params.out_base}/*.fasta > {output.o1}
+            """
+
+rule spliced_trans:
+        '''
+        take list of file names from rule split_genome and split phred 
+
+        Splits phred file into individual chromosomes so that MakeTranscriptome step can run. Job will timeout if not split by chromosome
+
+        when grep does not find match, will give status of 1 which snakemake interprets as an error
+        '''
+        input:
+            f1 = join(out_dir, species, 'split_names.txt'),
+            phred = join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred'),
+        params:
+            loc_id = '{loc}'
+        envmodules:
+            config['ucsc']
+        output:
+            o1 = join(out_dir,species,'05_transcript', '00_phred','{loc}.phred')
+        shell:
+            """
+            grep {params.loc_id} {input.phred} > {output.o1} || true
+            """
+
+rule transcriptome_list:
+    '''
+    rule create_transcriptome will run an error if the phred file has no reads (created in rule splice_trans)
+    generates a list of all files that have at least one read (+0c)
+    '''
+    input:
+        expand(join(out_dir,species,'05_transcript', '00_phred','{loc}.phred'),loc=location_list)
+    params:
+        base = join(out_dir,species,'05_transcript', '00_phred')
+    output:
+        o1 = join(out_dir,species,'05_transcript', 'location_list.txt')
+    shell:
+        '''
+        find {params.base} -type f -size +0c > {output.o1}
+        '''
+
+rule create_transcriptome:
+    '''
+    create Transcriptome - SplicedTransc
+
+    flags are not consistent within USeq functions
+    http://useq.sourceforge.net/cmdLnMenus.html#MakeTranscriptome
+
+    will use subset of location_list (see rule transcriptome_list) to avoid errors with java / snakemake
+    '''
+    input:
+        f1 = join(out_dir,species,'05_transcript', '00_phred','{loc}.phred')
+    params:
+        rname = '05a_fasta',
+        doc = join(cont_dir,'USeq_8.9.6','Apps/MakeTranscriptome'),
+        in_base = join(out_dir,species,'02_split_genome'),
+    envmodules:
+        config['java']
+    output:
+        o1 = join(out_dir,species,'05_transcript', '00_phred','{loc}Rad{splice}Num100kMin10Splices.fasta.gz'),
+        o2 = join(out_dir,species,'05_transcript', '00_phred','{loc}Rad{splice}Num100kMin10Transcripts.fasta.gz')
+    shell:
+        """
+        java -Xmx100G -jar {params.doc} \
+        -f {params.in_base} \
+        -u {input.f1} \
+        -r "{wildcards.splice}" \
+        -s
+        """
+
+rule unzip_transcriptome:
+    '''
+    gunzip's file and add "." after location, before RA for readability
+    moves output to 01_fasta folder
+    '''
+    input:
+        f1 = join(out_dir,species,'05_transcript', '00_phred','{loc}Rad{splice}Num100kMin10Splices.fasta.gz'),
+        f2 = join(out_dir,species,'05_transcript', '00_phred','{loc}Rad{splice}Num100kMin10Transcripts.fasta.gz')
+    params:
+        rname = "05b_gunzip",
+        base = join(out_dir,species,'06_transcript_indiv')
+    output:
+        o1 = join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.splices.fasta'),
+        o2 = join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.transcripts.fasta'),
+    shell:
+        """
+        gunzip {input.f1} > {output.o1};
+        gunzip {input.f2} > {output.o2}
+        """
+
+rule merge_transcriptomes:
+    '''
+    Combine chr transcriptome fasta files
+
+    Clean up junctions, script removes potential duplicate junctions
+    '''
+        input:
+            splice_list = expand(join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.splices.fasta'),loc=location_list_clean,splice=splice_list),
+            trans_list = expand(join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.transcripts.fasta'),loc=location_list_clean,splice=splice_list)
+        params:
+            rname = '05c_merge',
+        output:
+            o1 = join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.splices.fasta'),
+            o2 = join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.transcripts.fasta')
+        shell:
+            """
+            cat {input.splice_list} > {output.o1};
+            cat {input.trans_list} > {output.o2}
+            """
+
+rule remove_duplicate_junctions:
+    input:
+        f1 = join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.splices.fasta'),
+        f2 = join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.transcripts.fasta')
+    params:
+        rname = "05d_remove_junctions",
+        script = join(script_dir,'remove_dup_splice_junctions.pl')
+    envmodules:
+            config['perl']
+    output:
+        o1 = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.splices.fasta'),
+        o2 = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.transcripts.fasta')
+    shell:
+        """
+        perl {params.script} {input.f1} {output.o1};
+        perl {params.script} {input.f2} {output.o2}
+        """
+
+rule final_unaware:
+    '''
+    not splice aware
+    '''
+        input:
+            f1 = join(out_dir, species, '01_source', species + '_final.fa')
+        params:
+            rname = '06a_final_nosplice'
+        envmodules:
+            config['novocraft']
+        output:
+            o1 = join(out_dir, species, '07_final', species + '_final.nix')
+        shell:
+            """
+            novoindex {output.o1} {input.f1}
+            """
+
+rule final_masked:
+    '''
+    ## masked Exon + Transcriptome
+    '''
+        input:
+            f1 = join(out_dir,species,'04_exon_masked', species + '_maskedexon.fa'),
+            splice = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.splices.fasta'),
+            trans = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.transcripts.fasta')
+        params:
+            rname = '06b_final_masked'
+        envmodules:
+            config['novocraft']
+        output:
+            o1 = join(out_dir,species,'07_final', species + '_final_maskedexon_{splice}.nix')
+        shell:
+            """
+            novoindex {output.o1} {input.f1} {input.splice} {input.trans}
+            """
+
+rule final_unmasked:
+    '''
+    Full genome + Transcriptome
+    '''
+        input:
+            f1 = join(out_dir, species, '01_source', species + '_final.fa'),
+            splice = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.splices.fasta'),
+            trans = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.transcripts.fasta')
+        params:
+            rname = '06c_final_unmasked'
+        envmodules:
+            config['novocraft']
+        output:
+            o1 = join(out_dir,species,'07_final', species + '_final_completed_{splice}.nix')
+        shell:
+            """
+            novoindex {output.o1} {input.f1} {input.splice} {input.trans}
+            """
+
+
+'''
+
+find . -type f -name '*Rad46Num100kMin10Splices.fasta' | while read FILE ; do\
+    newfile="$(echo ${FILE} |sed -e 's/Rad46Num100kMin10Splices.fasta/46.splices.fasta/')" ;\
+    mv "${FILE}" "${newfile}" ;\
+done 
+
+find . -type f -name '*Rad46Num100kMin10Transcripts.fasta' | while read FILE ; do\
+    newfile="$(echo ${FILE} |sed -e 's/Rad46Num100kMin10Transcripts.fasta/46.transcripts.fasta/')" ;\
+    mv "${FILE}" "${newfile}" ;\
+done
+'''

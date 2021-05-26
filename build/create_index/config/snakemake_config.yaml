@@ -1,0 +1,28 @@
+# Global configuration file for the pipeline
+#path to iCLIP directory
+source_dir: "/data/CCBR_Pipeliner/iCLIP/index/create_index/"
+
+#path to output directory
+output_dir: "/data/CCBR_Pipeliner/iCLIP/index/reference/052021/"
+
+#user parameters
+species: "hg38" #hg38 or mm10
+
+#modules, container parameters
+ucsc: "ucsc/411"
+container_dir: "/data/CCBR_Pipeliner/iCLIP/container"
+bedtools: "bedtools/2.29.2"
+bowtie2: "bowtie/2-2.3.4"
+fastq_screen: "fastq_screen/0.14.0"
+fastqc: "fastqc/0.11.9"
+java: "java/12.0.1"
+multiqc: "multiqc/1.9"
+novocraft: "novocraft/4.03.01"
+perl: "perl/5.24.3"
+python: "python/3.7"
+Qt: "Qt/5.13.2"
+singularity: "singularity"
+samtools: "samtools/1.11"
+umitools: "umitools/1.1.1"
+subread: "subread/2.0.1"
+R: "R/4.0"
