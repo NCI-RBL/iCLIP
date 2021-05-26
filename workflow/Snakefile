@@ -1176,7 +1176,6 @@ if (splice_aware == 'Y'):
             samtools index {input.masked}
             '''
 
-
     rule subsample_reads:
         """
         subsample:
@@ -1239,7 +1238,7 @@ if (splice_aware == 'Y'):
         input:
             f1 = expand(join(out_dir,'10_mapq_score','{sp}.mapq_recalculated.bam'),sp=sp_list),
         params:
-            rname='24d_mapq_stats',
+            rname='24c_mapq_stats',
             script = join(source_dir,'workflow','scripts','.py'),
         envmodules:
             config['R']  
