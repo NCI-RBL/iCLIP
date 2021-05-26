@@ -33,33 +33,36 @@ intron_path = args[7]
 rmsk_path = args[8]
 out_dir = args[9]
 reftable_path = args[10]
+refseq_rRNA = args[11]
 
 setwd("../../../../../")
 
 #testing information
 if(length(args)==0){
-  ref_dir = "Volumes/RBL_NCI/iCLIP/ref/annotations/"
+  ref_dir = "/Users/homanpj/Documents/Resources/ref/"
   ref_species = "hg38" ### need better name, match to snakemake
-  reftable_path = "Volumes/sevillas2/git/iCLIP/config/annotation_config.txt"
-
+  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iClip_Git/config/annotation_config.txt"
+  refseq_rRNA=T
+  
   ### fix need to figure out how to keep all this info - maybe a config? dict?
   alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
   if(ref_species == "mm10"){
     out_dir = "Volumes/data/CCBR_Projects/iCLIP/testing/"
-    gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt")
+    gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
     refseq_path = paste0(ref_dir, "mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
     canonical_path = paste0(ref_dir,"mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
     intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
     rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
-    soyeong_path= paste0(ref_dir,'mm10/AdditionalAnno/')
+    custom_path= paste0(ref_dir,'mm10/AdditionalAnno/')
     
   } else if (ref_species == "hg38"){
-    out_dir = "Volumes/data/CCBR_Projects/iCLIP/testing/"
-    gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
+    out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iClip_Git/workflow/scripts/AnnoTestPIPE/15_project_annotation/"
+    gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
     refseq_path = paste0(ref_dir, "hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
     canonical_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
     intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
     rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
+    custom_path= ""
   } 
 }
 
@@ -116,20 +119,21 @@ ref_gencode = ReplaceType(ref_gencode,"gene_type", type_list,"ncRNA")
 #create subsets used to annotate clip peaks separately 
 ref_gencode_t = subset(ref_gencode, feature == 'transcript')
 ref_gencode_e = subset( ref_gencode, feature == "exon")
-write.csv(ref_gencode_t,paste0(out_dir,"ref_gencode.csv"))
+write.table(ref_gencode_t,paste0(out_dir,"ref_gencode.txt"),col.names=T,sep = "\t")
 
 
 ##########################################################################################
 ############### canonical paths
 ##########################################################################################
-canonical=fread(canonical_path, header=T, sep="\t",stringsAsFactors = F,data.table=F)
-
-#remove version
-canonical$transcript=removeVersion(canonical$transcript)
-canonical$protein=removeVersion(canonical$protein)
-
-#remove #chrom column
-canonical = select(canonical, -c("#chrom"))
+# canonical=fread(canonical_path, header=T, sep="\t",stringsAsFactors = F,data.table=F)
+# 
+# #remove version
+# canonical$transcript=removeVersion(canonical$transcript)
+# canonical$protein=removeVersion(canonical$protein)
+# 
+# #remove #chrom column
+# # canonical = select(canonical, -c("#chrom"))
+# canonical=rename(canonical,chr="#chrom")
 
 ##########################################################################################
 ############### introns
@@ -172,7 +176,51 @@ intron_exon$ID=paste0(intron_exon$chr,':',intron_exon$start,'-',intron_exon$end)
 # get repeat regions and extra small RNA locations
 rmsk_GRCm38=fread(rmsk_path, header=T, sep="\t",stringsAsFactors = F,
                   data.table=F)
+rmsk_GRCm38$genoName=gsub("chr[0-9]+_|chrUn_|_random|_alt|_fix|chr[A-Z]_","",rmsk_GRCm38$genoName)
+rmsk_GRCm38$genoName=gsub("v",".",rmsk_GRCm38$genoName)
 
+##########################################################################################
+############### Alternate rRNA annotation
+##########################################################################################
+
+############### hg38 refseq rRNA
+
+if (ref_species=='hg38'&refseq_rRNA==T) {
+  ref_Refseq=fread(refseq_path, header=T, sep="\t",stringsAsFactors = F,data.table=F)
+  ref_Refseq=ref_Refseq[,!colnames(ref_Refseq)%in%'source']
+  ref_Refseq=dplyr::rename(ref_Refseq,
+                           gene_type='gene_biotype',
+                           ensembl_gene_id='gene_id',
+                           external_gene_name='gene'
+  )
+  ref_Refseq=ref_Refseq[is.na(ref_Refseq$seqname)==F,]
+  ref_Refseq=ref_Refseq[,duplicated(colnames(ref_Refseq))==F]
+  ref_Refseq=ref_Refseq[(ref_Refseq$feature)%in%'gene',]
+  
+  ##################################################  ###################################################
+  alias=fread(paste0(ref_dir,"/hg38/hg38.chromAlias.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F,skip = "#",fill=TRUE)
+  colnames(alias)=c('chr','alias2','aliasNCBI',"Refseq")
+  alias$aliasNCBI2=alias$aliasNCBI
+  alias[-grep('_',alias$chr),'aliasNCBI2']=alias[-grep('_',alias$chr),'chr']
+  alias[grep('_',alias$aliasNCBI2),'aliasNCBI2']=alias[grep('_',alias$aliasNCBI2),'alias2']
+  alias$Refseq2=alias$Refseq
+  alias[(grepl('_',alias$Refseq2)|(alias$Refseq2%in%""))==F,'Refseq2']=alias[(grepl('_',alias$Refseq2)|(alias$Refseq2%in%""))==F,'aliasNCBI']
+  
+  ref_Refseq =merge(ref_Refseq,alias[,c('chr','Refseq2')],by.x='seqname',by.y='Refseq2',all.x=T)
+  
+  
+  Refseq_rRNA=ref_Refseq[ref_Refseq$gene_type%in%'rRNA',]
+  Refseq_rRNA$gene_type='rRNA' #rRNA_RefSeq'
+  Refseq_rRNA$gene_type_ALL=Refseq_rRNA$gene_type
+  Refseq_rRNA=dplyr::rename(Refseq_rRNA, "name"=gene_synonym)
+  Refseq_rRNA$chr=gsub("chr[0-9]+_|chrUn_|_random|_fix","",Refseq_rRNA$chr)
+  Refseq_rRNA$chr=gsub("v",".",Refseq_rRNA$chr)
+  Refseq_rRNA=Refseq_rRNA[is.na(Refseq_rRNA$chr)==F,]
+  
+  write.table(Refseq_rRNA[,c("chr",'start','end','ensembl_gene_id','gene_type','strand','gene_type_ALL')],
+              paste0(out_dir,"rRNA_refSeq.bed"),col.names=T,sep = "\t",row.names = F)
+  
+} 
 
 ##########################################################################################
 ############### Annotation functions
@@ -212,7 +260,7 @@ gencodeLNCRNA<-function(){
   # somewhat redefined lncRNA with linc and included exon and intron sequences - 
   # treating lncRNA as separate annotation table and removing these transcripts from ref_gencode_t
   ref_gencode_t=ref_gencode_t[!ref_gencode_t$transcript_id%in%unique(lncRNA_ref_gencode$transcript_id),]
-  write.csv(lncRNA_ref_gencode,paste0(out_dir,"ref_lncRNA.csv"))
+  write.table(lncRNA_ref_gencode,paste0(out_dir,"lncRNA_Gencode.txt"),col.names=T,sep = "\t",row.names = F)
   
   return(lncRNA_ref_gencode)
 }
@@ -237,8 +285,8 @@ gencodeAnno<-function(rowid){
     content = paste0(unique(df_sub$transcript_type),collapse = ', ')
   }
   
-  write.table(df_sub, file=paste0(out_dir,rowid,".bed"), 
-              sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+  write.table(df_sub, file=paste0(out_dir,rowid,"_Gencode.bed"), 
+              sep = "\t", row.names = F, col.names = T, append = F, quote= FALSE)
   
   return(list(df_sub,content))
 }
@@ -255,13 +303,13 @@ rmskAnno<-function(rowid){
   class_list=unique(rmsk_GRCm38$repClass)
   
   # if annotation id (rowid) is in the defined annotation list, subset, and outuput bed
-  annotation_list=unique(c(class_list,'7SK RNA','yRNA'))
+  annotation_list=unique(c(class_list,'7SK RNA','yRNA','rRNA'))
   
   ## PH -elseif statements weren't being recognized for some reason
   if(rowid %in% annotation_list){
     #define cols to select and new col names
-    rmskcol=c('genoName','genoStart','genoEnd','repName','swScore','strand')
-    newcolnames=c('chr','start','end','transcript_name','score','strand')
+    rmskcol=c('genoName','genoStart','genoEnd','repName','repClass','strand')
+    newcolnames=c('chr','start','end','name','type','strand')
     #if in the family or class list
     if (rowid %in% class_list){
       df_sub = subset(rmsk_GRCm38, repClass == rowid) %>%
@@ -289,7 +337,7 @@ rmskAnno<-function(rowid){
         select(rmskcol) %>% setnames(newcolnames)
     } 
     df_sub$type=rowid
-    write.table(df_sub,file=paste0(out_dir,rowid,".bed"), 
+    write.table(df_sub,file=paste0(out_dir,rowid,"_Repeatmasker.bed"), 
                 sep = "\t", row.names = F, append = F, quote= FALSE)
     content = paste0(unique(df_sub$name),collapse = ", ")
   } else{
@@ -301,9 +349,11 @@ rmskAnno<-function(rowid){
 }
 
 SYAnno<-function(rowid,ref_species){
+  # rowid='rRNA'
+  # ref_species='mm10'
   #read bedfile
   file_name = ref_table[rowid,paste0(ref_species,"_SY")]
-  df_sub = read.table(paste0(soyeong_path,file_name))
+  df_sub = read.table(paste0(custom_path,file_name))
   
   #if the file is a .gtf.1 then filter
   if (grepl(".gtf.1",file_name)){
@@ -324,11 +374,10 @@ SYAnno<-function(rowid,ref_species){
   }
   
   write.table(df_sub,
-              file=paste0(out_dir,rowid,".bed"), 
+              file=paste0(out_dir,rowid,"_Custom.bed"), 
               sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
   
   return(list(df_sub,content))
-  
 }
 
 
@@ -339,7 +388,7 @@ SYAnno<-function(rowid,ref_species){
 annotation_output=data.frame()
 
 #input data from annotation df
-ref_table = read.csv(reftable_path, header = TRUE, sep="\t", row.names = 1)
+ref_table = read.table(reftable_path, header = TRUE, sep="\t", row.names = 1)
 #rowid="lincRNA"
 for (rowid in rownames(ref_table)){
   #determine source to use
@@ -373,7 +422,7 @@ for (rowid in rownames(ref_table)){
       
       ###Soyeong references
     } 
-    if (ref_selectionx%in%c("Gencode","Repeatmasker")==F){
+    if (ref_selectionx%in%c("Custom")){
       return_list = SYAnno(rowid,ref_species)
       df_sub = return_list[[1]]
       content = return_list[[2]]
@@ -420,3 +469,4 @@ write.table(annotation_output,
 write.table(annotation_output[rnames_ncRNA,cnames_ncRNA],
             file=paste0(out_dir,"ncRNA_annotations.txt"), 
             sep = "\t", row.names = T, col.names = T, append = F, quote= FALSE)
+
