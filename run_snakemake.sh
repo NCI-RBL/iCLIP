@@ -63,16 +63,16 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   # copy workflow dir for archiving
   if [ -d "${output_dir}/workflow" ]
   then
-    echo "Using previously generated iCLIP pipeline"
+    cp "${source_dir}/workflow/Snakefile" "${output_dir}/workflow/${log_time}_Snakefile"
   else
     mkdir "${output_dir}/workflow"
-    cp -r "${source_dir}/workflow/" "${output_dir}/"
+    cp "${source_dir}/workflow/Snakefile" "${output_dir}/workflow/${log_time}_Snakefile"
   fi
 
   #submit jobs to cluster
   if [[ $pipeline = "cluster" ]]; then
     sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --output=${output_dir}/log/${log_time}_00_%j_%x.out --mail-type=BEGIN,END,FAIL \
-    snakemake --use-envmodules --latency-wait 120  -s ${output_dir}/workflow/Snakefile --configfile ${output_dir}/log/${log_time}_00_snakemake_config.yaml \
+    snakemake --use-envmodules --latency-wait 120  -s ${output_dir}/workflow/${log_time}_Snakefile --configfile ${output_dir}/log/${log_time}_00_snakemake_config.yaml \
     --printshellcmds --cluster-config ${output_dir}/log/${log_time}_00_cluster_config.yml --keep-going \
     --restart-times 1 --cluster "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
@@ -84,7 +84,7 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     if [ -d "/tmp/iCount" ]; then 
       rm -r /tmp/iCount/ 
     fi
-    snakemake -s ${output_dir}/workflow/Snakefile --use-envmodules --configfile ${output_dir}/log/${log_time}_00_snakemake_config.yaml \
+    snakemake -s ${output_dir}/workflow/${log_time}_Snakefile --use-envmodules --configfile ${output_dir}/log/${log_time}_00_snakemake_config.yaml \
     --printshellcmds --cluster-config ${output_dir}/log/${log_time}_00_cluster_config.yml --cores 8
   fi
 #Unlock pipeline
