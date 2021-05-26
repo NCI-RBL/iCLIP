@@ -721,6 +721,8 @@ if (splice_aware == "Y"):
     rule sam_cleanup:
         """
         performs cleanup for inserts
+
+        exitcode error fixed with manual entry
         """
         input:
             f1 = join(out_dir,'04_sam','01_alignment','{sp}.{al}.split.{n}.sam'),
@@ -734,9 +736,17 @@ if (splice_aware == "Y"):
             unmapped = join(out_dir,'04_sam','02_cleanup','{sp}.{al}.split.{n}.final.unmapped.sam'),
         shell:
             """
+            set +e
             samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > {output.tmp};
             samtools view -H {input.f1} | cat - {output.tmp} > {output.final}; 
             samtools view -f 4 {input.f1} > {output.unmapped};
+            exitcode=$?
+            if [ $exitcode -eq 1 ]
+            then
+                exit 1
+            else
+                exit 0
+            fi
             """
 
     rule convert_transcript:
