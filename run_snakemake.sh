@@ -45,11 +45,11 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   if [ -d "${output_dir}/log" ]
   then
     echo
-    echo "Pipeline re-run, jobid:"
+    echo "Pipeline re-run:"
   else
     mkdir "${output_dir}/log"
     echo
-    echo "Pipeline initial run, jobid:"
+    echo "Pipeline initial run:"
   fi
 
   # copy config inputs for ref
