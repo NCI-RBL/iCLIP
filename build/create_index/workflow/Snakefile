@@ -83,25 +83,25 @@ rule all:
         join(out_dir,species,'04_exon_masked',species + '_maskedexon_SplicedTransc.fa'),
 
         #split exon
-        expand(join(out_dir, species, '05_transcript', '00_phred','{loc}.phred'),loc=location_list),
+        expand(join(out_dir, species, '05_transcript', '01_phred','{loc}.phred'),loc=location_list),
 
         #create transcriptome
         join(out_dir,species,'05_transcript', 'location_list.txt'),
         
-        expand(join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
-        expand(join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
         
-        #expand(join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
-        #expand(join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
 
         #remove junctions
-        #expand(join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.splices.fasta'), splice=splice_list),
-        #expand(join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.transcripts.fasta'), splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.splices.fasta'), splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta'), splice=splice_list),
 
         #final indices
-        #join(out_dir, species, '07_final', species + '_final.nix'),
-        #expand(join(out_dir,species,'07_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
-        #xpand(join(out_dir,species,'07_final', species + '_final_completed_{splice}.nix'), splice=splice_list),
+        #join(out_dir, species, '06_final', species + '_final.nix'),
+        #expand(join(out_dir,species,'06_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
+        #xpand(join(out_dir,species,'06_final', species + '_final_completed_{splice}.nix'), splice=splice_list),
 
 #download source reference files
 if species=='hg38':
@@ -318,7 +318,7 @@ rule spliced_trans:
         envmodules:
             config['ucsc']
         output:
-            o1 = join(out_dir,species,'05_transcript', '00_phred','{loc}.phred')
+            o1 = join(out_dir,species,'05_transcript', '01_phred','{loc}.phred')
         shell:
             """
             grep {params.loc_id} {input.phred} > {output.o1} || true
@@ -330,14 +330,14 @@ rule transcriptome_list:
     generates a list of all files that have at least one read (+0c)
     '''
     input:
-        expand(join(out_dir,species,'05_transcript', '00_phred','{loc}.phred'),loc=location_list)
+        expand(join(out_dir,species,'05_transcript', '01_phred','{loc}.phred'),loc=location_list)
     params:
-        base = join(out_dir,species,'05_transcript', '00_phred')
+        base = join(out_dir,species,'05_transcript', '01_phred')
     output:
         o1 = join(out_dir,species,'05_transcript', 'location_list.txt')
     shell:
         '''
-        find {params.base} -type f -size +0c > {output.o1}
+        find {params.base}/*.phred -type f -size +0c > {output.o1}
         '''
 
 rule create_transcriptome:
@@ -350,7 +350,7 @@ rule create_transcriptome:
     will use subset of location_list (see rule transcriptome_list) to avoid errors with java / snakemake
     '''
     input:
-        f1 = join(out_dir,species,'05_transcript', '00_phred','{loc}.phred')
+        f1 = join(out_dir,species,'05_transcript', '01_phred','{loc}.phred')
     params:
         rname = '05a_fasta',
         doc = join(cont_dir,'USeq_8.9.6','Apps/MakeTranscriptome'),
@@ -358,8 +358,8 @@ rule create_transcriptome:
     envmodules:
         config['java']
     output:
-        o1 = join(out_dir,species,'05_transcript', '00_phred','{loc}Rad{splice}Num100kMin10Splices.fasta.gz'),
-        o2 = join(out_dir,species,'05_transcript', '00_phred','{loc}Rad{splice}Num100kMin10Transcripts.fasta.gz')
+        o1 = join(out_dir,species,'05_transcript', '01_phred','{loc}Rad{splice}Num100kMin10Splices.fasta.gz'),
+        o2 = join(out_dir,species,'05_transcript', '01_phred','{loc}Rad{splice}Num100kMin10Transcripts.fasta.gz')
     shell:
         """
         java -Xmx100G -jar {params.doc} \
@@ -372,17 +372,17 @@ rule create_transcriptome:
 rule unzip_transcriptome:
     '''
     gunzip's file and add "." after location, before RA for readability
-    moves output to 01_fasta folder
+    moves output to 02_fasta folder
     '''
     input:
-        f1 = join(out_dir,species,'05_transcript', '00_phred','{loc}Rad{splice}Num100kMin10Splices.fasta.gz'),
-        f2 = join(out_dir,species,'05_transcript', '00_phred','{loc}Rad{splice}Num100kMin10Transcripts.fasta.gz')
+        f1 = join(out_dir,species,'05_transcript', '01_phred','{loc}Rad{splice}Num100kMin10Splices.fasta.gz'),
+        f2 = join(out_dir,species,'05_transcript', '01_phred','{loc}Rad{splice}Num100kMin10Transcripts.fasta.gz')
     params:
         rname = "05b_gunzip",
         base = join(out_dir,species,'06_transcript_indiv')
     output:
-        o1 = join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.splices.fasta'),
-        o2 = join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.transcripts.fasta'),
+        o1 = join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'),
+        o2 = join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'),
     shell:
         """
         gunzip {input.f1} > {output.o1};
@@ -396,13 +396,13 @@ rule merge_transcriptomes:
     Clean up junctions, script removes potential duplicate junctions
     '''
         input:
-            splice_list = expand(join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.splices.fasta'),loc=location_list_clean,splice=splice_list),
-            trans_list = expand(join(out_dir,species,'05_transcript', '01_fasta','{loc}.{splice}.transcripts.fasta'),loc=location_list_clean,splice=splice_list)
+            splice_list = expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'),loc=location_list_clean,splice=splice_list),
+            trans_list = expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'),loc=location_list_clean,splice=splice_list)
         params:
             rname = '05c_merge',
         output:
-            o1 = join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.splices.fasta'),
-            o2 = join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.transcripts.fasta')
+            o1 = join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.splices.fasta'),
+            o2 = join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.transcripts.fasta')
         shell:
             """
             cat {input.splice_list} > {output.o1};
@@ -411,16 +411,16 @@ rule merge_transcriptomes:
 
 rule remove_duplicate_junctions:
     input:
-        f1 = join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.splices.fasta'),
-        f2 = join(out_dir,species,'05_transcript', '02_merged','merged.{splice}.transcripts.fasta')
+        f1 = join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.splices.fasta'),
+        f2 = join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.transcripts.fasta')
     params:
         rname = "05d_remove_junctions",
         script = join(script_dir,'remove_dup_splice_junctions.pl')
     envmodules:
             config['perl']
     output:
-        o1 = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.splices.fasta'),
-        o2 = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.transcripts.fasta')
+        o1 = join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.splices.fasta'),
+        o2 = join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta')
     shell:
         """
         perl {params.script} {input.f1} {output.o1};
@@ -438,7 +438,7 @@ rule final_unaware:
         envmodules:
             config['novocraft']
         output:
-            o1 = join(out_dir, species, '07_final', species + '_final.nix')
+            o1 = join(out_dir, species, '06_final', species + '_final.nix')
         shell:
             """
             novoindex {output.o1} {input.f1}
@@ -450,14 +450,14 @@ rule final_masked:
     '''
         input:
             f1 = join(out_dir,species,'04_exon_masked', species + '_maskedexon.fa'),
-            splice = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.splices.fasta'),
-            trans = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.transcripts.fasta')
+            splice = join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.splices.fasta'),
+            trans = join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta')
         params:
             rname = '06b_final_masked'
         envmodules:
             config['novocraft']
         output:
-            o1 = join(out_dir,species,'07_final', species + '_final_maskedexon_{splice}.nix')
+            o1 = join(out_dir,species,'06_final', species + '_final_maskedexon_{splice}.nix')
         shell:
             """
             novoindex {output.o1} {input.f1} {input.splice} {input.trans}
@@ -469,14 +469,14 @@ rule final_unmasked:
     '''
         input:
             f1 = join(out_dir, species, '01_source', species + '_final.fa'),
-            splice = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.splices.fasta'),
-            trans = join(out_dir,species,'05_transcript', '02_merged','unique.{splice}.transcripts.fasta')
+            splice = join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.splices.fasta'),
+            trans = join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta')
         params:
             rname = '06c_final_unmasked'
         envmodules:
             config['novocraft']
         output:
-            o1 = join(out_dir,species,'07_final', species + '_final_completed_{splice}.nix')
+            o1 = join(out_dir,species,'06_final', species + '_final_completed_{splice}.nix')
         shell:
             """
             novoindex {output.o1} {input.f1} {input.splice} {input.trans}
@@ -492,6 +492,16 @@ done
 
 find . -type f -name '*Rad46Num100kMin10Transcripts.fasta' | while read FILE ; do\
     newfile="$(echo ${FILE} |sed -e 's/Rad46Num100kMin10Transcripts.fasta/46.transcripts.fasta/')" ;\
+    mv "${FILE}" "${newfile}" ;\
+done
+
+find . -type f -name '*46.splices.fasta' | while read FILE ; do\
+    newfile="$(echo ${FILE} |sed -e 's/46.splices.fasta/.46.splices.fasta/')" ;\
+    mv "${FILE}" "${newfile}" ;\
+done 
+
+find . -type f -name '*46.transcripts.fasta' | while read FILE ; do\
+    newfile="$(echo ${FILE} |sed -e 's/46.transcripts.fasta/.46.transcripts.fasta/')" ;\
     mv "${FILE}" "${newfile}" ;\
 done
 '''
