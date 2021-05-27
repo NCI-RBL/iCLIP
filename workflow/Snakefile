@@ -31,7 +31,9 @@ import yaml
 - Read specific input requirements, and execution information on the Wikipage
 located at: https://github.com/RBL-NCI/iCLIP.git
 '''
-
+###############################################################
+# config handling, set parameters
+###############################################################
 #snakemake config
 source_dir = config['source_dir']
 cont_dir = config['container_dir']
@@ -54,31 +56,17 @@ peak_id = config['peak_id'].upper()
 DE_method = config['DE_method'].upper()
 sp_junc = config['splice_junction'].upper()
 
-#split_params
-def check_split(split_in):
-    if (type(split_in) == str):
-        split_replace = split_in.replace(',', '')
-        if (type(split_in) == str):
-            split_replace = 1000000
-    elif (split_in < 3000):
-        split_replace = 1000000
-    elif (type(split_in) == float):
-        split_replace = int(split_in)
-    else:
-        split_replace = split_in
-    return split_replace
-split_value = check_split(split_value)
-
-#read in index config file
-index_manifest = join(source_dir, 'config', 'index_config.yaml')
-with open(index_manifest) as file:
-    index_list = yaml.load(file, Loader=yaml.FullLoader)
-
-#reference selection
+#expand reference selection
 if (nova_ref == "mm10"):
     genome_ref = "GENCODE mm10 v23"
 elif (nova_ref == "hg38"):
     genome_ref = "GENCODE hg38 v32"
+
+#read in index config file and assign paths
+index_manifest = join(source_dir, 'config', 'index_config.yaml')
+
+with open(index_manifest) as file:
+    index_list = yaml.load(file, Loader=yaml.FullLoader)
 
 sy_path = index_list[nova_ref]['sy_path']
 gen_path = index_list[nova_ref]['gencode_path']
@@ -88,18 +76,27 @@ intron_path = index_list[nova_ref]['intron_path']
 rmsk_path = index_list[nova_ref]['rmsk_path']
 alias_path = index_list[nova_ref]['alias_path']
 
+#singularity exec command
+singularity_exec = "singularity exec -B /data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir + ",/fdb,/scratch"
+
 #annotation config
 annotation_config = join(source_dir,'config','annotation_config.txt')
 
-#junctions
+#convert splice junction selection
 if (sp_junc=="Y"):
     sp_junc = "TRUE"
 else:
     sp_junc = "FALSE"
 
-#singularity exec command
-singularity_exec = "singularity exec -B /data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir + ",/fdb,/scratch"
+#create list of alignment types based on splice_aware flag
+if (splice_aware == 'N'):
+    align_list = ["unaware"]
+else:
+    align_list = ["unaware","masked","unmasked"]
 
+###############################################################
+# create sample lists
+###############################################################
 #dict multiplex name (1): sample name (1): barcodes (>1, will vary)
 def CreateSampleDicts(df_m,df_s):
     s_dict={}
@@ -136,6 +133,23 @@ def CreateProjLists(dict_m,dict_s):
             sp_list.append(v)
     return(mp_list,sp_list,file_list)
 
+###############################################################
+# snakemake functions
+###############################################################
+#determines the number of files to split the input into
+def check_split(split_in):
+    if (type(split_in) == str):
+        split_replace = split_in.replace(',', '')
+        if (type(split_in) == str):
+            split_replace = 1000000
+    elif (split_in < 3000):
+        split_replace = 1000000
+    elif (type(split_in) == float):
+        split_replace = int(split_in)
+    else:
+        split_replace = split_in
+    return split_replace
+
 #get list of fq names based on multiplex name
 #{fastq_dir}/{filename}.fastq.gz
 def get_fq_names(wildcards):
@@ -155,14 +169,6 @@ def demux_cmd(wildcards):
 
     return(cmd_line)
 
-#command needed to move and rename demux files
-def rename_cmd(wildcards):
-    bc = samp_dict[wildcards.mp][wildcards.sp]
-
-    cmd_line = out_dir + wildcards.mp + '/demux_' + bc + '.fastq.gz' + ' ' + out_dir + wildcards.mp + '/01_renamed/' + wildcards.sp + '.fastq.gz'
-
-    return(cmd_line)
-
 #create nondemux command line
 def nondemux_cmd(wildcards):
   cmd_line = ''
@@ -172,6 +178,14 @@ def nondemux_cmd(wildcards):
       cmd_line = 'cp ' + fastq_dir + v + ' ' + out_dir + k + '/01_renamed/' + k2 + '.fastq.gz; ' + cmd_line
   
   return(cmd_line)
+
+#command needed to move and rename demux files
+def rename_cmd(wildcards):
+    bc = samp_dict[wildcards.mp][wildcards.sp]
+
+    cmd_line = out_dir + wildcards.mp + '/demux_' + bc + '.fastq.gz' + ' ' + out_dir + wildcards.mp + '/01_renamed/' + wildcards.sp + '.fastq.gz'
+
+    return(cmd_line)
 
 #command needed to cut adaptors from demux samples
 def adapt_cmd(wildcards):
@@ -188,6 +202,7 @@ def adapt_cmd(wildcards):
 
     return(command_line)
 
+#rename the output files after adaptor removal
 def rename_adapt_cmd(wildcards):
     cmd = ''
 
@@ -246,12 +261,6 @@ def umi_parameter(wildcards):
         umi_sep="_"
     return(umi_sep)
 
-#create list of alignment types based on splice_aware flag
-if (splice_aware == 'N'):
-    align_list = ["unaware"]
-else:
-    align_list = ["unaware","masked","unmasked"]
-
 #get index file depending on alignment type
 def get_index(wildcards):
     ["unaware","masked","unmasked"]
@@ -280,6 +289,9 @@ def input_mapq_corrected_bam(wildcards):
         f1 = join(out_dir,'10_mapq_score','{sp}.mapq_recalculated.bam'),
     return(f1)
 
+###############################################################
+# main code
+###############################################################
 #read manifests
 df_multiplex = pd.read_csv(multiplex_manifest,sep="\t")
 df_samples = pd.read_csv(sample_manifest,sep="\t")
@@ -293,6 +305,12 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 #mp1        sample2
 (mp_list,sp_list,file_list) = CreateProjLists(multiplex_dict,samp_dict)
 
+#get split files value
+split_value = check_split(split_value)
+
+###############################################################
+# rule all
+###############################################################
 #set rule_all inputs depending on flags:
 ## if samples have been multiplexed
 if multiplex_flag == 'Y':
@@ -402,6 +420,9 @@ rule all:
 include: "rules/common.smk"
 include: "rules/other.smk"
 
+###############################################################
+# snakemake rules
+###############################################################
 rule check_manifest:
     """
     Read in multiplex manifest and sample manifest.
