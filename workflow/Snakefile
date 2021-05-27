@@ -69,16 +69,10 @@ def check_split(split_in):
     return split_replace
 split_value = check_split(split_value)
 
-#index selection
+#read in index config file
 index_manifest = join(source_dir, 'config', 'index_config.yaml')
 with open(index_manifest) as file:
     index_list = yaml.load(file, Loader=yaml.FullLoader)
-
-#unaware index
-nova_index = index_list[nova_ref]['std']
-if (splice_aware=='Y'):
-    nova_index_masked = index_list[nova_ref]['spliceaware_masked'][str(splice_bp)+'bp']
-    nova_index_unmasked = index_list[nova_ref]['spliceaware_unmasked'][str(splice_bp)+'bp']
 
 #reference selection
 if (nova_ref == "mm10"):
@@ -257,6 +251,18 @@ if (splice_aware == 'N'):
     align_list = ["unaware"]
 else:
     align_list = ["unaware","masked","unmasked"]
+
+#get index file depending on alignment type
+def get_index(wildcards):
+    ["unaware","masked","unmasked"]
+    
+    #unaware index
+    if (wildcards.al == "unaware"):
+        nova_index = index_list[nova_ref]['std']
+    elif (wildcards.al == "masked"):
+        nova_index = index_list[nova_ref]['spliceaware_masked'][str(splice_bp)+'bp']
+    elif (wildcards.al == "unmasked"):
+        nova_index = index_list[nova_ref]['spliceaware_unmasked'][str(splice_bp)+'bp']
 
 #determine alignment input based on splice_aware flag
 def get_align_input(wildcards):
@@ -696,7 +702,7 @@ rule novoalign:
         f1 = join(out_dir,'03_split','{sp}.split.{n}.fastq'),
     params:
         rname='09_novo',
-        n_index = nova_index,
+        n_index = get_index,
     envmodules:
         config['novocraft']
     output:
