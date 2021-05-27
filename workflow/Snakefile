@@ -23,11 +23,6 @@ import yaml
 
 '''
 * Requirements *
-- Four input files are required:
-    1) cluster_config.yml
-    2) snakemake_config.yaml
-    3) multiplex.tsv
-    4) samples.tsv
 - Read specific input requirements, and execution information on the Wikipage
 located at: https://github.com/RBL-NCI/iCLIP.git
 '''
