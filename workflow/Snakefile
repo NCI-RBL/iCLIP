@@ -1,6 +1,9 @@
 '''
-Overview
+* Authors * 
+S. Sevilla
+P. Homan
 
+* Overview * 
 - Multiplexed samples are split based on provided barcodes and named using provide manifests
 - Adaptors are stripped from samples
 - Samples are unzipped and split into smaller fastq files to increase speed
@@ -8,7 +11,11 @@ Overview
 - SAM and BAM files are created
 - Samples are merged
 
-Pipeline info: activeDev 032621
+* Requirements *
+- Read specific input requirements, and execution information on the Wikipage
+located at: https://github.com/RBL-NCI/iCLIP.git
+
+Pipeline info: activeDev 05272021
 '''
 
 report: "report/workflow.rst"
@@ -21,11 +28,6 @@ import pandas as pd
 from collections import defaultdict
 import yaml
 
-'''
-* Requirements *
-- Read specific input requirements, and execution information on the Wikipage
-located at: https://github.com/RBL-NCI/iCLIP.git
-'''
 ###############################################################
 # config handling, set parameters
 ###############################################################
