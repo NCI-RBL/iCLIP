@@ -14,10 +14,12 @@ from collections import defaultdict
 import yaml
 
 #config params
-species=config['species']
+source_dir = config['source_dir']
 out_dir=config['output_dir'].rstrip('/') + '/'
 cont_dir=config['container_dir']
 script_dir="/workflow/scripts/"
+
+species=config['species']
 
 #gencode version
 if species=="hg38":
@@ -99,9 +101,9 @@ rule all:
         expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta'), splice=splice_list),
 
         #final indices
-        #join(out_dir, species, '06_final', species + '_final.nix'),
-        #expand(join(out_dir,species,'06_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
-        #xpand(join(out_dir,species,'06_final', species + '_final_completed_{splice}.nix'), splice=splice_list),
+        join(out_dir, species, '06_final', species + '_final.nix'),
+        expand(join(out_dir,species,'06_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
+        expand(join(out_dir,species,'06_final', species + '_final_completed_{splice}.nix'), splice=splice_list),
 
 #download source reference files
 if species=='hg38':
@@ -385,8 +387,8 @@ rule unzip_transcriptome:
         o2 = join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'),
     shell:
         """
-        gunzip {input.f1} > {output.o1};
-        gunzip {input.f2} > {output.o2}
+        gunzip -c {input.f1} > {output.o1};
+        gunzip -c {input.f2} > {output.o2}
         """
 
 rule merge_transcriptomes:
@@ -415,7 +417,7 @@ rule remove_duplicate_junctions:
         f2 = join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.transcripts.fasta')
     params:
         rname = "05d_remove_junctions",
-        script = join(script_dir,'remove_dup_splice_junctions.pl')
+        script = join(source_dir,'workflow','scripts','remove_dup_splice_junctions.pl')
     envmodules:
             config['perl']
     output:
