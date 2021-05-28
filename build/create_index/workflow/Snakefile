@@ -22,15 +22,10 @@ cont_dir=config['container_dir']
 script_dir="/workflow/scripts/"
 
 species=config['species']
+gencode_v=config['gencode_version']
 
-#gencode version
-if species=="hg38":
-    gencode_v='32'
-else:
-    gencode_v='23'
-
-splice_list=['46']
-#splice_list=['46','71','146']
+#set splicing lengths
+splice_list=['46','71','146']
 
 #gather all locations within genome and output to text file
 def get_location_list():

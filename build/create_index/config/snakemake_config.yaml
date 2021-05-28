@@ -1,16 +1,17 @@
 # Global configuration file for the pipeline
 #path to iCLIP directory
-source_dir: "/data/CCBR_Pipeliner/iCLIP/index/create_index/"
+source_dir: "/home/sevillas2/git/iCLIP/build/create_index/"
 
 #path to output directory
-output_dir: "/data/CCBR_Pipeliner/iCLIP/index/reference/052021/"
+output_dir: "/data/CCBR_Pipeliner/iCLIP/index/active/052021/"
 
 #user parameters
-species: "hg38" #hg38 or mm10
+species: "hg38" #hg38 - gencode v32 or mm10 - gencode v23
+gencode_version: "32"
 
 #modules, container parameters
-ucsc: "ucsc/411"
 container_dir: "/data/CCBR_Pipeliner/iCLIP/container"
+ucsc: "ucsc/411"
 bedtools: "bedtools/2.29.2"
 bowtie2: "bowtie/2-2.3.4"
 fastq_screen: "fastq_screen/0.14.0"
