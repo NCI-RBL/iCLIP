@@ -8,7 +8,7 @@ my $output_file = $ARGV[1];
 
 #file handling
 my $seqio = Bio::SeqIO->new(-file => $file, -format => "fasta");
-my $outseq = Bio::SeqIO->new(-file => ">$output_file.uniq", -format => "fasta");
+my $outseq = Bio::SeqIO->new(-file => ">$output_file", -format => "fasta");
 
 while(my $seqs = $seqio->next_seq) {
     my $id = $seqs->display_id;
