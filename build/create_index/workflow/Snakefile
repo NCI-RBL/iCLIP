@@ -46,7 +46,7 @@ def get_location_list():
 #subset location_list to include only files with sequences
 #input generated from rule transcriptome_list
 def get_clean_location_list():
-    list_path=join(out_dir,species,'05_transcript', 'location_list.txt')
+    list_path=join(out_dir,species,'split_file_list_clean.txt')
 
     try:
         my_file = open(list_path, "r")
@@ -86,7 +86,7 @@ rule all:
         expand(join(out_dir, species, '05_transcript', '01_phred','{loc}.phred'),loc=location_list),
 
         #create transcriptome
-        join(out_dir,species,'05_transcript', 'location_list.txt'),
+        join(out_dir,species,'split_file_list_clean.txt'),
         
         expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
         expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
@@ -303,6 +303,7 @@ rule masked_exon:
             awk 'FNR==0{{print ""}}1' {params.out_base}/*.fasta > {output.o1}
             """
 
+#convert each split fasta into phreds
 rule spliced_trans:
         '''
         take list of file names from rule split_genome and split phred 
@@ -335,7 +336,7 @@ rule transcriptome_list:
     params:
         base = join(out_dir,species,'05_transcript', '01_phred')
     output:
-        o1 = join(out_dir,species,'05_transcript', 'location_list.txt')
+        o1 = join(out_dir,species,'split_file_list_clean.txt')
     shell:
         '''
         find {params.base}/*.phred -type f -size +0c > {output.o1}
