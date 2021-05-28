@@ -374,6 +374,7 @@ rule create_transcriptome:
         -s
         """
 
+#unzip fasta files
 rule unzip_transcriptome:
     '''
     gunzip's file and add "." after location, before RA for readability
@@ -394,6 +395,7 @@ rule unzip_transcriptome:
         gunzip -c {input.f2} > {output.o2}
         """
 
+#merge all fasta files into one splice fasta and one transcript fasta
 rule merge_transcriptomes:
     '''
     Combine chr transcriptome fasta files
@@ -414,6 +416,7 @@ rule merge_transcriptomes:
             cat {input.trans_list} > {output.o2}
             """
 
+#remove duplicate junctions with perl script from splice fasta and transcript fasta
 rule remove_duplicate_junctions:
     input:
         f1 = join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.splices.fasta'),
@@ -432,6 +435,7 @@ rule remove_duplicate_junctions:
         perl {params.script} {input.f2} {output.o2}
         """
 
+#create file index for splice unaware pipeline
 rule final_unaware:
     '''
     not splice aware
@@ -449,6 +453,7 @@ rule final_unaware:
             novoindex {output.o1} {input.f1}
             """
 
+#create final index for masked exon pipeline
 rule final_masked:
     '''
     ## masked Exon + Transcriptome
@@ -468,6 +473,7 @@ rule final_masked:
             novoindex {output.o1} {input.f1} {input.splice} {input.trans}
             """
 
+#create final index for unmasked exon pipeline
 rule final_unmasked:
     '''
     Full genome + Transcriptome
