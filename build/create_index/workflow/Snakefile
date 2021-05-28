@@ -1,12 +1,14 @@
-#Authors:
-# Samantha Sevilla
-# Phil Homan
+'''
+# Authors:
+S. Sevilla
+P. Homan
 
 # Overview
-# Pipeline generates indexes for species selected to be used in iCLIP pipeline
+Pipeline generates indexes for species selected to be used in iCLIP pipeline
 
 #testing
 #rm -r /data/CCBR_Pipeliner/iCLIP/index/reference/052021/; sh run_snakemake.sh
+'''
 
 from os.path import join
 import pandas as pd
@@ -101,9 +103,9 @@ rule all:
         expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta'), splice=splice_list),
 
         #final indices
-        join(out_dir, species, '06_final', species + '_final.nix'),
+        join(out_dir, species, '06_final', species + '_final_nosplicing.nix'),
         expand(join(out_dir,species,'06_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
-        expand(join(out_dir,species,'06_final', species + '_final_completed_{splice}.nix'), splice=splice_list),
+        expand(join(out_dir,species,'06_final', species + '_final_unmaskedexon_{splice}.nix'), splice=splice_list),
 
 #download source reference files
 if species=='hg38':
@@ -440,7 +442,7 @@ rule final_unaware:
         envmodules:
             config['novocraft']
         output:
-            o1 = join(out_dir, species, '06_final', species + '_final.nix')
+            o1 = join(out_dir, species, '06_final', species + '_final_nosplicing.nix')
         shell:
             """
             novoindex {output.o1} {input.f1}
@@ -478,7 +480,7 @@ rule final_unmasked:
         envmodules:
             config['novocraft']
         output:
-            o1 = join(out_dir,species,'06_final', species + '_final_completed_{splice}.nix')
+            o1 = join(out_dir,species,'06_final', species + '_final_unmaskedexon_{splice}.nix')
         shell:
             """
             novoindex {output.o1} {input.f1} {input.splice} {input.trans}
