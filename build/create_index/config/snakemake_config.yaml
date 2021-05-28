@@ -1,9 +1,9 @@
 # Global configuration file for the pipeline
 #path to iCLIP directory
-source_dir: "/home/sevillas2/git/iCLIP/build/create_index/"
+source_dir: "/path/to/iCLIP/"
 
 #path to output directory
-output_dir: "/data/CCBR_Pipeliner/iCLIP/index/active/052021/"
+output_dir: "/path/to/output/dir/"
 
 #user parameters
 species: "hg38" #hg38 - gencode v32 or mm10 - gencode v23
