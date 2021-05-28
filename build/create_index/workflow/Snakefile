@@ -73,13 +73,13 @@ rule all:
         join(out_dir, species, '01_source', species + '_scaff.gtf'),
 
         #genome folder
-        join(out_dir,species,'02_split_genome','chrX.fa'),
+        expand(join(out_dir,species,'02_split_genome','chr{num}.fa'),num=range(1,23))
 
         #exon annotation
         join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred'),
         
         #masked exon
-        join(out_dir,species,'04_exon_masked',species + '_maskedexon_SplicedTransc.fa'),
+        join(out_dir,species,'04_exon_masked',species + '_maskedexon.fa'),
 
         #split exon
         expand(join(out_dir, species, '05_transcript', '01_phred','{loc}.phred'),loc=location_list),
@@ -281,7 +281,7 @@ rule masked_exon:
     make Exon masked genome
     '''
         input:
-            f1 = join(out_dir,species,'02_split_genome','chrX.fa'),
+            f1 = join(out_dir,species,'02_split_genome','chr{num}.fa'),
             f2 = join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred')
         params:
             rname = '04_masked_exon',
