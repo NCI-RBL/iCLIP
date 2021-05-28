@@ -326,6 +326,7 @@ rule spliced_trans:
             grep {params.loc_id} {input.phred} > {output.o1} || true
             """
 
+#create clean phred list only including files with reads
 rule transcriptome_list:
     '''
     rule create_transcriptome will run an error if the phred file has no reads (created in rule splice_trans)
@@ -342,6 +343,7 @@ rule transcriptome_list:
         find {params.base}/*.phred -type f -size +0c > {output.o1}
         '''
 
+#input clean phred list and converts to spliced fasta by length
 rule create_transcriptome:
     '''
     create Transcriptome - SplicedTransc
@@ -352,7 +354,8 @@ rule create_transcriptome:
     will use subset of location_list (see rule transcriptome_list) to avoid errors with java / snakemake
     '''
     input:
-        f1 = join(out_dir,species,'05_transcript', '01_phred','{loc}.phred')
+        f1 = join(out_dir,species,'05_transcript', '01_phred','{loc}.phred'),
+        f2 = join(out_dir,species,'split_file_list_clean.txt')
     params:
         rname = '05a_fasta',
         doc = join(cont_dir,'USeq_8.9.6','Apps/MakeTranscriptome'),
