@@ -218,7 +218,7 @@ rule split_genome:
     envmodules:
         config['ucsc']
     output:
-        o1 = join(out_dir,species,'02_split_genome','chr{num}.fa'), 
+        o1 = expand(join(out_dir,species,'02_split_genome','chr{num}.fa'), num=range(1,23)),
         o2 = join(out_dir,species,'split_file_list.txt'), 
     shell:
         """
@@ -276,13 +276,14 @@ else:
             awk '{{ if($9>1) {{print}} }}' {output.o5} > {output.o6}
             """
 
+#process each split fasta file and merge into final fa output
 rule masked_exon:
     '''
     input phred and split_genome folder
     make Exon masked genome
     '''
         input:
-            f1 = join(out_dir,species,'02_split_genome','chr{num}.fa'),
+            f1 = expand(join(out_dir,species,'02_split_genome','chr{num}.fa'), num=range(1,23)),
             f2 = join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred')
         params:
             rname = '04_masked_exon',
