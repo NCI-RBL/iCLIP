@@ -29,7 +29,7 @@ splice_list=['46','71','146']
 
 #gather all locations within genome and output to text file
 def get_location_list():
-    list_path=join(out_dir, species, 'split_names.txt')
+    list_path=join(out_dir, species, 'split_file_list.txt')
 
     try:
         my_file = open(list_path, "r")
@@ -218,7 +218,7 @@ rule split_genome:
         config['ucsc']
     output:
         o1 = join(out_dir,species,'02_split_genome','chrX.fa'), 
-        o2 = join(out_dir,species,'split_names.txt'), 
+        o2 = join(out_dir,species,'split_file_list.txt'), 
     shell:
         """
         faSplit byname {input.f1} {params.base};
@@ -310,7 +310,7 @@ rule spliced_trans:
         when grep does not find match, will give status of 1 which snakemake interprets as an error
         '''
         input:
-            f1 = join(out_dir, species, 'split_names.txt'),
+            f1 = join(out_dir, species, 'split_file_list.txt'),
             phred = join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred'),
         params:
             loc_id = '{loc}'
