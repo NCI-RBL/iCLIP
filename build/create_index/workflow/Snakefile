@@ -52,9 +52,8 @@ def get_clean_location_list():
         my_file = open(list_path, "r")
         content = my_file.readlines()
         
-        loc_list = [s.rsplit("/",1)[1] for s in content]
-        loc_list_newline = [s.replace("\n", "") for s in loc_list]
-        loc_list_clean = [s.replace(".phred", "") for s in loc_list_newline]
+        loc_list = [s.replace(".fasta", "") for s in content]
+        loc_list_clean = [s.replace("\n", "") for s in loc_list]
     except:
         return(0)
 
@@ -64,7 +63,7 @@ location_list = get_location_list()
 location_list_clean = get_clean_location_list()
 
 #local rules
-localrules: spliced_trans, transcriptome_list
+localrules: spliced_trans#, transcriptome_list
 
 rule all:
     input:
@@ -73,35 +72,36 @@ rule all:
         join(out_dir, species, '01_source', species + '_scaff.gtf'),
 
         #genome folder
-        expand(join(out_dir,species,'02_split_genome','chr{num}.fa'),num=range(1,23)),
+        expand(join(out_dir,species,'02_split_genome','chr{num}.fa'), num=range(1,23)),
         join(out_dir,species,'split_file_list.txt'), 
 
         #exon annotation
         join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred'),
         
         #masked exon
+        join(out_dir,species,'split_file_list_clean.txt'),
         join(out_dir,species,'04_exon_masked',species + '_maskedexon.fa'),
 
         #split exon
-        expand(join(out_dir, species, '05_transcript', '01_phred','{loc}.phred'),loc=location_list),
+        expand(join(out_dir, species, '05_transcript', '01_phred','{loc}.phred'),loc=location_list_clean),
 
         #create transcriptome
-        join(out_dir,species,'split_file_list_clean.txt'),
         
-        expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
-        expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
         
-        expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
-        expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
+        # expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
+        # expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
+        
+        # expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
+        # expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
 
-        #remove junctions
-        expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.splices.fasta'), splice=splice_list),
-        expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta'), splice=splice_list),
+        # #remove junctions
+        # expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.splices.fasta'), splice=splice_list),
+        # expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta'), splice=splice_list),
 
-        #final indices
-        join(out_dir, species, '06_final', species + '_final_nosplicing.nix'),
-        expand(join(out_dir,species,'06_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
-        expand(join(out_dir,species,'06_final', species + '_final_unmaskedexon_{splice}.nix'), splice=splice_list),
+        # #final indices
+        # join(out_dir, species, '06_final', species + '_final_nosplicing.nix'),
+        # expand(join(out_dir,species,'06_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
+        # expand(join(out_dir,species,'06_final', species + '_final_unmaskedexon_{splice}.nix'), splice=splice_list),
 
 #download source reference files
 if species=='hg38':
@@ -279,11 +279,15 @@ else:
 #process each split fasta file and merge into final fa output
 rule masked_exon:
     '''
-    input phred and split_genome folder
-    make Exon masked genome
+    input scaff_spliced_phred and split_genome folder
+    fasta files will only be generated from those found in phred file
+
+    generate list of files created from split
+
+    take all created fasta files and make exon_masked fasta
     '''
         input:
-            f1 = expand(join(out_dir,species,'02_split_genome','chr{num}.fa'), num=range(1,23)),
+            f1 = expand(join(out_dir,species,'02_split_genome','{loc}.fa'), loc=location_list),
             f2 = join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred')
         params:
             rname = '04_masked_exon',
@@ -293,14 +297,16 @@ rule masked_exon:
         envmodules:
             config['java']
         output:
-            o1 = join(out_dir,species,'04_exon_masked',species + '_maskedexon.fa')
+           o1 = join(out_dir,species,'split_file_list_clean.txt'), 
+           o2 = join(out_dir,species,'04_exon_masked',species + '_maskedexon.fa'),
         shell:
             """
             java -Xmx50G -jar {params.doc} \
             -f {params.in_base} \
             -u  {input.f2} \
             -s {params.out_base}; \
-            awk 'FNR==0{{print ""}}1' {params.out_base}/*.fasta > {output.o1}
+            ls {params.out_base} > {output.o1}; \
+            awk 'FNR==0{{print ""}}1' {params.out_base}/*.fasta > {output.o2}
             """
 
 #convert each split fasta into phreds
@@ -313,7 +319,7 @@ rule spliced_trans:
         when grep does not find match, will give status of 1 which snakemake interprets as an error
         '''
         input:
-            f1 = join(out_dir, species, 'split_file_list.txt'),
+            f1 = join(out_dir, species, 'split_file_list_clean.txt'),
             phred = join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred'),
         params:
             loc_id = '{loc}'
@@ -325,23 +331,6 @@ rule spliced_trans:
             """
             grep {params.loc_id} {input.phred} > {output.o1} || true
             """
-
-#create clean phred list only including files with reads
-rule transcriptome_list:
-    '''
-    rule create_transcriptome will run an error if the phred file has no reads (created in rule splice_trans)
-    generates a list of all files that have at least one read (+0c)
-    '''
-    input:
-        expand(join(out_dir,species,'05_transcript', '01_phred','{loc}.phred'),loc=location_list)
-    params:
-        base = join(out_dir,species,'05_transcript', '01_phred')
-    output:
-        o1 = join(out_dir,species,'split_file_list_clean.txt')
-    shell:
-        '''
-        find {params.base}/*.phred -type f -size +0c > {output.o1}
-        '''
 
 #input clean phred list and converts to spliced fasta by length
 rule create_transcriptome:
