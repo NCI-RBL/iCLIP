@@ -260,8 +260,7 @@ def umi_parameter(wildcards):
 
 #get index file depending on alignment type
 def get_index(wildcards):
-    ["unaware","masked","unmasked"]
-    
+
     #unaware index
     if (wildcards.al == "unaware"):
         nova_index = index_list[nova_ref]['std']
@@ -269,6 +268,8 @@ def get_index(wildcards):
         nova_index = index_list[nova_ref]['spliceaware_masked'][str(splice_bp)+'bp']
     elif (wildcards.al == "unmasked"):
         nova_index = index_list[nova_ref]['spliceaware_unmasked'][str(splice_bp)+'bp']
+    
+    return(nova_index)
 
 #determine alignment input based on splice_aware flag
 def get_align_input(wildcards):
@@ -362,31 +363,31 @@ rule all:
         expand(join(out_dir,'07_bam_merged_splits/{sp}.{al}.merged.unique.bam'), sp=sp_list, al=align_list),
         expand(join(out_dir,'07_bam_merged_splits/{sp}.{al}.merged.mm.bam'),sp=sp_list, al=align_list),
 
-        #Merge unique and mm
-        expand(join(out_dir,'08_bam_merged','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
+        # #Merge unique and mm
+        # expand(join(out_dir,'08_bam_merged','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
 
-        #Sort and index merged
-        expand(join(out_dir,'08_bam_merged','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
-        expand(join(out_dir,'08_bam_merged','{sp}.{al}.merged.si.bam.bai'), sp=sp_list, al=align_list),
+        # #Sort and index merged
+        # expand(join(out_dir,'08_bam_merged','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
+        # expand(join(out_dir,'08_bam_merged','{sp}.{al}.merged.si.bam.bai'), sp=sp_list, al=align_list),
 
-        #Samstats
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'), sp=sp_list, al=align_list),
+        # #Samstats
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'), sp=sp_list, al=align_list),
 
-        #MultiQC Report
-        join(out_dir,'qc/multiqc_report.html'),
+        # #MultiQC Report
+        # join(out_dir,'qc/multiqc_report.html'),
 
-        #Alignment stats
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png'), sp=sp_list, al=align_list),
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png'), sp=sp_list, al=align_list),
+        # #Alignment stats
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png'), sp=sp_list, al=align_list),
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png'), sp=sp_list, al=align_list),
 
-        #QC Troubleshooting
-        join(out_dir,'qc','qc_report.html'),
+        # #QC Troubleshooting
+        # join(out_dir,'qc','qc_report.html'),
 
-        #Deduplicate
-        expand(join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.bam'), sp=sp_list, al=align_list),
+        # #Deduplicate
+        # expand(join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.bam'), sp=sp_list, al=align_list),
 
-        #MapQ recalculation
-        input_splice,
+        # #MapQ recalculation
+        # input_splice,
 
         #Bam processing
         #expand(join(out_dir,'09_dedup','03_unique','{sp}.dedup.unique.i.bam'), sp=sp_list),
