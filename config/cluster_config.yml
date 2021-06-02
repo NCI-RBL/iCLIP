@@ -3,12 +3,12 @@ __default__:
     gres: lscratch:256
     mem: 96g
     partition: norm
-    time: 4-00:00:00
+    time: 1-00:00:00
     threads: 32
 
 mapq_recalc:
     mem: 1TB
     partition: largemem
-    time: 4-00:00:00
+    time: 1-00:00:00
     threads: 32
     
