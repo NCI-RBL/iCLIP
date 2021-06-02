@@ -115,8 +115,8 @@ for k,v in multiplex_dict.items():
             bc_dict[k]={} 
         bc_dict[k][barcode] = bc_dict[k].get(barcode, 0) + 1
 
-    #select top 5 barcodes for each sample
-    top_dict = dict(Counter(bc_dict[k]).most_common(5))
+    #select top 10 barcodes for each sample
+    top_dict = dict(Counter(bc_dict[k]).most_common(10))
     
     #compare observed bc list with expected bc list, write output to text
     bc_obs=[]
