@@ -831,7 +831,7 @@ if (splice_aware == "Y"):
         output:
             unmasked = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.unmasked.bam'),
             merged = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.merged.bam'),
-            final = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.sam'),
+            final = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.bam'),
         shell:
             """
             set +e
@@ -860,7 +860,7 @@ if (splice_aware == "Y"):
             o1 = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.complete.bam'),
         shell:
             """
-            samtools index {input.f1} -o {input.f1}.bam; 
+            samtools index {input.f1} {input.f1}.bam; 
             samtools merge -f {input.f1}.bam {output.o1}
             """
 
