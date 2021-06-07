@@ -846,22 +846,39 @@ if (splice_aware == "Y"):
             fi
             """
 
-    rule merge_unmapped_splits:
+    rule sort_index_unmapped_splits:
         """
         merge split unmapped reads into one file
         """
         input:
-            f1 = dynamic(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.sam')),
+            f1 = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.bam')
         params:
             rname='10e_merge',
         envmodules:
             config['samtools']  
         output:
-            o1 = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.complete.bam'),
+            sort = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.sorted.bam'),
         shell:
             """
-            samtools index {input.f1} {input.f1}.bam; 
-            samtools merge -f {input.f1}.bam {output.o1}
+            samtools sort {input.f1} > {output.sort};
+            samtools index {output.sort}; 
+            """
+    
+    rule merge_unmapped_splits:
+        """
+        merge split unmapped reads into one file
+        """
+        input:
+            sorted_list = dynamic(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.sorted.bam')),
+        params:
+            rname='10e_merge',
+        envmodules:
+            config['samtools']  
+        output:
+            final = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.complete.bam'),
+        shell:
+            """
+            samtools merge -f {output.final} {input.sorted_list} 
             """
 
 rule split_mm_unique:
