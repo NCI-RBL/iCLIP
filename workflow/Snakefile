@@ -834,9 +834,16 @@ if (splice_aware == "Y"):
             final = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.sam'),
         shell:
             """
+            set +e
             samtools view -S -b {input.unmasked} > {output.unmasked};
             samtools merge -f {output.merged} {input.unmapped} {output.unmasked};
-            samtools view -h -o {output.final} {output.merged}; 
+            samtools view -h -o {output.final} {output.merged};
+            if [ $exitcode -eq 1 ]
+            then
+                exit 1
+            else
+                exit 0
+            fi
             """
 
     rule merge_unmapped_splits:
