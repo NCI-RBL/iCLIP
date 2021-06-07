@@ -389,25 +389,25 @@ rule all:
         #Unmapped read output
         expand(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.complete.bam'),  sp=sp_list, al=align_list),
         
-        # #MapQ recalculation
-        # input_splice,
+        #MapQ recalculation
+        input_splice,
 
-        # #Bam processing
-        # expand(join(out_dir,'09_dedup','03_unique','{sp}.dedup.unique.i.bam'), sp=sp_list),
+        #Bam processing
+        expand(join(out_dir,'09_dedup','03_unique','{sp}.dedup.unique.i.bam'), sp=sp_list),
 
-        # #Bed files
-        # expand(join(out_dir,'11_bed','{sp}_all.bed'), sp=sp_list),
-        # expand(join(out_dir,'11_bed','{sp}_unique.bed'), sp=sp_list),
+        #Bed files
+        expand(join(out_dir,'11_bed','{sp}_all.bed'), sp=sp_list),
+        expand(join(out_dir,'11_bed','{sp}_unique.bed'), sp=sp_list),
 
-        # #SAF 
-        # expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_all.SAF'), sp=sp_list),
-        # expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
+        #SAF 
+        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_all.SAF'), sp=sp_list),
+        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
 
-        # #Count features
-        # expand(join(out_dir,'14_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'), sp=sp_list),
-        # expand(join(out_dir,'14_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
-        # expand(join(out_dir,'14_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
-        # expand(join(out_dir,'14_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+        #Count features
+        expand(join(out_dir,'14_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'14_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'14_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'14_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
 
         # #In progress
         # join(out_dir,'15_annotation', 'project',,'annotations.txt'),
