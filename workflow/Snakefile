@@ -384,13 +384,13 @@ rule all:
         join(out_dir,'qc','qc_report.html'),
 
         #Deduplicate
-        expand(join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.bam'), sp=sp_list, al=align_list),
+        expand(join(out_dir,'09_dedup','01_bam','{sp}.unmasked.dedup.bam'), sp=sp_list),
 
         #Unmapped read output
-        expand(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.complete.bam'),  sp=sp_list, al=align_list),
+        #expand(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.complete.bam'),  sp=sp_list, al=align_list),
         
-        # #MapQ recalculation
-        # input_splice,
+        #MapQ recalculation
+        #input_splice,
 
         # #Bam processing
         # expand(join(out_dir,'09_dedup','03_unique','{sp}.dedup.unique.i.bam'), sp=sp_list),
@@ -1206,15 +1206,15 @@ rule dedup:
     deduplicate merged.i.bam files
     """
     input:
-        f1 = join(out_dir,'08_bam_merged','{sp}.{al}.merged.si.bam'),
+        f1 = join(out_dir,'08_bam_merged','{sp}.unmasked.merged.si.bam'),
     params:
         rname='23_dedup',
         umi = umi_parameter
     envmodules:
         config['umitools']  
     output:
-        o1 = join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.bam'),
-        o2 = join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.log'),
+        o1 = join(out_dir,'09_dedup','01_bam','{sp}.unmasked.dedup.bam'),
+        o2 = join(out_dir,'09_dedup','01_bam','{sp}.unmasked.dedup.log'),
     shell:
         """
         umi_tools dedup \
@@ -1243,23 +1243,6 @@ if (splice_aware == 'Y'):
             samtools view {input.f1}|cut -f1|sort|uniq > {output.o1}
             """
 
-    rule splice_index:
-        input:
-            unaware = join(out_dir,'09_dedup','01_bam','{sp}.unaware.dedup.bam'),
-            masked = join(out_dir,'09_dedup','01_bam','{sp}.masked.dedup.bam'),
-        params:
-            rname='24b_index'
-        envmodules:
-            config['samtools']
-        output:
-            unaware = join(out_dir,'09_dedup','01_bam','{sp}.unaware.dedup.bam.bai'),
-            masked = join(out_dir,'09_dedup','01_bam','{sp}.masked.dedup.bam.bai'),
-        shell:
-            '''
-            samtools index {input.unaware};
-            samtools index {input.masked}
-            '''
-
     rule subsample_reads:
         """
         subsample:
@@ -1270,10 +1253,8 @@ if (splice_aware == 'Y'):
         """
         input:
             id = join(out_dir,'10_mapq_score','{sp}.readids.txt'),
-            unaware = join(out_dir,'09_dedup','01_bam','{sp}.unaware.dedup.bam'),
-            masked = join(out_dir,'09_dedup','01_bam','{sp}.masked.dedup.bam'),
-            unaware_idx = join(out_dir,'09_dedup','01_bam','{sp}.unaware.dedup.bam.bai'),
-            masked_idx = join(out_dir,'09_dedup','01_bam','{sp}.masked.dedup.bam.bai'),
+            unaware = join(out_dir,'08_bam_merged','{sp}.unaware.merged.si.bam'),
+            masked = join(out_dir,'08_bam_merged','{sp}.masked.merged.si.bam'),
         params:
             rname='24b_subsample',
             script = join(source_dir,'workflow','scripts','06_filter_bam_by_readids.py'),
