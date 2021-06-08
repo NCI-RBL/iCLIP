@@ -446,6 +446,7 @@ rule check_manifest:
             '{params.base}' {input.f1} {input.f2}
         """
 
+#pipeline branches to demultiplex, if necessary
 if (multiplex_flag == 'Y'):
     rule qc_barcode:
         input:
@@ -745,6 +746,7 @@ rule novoalign:
         fi
         """
 
+#pipeline branches for splice_aware processing
 if (splice_aware == "Y"):
     rule sam_cleanup:
         """
@@ -1144,6 +1146,7 @@ rule qc_alignment:
         Rscript {params.R} {params.sampleid} {output.bam_a} {output.bam_u} {params.base}
         """
 
+#pipeline splits to handle multiplexed QC vs non-multiplexed QC
 if (multiplex_flag == 'Y'):
     rule qc_troubleshoot:
         """
@@ -1221,7 +1224,7 @@ rule dedup:
         --log2stderr -L {output.o2};
         """
 
-#if splice_aware, recalculate mapq score
+#pipeline splits for mapq score recalculation on splice_aware samples
 if (splice_aware == 'Y'):
     rule generate_readids:
         """
