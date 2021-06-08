@@ -816,8 +816,9 @@ if (splice_aware == "Y"):
 
     rule merge_unmapped_reads:
         """
-        purpose: unmapped reads are removed during genomic coordinates conversion, need to include them in final file
+        unmapped reads are removed during genomic coordinates conversion, need to include them in final file
         convert sam file to bam file
+        
         merge unmapped reads from cleanup to into final sam
         convert bam back to sam file
         """
@@ -849,7 +850,7 @@ if (splice_aware == "Y"):
 
     rule sort_index_unmapped_splits:
         """
-        merge split unmapped reads into one file
+        merge mapped and unmapped reads into one file
         """
         input:
             f1 = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.bam')
@@ -867,7 +868,7 @@ if (splice_aware == "Y"):
     
     rule merge_unmapped_splits:
         """
-        merge split unmapped reads into one file
+        merge all sample unmapped reads into one file
         """
         input:
             sorted_list = dynamic(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.sorted.bam')),
