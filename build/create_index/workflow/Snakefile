@@ -37,9 +37,10 @@ def get_location_list():
         
         loc_list = [s.replace(".fa", "") for s in content]
         loc_list_clean = [s.replace("\n", "") for s in loc_list]
+        loc_list_clean.remove("tmp_check")
 
     except:
-        return("tmp")
+        return("tmp_check")
 
     return(loc_list_clean)
 
@@ -229,12 +230,12 @@ rule split_genome:
     output:
         o1 = expand(join(out_dir,species,'02_split_genome','chr{num}.fa'), num=range(1,23)),
         o2 = join(out_dir,species,'split_file_list.txt'),
-        tmp = join(out_dir,species,'02_split_genome/tmp.fa')
+        tmp = join(out_dir,species,'02_split_genome/tmp_check.fa')
     shell:
         """
         faSplit byname {input.f1} {params.base};
         ls {params.base} > {output.o2};
-        touch tmp.fa
+        touch {output.tmp}
         """
 
 #create exon annotations
