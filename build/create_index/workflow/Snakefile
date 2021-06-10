@@ -59,6 +59,14 @@ def get_clean_location_list():
 
     return(loc_list_clean)
 
+def get_splice_list(wildcards):
+    input_list = expand(join(out_dir,species,'05_transcript','02_fasta','{loc}.' + wildcards.splice + '.splices.fasta'), loc=location_list_clean)
+    return(input_list)
+
+def get_transcript_list(wildcards):
+    input_list = expand(join(out_dir,species,'05_transcript','02_fasta','{loc}.' + wildcards.splice + '.transcripts.fasta'), loc=location_list_clean)
+    return(input_list)
+
 location_list = get_location_list()
 location_list_clean = get_clean_location_list()
 
@@ -390,8 +398,8 @@ rule merge_transcriptomes:
     Clean up junctions, script removes potential duplicate junctions
     '''
         input:
-            splice_list = expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'),loc=location_list_clean,splice=splice_list),
-            trans_list = expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'),loc=location_list_clean,splice=splice_list)
+            splice_list = get_splice_list,
+            trans_list = get_transcript_list
         params:
             rname = '05c_merge',
         output:
@@ -468,7 +476,7 @@ rule final_unmasked:
         input:
             f1 = join(out_dir, species, '01_source', species + '_final.fa'),
             splice = join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.splices.fasta'),
-            trans = join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta')
+            trans = join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta'),
         params:
             rname = '06c_final_unmasked'
         envmodules:
@@ -479,27 +487,3 @@ rule final_unmasked:
             """
             novoindex {output.o1} {input.f1} {input.splice} {input.trans}
             """
-
-
-'''
-
-find . -type f -name '*Rad46Num100kMin10Splices.fasta' | while read FILE ; do\
-    newfile="$(echo ${FILE} |sed -e 's/Rad46Num100kMin10Splices.fasta/46.splices.fasta/')" ;\
-    mv "${FILE}" "${newfile}" ;\
-done 
-
-find . -type f -name '*Rad46Num100kMin10Transcripts.fasta' | while read FILE ; do\
-    newfile="$(echo ${FILE} |sed -e 's/Rad46Num100kMin10Transcripts.fasta/46.transcripts.fasta/')" ;\
-    mv "${FILE}" "${newfile}" ;\
-done
-
-find . -type f -name '*46.splices.fasta' | while read FILE ; do\
-    newfile="$(echo ${FILE} |sed -e 's/46.splices.fasta/.46.splices.fasta/')" ;\
-    mv "${FILE}" "${newfile}" ;\
-done 
-
-find . -type f -name '*46.transcripts.fasta' | while read FILE ; do\
-    newfile="$(echo ${FILE} |sed -e 's/46.transcripts.fasta/.46.transcripts.fasta/')" ;\
-    mv "${FILE}" "${newfile}" ;\
-done
-'''
