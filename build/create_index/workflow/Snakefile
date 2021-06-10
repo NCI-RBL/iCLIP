@@ -332,7 +332,7 @@ rule spliced_trans:
         envmodules:
             config['ucsc']
         output:
-            o1 = join(out_dir,species,'05_transcript', '01_phred','{loc}.phred')
+            o1 = temp(join(out_dir,species,'05_transcript', '01_phred','{loc}.phred'))
         shell:
             """
             grep {params.loc_id} {input.phred} > {output.o1} || true
@@ -358,8 +358,8 @@ rule create_transcriptome:
     envmodules:
         config['java']
     output:
-        o1 = join(out_dir,species,'05_transcript', '01_phred','{loc}Rad{splice}Num100kMin10Splices.fasta.gz'),
-        o2 = join(out_dir,species,'05_transcript', '01_phred','{loc}Rad{splice}Num100kMin10Transcripts.fasta.gz')
+        o1 = temp(join(out_dir,species,'05_transcript', '01_phred','{loc}Rad{splice}Num100kMin10Splices.fasta.gz')),
+        o2 = temp(join(out_dir,species,'05_transcript', '01_phred','{loc}Rad{splice}Num100kMin10Transcripts.fasta.gz'))
     shell:
         """
         java -Xmx100G -jar {params.doc} \
@@ -382,8 +382,8 @@ rule unzip_transcriptome:
         rname = "05b_gunzip",
         base = join(out_dir,species,'06_transcript_indiv')
     output:
-        o1 = join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'),
-        o2 = join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'),
+        o1 = temp(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta')),
+        o2 = temp(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta')),
     shell:
         """
         gunzip -c {input.f1} > {output.o1};
