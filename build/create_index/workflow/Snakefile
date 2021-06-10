@@ -162,7 +162,7 @@ else:
         '''
         params:
             rname = '01a_dl_fa',
-            ftp = 'http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M' + gencode_v + '/GRCm38.p6.genome.gencodeM' + gencode_v + '.fa.gz',
+            ftp = 'http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M' + gencode_v + '/GRCm38.p6.genome.fa.gz',
             base = join(out_dir, species, '01_source')
         output:
             o1 =  join(out_dir, species, '01_source', 'GRCh38.p13.genome.fa.gz'),
