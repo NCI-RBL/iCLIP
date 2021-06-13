@@ -271,6 +271,8 @@ else:
             f2 = join(out_dir, species, '01_source', species + '_scaff.gtf'), 
         params:
             rname = '03_exon_anno'
+        envmodules:
+            config['ucsc']
         output:
             o1 = '/data/RBL_NCI/Phil/Reference/Index/novoalign/mm10_rRNA/MakeTranscriptome_genome/BK000964.3.bed.phred',
             o2 = '/data/RBL_NCI/Phil/Reference/Index/novoalign/mm10_rRNA/MakeTranscriptome_genome/BK000964.3.bed.phred2',
