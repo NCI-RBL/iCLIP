@@ -198,7 +198,7 @@ else:
             """
             gunzip -c {input.f1} > {output.o1};
             gunzip -c {input.f2} > {output.o2};
-            cp {input.rrna} > {output.o3}
+            cp {input.rrna} {output.o3}
             """
 
     rule concatonate_refs:
