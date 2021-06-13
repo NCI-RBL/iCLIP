@@ -196,8 +196,8 @@ else:
             o3 = join(out_dir, species,'01_source', 'BK000964.3_TPA_exp.fa')
         shell:
             """
-            gunzip {input.f1} > {output.o1};
-            gunzip {input.f2} > {output.o2};
+            gunzip -c {input.f1} > {output.o1};
+            gunzip -c {input.f2} > {output.o2};
             cp {input.rrna} > {output.o3}
             """
 
