@@ -1,11 +1,11 @@
 hg38:
-  std: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/hg38/hg38_final_nosplicing.nix'
+  std: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/hg38/06_final/hg38_final_nosplicing.nix'
   spliceaware_unmasked:
-    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/hg38/hg38_final_unmaskedexon_46.nix'
-    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/hg38/hg38_final_unmaskedexon_71.nix'
+    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/hg38/06_final/hg38_final_unmaskedexon_46.nix'
+    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/hg38/06_final/hg38_final_unmaskedexon_71.nix'
   spliceaware_masked:
-    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/hg38/hg38_final_maskedexon_46.nix'
-    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/hg38/hg38_final_maskedexon_71.nix'
+    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/hg38/06_final/hg38_final_maskedexon_46.nix'
+    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/hg38/06_final/hg38_final_maskedexon_71.nix'
   gencode_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt'
   refseq_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt'
   canonical_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt'
@@ -14,13 +14,13 @@ hg38:
   sy_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/additional_anno/'
   alias_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/hg38.chromAlias.txt'
 mm10:
-  std: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/mm10/mm10_final_nosplicing.nix'
+  std: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/mm10/06_final/mm10_final_nosplicing.nix'
   spliceaware_unmasked:
-    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/mm10/mm10_final_unmaskedexon_46.nix'
-    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/mm10/mm10_final_unmaskedexon_71.nix'
+    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/mm10/06_final/mm10_final_unmaskedexon_46.nix'
+    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/mm10/06_final/mm10_final_unmaskedexon_71.nix'
   spliceaware_masked:
-    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/mm10/mm10_final_maskedexon_46.nix'
-    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/mm10/mm10_final_maskedexon_71.nix'
+    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/mm10/06_final/mm10_final_maskedexon_46.nix'
+    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/2021_0607/mm10/06_final/mm10_final_maskedexon_71.nix'
   gencode_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt'
   refseq_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt'
   canonical_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt'
