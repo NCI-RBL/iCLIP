@@ -30,17 +30,16 @@ splice_list=['46','71']
 #gather all locations within genome and output to text file
 def get_location_list():
     list_path=join(out_dir, species, 'split_file_list.txt')
-
     try:
         my_file = open(list_path, "r")
         content = my_file.readlines()
         
         loc_list = [s.replace(".fa", "") for s in content]
         loc_list_clean = [s.replace("\n", "") for s in loc_list]
-        loc_list_clean.remove("tmp_check")
+        #loc_list_clean.remove("tmp_check")
 
     except:
-        return("tmp_check")
+        return(0)
 
     return(loc_list_clean)
 
@@ -56,7 +55,7 @@ def get_clean_location_list():
         loc_list = [s.replace(".fasta", "") for s in content]
         loc_list_clean = [s.replace("\n", "") for s in loc_list]
     except:
-        return("tmp_check")
+        return(0)
 
     return(loc_list_clean)
 
@@ -81,7 +80,6 @@ rule all:
         join(out_dir, species, '01_source', species + '_scaff.gtf'),
 
         #genome folder
-        expand(join(out_dir,species,'02_split_genome','chr{num}.fa'), num=range(1,19)),
         join(out_dir,species,'split_file_list.txt'), 
 
         #exon annotation
@@ -95,20 +93,20 @@ rule all:
         expand(join(out_dir, species, '05_transcript', '01_phred','{loc}.phred'),loc=location_list_clean),
 
         #create transcriptome
-        expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
-        expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
+        # expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
+        # expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
         
-        expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
-        expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
+        # expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
+        # expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
 
-        #remove junctions
-        expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.splices.fasta'), splice=splice_list),
-        expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta'), splice=splice_list),
+        # #remove junctions
+        # expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.splices.fasta'), splice=splice_list),
+        # expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta'), splice=splice_list),
 
-        #final indices
-        join(out_dir, species, '06_final', species + '_final_nosplicing.nix'),
-        expand(join(out_dir,species,'06_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
-        expand(join(out_dir,species,'06_final', species + '_final_unmaskedexon_{splice}.nix'), splice=splice_list),
+        # #final indices
+        # join(out_dir, species, '06_final', species + '_final_nosplicing.nix'),
+        # expand(join(out_dir,species,'06_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
+        # expand(join(out_dir,species,'06_final', species + '_final_unmaskedexon_{splice}.nix'), splice=splice_list),
 
 #download source reference files
 if species=='hg38':
@@ -216,9 +214,6 @@ rule split_genome:
     '''
     splits input fa into files by name (chrom, location)
     include / on base file or output stored in parent dir
-
-    add tmp file for dry run completion - when generating location list, SM looks for tmp.fa file as placeholder
-    until complete list is generated within pipeline
     '''
     input:
         f1 = join(out_dir, species,'01_source', species + '_final.fa')
@@ -228,14 +223,29 @@ rule split_genome:
     envmodules:
         config['ucsc']
     output:
-        o1 = expand(join(out_dir,species,'02_split_genome','chr{num}.fa'), num=range(1,19)),
-        o2 = join(out_dir,species,'split_file_list.txt'),
-        tmp = join(out_dir,species,'02_split_genome/tmp_check.fa')
+        o1 = dynamic(join(out_dir,species,'02_split_genome','{loc}.fa')),
     shell:
         """
-        faSplit byname {input.f1} {params.base};
-        ls {params.base} > {output.o2};
-        touch {output.tmp}
+        faSplit byname {input.f1} {params.base}
+        """
+
+rule split_genome_list:
+    '''
+    splits input fa into files by name (chrom, location)
+    include / on base file or output stored in parent dir
+    '''
+    input:
+        f1 = dynamic(expand(join(out_dir,species,'02_split_genome','{{loc}}.fa'))),
+    params:
+        rname = '02b_split_list',
+        base = join(out_dir, species, '02_split_genome/')
+    envmodules:
+        config['ucsc']
+    output:
+        o1 = join(out_dir,species,'split_file_list.txt'),
+    shell:
+        """
+        ls {params.base} > {output.o1};
         """
 
 #create exon annotations
@@ -301,8 +311,8 @@ rule masked_exon:
     take all created fasta files and make exon_masked fasta
     '''
         input:
-            f1 = expand(join(out_dir,species,'02_split_genome','{loc}.fa'), loc=location_list),
-            f2 = join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred')
+            split_list = join(out_dir,species,'split_file_list.txt'),
+            phred = join(out_dir, species, '03_exon_anno', species + '_scaff_spliced.phred')
         params:
             rname = '04_masked_exon',
             doc = join(cont_dir,'USeq_8.9.6','Apps/MaskExonsInFastaFiles'),
@@ -317,7 +327,7 @@ rule masked_exon:
             """
             java -Xmx50G -jar {params.doc} \
             -f {params.in_base} \
-            -u  {input.f2} \
+            -u  {input.phred} \
             -s {params.out_base}; \
             ls {params.out_base} > {output.o1}; \
             awk 'FNR==0{{print ""}}1' {params.out_base}/*.fasta > {output.o2}
