@@ -405,7 +405,7 @@ rule all:
         # #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
         #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.html'),zip, mp=mp_list, sp=sp_list),
 
-if (source_dir=="/tmp/repo/":
+if (source_dir=="/tmp/repo/"):
     include: join(source_dir,"rules/common.smk")
     include: join(source_dir,"rules/other.smk")
 else:
