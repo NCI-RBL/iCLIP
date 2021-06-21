@@ -4,7 +4,7 @@ S. Sevilla
 P. Homan
 
 * Overview * 
-- Multiplexed samples are split based on provided barcodes and named using provide manifests
+- Multiplexed samples are split based on provided barcodes and named using provide manifests, maximum 10 samples
 - Adaptors are stripped from samples
 - Samples are unzipped and split into smaller fastq files to increase speed
 - Samples are aligned using NovaAlign
@@ -14,8 +14,6 @@ P. Homan
 * Requirements *
 - Read specific input requirements, and execution information on the Wikipage
 located at: https://github.com/RBL-NCI/iCLIP.git
-
-Pipeline info: activeDev 05272021
 '''
 
 report: "report/workflow.rst"
@@ -89,7 +87,7 @@ else:
 if (splice_aware == 'N'):
     align_list = ["unaware"]
 else:
-    align_list = ["unaware","masked","unmasked"]
+    align_list = ["unmasked"]
 
 ###############################################################
 # create sample lists
@@ -279,14 +277,6 @@ def get_align_input(wildcards):
         f1 = join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam'),
     return(f1)
 
-#determine dedup input based on splcie_aware flag
-def input_mapq_corrected_bam(wildcards):
-    if (splice_aware=="N"):
-        f1 = join(out_dir,'09_dedup','01_bam','{sp}.unaware.dedup.bam'),
-    else:
-        f1 = join(out_dir,'10_mapq_score','{sp}.mapq_recalculated.bam'),
-    return(f1)
-
 ###############################################################
 # main code
 ###############################################################
@@ -387,27 +377,24 @@ rule all:
         expand(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.complete.bam'),  sp=sp_list, al=align_list),
 
         #Deduplicate
-        expand(join(out_dir,'09_dedup','01_bam','{sp}.unmasked.dedup.bam'), sp=sp_list),
+        expand(join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.bam'), sp=sp_list, al=align_list),
         
-        #MapQ recalculation
-        #input_splice,
+        #Bam processing
+        expand(join(out_dir,'09_dedup','03_unique','{sp}.dedup.unique.i.bam'), sp=sp_list),
 
-        # #Bam processing
-        # expand(join(out_dir,'09_dedup','03_unique','{sp}.dedup.unique.i.bam'), sp=sp_list),
+        #Bed files
+        expand(join(out_dir,'11_bed','{sp}_all.bed'), sp=sp_list),
+        expand(join(out_dir,'11_bed','{sp}_unique.bed'), sp=sp_list),
 
-        # #Bed files
-        # expand(join(out_dir,'11_bed','{sp}_all.bed'), sp=sp_list),
-        # expand(join(out_dir,'11_bed','{sp}_unique.bed'), sp=sp_list),
+        #SAF 
+        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_all.SAF'), sp=sp_list),
+        expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
 
-        # #SAF 
-        # expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_all.SAF'), sp=sp_list),
-        # expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
-
-        # #Count features
-        # expand(join(out_dir,'14_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'), sp=sp_list),
-        # expand(join(out_dir,'14_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
-        # expand(join(out_dir,'14_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
-        # expand(join(out_dir,'14_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+        #Count features
+        expand(join(out_dir,'14_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'14_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'14_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'14_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
 
         # #In progress
         # join(out_dir,'15_annotation', 'project',,'annotations.txt'),
@@ -1203,18 +1190,18 @@ else:
 
 rule dedup:
     """
-    deduplicate merged.i.bam files
+    deduplicate 
     """
     input:
-        f1 = join(out_dir,'08_bam_merged','{sp}.unmasked.merged.si.bam'),
+        f1 = join(out_dir,'08_bam_merged','{sp}.{al}.merged.si.bam'),
     params:
         rname='23_dedup',
         umi = umi_parameter
     envmodules:
         config['umitools']  
     output:
-        o1 = join(out_dir,'09_dedup','01_bam','{sp}.unmasked.dedup.bam'),
-        o2 = join(out_dir,'09_dedup','01_bam','{sp}.unmasked.dedup.log'),
+        o1 = join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.bam'),
+        o2 = join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.log'),
     shell:
         """
         umi_tools dedup \
@@ -1224,102 +1211,12 @@ rule dedup:
         --log2stderr -L {output.o2};
         """
 
-#pipeline splits for mapq score recalculation on splice_aware samples
-if (splice_aware == 'Y'):
-    rule generate_readids:
-        """
-        generate readids from unmasked files
-        """
-        input:
-            f1 = join(out_dir,'09_dedup','01_bam','{sp}.unmasked.dedup.bam')
-        params:
-            rname='24a_readids',
-        envmodules:
-            config['samtools']  
-        output:
-            o1 = join(out_dir,'10_mapq_score','{sp}.readids.txt'),
-        shell:
-            """
-            samtools view {input.f1}|cut -f1|sort|uniq > {output.o1}
-            """
-
-    rule subsample_reads:
-        """
-        subsample:
-        A) splice unaware BAM 
-        B) splice aware (masked exon) BAM 
-        
-        using the readids from splice aware (unmasked exon) in rule generate_readids
-        """
-        input:
-            id = join(out_dir,'10_mapq_score','{sp}.readids.txt'),
-            unaware = join(out_dir,'08_bam_merged','{sp}.unaware.merged.si.bam'),
-            masked = join(out_dir,'08_bam_merged','{sp}.masked.merged.si.bam'),
-        params:
-            rname='24b_subsample',
-            script = join(source_dir,'workflow','scripts','06_filter_bam_by_readids.py'),
-        envmodules:
-            config['python']  
-        output:
-            unaware = join(out_dir,'10_mapq_score','{sp}.unaware.subset.bam'),
-            masked = join(out_dir,'10_mapq_score','{sp}.masked.subset.bam'),
-        shell:
-            """
-            python {params.script} --inputBAM {input.unaware} --outputBAM {output.unaware} --readids {input.id};
-            python {params.script} --inputBAM {input.masked} --outputBAM {output.masked} --readids {input.id}
-            """
-
-    rule mapq_recalc:
-        """
-        input deduplicate (C) BAM file and the 2 BAMs subset A) and subset B) pysam script for MAPQ 
-        correction - outputs D) updated mapq score bam file
-        """
-        input:
-            unaware = join(out_dir,'10_mapq_score','{sp}.unaware.subset.bam'),
-            masked = join(out_dir,'10_mapq_score','{sp}.masked.subset.bam'),
-            unmasked = join(out_dir,'09_dedup','01_bam','{sp}.unmasked.dedup.bam'),
-        params:
-            rname='24c_recalc',
-            script = join(source_dir,'workflow','scripts','07_correct_mapq.py'),
-            unaware = join(out_dir,'10_mapq_score','{sp}.unaware.subset.bam'),
-            masked = join(out_dir,'10_mapq_score','{sp}.masked.subset.bam'),
-        envmodules:
-            config['python']  
-        output:
-            bam = join(out_dir,'10_mapq_score','{sp}.mapq_recalculated.bam'),
-            tsv = join(out_dir,'10_mapq_score','{sp}.mapq_recalculated.tsv'),
-        shell:
-            """
-            python {params.script} \
-            --inputBAM1 {input.unaware} --inputBAM2 {input.masked} --inputBAM3 {input.unmasked} \
-            --outBAM {output.bam} --out {output.tsv}
-            """
-
-    rule mapq_stats:
-        """
-        TODO
-        **Use D) for visualization
-        """
-        input:
-            f1 = expand(join(out_dir,'10_mapq_score','{sp}.mapq_recalculated.bam'),sp=sp_list),
-        params:
-            rname='24c_mapq_stats',
-            script = join(source_dir,'workflow','scripts','.py'),
-        envmodules:
-            config['R']  
-        output:
-            o1 = join(out_dir,'10_mapq_score','report.pdf'),
-        shell:
-            """
-            Rscript {params.script} {input.f1} {output.o1}
-            """
-
 rule sort_index_dedup:
     """
     sort dedup.bam file
     """
     input:
-        f1 = input_mapq_corrected_bam
+        f1 = expand(join(out_dir,'09_dedup','01_bam','{{sp}}.{al}.dedup.bam'), al=align_list),
     params:
         rname='25_si_dedup',
     envmodules:
