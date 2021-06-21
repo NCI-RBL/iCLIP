@@ -26,6 +26,7 @@ s_time=`date +"%Y%m%d_%H%M%S"`
 #remove trailing / on directories
 output_dir=$(echo $config_output_dir | sed 's:/*$::')
 source_dir=$(echo $config_source_dir | sed 's:/*$::')
+species=$(echo $config_species | sed 's/\s.*$//')
 
 #Run pipeline on cluster or locally
 if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
@@ -34,49 +35,49 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   if [ -d "${output_dir}" ]
     then
       echo
-      echo "Output dir: ${output_dir}"
+      echo "**Output dir: ${output_dir}"
     else
       mkdir "${output_dir}"
       echo
-      echo "Creating output dir: ${output_dir}"
+      echo "**Creating output dir: ${output_dir}"
     fi
 
   #create log dir
   if [ -d "${output_dir}/log" ]
   then
     echo
-    echo "Pipeline re-run:"
+    echo "**Pipeline re-run, jobid:"
   else
     mkdir "${output_dir}/log"
     echo
-    echo "Pipeline initial run:"
+    echo "**Pipeline initial run, jobid:"
   fi
 
   # copy config inputs for ref
-  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml' 'config/index_config.yaml' ${config_multiplex_manifest} ${config_sample_manifest})
+  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml')
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
-    cp $f "${output_dir}/log/${log_time}_00_${strarr[-1]}"
+    cp $f "${output_dir}/log/${log_time}_00_${species}_${strarr[-1]}"
   done
 
   # copy workflow dir for archiving
   if [ -d "${output_dir}/workflow" ]
   then
-    cp "${source_dir}/workflow/Snakefile" "${output_dir}/workflow/${log_time}_Snakefile"
+    cp "${source_dir}/workflow/Snakefile" "${output_dir}/workflow/${log_time}_${species}_Snakefile"
   else
     mkdir "${output_dir}/workflow"
-    cp "${source_dir}/workflow/Snakefile" "${output_dir}/workflow/${log_time}_Snakefile"
+    cp "${source_dir}/workflow/Snakefile" "${output_dir}/workflow/${log_time}_${species}_Snakefile"
   fi
 
   #submit jobs to cluster
   if [[ $pipeline = "cluster" ]]; then
-    sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --output=${output_dir}/log/${log_time}_00_%j_%x.out --mail-type=BEGIN,END,FAIL \
-    snakemake --use-envmodules --latency-wait 120  -s ${output_dir}/workflow/${log_time}_Snakefile --configfile ${output_dir}/log/${log_time}_00_snakemake_config.yaml \
-    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_00_cluster_config.yml --keep-going \
+    sbatch --job-name="iCLIP" --gres=lscratch:200 --time=120:00:00 --output=${output_dir}/log/${log_time}_00_${species}_%j_%x.out --mail-type=BEGIN,END,FAIL \
+    snakemake --use-envmodules --latency-wait 120 -s ${output_dir}/workflow/${log_time}_${species}_Snakefile --configfile ${output_dir}/log/${log_time}_00_${species}_snakemake_config.yaml \
+    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_00_${species}_cluster_config.yml --keep-going \
     --restart-times 1 --cluster "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
-    --job-name={params.rname} --output=${output_dir}/log/${log_time}_{params.rname}.out" -j 500 --rerun-incomplete
+    --job-name={params.rname} --output=${output_dir}/log/${log_time}_${species}_{params.rname}.out" -j 500 --rerun-incomplete
 
   #submit jobs locally
   else
@@ -84,8 +85,8 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     if [ -d "/tmp/iCount" ]; then 
       rm -r /tmp/iCount/ 
     fi
-    snakemake -s ${output_dir}/workflow/${log_time}_Snakefile --use-envmodules --configfile ${output_dir}/log/${log_time}_00_snakemake_config.yaml \
-    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_00_cluster_config.yml --cores 8
+    snakemake -s ${output_dir}/workflow/${log_time}_${species}_Snakefile --use-envmodules --configfile ${output_dir}/log/${log_time}_00_${species}_snakemake_config.yaml \
+    --printshellcmds --cluster-config ${output_dir}/log/${log_time}_00_${species}_cluster_config.yml --cores 8 --keep-going
   fi
 #Unlock pipeline
 elif [[ $pipeline = "unlock" ]]; then
