@@ -391,10 +391,10 @@ rule all:
         expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
 
         #Count features
-        expand(join(out_dir,'14_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'14_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'14_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'14_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'13_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'13_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
 
         # #In progress
         # join(out_dir,'15_annotation', 'project',,'annotations.txt'),
@@ -1357,8 +1357,8 @@ rule feature_counts_allreads:
     envmodules:
         config['subread']  
     output:
-        out_unique = join(out_dir,'14_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
-        out_all = join(out_dir,'14_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
+        out_unique = join(out_dir,'13_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
+        out_all = join(out_dir,'13_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
     shell:
         """
         featureCounts -F SAF \
@@ -1399,8 +1399,8 @@ rule feature_counts_uniquereads:
     envmodules:
         config['subread']  
     output:
-        out_unique = join(out_dir,'14_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
-        out_all = join(out_dir,'14_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
+        out_unique = join(out_dir,'13_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
+        out_all = join(out_dir,'13_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
     shell:
         """
         featureCounts -F SAF \
@@ -1431,7 +1431,7 @@ rule feature_counts_uniquereads:
 #     generate annotation table once per project
 #     """
 #     input:
-#         expand(join(out_dir,'14_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
+#         expand(join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
 #     params:
 #         rname='36_proj_anno',
 #         script = join(source_dir,'workflow','scripts','06_annotation.R'),
@@ -1479,8 +1479,8 @@ rule feature_counts_uniquereads:
 
 #     '''
 #     input:
-#         unique = join(out_dir,'14_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
-#         all = join(out_dir,'14_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
+#         unique = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
+#         all = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
 #         anno = join(out_dir,'15_annotation', 'project','annotations.txt'),
 #     params:
 #         rname = '37_peak_anno',
