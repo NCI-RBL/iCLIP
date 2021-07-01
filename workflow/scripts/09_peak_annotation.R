@@ -19,11 +19,10 @@ read_depth = args[5]
 DEmethod = args [6]
 sample_id = args[7]
 nt_merge = args[8]
-out_dir = args[9]
-anno_dir = args[10]
-ref_species = args[11]
+ref_species = args[9]
+out_dir = args[10]
+anno_dir = args[11]
 reftable_path = args[12]
-ref_dir = args[13]
 
 
 if(length(args)==0){
@@ -38,12 +37,12 @@ if(length(args)==0){
   
   #output
   out_dir = paste0(wd,"/workflow/scripts/AnnoTestPIPE/")
-  out_file = paste0(wd,"/workflow/scripts/AnnoTestPIPE/15_peaks/WT1_fCLIP_50nt_peakannotation_complete.txt")
+  #out_file = paste0(wd,"/workflow/scripts/AnnoTestPIPE/15_peaks/WT1_fCLIP_50nt_peakannotation_complete.txt") ##used variable instead of hardcode
   
   #project annotation files
-  rmsk_path = "/Users/homanpj/Documents/Resources/ref/hg38/repeatmasker/rmsk_GRCh38.txt"
+  #rmsk_path = "/Users/homanpj/Documents/Resources/ref/hg38/repeatmasker/rmsk_GRCh38.txt" #never used
   anno_dir = paste0(wd,"/workflow/scripts/AnnoTestPIPE/15_project_annotation/")
-    ref_dir = "/Users/homanpj/Documents/Resources/ref/"
+  #ref_dir = "/Users/homanpj/Documents/Resources/ref/" ##never used
   
   #feature information
   join_junction = "TRUE"
@@ -61,29 +60,30 @@ removeVersion <- function(ids){
 varname <- function(x) {
   deparse(substitute(x))}
 
-#annotation paths
-gencode_transc_path = paste0(anno_dir,"ref_gencode.txt")
-lncra_path = paste0(anno_dir,"lncRNA_gencode.txt")
-alias_path =  paste0("/Users/homanpj/Documents/Resources/ref/mm10/mm10.chromAlias.txt") 
-YRNA_path = paste0(anno_dir, "yRNA_repeatmasker.bed")
-srpRNA_path = paste0(anno_dir, "srpRNA_repeatmasker.bed")
-SKRNA_path = paste0(anno_dir, "7SKRNA_repeatmasker.bed")
-scRNA_path = paste0(anno_dir, "scRNA_repeatmasker.bed")
-tRNA_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
-sncRNA_path = paste0(anno_dir, "sncRNA_gencode.bed")
-rRNA_BK00964_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
-rRNA_rmsk_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
-tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
+  #annotation paths
+  gencode_transc_path = paste0(anno_dir,"ref_gencode.txt")
+  lncra_path = paste0(anno_dir,"lncRNA_gencode.txt")
+  #alias_path =  paste0("/Users/homanpj/Documents/Resources/ref/mm10/mm10.chromAlias.txt") 
+  YRNA_path = paste0(anno_dir, "yRNA_repeatmasker.bed")
+  srpRNA_path = paste0(anno_dir, "srpRNA_repeatmasker.bed")
+  SKRNA_path = paste0(anno_dir, "7SKRNA_repeatmasker.bed")
+  scRNA_path = paste0(anno_dir, "scRNA_repeatmasker.bed")
+  tRNA_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
+  sncRNA_path = paste0(anno_dir, "sncRNA_gencode.bed")
+  rRNA_BK00964_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
+  rRNA_rmsk_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
+  tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
 
-if(ref_species == "mm10"){
-  gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
-  intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
-  rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
+#none of these paths are being used - delete
+  # if(ref_species == "mm10"){
+  #   gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
+  #   intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
+  #   rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
 
-} else if (ref_species == "hg38"){
-  gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
-  intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
-  rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
+  # } else if (ref_species == "hg38"){
+  #   gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
+  #   intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
+  #   rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
 } 
 
 #set id for files
@@ -1784,7 +1784,7 @@ if (JoinJunc==TRUE) {
 }
 
 #write out for junction annotation 
-write.table(Peaksdata2_anno,paste0(out_file),sep = "\t")
+write.table(Peaksdata2_anno,paste0(out_dir,file_id,peakannotation_complete.txt),sep = "\t")
 
 #write out for mapq
 write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID')],

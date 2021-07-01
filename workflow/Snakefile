@@ -1482,58 +1482,50 @@ rule project_annotations:
             {params.a_config}
         """
 
-# rule peak_annotations:
-#     '''
-#     find peak junctions, annotations peaks, merges junction and annotation information
+rule peak_annotations:
+    '''
+    find peak junctions, annotations peaks, merges junction and annotation information
 
-#     additional outputs if MANORM
-#     _peakDepth.bed
-#     _peakDepth_P.bed
-#     _peakDepth_N.bed
+    additional outputs if MANORM
+    _peakDepth.bed
+    _peakDepth_P.bed
+    _peakDepth_N.bed
 
-#     '''
-#     input:
-#         unique = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
-#         all = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
-#         anno = join(out_dir,'14_annotation', 'project','annotations.txt'),
-#     params:
-#         rname = '37_peak_anno',
-#         script = join(source_dir,'workflow','scripts','07_peak_annotation.R'),
-#         p_type = peak_id,
-#         junc = sp_junc,
-#         r_depth= min_count,
-#         d_method=DE_method,
-#         sp = "{sp}",
-#         n_merge = nt_merge,
-#         base = join(out_dir,'14_annotation','peak/',),
-#         anno_dir = join(out_dir,'14_annotation','peak/'),
-#         ref_sp = nova_ref,
-#         masker_path = rmsk_path
-#     envmodules:
-#         config['R'],
-#     output:
-#         o1 = join(out_dir,'14_annotation', 'peak','{sp}_' + str(nt_merge) + '_peakjunction.txt'),
-#         o2 = join(out_dir,'14_annotation', 'peak','{sp}_' + str(nt_merge) + '_peakannotation.txt'),
-#         o3 = join(out_dir,'14_annotation', 'peak','{sp}_' + str(nt_merge) + '_peakannotation_junctions.txt'),
-#         o4 = join(out_dir,'14_annotation', 'peak','{sp}_' + str(nt_merge) + 'peakannotation_mapq_IN.txt'),
-#         o5 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth.bed'), ###need to add if statement for MANORM only
-#         o6 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth_P.bed'), ###need to add if statement for MANORM only
-#         o7 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth_N.bed'),
-#     shell:
-#         '''
-#         Rscript {params.script} \
-#             {params.p_type} \
-#             {input.unique} \
-#             {input.all} \
-#             {params.junc} \
-#             {params.r_depth} \
-#             {params.d_method} \
-#             {params.sp} \
-#             {params.n_merge} \
-#             {params.base}
-#             {params.anno_dir} \
-#             {params.ref_sp} \
-#             {params.masker.path} \
-#             {output.o1}
-#         '''
-
+    '''
+    input:
+        unique = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
+        all = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
+        anno = join(out_dir,'14_annotation', 'project','annotations.txt'),
+    params:
+        rname = '37_peak_anno',
+        script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
+        p_type = peak_id,
+        junc = sp_junc,
+        r_depth= min_count,
+        d_method=DE_method,
+        sp = "{sp}",
+        n_merge = nt_merge,
+        ref_sp = nova_ref,
+        base = join(out_dir,'14_annotation','peak/',),
+        anno_dir = join(out_dir,'14_annotation','peak/'),
+        a_config = annotation_config,
+    envmodules:
+        config['R'],
+    output:
+        o1 = join(out_dir,'14_annotation', 'peak','{sp}_' + str(nt_merge) + 'peakannotation_mapq_IN.txt'),
+    shell:
+        '''
+        Rscript {params.script} \
+            {params.p_type} \
+            {input.unique} \
+            {input.all} \
+            {params.junc} \
+            {params.r_depth} \
+            {params.d_method} \
+            {params.sp} \
+            {params.n_merge} \
+            {params.ref_sp} \
+            {params.base}
+            {params.anno_dir} \
+            {params.a_config}
+        '''
