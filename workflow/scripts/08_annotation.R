@@ -14,7 +14,6 @@ rmsk_path = args[8]
 custom_path = args[9]
 out_dir = args[10]
 reftable_path = args[11]
-refseq_rRNA = args[12]
 
 #testing information
 if(length(args)==0){
@@ -164,8 +163,7 @@ rmsk_GRCm38$genoName=gsub("v",".",rmsk_GRCm38$genoName)
 ##########################################################################################
 
 ############### hg38 refseq rRNA
-
-if (ref_species=='hg38'&refseq_rRNA==T) {
+if (ref_species=='hg38' && refseq_rRNA==TRUE) {
   ref_Refseq=fread(refseq_path, header=T, sep="\t",stringsAsFactors = F,data.table=F)
   ref_Refseq=ref_Refseq[,!colnames(ref_Refseq)%in%'source']
   ref_Refseq=dplyr::rename(ref_Refseq,
@@ -178,7 +176,7 @@ if (ref_species=='hg38'&refseq_rRNA==T) {
   ref_Refseq=ref_Refseq[(ref_Refseq$feature)%in%'gene',]
   
   ##################################################  ###################################################
-  alias=fread(paste0(ref_dir,"/hg38/hg38.chromAlias.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F,skip = "#",fill=TRUE)
+  alias=fread(alias_path, header=T, sep="\t",stringsAsFactors = F,data.table=F,skip = "#",fill=TRUE)
   colnames(alias)=c('chr','alias2','aliasNCBI',"Refseq")
   alias$aliasNCBI2=alias$aliasNCBI
   alias[-grep('_',alias$chr),'aliasNCBI2']=alias[-grep('_',alias$chr),'chr']

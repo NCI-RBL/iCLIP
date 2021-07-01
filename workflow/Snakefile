@@ -40,7 +40,7 @@ multiplex_manifest = config['multiplex_manifest']
 
 nova_ref = config['novoalign_reference']
 splice_aware = config['splice_aware'].capitalize()
-rrna_included = config['include_rRNA'].capitalize()
+include_rRNA = config['include_rRNA'].capitalize()
 splice_bp = config['splice_bp_length']
 multiplex_flag = config['multiplex_flag'].capitalize()
 mismatch = config['mismatch_allowance']
@@ -69,7 +69,7 @@ can_path = index_list[nova_ref]['canonical_path']
 intron_path = index_list[nova_ref]['intron_path']
 rmsk_path = index_list[nova_ref]['rmsk_path']
 alias_path = index_list[nova_ref]['alias_path']
-add_anno_path = index_lisst[nova_ref]['additional_anno_path']
+add_anno_path = index_list[nova_ref]['additional_anno_path']
 
 #singularity exec command
 singularity_exec = "singularity exec -B /data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir + ",/fdb,/scratch"
@@ -88,6 +88,12 @@ if (splice_aware == 'N'):
     align_list = ["unaware"]
 else:
     align_list = ["unmasked"]
+
+#convert rRNA selection
+if (include_rRNA=="Y"):
+    refseq_rrna = "TRUE"
+else:
+    refseq_rrna = "FALSE"
 
 ###############################################################
 # create sample lists
@@ -400,10 +406,13 @@ rule all:
         expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
         expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
 
+        #project annotations
+        join(out_dir,'14_annotation', 'project','annotations.txt'),
+        
         # #In progress
-        # join(out_dir,'15_annotation', 'project',,'annotations.txt'),
+        # 
         #expand(join(out_dir,'14_peaks/{sp}_' + str(nt_merge) + '_peakjunction.txt'),sp=sp_list),
-        #join(out_dir,'15_annotation','annotations.txt'),
+        #join(out_dir,'14_annotation','annotations.txt'),
 
         # #Annotation
         # #expand(join(out_dir,'14_annotation','{sp}_'+ str(nt_merge) +'_MD15.txt'),zip, mp=mp_list, sp=sp_list),
@@ -1439,9 +1448,9 @@ rule project_annotations:
         expand(join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
     params:
         rname='36_proj_anno',
-        script = join(source_dir,'workflow','scripts','06_annotation.R'),
+        script = join(source_dir,'workflow','scripts','08_annotation.R'),
         ref_sp = nova_ref,
-        rrna_flag = rrna_included,
+        rrna_flag = refseq_rrna,
         a_path = alias_path,
         g_path = gen_path,
         rs_path = rseq_path,
@@ -1449,16 +1458,14 @@ rule project_annotations:
         i_path = intron_path,
         r_path = rmsk_path,
         custom_path = add_anno_path,
-        base = join(out_dir,'15_annotation', 'project/',),
+        base = join(out_dir,'14_annotation', 'project/',),
         a_config = annotation_config,
     envmodules:
         config['R']
     output:
-        anno = join(out_dir,'15_annotation', 'project','annotations.txt'),
-        ncRNA = join(out_dir,'15_annotation', 'project','ncRNA_annotations.txt'),
-        alias = join(out_dir,'15_annotation', 'project','ref_alias.csv'),
-        refseq = join(out_dir,'15_annotation', 'project','ref_refseq.csv'),
-        lncRNA = join(out_dir,'15_annotation', 'project','ref_lncRNA.csv'),
+        anno = join(out_dir,'14_annotation', 'project','annotations.txt'),
+        nc_anno = join(out_dir,'14_annotation', 'project','ncRNA_annotations.txt'),
+        ref_gencode = join(out_dir,'14_annotation', 'project','ref_gencode.txt'),
     shell:
         """
         Rscript {params.script} \
@@ -1488,7 +1495,7 @@ rule project_annotations:
 #     input:
 #         unique = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
 #         all = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
-#         anno = join(out_dir,'15_annotation', 'project','annotations.txt'),
+#         anno = join(out_dir,'14_annotation', 'project','annotations.txt'),
 #     params:
 #         rname = '37_peak_anno',
 #         script = join(source_dir,'workflow','scripts','07_peak_annotation.R'),
@@ -1498,17 +1505,17 @@ rule project_annotations:
 #         d_method=DE_method,
 #         sp = "{sp}",
 #         n_merge = nt_merge,
-#         base = join(out_dir,'15_annotation','peak/',),
-#         anno_dir = join(out_dir,'15_annotation','peak/'),
+#         base = join(out_dir,'14_annotation','peak/',),
+#         anno_dir = join(out_dir,'14_annotation','peak/'),
 #         ref_sp = nova_ref,
 #         masker_path = rmsk_path
 #     envmodules:
 #         config['R'],
 #     output:
-#         o1 = join(out_dir,'15_annotation', 'peak','{sp}_' + str(nt_merge) + '_peakjunction.txt'),
-#         o2 = join(out_dir,'15_annotation', 'peak','{sp}_' + str(nt_merge) + '_peakannotation.txt'),
-#         o3 = join(out_dir,'15_annotation', 'peak','{sp}_' + str(nt_merge) + '_peakannotation_junctions.txt'),
-#         o4 = join(out_dir,'15_annotation', 'peak','{sp}_' + str(nt_merge) + 'peakannotation_mapq_IN.txt'),
+#         o1 = join(out_dir,'14_annotation', 'peak','{sp}_' + str(nt_merge) + '_peakjunction.txt'),
+#         o2 = join(out_dir,'14_annotation', 'peak','{sp}_' + str(nt_merge) + '_peakannotation.txt'),
+#         o3 = join(out_dir,'14_annotation', 'peak','{sp}_' + str(nt_merge) + '_peakannotation_junctions.txt'),
+#         o4 = join(out_dir,'14_annotation', 'peak','{sp}_' + str(nt_merge) + 'peakannotation_mapq_IN.txt'),
 #         o5 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth.bed'), ###need to add if statement for MANORM only
 #         o6 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth_P.bed'), ###need to add if statement for MANORM only
 #         o7 = join(out_dir,'16_manorm','{sp}_' + str(nt_merge) + '_peakDepth_N.bed'),
