@@ -196,7 +196,7 @@ if (ref_species=='hg38' && refseq_rRNA==TRUE) {
   Refseq_rRNA=Refseq_rRNA[is.na(Refseq_rRNA$chr)==F,]
   
   write.table(Refseq_rRNA[,c("chr",'start','end','ensembl_gene_id','gene_type','strand','gene_type_ALL')],
-              paste0(out_dir,"rRNA_refSeq.bed"),col.names=T,sep = "\t",row.names = F)
+              paste0(out_dir,"rRNA_refseq.bed"),col.names=T,sep = "\t",row.names = F)
   
 } 
 

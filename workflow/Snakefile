@@ -408,7 +408,8 @@ rule all:
 
         #project annotations
         join(out_dir,'14_annotation', 'project','annotations.txt'),
-        
+        expand(join(out_dir, '14_annotation', 'peaks', '{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),sp=sp_list),
+
         # #In progress
         # 
         #expand(join(out_dir,'14_peaks/{sp}_' + str(nt_merge) + '_peakjunction.txt'),sp=sp_list),
@@ -1506,13 +1507,13 @@ rule peak_annotations:
         sp = "{sp}",
         n_merge = nt_merge,
         ref_sp = nova_ref,
-        base = join(out_dir,'14_annotation','peak/',),
-        anno_dir = join(out_dir,'14_annotation','peak/'),
+        base = join(out_dir,'14_annotation','peaks/',),
+        anno_dir = join(out_dir,'14_annotation','project/'),
         a_config = annotation_config,
     envmodules:
         config['R'],
     output:
-        o1 = join(out_dir,'14_annotation', 'peak','{sp}_' + str(nt_merge) + 'peakannotation_mapq_IN.txt'),
+        o1 = join(out_dir,'14_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),
     shell:
         '''
         Rscript {params.script} \
@@ -1525,7 +1526,7 @@ rule peak_annotations:
             {params.sp} \
             {params.n_merge} \
             {params.ref_sp} \
-            {params.base}
+            {params.base} \
             {params.anno_dir} \
             {params.a_config}
         '''

@@ -24,6 +24,18 @@ out_dir = args[10]
 anno_dir = args[11]
 reftable_path = args[12]
 
+#annotation paths
+gencode_transc_path = paste0(anno_dir,"ref_gencode.txt")
+lncra_path = paste0(anno_dir,"lncRNA_gencode.txt")
+YRNA_path = paste0(anno_dir, "yRNA_repeatmasker.bed")
+srpRNA_path = paste0(anno_dir, "srpRNA_repeatmasker.bed")
+SKRNA_path = paste0(anno_dir, "7SKRNA_repeatmasker.bed")
+scRNA_path = paste0(anno_dir, "scRNA_repeatmasker.bed")
+tRNA_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
+sncRNA_path = paste0(anno_dir, "sncRNA_gencode.bed")
+rRNA_BK00964_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
+rRNA_rmsk_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
+tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
 
 if(length(args)==0){
   wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iCLIP_Git/"
@@ -60,21 +72,8 @@ removeVersion <- function(ids){
 varname <- function(x) {
   deparse(substitute(x))}
 
-  #annotation paths
-  gencode_transc_path = paste0(anno_dir,"ref_gencode.txt")
-  lncra_path = paste0(anno_dir,"lncRNA_gencode.txt")
-  #alias_path =  paste0("/Users/homanpj/Documents/Resources/ref/mm10/mm10.chromAlias.txt") 
-  YRNA_path = paste0(anno_dir, "yRNA_repeatmasker.bed")
-  srpRNA_path = paste0(anno_dir, "srpRNA_repeatmasker.bed")
-  SKRNA_path = paste0(anno_dir, "7SKRNA_repeatmasker.bed")
-  scRNA_path = paste0(anno_dir, "scRNA_repeatmasker.bed")
-  tRNA_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
-  sncRNA_path = paste0(anno_dir, "sncRNA_gencode.bed")
-  rRNA_BK00964_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
-  rRNA_rmsk_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
-  tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
-
 #none of these paths are being used - delete
+#alias_path =  paste0("/Users/homanpj/Documents/Resources/ref/mm10/mm10.chromAlias.txt") 
   # if(ref_species == "mm10"){
   #   gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
   #   intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
@@ -84,7 +83,7 @@ varname <- function(x) {
   #   gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
   #   intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
   #   rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
-} 
+#} 
 
 #set id for files
 file_id = paste0(sample_id,"_",nt_merge,"_")
@@ -369,12 +368,10 @@ ref_gencode_trans = read.table(gencode_transc_path,header=TRUE,sep="\t")
 ###phil this assumes that SY flag - is there no option here? if so need to update previous code
 
 ref_table = read.table(reftable_path, header = TRUE, sep="\t", row.names = 1)
-
-
 rpmk_Anno_RNA_comb=data.frame()
 gencode_Anno_RNA_comb=data.frame()
-  gencodeCol=c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')
-  gencode_Anno_RNA_comb=ref_gencode_trans[,gencodeCol]  
+gencodeCol=c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')
+gencode_Anno_RNA_comb=ref_gencode_trans[,gencodeCol]  
 custom_Anno_RNA_comb=data.frame()
 refseq_Anno_RNA_comb=data.frame()
 
@@ -514,7 +511,7 @@ bam_anno2=function(peaksTable,Annotable,ColumnName,pass_n){
               file = paste0(out_dir,file_prefix,"annotable.bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
   
-  
+
   peaksTable_output=peaksTable[is.na(peaksTable$start)==F,]
   peaksTable_output=subset(peaksTable_output,chr %in% unique(anno_output$chr_anno))
   peaksTable_output=peaksTable_output[,c('chr','start','end','ID','ID2','strand')]
