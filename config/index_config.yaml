@@ -13,6 +13,7 @@ hg38:
   rmsk_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCh38.txt'
   sy_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/additional_anno/'
   alias_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/hg38.chromAlias.txt'
+  additional_anno_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/additional_anno/'
 mm10:
   std: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/mm10/mm10.nix'
   spliceaware_unmasked:
@@ -28,3 +29,4 @@ mm10:
   rmsk_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/repeatmasker/rmsk_GRCm38.txt'
   sy_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/additional_anno/'
   alias_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/mm10.chromAlias.txt'
+  additional_anno_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/additional_anno/'

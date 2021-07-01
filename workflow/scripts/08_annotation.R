@@ -1,44 +1,24 @@
 library(data.table)
 library(dplyr)
 library(tidyr)
-#library(GenomicFeatures)
-#library(rtracklayer)
-# library(VariantAnnotation,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(GenomicRanges,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library("pheatmap")
-# library(ggplot2,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library("viridis",quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(edgeR,quietly = T,verbose = F)
-# library('GenomicFeatures',quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library('rtracklayer',quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(matrixStats,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(plyr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(tidyr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(fitdistrplus,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(stringr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(reshape)
-# library(stringi)
-# library(plotly)
-# library(GenomicRanges)
-# library(RColorBrewer)
 
 args <- commandArgs(trailingOnly = TRUE)
 ref_species = args[1]
-soyeong_path = args[2]
+refseq_rRNA = args[2]
 alias_path = args[3]
 gencode_path = args[4]
 refseq_path = args[5]
 canonical_path = args[6]
 intron_path = args[7]
 rmsk_path = args[8]
-out_dir = args[9]
-reftable_path = args[10]
-refseq_rRNA = args[11]
-
-setwd("../../../../../")
+custom_path = args[9]
+out_dir = args[10]
+reftable_path = args[11]
+refseq_rRNA = args[12]
 
 #testing information
 if(length(args)==0){
+  setwd("../../../../../")
   ref_dir = "/Users/homanpj/Documents/Resources/ref/"
   ref_species = "hg38" ### need better name, match to snakemake
   reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iClip_Git/config/annotation_config.txt"

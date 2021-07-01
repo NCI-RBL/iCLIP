@@ -61,6 +61,10 @@ properties:
   container_dir:
     type: string
     description: /path/to/container/sif/files
+  include_rRNA:
+    type: string
+    enum: ["Y","N","y","n"]
+    description: whether to include RefSeq rRNA's in annotations
 
 # entries that have to be in the config file for successful validation
 required:
