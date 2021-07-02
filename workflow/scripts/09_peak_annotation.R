@@ -15,17 +15,18 @@ peak_type = args[1]
 peak_unique = args[2]
 peak_all = args[3]
 join_junction = args[4]
-read_depth = args[5]
-DEmethod = args [6]
-sample_id = args[7]
-nt_merge = args[8]
-ref_species = args[9]
-out_dir = args[10]
-anno_dir = args[11]
-reftable_path = args[12]
-gencode_path = args[13]
-intron_path = args[14]
-rmsk_path = args[15]
+condense_exon = args[5]
+read_depth = args[6]
+DEmethod = args [7]
+sample_id = args[8]
+nt_merge = args[9]
+ref_species = args[10]
+out_dir = args[11]
+anno_dir = args[12]
+reftable_path = args[13]
+gencode_path = args[14]
+intron_path = args[15]
+rmsk_path = args[16]
 
 #annotation paths
 gencode_transc_path = paste0(anno_dir,"ref_gencode.txt")
@@ -335,20 +336,19 @@ if (join_junction==TRUE) {
     JoinJunc=F
   }
 }  else {
-  print("Junctions joining not selected")
+  print("Junction joining was not selected")
   FtrCount_splice_junc=FtrCount_merged[c("chr","start","end",'ID','ID2',"strand")]
   JoinJunc=F
 }
 
 #write final junction output
 write.table(FtrCount_splice_junc,paste0(out_dir,file_id,"peakjunction.txt"),sep = "\t")
-## end join_junc
+
 ##########################################################################################
 ##############################  Peak info - starts old 07_peak_generation
 ##########################################################################################
 #read in peaks and alias file generated from 06_peak_junction.R
 peaks = FtrCount_splice_junc
-
 peaks_Oppo=peaks 
 peaks_Oppo$strand=gsub("\\+","pos",peaks_Oppo$strand) 
 peaks_Oppo$strand=gsub("\\-","+",peaks_Oppo$strand)
@@ -476,7 +476,7 @@ Anno_RNA_comb=Anno_RNA_comb[duplicated(Anno_RNA_comb)==F,]
 ##########################################################################################
 
 #merge references depending on species, run annotation
-bam_anno2=function(peaksTable,Annotable,ColumnName,pass_n){
+bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
   #testing
   if(length(args)==0){
     peaksTable=peaks_Oppo
@@ -606,7 +606,6 @@ bam_anno2=function(peaksTable,Annotable,ColumnName,pass_n){
   return(ab_OL) 
 }
 
-#covers 1123 through 1342, 1397 through 13404
 peak_calling<-function(peak_in,nmeprfix){
   if(length(args)==0){
     peak_in=peaks
@@ -614,7 +613,7 @@ peak_calling<-function(peak_in,nmeprfix){
     }
 
   print((match.call())$peak_in)
-  
+
   colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')
   colSelect=c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
   
@@ -656,7 +655,6 @@ peak_calling<-function(peak_in,nmeprfix){
               c('type','transcript_name'),
               "pass2")
  
-  
   ##########################################################################################
   ############### Clean up
   ##########################################################################################
@@ -691,7 +689,7 @@ peak_calling<-function(peak_in,nmeprfix){
   ## Checiking for conflicting annotations from gencode and additional supplied annotations
   ## If conflict prioritize Supplied annotations 
   ## Additionally Peak may overlap multiple features and so I am setting hierarchy
-  
+
   for(x in 1:length(u)){
     PeaksdataOutU=u[x]
     pam=peaksTable_double[peaksTable_double$ID%in%PeaksdataOutU,]
@@ -722,7 +720,7 @@ peak_calling<-function(peak_in,nmeprfix){
     #combine all rna types subtypes into ncRNA
     pam_c=rbind(pam_1,pam_2)
     pam_c=pam_c[!is.na(pam_c$a),,drop=F]
-    
+
     #### Annotation from Gencode : unique(sort(mm10$gene_type_ALL))
     ReplaceType <-function(df_in,col_in,list_in,replace_id){
       for (id in list_in){
@@ -908,7 +906,6 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
   
   # print((match.call())$peak_in)
   
-  
   #create annotation table
   ColumnName = c("feature","exon_number")
   anno_IntExn = intron_exon[grep('protein_coding',intron_exon$gene_type),] #%>%
@@ -924,7 +921,7 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
   #                      c('feature','exon_number'),
   #                      "pass3")
   # 
-################################################################################################################################  
+  ################################################################################################################################  
   ##phil was there a reason for not using bam_anno2?
   ## this is a little different from bam_anno2 because trying to calculate distance to feature and then collapsing to each feature
   
@@ -942,14 +939,15 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
   colnames(a)[colnames(a)%in%c('chr','start','end','strand')]=paste0(c('chr','start','end','strand'),'_anno')
 
   ###phil - why are we writing the Same files over again?
-  write.table(a,file=paste0(out_dir,"/","/annotable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
-  write.table(p,file=paste0(out_dir,"/","/peakstable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
+  write.table(a,file=paste0(out_dir,file_id,"annotable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
+  write.table(p,file=paste0(out_dir,file_id,"peakstable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
 
-  system(paste0('bedtools intersect -a ',gsub(" ","\\\\ ",out_dir),'/','/peakstable.bed -b ',gsub(" ","\\\\ ",out_dir),'/','/annotable.bed -wao -s  >',gsub(" ","\\\\ ",out_dir),'/','/peaks_OL.txt'))
+  #system(paste0('bedtools intersect -a ',gsub(" ","\\\\ ",out_dir),'/','/peakstable.bed -b ',gsub(" ","\\\\ ",out_dir),'/','/annotable.bed -wao -s  >',gsub(" ","\\\\ ",out_dir),'/','/peaks_OL.txt'))
+  system(paste0('bedtools intersect -a ', out_dir, file_id, 'peakstable.bed -b ', out_dir, file_id, 'annotable.bed -wao -s  >', out_dir, file_id, 'peaks_OL.txt'))
 
   ### fix - writing Same files again
   ##phil are there differences between this and the bam_anno2 function? If not we can run together
-  exoninof=fread(paste0(out_dir,"/peaks_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+  exoninof=fread(paste0(out_dir,file_id,"peaks_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
   colnames(exoninof)=c(paste0(colnames(p)),paste0(colnames(a)),'ntOL')
   exoninof=exoninof[exoninof$ntOL>0,]
   exoninof$width_anno=exoninof$end_anno-exoninof$start_anno
@@ -983,7 +981,7 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
     ###phil why are we pushing NA cols?
     peak_in[,paste0(nmeprfix,c('Exn_start_dist','Intron_start_dist','Intron_5pStart','Exn_5pStart'))]=NA
   }
-  
+
   #for each peak in table
   for (x in 1:nrow(peak_in)) {
     
@@ -1043,15 +1041,13 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
       if (Peak_Strand_ref=='Oppo') {peak_in[x,paste0(nmeprfix,c("feature",'exon_number','intron_number'))]=NA}
     } 
   }
-  
-  
 
   ###phil what is this fixing?
   ### protien coding peaks with not Correctly assigned exon overlap
   peak_in[is.na(peak_in[,paste0(nmeprfix,'feature')]) & 
                peak_in[,paste0(nmeprfix,'gene_type')]%in%'protein_coding',paste0(nmeprfix,'feature')]='exon'
   peaksTable_inex=peak_in[grep(',',peak_in[,paste0(nmeprfix,'feature')]),]
-  
+
   return(peak_in)
 }
 
@@ -1721,7 +1717,7 @@ if (JoinJunc==TRUE) {
   
   ###phil need to fill else statement
   # collapse exon
-  if (params$Condense==TRUE) {
+  if (condense_exon==TRUE) {
     Peaksdata2_anno_trns_exon = subset(Peaksdata2_anno, !(Same_feature == "") &
                                          Comb_type_exon_Oppo == 'protein_coding: exon')
     #create list

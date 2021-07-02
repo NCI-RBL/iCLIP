@@ -25,6 +25,7 @@ peak_id: "all" #report peaks for unique peaks only or unique and fractional mm [
 DE_method: "manorm" #choose DE method ["manorm","none"]
 splice_junction: "n" #include splice junctions in peak calls
 include_rRNA: "Y" #include refseq rRNA's in annotations ["Y", "N"]
+condense_exon: "Y"
 
 #modules, container parameters
 container_dir: "/data/CCBR_Pipeliner/iCLIP/container"

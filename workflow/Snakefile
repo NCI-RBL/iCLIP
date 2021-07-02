@@ -50,6 +50,8 @@ nt_merge = str(config['nt_merge']) + 'nt'
 peak_id = config['peak_id'].upper()
 DE_method = config['DE_method'].upper()
 sp_junc = config['splice_junction'].upper()
+condense_exon = config['condense_exon'].upper()
+
 
 #expand reference selection
 if (nova_ref == "mm10"):
@@ -82,6 +84,12 @@ if (sp_junc=="Y"):
     sp_junc = "TRUE"
 else:
     sp_junc = "FALSE"
+
+#convert condense junction selection
+if (condense_exon=="Y"):
+    cond_exon = "TRUE"
+else:
+    cond_exon = "FALSE"
 
 #create list of alignment types based on splice_aware flag
 if (splice_aware == 'N'):
@@ -1502,6 +1510,7 @@ rule peak_annotations:
         script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
         p_type = peak_id,
         junc = sp_junc,
+        c_exon = cond_exon,
         r_depth= min_count,
         d_method=DE_method,
         sp = "{sp}",
@@ -1510,8 +1519,12 @@ rule peak_annotations:
         base = join(out_dir,'14_annotation','peaks/',),
         anno_dir = join(out_dir,'14_annotation','project/'),
         a_config = annotation_config,
+        g_path = gen_path,
+        i_path = intron_path,
+        r_path = rmsk_path,
     envmodules:
         config['R'],
+        config['bedtools'],
     output:
         o1 = join(out_dir,'14_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),
     shell:
@@ -1521,6 +1534,7 @@ rule peak_annotations:
             {input.unique} \
             {input.all} \
             {params.junc} \
+            {params.c_exon} \
             {params.r_depth} \
             {params.d_method} \
             {params.sp} \
@@ -1528,5 +1542,8 @@ rule peak_annotations:
             {params.ref_sp} \
             {params.base} \
             {params.anno_dir} \
-            {params.a_config}
+            {params.a_config} \
+            {params.g_path} \
+            {params.i_path} \
+            {params.r_path} \
         '''
