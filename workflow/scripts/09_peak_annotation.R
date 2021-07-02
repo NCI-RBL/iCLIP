@@ -41,7 +41,7 @@ if(length(args)==0){
   wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/"
   setwd(wd)
   wd="."
-    
+     
   peak_type= "ALL"
   peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Control_Clip_50nt_uniqueCounts.txt"
   peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Control_Clip_50nt_allFracMMCounts.txt"
