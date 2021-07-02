@@ -38,31 +38,44 @@ rRNA_rmsk_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
 tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
 
 if(length(args)==0){
-  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iCLIP_Git/"
+  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/"
   setwd(wd)
   wd="."
     
   peak_type= "ALL"
-  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/NextSeq_fCLIP_0218/13_counts/allreadpeaks/WT1_fCLIP_50nt_uniqueCounts.txt"
-  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/NextSeq_fCLIP_0218/13_counts/allreadpeaks/WT1_fCLIP_50nt_allFracMMCounts.txt"
-  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iClip_Git/config/annotation_config.txt"
+  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Control_Clip_50nt_uniqueCounts.txt"
+  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Control_Clip_50nt_allFracMMCounts.txt"
+  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
   
   #output
-  out_dir = paste0(wd,"/workflow/scripts/AnnoTestPIPE/")
+  out_dir = paste0(wd,"/14_annotation/peaks/")
   #out_file = paste0(wd,"/workflow/scripts/AnnoTestPIPE/15_peaks/WT1_fCLIP_50nt_peakannotation_complete.txt") ##used variable instead of hardcode
   
   #project annotation files
   #rmsk_path = "/Users/homanpj/Documents/Resources/ref/hg38/repeatmasker/rmsk_GRCh38.txt" #never used
-  anno_dir = paste0(wd,"/workflow/scripts/AnnoTestPIPE/15_project_annotation/")
+  anno_dir = paste0(wd,"/14_annotation/project/")
   #ref_dir = "/Users/homanpj/Documents/Resources/ref/" ##never used
   
   #feature information
-  join_junction = "TRUE"
-  read_depth = 5
+  join_junction = "FALSE"
+  read_depth = 3
   DEmethod = "MANORM"
   ref_species="hg38"
-  sample_id = "WT1"
+  sample_id = "Control_Clip"
   nt_merge = "50nt"
+  
+  #none of these paths are being used - delete
+  alias_path =  paste0("/Users/homanpj/Documents/Resources/ref/mm10/mm10.chromAlias.txt")
+  if(ref_species == "mm10"){
+    gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
+    intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
+    rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
+
+  } else if (ref_species == "hg38"){
+  gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
+  intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
+  rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
+  }
 }
 
 removeVersion <- function(ids){
@@ -72,18 +85,7 @@ removeVersion <- function(ids){
 varname <- function(x) {
   deparse(substitute(x))}
 
-#none of these paths are being used - delete
-#alias_path =  paste0("/Users/homanpj/Documents/Resources/ref/mm10/mm10.chromAlias.txt") 
-  # if(ref_species == "mm10"){
-  #   gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
-  #   intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
-  #   rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
 
-  # } else if (ref_species == "hg38"){
-  #   gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
-  #   intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
-  #   rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
-#} 
 
 #set id for files
 file_id = paste0(sample_id,"_",nt_merge,"_")
@@ -327,12 +329,12 @@ if (join_junction==TRUE) {
   } else{
     print("No junctions were identified")
     ###phil if there are no junctoins, then just use the merge?
-    FtrCount_splice_junc=FtrCount_merged[c("chr","start","end","strand")]
+    FtrCount_splice_junc=FtrCount_merged[c("chr","start","end",'ID','ID2',"strand")]
     JoinJunc=F
   }
 }  else {
   print("Junctions joining not selected")
-  FtrCount_splice_junc=FtrCount_merged[c("chr","start","end","strand")]
+  FtrCount_splice_junc=FtrCount_merged[c("chr","start","end",'ID','ID2',"strand")]
   JoinJunc=F
 }
 
@@ -608,7 +610,7 @@ peak_calling<-function(peak_in,nmeprfix){
     peak_in=peaks
     nmeprfix='Same_'
     }
-  
+
   print((match.call())$peak_in)
   
   colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')
@@ -1781,7 +1783,7 @@ if (JoinJunc==TRUE) {
 }
 
 #write out for junction annotation 
-write.table(Peaksdata2_anno,paste0(out_dir,file_id,peakannotation_complete.txt),sep = "\t")
+write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_complete.txt'),sep = "\t")
 
 #write out for mapq
 write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID')],
