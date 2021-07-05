@@ -10,12 +10,8 @@ params:
   species: 'hg38'
   Condense: FALSE
   JoinJunc: TRUE
-  calcMAPQ: FALSE
-  calcALTLOC: FALSE
-  RunMAnorm: FALSE
-  DEmethod: "MAnorm"
   PeakIdnt: "all" #MultiMap, Unique, all
-  NameAdd: "" ##"_SpliceAware_FullGenome_Transcme.SplicTrans_CollapseExons"
+  NameAdd: "" ##"_SpliceAware_FullGenome_Transcme.SplicTrans_CollapseExons" ###need to remove this - we dont need additional id's
 # params:
 #   samplename: samplename
 #   peak_in: peak_in
@@ -111,9 +107,9 @@ inMAPQ=params$inMAPQ
 ntmerge=params$ntmerge
 readdepth=as.numeric(params$readdepth)
 NameAdd=params$NameAdd
-calcMAPQ=params$calcMAPQ
-calcALTLOC=params$calcALTLOC
-RunMAnorm=params$calcALTLOC
+#calcMAPQ=params$calcMAPQ ###not used
+#calcALTLOC=params$calcALTLOC ###not used
+#RunMAnorm=params$calcALTLOC ###not used
 species=params$species
 OutDIR=params$OutDIR
 PeakIdnt=params$PeakIdnt
