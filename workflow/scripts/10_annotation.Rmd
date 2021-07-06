@@ -10,6 +10,7 @@ params:
   species: 'hg38'
   Condense: FALSE
   JoinJunc: TRUE
+  include_rRNA: TRUE
   PeakIdnt: "ALL" #MultiMap, Unique, all
 ---
  
@@ -55,8 +56,6 @@ blank_theme <- theme_minimal()+
   axis.ticks = element_blank(),
   plot.title=element_text(size=14, face="bold")
   )
-
-incd_rRNA=T
 ```
 
 # Set params, output  
@@ -69,6 +68,7 @@ readdepth=as.numeric(params$readdepth)
 species=params$species
 output_table=params$output_table
 PeakIdnt=params$PeakIdnt
+incd_rRNA=params$incd_rRNA
 ```
 
 ```{r echo=F, message=FALSE, warning=FALSE, eval=T, include=F,results=F,}
@@ -143,12 +143,7 @@ ggplotly(x,tooltip = c("x", "y"))
 
 ### Identify if CLIP peak overlaps with Intron or Exonic region   
 
-<br>  
-
-<!-- Intron coordinates were calculated from GTF file. -->
-
-<!-- A second column was added to idenify if the peak also overlapped with the 5'UTR 3'UTR or CDS (Column: Featrue 2) -->
-
+<br> 
 
 Peaks were annotated with overlapping gene/transcript  
 
@@ -211,8 +206,6 @@ Not all Peaks overlap with a single feature so peak assignments were assigned by
 <!-- **ncRNA > Protein coding : Exonic > repeats > Pseudogene > Antisense Feature > Protein Coding : Intronic > lncRNA > no Feature**    -->
 
 **ncRNA > protein_coding: Exonic > Repeat Element > pseudogene > lncRNA: Exonic > Antisense Feature > protein_coding: Intronic > lncRNA: Intronic > no Feature**
-
-<!-- rDNA transcript (BK000964.3) was included in reference genome but not included in peak counts. rDNA will affect multimapping count and will show up in alternative mapping location.   	 -->
 
 All annotations from RNA type, Repeat regions, and Intronic/exonic regions are annotated in the Table.   
 
@@ -279,8 +272,6 @@ x1;x2;x3;x4;x5
 <br>  
 <br>   
 
-<!-- ##  Peak Attributes    -->
-
 ##  Number of peaks assigned to each catagory  
 
 
@@ -307,8 +298,6 @@ gg=ggplot(p,aes(fill=RNA_Type,x=RNA) ) +
 ggplotly(gg)
 ```
 
-<!-- <font size="1">Columns: RNA_type_Classification </font>      -->
-<!-- <br/>      -->
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
 
@@ -365,11 +354,6 @@ gg=ggplot(p,aes(fill=RNA_Type,x=RNA) )+geom_bar(position="stack",width=.5) +
 ggplotly(gg)
 ```
 
-
-<!-- <font size="1">Columns: RNA_type_Classification </font>      -->
-<!-- <br/>      -->
-
-
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
 
 p=Peaksdata2_anno
@@ -414,9 +398,6 @@ gg = ggplot(p,aes(fill=RNA_Type,x=RNA) ) +
 ggplotly(gg)
 
 ```
-
-<!-- <font size="1">Columns: RNA_type_Classification </font>      -->
-<!-- <br/>      -->
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
 p=Peaksdata2_anno
@@ -489,8 +470,6 @@ gg = ggplot(pcount,aes(fill=RNA_Type,x=RNA,y=Counts_fracMM)) +
   ggtitle("BioType - # of reads (unique + Frac. MM) by catagory)")+
   scale_fill_manual(values=nc_color)
 ggplotly(gg)
-
-
 ```
 <br>    
 
@@ -544,8 +523,6 @@ plot(gg2)
 }
 
 ```      
-<!-- <font size="1">Columns: RNA_type_Classification + Counts_Unique </font>      -->
-
 <br>   
 
 <br>   
@@ -581,7 +558,6 @@ gg = ggplot(p,aes(x=RNA_Type,y=Counts_Unique,fill=RNA_Type)) +
   theme(axis.text.x = element_text(angle = -45))
 ggplotly(gg)
 ```  
-<!-- <font size="1">Columns: RNA_type_Classification </font>      -->
 <br/>    
 
 <br/>    
@@ -633,7 +609,6 @@ gg=ggplot(p,aes(x=RNA_Type,y=Counts_fracMM,fill=RNA_Type)) +
 
 ggplotly(gg)
 ```  
-<!-- <font size="1">Columns: RNA_type_Classification </font>      -->
 <br/>    
 
 <br/>    
@@ -773,9 +748,6 @@ Counts_Multimappers_Scaled='Counts_fracMM',
 
 
 ```{r ,fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=T,include=F}
-
-#write.table(Peaksdata3_anno,
- # file=paste0(OutDIR,peaksout,samplename,"_CLIP_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD16.txt"), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= #FALSE,na = "")
 write.table(Peaksdata3_anno, file=output_table, sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
 ```
 ## Counts Table : 
@@ -785,18 +757,10 @@ write.table(Peaksdata3_anno, file=output_table, sep = "\t", row.names = FALSE, c
 **Columns:**  
 "ID" - CLIP peak location  
 "strand" - CLIP peak stand  
-<!-- "Average MAPQ" - Average Mapping quality of reads aligned to peak region.   -->
+
 "Counts_Unique" - Number of Unique reads aligned to CLIP peak  
-<!-- "Counts_All" - Count of Multimapped reads for each peak     -->
-<!-- "Counts_All" - Count of Unique + Multimapped read for each peak (Each occurrence of Multimapped read is counted separately)   -->
 "Counts_Multimappers_Scaled"  - number of reads with Unique reads =1 and Multimapped =1/#MM locations  
-<!-- "Counts_Multimappers_Best Mapping" - Number of Unique reads + best mapQ Multimapped Read aligned to CLIP peak   -->
-<!-- "Multimaped Reads %" - Percent of Multimapped reads that align to CLIP peak   -->
-<!-- "Pvalue" - Sample specific peak P-Value compared to Control - MAnorm.   -->
-<!-- "WT-Normalized count"- Normalized Peak count generated by MAnorm.   -->
-<!-- "RoKO-Normalized count"- Control Sample normalized Peak count generated by MAnorm.   -->
-<!-- "FC" - Log2 Fold Change (WT-RoKO) using MAnorm normalized counts.    -->
-  
+
 "Same Strand: Host_gene_name" - Name of Host Gene on same strand as CLIP reads  
 "Same Strand: Host_gene_ensembl_id" - Ensemble Name of Host Gene on same strand as CLIP reads  
 "Same Strand: RNA_type" - Transcript type of CLIP peak host gene on same strand as CLIP reads  
@@ -814,30 +778,3 @@ write.table(Peaksdata3_anno, file=output_table, sep = "\t", row.names = FALSE, c
 "Opposite Strand: ncRNA_Classification" - Summary of ncRNA Peak assignments  
 
 "Both Strand: RNA_type_Classification" - Summary of Peak Classification including both strand annotations  
-      
-
-<!-- "MM_number" - # of reads in CLIP peak that aligns to other locations Genome   -->
-<!-- "MM_Alt_Peaktype" - # of Multimapped reads with Alternative Peak Classifications different from original Peak Classification   -->
-<!-- "MM_Same_Peaktype" - # of Multimapped reads with the same Peak Classification as the original Peak Classification   -->
-<!-- "MM_type" - Peak Classifications for alternative mappings of multimapped reads   -->
-<!-- "MM_Prec_Alt_Peaktype" - % of Multimapped reads with Alternative Peak Classifications different from original Peak Classification   -->
-<!-- "MM_Alt_Alignments" - Location alternate alignments for Multimapped reads   -->
-
-<!-- "iCount_peak" - 1= peak is identified by iCount -->
-<br>
-
-
-
-<!-- ## Alignment Tracks   -->
-
-<!-- `r toString(samplename)`_Clip_iCountcutadpt_all.unique.NH.mm.ddup.bam - MultiMapped + Uniquely aligned CLIP Reads   -->
-<!-- `r toString(samplename)`_Clip_iCountcutadpt_all.unique.NH.mm.ddup.unique.bam - Uniquely aligned CLIP Reads   -->
-<!-- `r toString(samplename)`_Clip_iCountcutadpt_all.unique.NH.mm.ddup.multimapped.bam - MultiMapped aligned CLIP Reads   -->
-
-<br>
-<br>
-
-<!-- ## Annotation Tracks     -->
-
-<!-- sftp://Biowulf.nih.gov/data/RBL_NCI/datashare/wolin/mESC_Clip/annotation_files/ -->
-
