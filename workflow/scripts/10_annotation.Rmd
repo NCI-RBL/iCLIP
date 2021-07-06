@@ -4,7 +4,7 @@ output: html_document
 params:
   samplename: "Control"
   peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/14_annotation/peaks/Control_Clip_50nt_peakannotation_completePH.txt"
-  output_file: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/14_annotation/Control_Clip_50nt_peakannotation_finalPH.txt"
+  output_table: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/14_annotation/Control_Clip_50nt_peakannotation_finalPH.txt"
   ntmerge: "50nt"
   readdepth: 5
   species: 'hg38'
@@ -21,7 +21,7 @@ params:
 ###phil - why render the file within the file? 
 #rmarkdown::render('CLIP_MD16_BWpipe.Rmd',
 #                        encoding=encoding,
-#                        output_file=paste0(gsub('\\\\ ',' ',params$OutDIR),peaksout, params$samplename,'_CLIP_',params$PeakIdnt,'Peaks',params$ntmerge,'_peakDepth',params$readdepth,params$NameAdd,'_MD16.html'))
+#                        output_table=paste0(gsub('\\\\ ',' ',params$OutDIR),peaksout, params$samplename,'_CLIP_',params$PeakIdnt,'Peaks',params$ntmerge,'_peakDepth',params$readdepth,params$NameAdd,'_MD16.html'))
 ```
  
  # Load libraries, set theme
@@ -86,7 +86,7 @@ readdepth=as.numeric(params$readdepth)
 #calcALTLOC=params$calcALTLOC ###not used
 #RunMAnorm=params$calcALTLOC ###not used
 species=params$species
-output_file=params$output_file
+output_table=params$output_table
 PeakIdnt=params$PeakIdnt
 
 #not used - snakemake will keep track of output dirs
@@ -874,7 +874,7 @@ Counts_Multimappers_Scaled='Counts_fracMM',
 
 #write.table(Peaksdata3_anno,
  # file=paste0(OutDIR,peaksout,samplename,"_CLIP_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD16.txt"), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= #FALSE,na = "")
-write.table(Peaksdata3_anno, file=output_file, sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
+write.table(Peaksdata3_anno, file=output_table, sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
 ```
 
 ```{r echo=F, message=FALSE, warning=FALSE, eval=F, include=T,results=F,}
@@ -901,7 +901,7 @@ write.table(Peaksdata3_anno, file=output_file, sep = "\t", row.names = FALSE, co
 
 ## Counts Table : 
 
-"`r output_file`"  
+"`r output_table`"  
 
 **Columns:**  
 "ID" - CLIP peak location  

@@ -417,7 +417,8 @@ rule all:
         #annotations
         join(out_dir,'14_annotation', 'project','annotations.txt'),
         expand(join(out_dir, '14_annotation', 'peaks', '{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),sp=sp_list),
-        expand(join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_report.html'),sp=sp_list),
+        expand(join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_report.html'),sp=sp_list),
+        expand(join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_table.txt'),sp=sp_list),
 
 #common and other SMK 
 if source_dir == "":
@@ -1560,7 +1561,8 @@ rule annotation_output:
     envmodules:
         config['R']
     output:
-        o1 = join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_report.html')
+        o1 = join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_report.html'),
+        o2 = join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_table.txt'),
     shell:
         """
         Rscript -e 'library(rmarkdown); \
@@ -1568,7 +1570,7 @@ rule annotation_output:
             output_file = "{output.o1}", \
             params= list(samplename = "{params.sp}", \
                 peak_in = "{input.peak_in}", \
-                output_file = "{output.o1}", \
+                output_table = "{output.o2}", \
                 ntmerge = "{params.n_merge}", \
                 readdepth = "{params.r_depth}", \
                 species = "{params.ref_sp}", \
