@@ -1557,7 +1557,8 @@ rule annotation_output:
         r_depth= min_count,
         c_exon = cond_exon,
         junc = sp_junc,
-        p_type = peak_id
+        p_type = peak_id,
+        rrna = include_rRNA,
     envmodules:
         config['R']
     output:
@@ -1576,5 +1577,6 @@ rule annotation_output:
                 species = "{params.ref_sp}", \
                 Condense = "{params.c_exon}", \
                 JoinJunc = "{params.junc}", \
+                include_rRNA = "{params.rrna}", \
                 PeakIdnt = "{params.p_type}"))'
             """
