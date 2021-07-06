@@ -24,6 +24,8 @@ nt_merge: 50 #minimum distance of nucleotides to merge peaks [10,20,30,40,50,60]
 peak_id: "all" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
 DE_method: "manorm" #choose DE method ["manorm","none"]
 splice_junction: "Y" #include splice junctions in peak calls: "manorm" #choose DE method ["manorm","none"]
+include_rRNA: "Y" #include refseq rRNA's in annotations ["Y", "N"]
+condense_exon: "Y"
 
 #modules, container parameters
 container_dir: "/data/CCBR_Pipeliner/iCLIP/container"
