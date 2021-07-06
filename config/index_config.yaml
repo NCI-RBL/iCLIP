@@ -1,11 +1,11 @@
 hg38:
   std: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/hg38.nix'
   spliceaware_unmasked:
-    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc_46.nix'
-    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc_71.nix'
+    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc_50.nix'
+    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc_75.nix'
   spliceaware_masked:
-    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc.maskedexon_46.nix'
-    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc.maskedexon_71.nix'
+    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc.maskedexon_50.nix'
+    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc.maskedexon_75.nix'
   gencode_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt'
   refseq_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt'
   canonical_path: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt'
