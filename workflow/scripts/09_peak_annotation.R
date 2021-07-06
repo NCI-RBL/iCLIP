@@ -1799,7 +1799,7 @@ if (JoinJunc==TRUE) {
 
 #write out for junction annotation 
 Peaksdata2_anno=merge(FtrCount_merged[,c('ID','Counts_Unique','Counts_fracMM','Length')],Peaksdata2_anno,by='ID')
-write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_completePH.txt'),sep = "\t")
+write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_complete.txt'),sep = "\t")
 
 #write out for mapq
 write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID')],
