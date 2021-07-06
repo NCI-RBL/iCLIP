@@ -28,27 +28,19 @@ gencode_path = args[14]
 intron_path = args[15]
 rmsk_path = args[16]
 
-#annotation paths
-gencode_transc_path = paste0(anno_dir,"ref_gencode.txt")
-lncra_path = paste0(anno_dir,"lncRNA_gencode.txt")
-YRNA_path = paste0(anno_dir, "yRNA_repeatmasker.bed")
-srpRNA_path = paste0(anno_dir, "srpRNA_repeatmasker.bed")
-SKRNA_path = paste0(anno_dir, "7SKRNA_repeatmasker.bed")
-scRNA_path = paste0(anno_dir, "scRNA_repeatmasker.bed")
-tRNA_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
-sncRNA_path = paste0(anno_dir, "sncRNA_gencode.bed")
-rRNA_BK00964_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
-rRNA_rmsk_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
-tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
 
 if(length(args)==0){
-  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/"
+  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/"
   setwd(wd)
-  wd="."
-    
+  # wd="."
+     
   peak_type= "ALL"
-  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Control_Clip_50nt_uniqueCounts.txt"
-  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Control_Clip_50nt_allFracMMCounts.txt"
+  peak_unique = "/Users/homanpj/OneDrive\ -\ National\ Institutes\ of\ Health/Loaner/Wolin/CLIP/mESC_clip2/SpliceAware/peaks_FullGenome_Transcme.SplicTrans2/Ro/all/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.AllPeaks50nt.FCountUnique.txt"
+  peak_all = "/Users/homanpj/OneDrive\ -\ National\ Institutes\ of\ Health/Loaner/Wolin/CLIP/mESC_clip2/SpliceAware/peaks_FullGenome_Transcme.SplicTrans2/Ro/all/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.AllPeaks50nt.FCountall_frac.txt"
+  # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Ro_Clip_50nt_uniqueCounts.txt"
+  # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Ro_Clip_50nt_allFracMMCounts.txt"
+  # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Ro_Clip_50nt_uniqueCounts.txt"
+  # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Ro_Clip_50nt_allFracMMCounts.txt"
   reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
   
   #output
@@ -58,14 +50,20 @@ if(length(args)==0){
   #project annotation files
   #rmsk_path = "/Users/homanpj/Documents/Resources/ref/hg38/repeatmasker/rmsk_GRCh38.txt" #never used
   anno_dir = paste0(wd,"/14_annotation/project/")
+  #ref_dir = "/Users/homanpj/Documents/Resources/ref/" ##never used
   ref_dir = "/Users/homanpj/Documents/Resources/ref/" 
-  
+
   #feature information
   join_junction = "FALSE"
   read_depth = 3
   DEmethod = "MANORM"
-  ref_species="hg38"
-  sample_id = "Control_Clip"
+  ref_species="mm10"
+  sample_id = "Ro"
+  nt_merge = "50nt"
+  
+  #none of these paths are being used - delete
+  alias_path =  paste0("/Users/homanpj/Documents/Resources/ref/mm10/mm10.chromAlias.txt")
+  sample_id = "Ro_Clip"
   nt_merge = "50nt"
   
   #none of these paths are being used - delete
@@ -83,12 +81,30 @@ if(length(args)==0){
   }
 }
 
+
+#annotation paths
+gencode_transc_path = paste0(anno_dir,"ref_gencode.txt")
+lncra_path = paste0(anno_dir,"lncRNA_gencode.txt")
+YRNA_path = paste0(anno_dir, "yRNA_repeatmasker.bed")
+srpRNA_path = paste0(anno_dir, "srpRNA_repeatmasker.bed")
+SKRNA_path = paste0(anno_dir, "7SKRNA_repeatmasker.bed")
+scRNA_path = paste0(anno_dir, "scRNA_repeatmasker.bed")
+tRNA_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
+sncRNA_path = paste0(anno_dir, "sncRNA_gencode.bed")
+rRNA_BK00964_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
+rRNA_rmsk_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
+tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
+
+
+
 removeVersion <- function(ids){
   return(unlist(lapply(stringr::str_split(ids, "[.]"), "[[",1)))
 }
 
 varname <- function(x) {
   deparse(substitute(x))}
+
+
 
 #set id for files
 file_id = paste0(sample_id,"_",nt_merge,"_")
@@ -336,6 +352,7 @@ if (join_junction==TRUE) {
     JoinJunc=F
   }
 }  else {
+  print("Junctions joining not selected")
   print("Junction joining was not selected")
   FtrCount_splice_junc=FtrCount_merged[c("chr","start","end",'ID','ID2',"strand")]
   JoinJunc=F
@@ -1781,7 +1798,8 @@ if (JoinJunc==TRUE) {
 }
 
 #write out for junction annotation 
-write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_complete.txt'),sep = "\t")
+Peaksdata2_anno=merge(FtrCount_merged[,c('ID','Counts_Unique','Counts_fracMM','Length')],Peaksdata2_anno,by='ID')
+write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_completePH.txt'),sep = "\t")
 
 #write out for mapq
 write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID')],
