@@ -12,17 +12,6 @@ params:
   JoinJunc: TRUE
   PeakIdnt: "ALL" #MultiMap, Unique, all
 ---
-
-```{r echo=F, message=FALSE, warning=FALSE, eval=F, include=F,results=F,}
-
-#if (params$PeakIdnt=='UNIQUE') {peaksout='/uniquereadpeaks/'} ##repeated below
-#if (params$PeakIdnt=='all') {peaksout='/allreadpeaks/'} ##repeated below
-
-###phil - why render the file within the file? 
-#rmarkdown::render('CLIP_MD16_BWpipe.Rmd',
-#                        encoding=encoding,
-#                        output_table=paste0(gsub('\\\\ ',' ',params$OutDIR),peaksout, params$samplename,'_CLIP_',params$PeakIdnt,'Peaks',params$ntmerge,'_peakDepth',params$readdepth,params$NameAdd,'_MD16.html'))
-```
  
  # Load libraries, set theme
 ```{r envirment, include=F ,echo=F,warning=F,message=FALSE}
@@ -75,33 +64,11 @@ incd_rRNA=T
 ```{r echo=F, message=FALSE, warning=FALSE, eval=T, include=F,results=F,}
 peak_in=params$peak_in
 samplename=params$samplename
-#INbam=params$INbam ###not used
-#INbamMM=params$INbamMM ###not used
-#INpeaks=params$INpeaks ###not used
-#inMAPQ=params$inMAP Q###not used
 ntmerge=params$ntmerge
 readdepth=as.numeric(params$readdepth)
-#NameAdd=params$NameAdd ##removed
-#calcMAPQ=params$calcMAPQ ###not used
-#calcALTLOC=params$calcALTLOC ###not used
-#RunMAnorm=params$calcALTLOC ###not used
 species=params$species
 output_table=params$output_table
 PeakIdnt=params$PeakIdnt
-
-#not used - snakemake will keep track of output dirs
-# if (params$PeakIdnt=='UNIQUE') {
-#   peaksout='/uniquereadpeaks/'
-#   } else if (params$PeakIdnt=='ALL') {
-#     peaksout='/allreadpeaks/'
-#   }
-
-#if (dir.exists(file.path(paste0(OutDIR)))==F) {dir.create(paste0(OutDIR))} ##dirs will be created through snakemake
-#if (dir.exists(file.path(paste0(OutDIR,"/",peaksout)))==F) {dir.create(paste0(OutDIR,"/",peaksout))} ##dirs will be created through snakemake
-#OutDIR=gsub("\\\\ "," ",OutDIR)
-
-#if (PeakIdnt=='UNIQUE') {peaksout='/uniquereadpeaks/'} ###repeated third time
-#if (PeakIdnt=='all') {peaksout='/allreadpeaks/'} ###repeated third time
 ```
 
 ```{r echo=F, message=FALSE, warning=FALSE, eval=T, include=F,results=F,}
@@ -136,21 +103,7 @@ incd_rRNA=T
 <!-- ## Processing data    -->
 **1. Align reads Novoalign**
 
-<!-- novoalign -c 32 -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM -R 0 -r All   -->
-<!-- -d Hg38_gencode    -->
-<!-- -f `r toString(samplename)`_Clip_iCountcutadpt.fastq   -->
-<!-- <br>   -->
-
 **2. UMI-tools remove duplicates**
-<!-- umi_tools dedup   -->
-<!-- --method unique   -->
-<!-- --multimapping-detection-method=NH   -->
-<!-- --umi-separator rbc:    -->
-<!-- --log2stderr    -->
-<!-- -I `r toString(samplename)`_Clip_iCountcutadpt_all.unique.NH.mm.s.bam     -->
-<!-- -S `r toString(samplename)`_Clip_iCountcutadpt_all.unique.NH.mm.ddup.bam    -->
-<!-- -L `r toString(samplename)`_Clip_iCountcutadpt_all.unique.NH.mm.s.log   -->
-<!-- <br>   -->
 
 **3. Select CLIP peaks**
 
@@ -208,8 +161,6 @@ Peaks were annotated by whether they overlap with Host gene intron/exon region
 
 ```{r echo=F,results='asis',eval=F}
 Classification_ncRNA=read.delim(paste0(OUT,"ncRNA_Annotations.txt"), header=T, sep="\t",stringsAsFactors = F)
-
-# Classification_ncRNA['rRNA_DNA','contents']=gsub(c(', TermrRNA, repeat_RI-1, repeat_RII-1, APS1_X52413_1, APS1_X52413_2, Block_1, repeat_RI-2, repeat_RII-2, APS1_X52413_3, APS2_X52412_1, Block_2, repeat_RI-3, repeat_RII-3, APS1_X52413_4, repeat_RII-4, APS2_52412_2, Sal_box_1, Sal_box_2, Sal_box_3, Sal_box_4, Sal_box_5, Sal_box_6, Sal_box_7, Sal_box_8, Sal_box_9, spacer_promoter_X06186, enhancer_V00847, Sal_box_0, promoter_M18062, UPE, core_rRNA_promoter'),"",Classification_ncRNA['rRNA_DNA','contents'])
 
 kable(Classification_ncRNA[,1:3])
 
@@ -272,24 +223,6 @@ All annotations from RNA type, Repeat regions, and Intronic/exonic regions are a
 ## Overview of targets by CLIP peak catagory   
 
 ```{r , echo=F, include=T, eval=T, fig.align='default', fig.ncol=2, fig.height=3.5, fig.width=7, out.height=200, out.width="50%", fig.show="hold", layout='l-screen', results = FALSE, message=FALSE , warning=F}
-##MM is no longer an option
-# if (params$PeakIdnt=='UNIQUE'){
-#   x1=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,y=Length,color=Comb_type_exon_Oppo,text=Same_external_gene_name))+geom_point(size=1)+
-#     scale_x_continuous(trans = "log2",limits = c(.5,NA))+
-#     scale_y_continuous(trans = "log2",limits = c(NA,NA)) +
-#     theme_classic()+
-#   ylab("Peak Width")+xlab("Peak Counts (unique)")+ggtitle("Comparison of peak counts and Peak Width")+
-#   scale_color_brewer(palette = "Dark2") 
-# } else if (params$PeakIdnt=='MultiMap'){
-# x1=ggplot(Peaksdata2_anno,aes(x=Counts_MM,y=Length,color=Comb_type_exon_Oppo,text=Same_external_gene_name))+geom_point(size=1)+
-#     scale_x_continuous(trans = "log2",limits = c(4,NA))+
-#     scale_y_continuous(trans = "log2",limits = c(NA,NA))  + 
-#   theme_classic()+
-#   ylab("Peak Width")+xlab("Peak Counts (MultiMap)")+ggtitle("Comparison of peak counts and Peak Width")+
-#   scale_color_brewer(palette = "Dark2") 
-# # ggplotly(x1,tooltip = c("x", "y","Same_external_gene_name"))
-# }
-
 #Plot 1
 if (params$PeakIdnt=='UNIQUE'){
   x1=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,y=Length,color=Comb_type_exon_Oppo,text=Same_external_gene_name))+geom_point(size=1)+
@@ -339,15 +272,6 @@ x5=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,line=Comb_type_exon_Oppo,color=Com
     scale_color_brewer(palette = "Dark2") 
 }
 
-##mm is no lnoger an option
-#if (params$PeakIdnt=='MultiMap')
-#   x5=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,line=Comb_type_exon_Oppo,color=Comb_type_exon_Oppo))+geom_density()+
-#     scale_x_continuous(trans = "log2",limits = c(.25,NA)) + 
-#     theme_classic()+ylab("Density")+xlab("Peak Counts (Counts_MM)")+ggtitle("Distribution of peak counts")+  labs(color='RNA Type')+
-#   scale_color_brewer(palette = "Dark2") 
-# # ggplotly(x4,tooltip = c("x", "y","line"))
-# }
-
 #plot all graphs
 x1;x2;x3;x4;x5
 ```
@@ -366,13 +290,9 @@ x1;x2;x3;x4;x5
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
 
-###phil need else statement
-#check if this makes sense
 if (incd_rRNA==F) {
   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
-} else{
-  p = p
-  }
+}
 
 #change types
 p[is.na(p$Same_Comb_type_exon),'Same_Comb_type_exon']='no Feature'
@@ -416,9 +336,7 @@ if (nrow(p)>0) {
     blank_theme + 
     coord_polar("y",start=0)
   (gg) ###updating print to be consistent
-  # ggplotly(gg)
 }else{print("No ncRNA")}
-###phil need an else statement - maybe just print "no reads remaining" as text or something
 
  
 ```    
@@ -470,10 +388,8 @@ if (nrow(p)>0) {
     scale_fill_brewer(palette = "Paired") +  blank_theme+ 
     coord_polar("y",start=0)
   (gg)
-  # ggplotly(gg)
 }
 
-###phil need an else statement - maybe just print "no reads remaining" as text or something
 ```       
 
 <br>  
@@ -491,9 +407,10 @@ if (incd_rRNA==F) {
 p[is.na(p$Same_Comb_type_exon),'Same_Comb_type_exon']='no Feature'
 colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
 p$RNA=''
-gg=ggplot(p,aes(fill=RNA_Type,x=RNA) )+geom_bar(position="stack",width=.5)+theme_classic()+ggtitle("BioType - Counted by catagory\n(Each Clip Peak only Counted Once)")+
-# theme(plot.title = element_text(hjust = 0.5,size = 25),axis.title=element_text(size=20),axis.text=element_text(size=15),legend.text = element_text( size=30))+
- scale_fill_brewer(palette = "Dark2") 
+gg = ggplot(p,aes(fill=RNA_Type,x=RNA) ) +
+  geom_bar(position="stack",width=.5) +
+  theme_classic()+ggtitle("BioType - Counted by catagory\n(Each Clip Peak only Counted Once)")+
+  scale_fill_brewer(palette = "Dark2") 
 ggplotly(gg)
 
 ```
@@ -502,21 +419,6 @@ ggplotly(gg)
 <!-- <br/>      -->
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
-# install.packages('ggtern')
-# library(ggtern)
-# p=Peaksdata2_anno
-# # p=p[(p$Same_Comb_type_ncRNA%in%'rRNA')==F,]
-# 
-# p=p[p$Comb_type_exon%in%'ncRNA',]
-# p=paste0(p$type_comb,collapse = ",")
-# p=as.data.frame(strsplit(p,','));colnames(p)='RNA_Type'
-# p=p[!p$RNA_Type%in%c('pseudogene','protein_coding'),,drop=F]
-# p$RNA=''
-# gg=ggplot(p,aes(fill=RNA_Type,x=RNA) )+geom_bar(position="stack",width=.5)+theme_classic()+ggtitle("ncRNA only: Counted by catagory\n(Peak Can be counted multiple times)")+
-# theme(plot.title = element_text(hjust = 0.5,size = 25),axis.title=element_text(size=20),axis.text=element_text(size=15),legend.text = element_text( size=30))+
- # scale_color_brewer(palette = "Paired")+scale_fill_brewer(palette = "Paired") 
-# ggplotly(gg)
-
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
 if (incd_rRNA==F) {
@@ -876,29 +778,6 @@ Counts_Multimappers_Scaled='Counts_fracMM',
  # file=paste0(OutDIR,peaksout,samplename,"_CLIP_",params$PeakIdnt,"Peaks",ntmerge,'_peakDepth',params$readdepth,params$NameAdd,"_MD16.txt"), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= #FALSE,na = "")
 write.table(Peaksdata3_anno, file=output_table, sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
 ```
-
-```{r echo=F, message=FALSE, warning=FALSE, eval=F, include=T,results=F,}
-###phil - i think this is not for the project?
-# Peaksdata2_anno_OLD=read.table('/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iCLIP_Git/test/14_peaks/allreadpeaks/WT1_CLIP_allPeaks50nt_peakDepth5_MD16.txt',sep = '\t',header = T)
-# Peaksdata2_anno_OLD=separate(Peaksdata2_anno_OLD,"ID",sep=":|-",into = c('chr','start','end'),remove = F)
-# Peaksdata2_anno_OLD$start=as.numeric(Peaksdata2_anno_OLD$start)-1
-# Peaksdata2_anno_OLD$end=as.numeric(Peaksdata2_anno_OLD$end)
-# Peaksdata2_anno_OLD$ID=paste0(Peaksdata2_anno_OLD$chr,':',Peaksdata2_anno_OLD$start,'-',Peaksdata2_anno_OLD$end)
-
-# setdiff(Peaksdata3_anno$ID,Peaksdata2_anno_OLD$ID)
-# setdiff(Peaksdata3_anno$ID,Peaksdata2_anno$ID)
-# Peaksdata3_anno_Comb=merge(Peaksdata3_anno,Peaksdata2_anno_OLD[,c('ID','Both.Strand..RNA_type_Classification')],by="ID")
-
-# test=Peaksdata3_anno_Comb[Peaksdata3_anno_Comb$`Both Strand: RNA_type_Classification` != Peaksdata3_anno_Comb$Both.Strand..RNA_type_Classification,]
-# test2=Peaksdata3_anno_Comb[Peaksdata3_anno_Comb$Comb_type_exon_Oppo  != Peaksdata3_anno_Comb$Both.Strand..RNA_type_Classification,]
-# comp1=(test2$Comb_type_exon_Oppo=="no Feature")
-# comp2=grepl('linLcRNA-exon',test2[,paste0('Same_','type_comb')]) | grepl('linLcRNA',test2[,paste0('Same_','type_comb')])
-# comp2=((test2[,paste0('Same_','type_comb')]%in%c('linLcRNA-exon')) | (test2[,paste0('Same_','type_comb')]%in%c('lnLcRNA')) )
-# comp=comp1&comp2
-# PeaksdataOut[comp,'Comb_type_exon_Oppo']='lnLcRNA-exon'
-```
-
-
 ## Counts Table : 
 
 "`r output_table`"  
