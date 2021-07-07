@@ -22,11 +22,12 @@ sample_id = args[8]
 nt_merge = args[9]
 ref_species = args[10]
 out_dir = args[11]
-anno_dir = args[12]
-reftable_path = args[13]
-gencode_path = args[14]
-intron_path = args[15]
-rmsk_path = args[16]
+out_dir_manorm = args[12]
+anno_dir = args[13]
+reftable_path = args[14]
+gencode_path = args[15]
+intron_path = args[16]
+rmsk_path = args[17]
 
 
 if(length(args)==0){
@@ -320,10 +321,8 @@ if (join_junction==T) {
 
 if (join_junction==F) {
     JoinJunc=F
-    ######################################################################
     FtrCount=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
-    ######################################################################
-  }
+}
   
   FtrCount=FtrCount[duplicated(FtrCount)==F,]
 
@@ -341,13 +340,17 @@ write.table(FtrCount,paste0(out_dir,file_id,"peakjunction.txt"),sep = "\t")
 
 if (DEmethod=='MANORM') {
   print("Running MANORM")
-  if (dir.exists(file.path(paste0(wd,"/15_MAnorm")))==F) {dir.create(paste0(wd,"/15_MAnorm"))}
-  if (dir.exists(file.path(paste0(wd,"/15_MAnorm/","input/")))==F) {dir.create(paste0(wd,"/15_MAnorm/","input/"))}
+  #if (dir.exists(file.path(paste0(wd,"/15_MAnorm")))==F) {dir.create(paste0(wd,"/15_MAnorm"))} ##snakemake handles this
+  #if (dir.exists(file.path(paste0(wd,"/15_MAnorm/","input/")))==F) {dir.create(paste0(wd,"/15_MAnorm/","input/"))}##snakemake handles this
   
-  write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  # 
+  ###remove hard coding
+  #write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  #write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  #write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+
+  write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, file_id, "_", peak_type, "_", "PeaksforMAnrom.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, file_id, "_", peak_type, "_", "PeaksforMAnrom_P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, file_id, "_", peak_type, "_", "PeaksforMAnrom_N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
 } else{
   print("MANORM skipped")
 } 
