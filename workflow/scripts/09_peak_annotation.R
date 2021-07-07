@@ -1474,63 +1474,47 @@ if (JoinJunc==F) {
     for (x in 1:length(dupGeneName)) {
       d1=dupGeneName[x]
       d2=Peaksdata2_anno_trns_exon[grep(d1,Peaksdata2_anno_trns_exon$Same_ensembl_gene_id),]
-      d2$ID=paste0(d2$chr[1],":",min(d2$start),"-",max(d2$end))
       
       if (nrow(d2)==0) {
         next
-      } else if (unique(d2$strand)=="+") {
-        d3=d2[d2$start%in%min(d2$start),]
-      } else if (unique(d2$strand)=="-") {
-        d3=d2[d2$start%in%max(d2$start),]
+      } else {
+        d2$ID=paste0(d2$chr[1],":",min(d2$start),"-",max(d2$end))
+        
+        if (unique(d2$strand)=="+") {
+          d3=d2[d2$start%in%min(d2$start),]
+        } else if (unique(d2$strand)=="-") {
+          d3=d2[d2$start%in%max(d2$start),]
+        }
+
+        d3[,'start']=min(d2$start)
+        d3[,'end']=max(d2$end)
+        d3$IDmerge=paste(d2$ID,collapse = ",")
+
+        trns=trns[grep(",",d2$Same_ensembl_gene_id)]
+        d3$Same_ensembl_gene_id=paste0(unique(c(d2$Same_ensembl_gene_id,unlist(strsplit(trns,",")))),collapse = ",")
+        trns=trns[grep(",",d2$Same_gene_name_comb)]
+        d3$Same_gene_name_comb=paste0(unique(c(d2$Same_gene_name_comb,unlist(strsplit(trns,",")))),collapse = ",")
+        trns=trns[grep(",",d2$`Opposite Strand: Host_gene_ensembl_id`)]
+        d3$Oppo_ensembl_gene_id=paste0(unique(c(d2$Oppo_ensembl_gene_id,unlist(strsplit(trns,",")))),collapse = ",")
+        trns=trns[grep(",",d2$Oppo_gene_name_comb)]
+        d3$Oppo_gene_name_comb=paste0(unique(c(d2$Oppo_gene_name_comb,unlist(strsplit(trns,",")))),collapse = ",")
+        
+        CollapsedOut=rbind(CollapsedOut,d3)
       }
-      d3[,'start']=min(d2$start)
-      d3[,'end']=max(d2$end)
-      d3$IDmerge=paste(d2$ID,collapse = ",")
-      
-      # d3$MM_Alt_Peaktype=paste(d1$MM_Alt_Peaktype,collapse = ",");
-      # d3$MM_Alt_Peaktype=gsub('NA,',"",d3$MM_Alt_Peaktype);d3$MM_Alt_Peaktype=gsub(',NA',"",d3$MM_Alt_Peaktype);d3$MM_Alt_Peaktype=gsub('NA',"",d3$MM_Alt_Peaktype)
-      # d3$MM_Same_Peaktype=paste(d1$MM_Same_Peaktype,collapse = ",")
-      # d3$MM_Same_Peaktype=gsub('NA,',"",d3$MM_Same_Peaktype);d3$MM_Same_Peaktype=gsub(',NA',"",d3$MM_Same_Peaktype);d3$MM_Same_Peaktype=gsub('NA',"",d3$MM_Same_Peaktype)
-      # d3$MM_type=paste(d1$MM_type,collapse = ",")
-      #   d3$MM_type=gsub('NA,',"",d3$MM_type);d3$MM_type=gsub(',NA',"",d3$MM_type);d3$MM_type=gsub('NA',"",d3$MM_type)
-      # d3$MM_Prec_Alt_Peaktype=paste(d1$MM_Prec_Alt_Peaktype,collapse = ",")
-      #   d3$MM_Prec_Alt_Peaktype=gsub('NA,',"",d3$MM_Prec_Alt_Peaktype);d3$MM_Prec_Alt_Peaktype=gsub(',NA',"",d3$MM_Prec_Alt_Peaktype);d3$MM_Prec_Alt_Peaktype=gsub('NA',"",d3$MM_Prec_Alt_Peaktype)
-      # d3$MM_Alt_Alignments=paste(d1$MM_Alt_Alignments,collapse = ",")
-      #   d3$MM_Alt_Alignments=gsub('NA,',"",d3$MM_Alt_Alignments);d3$MM_Alt_Alignments=gsub(',NA',"",d3$MM_Alt_Alignments);d3$MM_Alt_Alignments=gsub('NA',"",d3$MM_Alt_Alignments)
-      # d3$MM_number=sum(d1$MM_number,na.rm = T)
-      
-      
-      
-      trns=trns[grep(",",d2$Same_ensembl_gene_id)]
-      d3$Same_ensembl_gene_id=paste0(unique(c(d2$Same_ensembl_gene_id,unlist(strsplit(trns,",")))),collapse = ",")
-      trns=trns[grep(",",d2$Same_gene_name_comb)]
-      d3$Same_gene_name_comb=paste0(unique(c(d2$Same_gene_name_comb,unlist(strsplit(trns,",")))),collapse = ",")
-      trns=trns[grep(",",d2$`Opposite Strand: Host_gene_ensembl_id`)]
-      d3$Oppo_ensembl_gene_id=paste0(unique(c(d2$Oppo_ensembl_gene_id,unlist(strsplit(trns,",")))),collapse = ",")
-      trns=trns[grep(",",d2$Oppo_gene_name_comb)]
-      d3$Oppo_gene_name_comb=paste0(unique(c(d2$Oppo_gene_name_comb,unlist(strsplit(trns,",")))),collapse = ",")
-      
-      CollapsedOut=rbind(CollapsedOut,d3)
     }
-    rownames(CollapsedOut)=NULL
-    
-    
-    CollapsedOut=CollapsedOut[-1,]
-    CollapsedOutID= unique(unlist(strsplit(CollapsedOut$IDmerge,",")))
-    Peaksdata2_anno$IDmerge=NA
-    Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$ID%in%CollapsedOutID==F,]
-    
-    Peaksdata2_anno=(rbind(Peaksdata2_anno,CollapsedOut))
-    
-    # View(Peaksdata2_anno[,c('ID','IDmerge','chr','start','end','strand')])
-  }
-  ########################################################
-  
+
+    if(nrow(CollapsedOut)>0){
+      rownames(CollapsedOut)=NULL
+      CollapsedOut=CollapsedOut[-1,]
+      CollapsedOutID= unique(unlist(strsplit(CollapsedOut$IDmerge,",")))
+      Peaksdata2_anno$IDmerge=NA
+      Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$ID%in%CollapsedOutID==F,]
+      Peaksdata2_anno=(rbind(Peaksdata2_anno,CollapsedOut))
+    }
+  }  
 }  
 
 #write out for junction annotation 
-# Peaksdata2_anno=merge(FtrCount[,c('ID','Counts_Unique','Counts_fracMM','Length')],Peaksdata2_anno,by='ID')
-
 write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_complete.txt'),sep = "\t")
 
 #write out for mapq
