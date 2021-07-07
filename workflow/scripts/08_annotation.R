@@ -20,7 +20,7 @@ if(length(args)==0){
   setwd("/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/")
   ref_dir = "/Users/homanpj/Documents/Resources/ref/"
   ref_species = "mm10" ### need better name, match to snakemake
-  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iClip_Git/config/annotation_config.txt"
+  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
   refseq_rRNA=T
   
   ### fix need to figure out how to keep all this info - maybe a config? dict?
@@ -335,8 +335,8 @@ SYAnno<-function(rowid,ref_species){
   #read bedfile
   file_name = ref_table[rowid,paste0(ref_species,"_Custom")]
   df_sub = read.table(paste0(custom_path,file_name))
-  
-  #if the file is a .gtf.1 then filter
+  df_sub[,5]=rowid
+  #   #if the file is a .gtf.1 then filter
   # if (grepl(".gtf.1",file_name)){
   #   df_sub = subset(df_sub, V3 == 'gene')
   #   contents = ""
@@ -350,12 +350,15 @@ SYAnno<-function(rowid,ref_species){
   #   
   #   #all other files 
   # } else{
-    contents = paste0(unique(df_sub$V4),collapse = ', ')
+  
+  colnames(df_sub)=c('chr','start','end','name','type','strand')
+    # contents = paste0(unique(df_sub$V4),collapse = ', ')
+  contents=""
   # }
   
   write.table(df_sub,
               file=paste0(out_dir,rowid,"_Custom.bed"), 
-              sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+              sep = "\t", row.names = F, col.names = T, append = F, quote= FALSE)
   
   return(list(df_sub,content))
 }
