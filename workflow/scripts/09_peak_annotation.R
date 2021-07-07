@@ -1369,13 +1369,13 @@ if (JoinJunc==T) {
     
     d2=Peaksdata2_anno_trns_exon[Peaksdata2_anno_trns_exon$ID%in%TrnscUL,]
     
-    if (nrow(d2)==0) {next}
-    if (unique(d2$strand)=="+") {
+    if (nrow(d2)==0) {
+      next
+    } else if (unique(d2$strand)=="+") {
       d5=d2[d2$start%in%min(d2$start),] 
       dmax=d2[d2$Counts_fracMM%in%max(d2$Counts_fracMM),]
       if (nrow(dmax)>1) {dmax=dmax[dmax$start%in%min(dmax$start),]}
-    }
-    if (unique(d2$strand)=="-") {
+    } else if (unique(d2$strand)=="-") {
       d5=d2[d2$start%in%max(d2$start),]
       dmax=d2[d2$Counts_fracMM%in%max(d2$Counts_fracMM),]
       if (nrow(dmax)>1) {dmax=dmax[dmax$start%in%max(dmax$start),]}
@@ -1474,15 +1474,14 @@ if (JoinJunc==F) {
     for (x in 1:length(dupGeneName)) {
       d1=dupGeneName[x]
       d2=Peaksdata2_anno_trns_exon[grep(d1,Peaksdata2_anno_trns_exon$Same_ensembl_gene_id),]
-      d2ID=paste0(d2$chr[1],":",min(d2$start),"-",max(d2$end))
+      d2$ID=paste0(d2$chr[1],":",min(d2$start),"-",max(d2$end))
       
-      if (unique(d2$strand)=="+") {d3=d2[d2$start%in%min(d2$start),]
-      # d3[1,c('Counts_Unique','Counts_All','Counts_Multimappers_Scaled','Counts_Multimappers_BestMapping')]=
-      # d2[d2$start%in%min(d2$start),c('Counts_Unique','Counts_All','Counts_Multimappers_Scaled','Counts_Multimappers_BestMapping')]
-      }
-      if (unique(d2$strand)=="-") {d3=d2[d2$start%in%max(d2$start),]
-      # d3[1,c('Counts_Unique','Counts_All','Counts_Multimappers_Scaled','Counts_Multimappers_BestMapping')]=
-      # d2[d2$start%in%max(d2$start),c('Counts_Unique','Counts_All','Counts_Multimappers_Scaled','Counts_Multimappers_BestMapping')]
+      if (nrow(d2)==0) {
+        next
+      } else if (unique(d2$strand)=="+") {
+        d3=d2[d2$start%in%min(d2$start),]
+      } else if (unique(d2$strand)=="-") {
+        d3=d2[d2$start%in%max(d2$start),]
       }
       d3[,'start']=min(d2$start)
       d3[,'end']=max(d2$end)
