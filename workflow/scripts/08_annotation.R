@@ -17,16 +17,16 @@ reftable_path = args[11]
 
 #testing information
 if(length(args)==0){
-  setwd("../../../../../")
+  setwd("/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/")
   ref_dir = "/Users/homanpj/Documents/Resources/ref/"
-  ref_species = "hg38" ### need better name, match to snakemake
+  ref_species = "mm10" ### need better name, match to snakemake
   reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iClip_Git/config/annotation_config.txt"
   refseq_rRNA=T
   
   ### fix need to figure out how to keep all this info - maybe a config? dict?
   alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
   if(ref_species == "mm10"){
-    out_dir = "Volumes/data/CCBR_Projects/iCLIP/testing/"
+    out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/14_annotation/project/"
     gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
     refseq_path = paste0(ref_dir, "mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
     canonical_path = paste0(ref_dir,"mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
@@ -35,7 +35,7 @@ if(length(args)==0){
     custom_path= paste0(ref_dir,'mm10/AdditionalAnno/')
     
   } else if (ref_species == "hg38"){
-    out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iClip_Git/workflow/scripts/AnnoTestPIPE/15_project_annotation/"
+    out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/project/"
     gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
     refseq_path = paste0(ref_dir, "hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
     canonical_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
@@ -269,7 +269,8 @@ gencodeAnno<-function(rowid){
   return(list(df_sub,content))
 }
 
-rmskAnno<-function(rowid){
+rmskAnno<-function(rowid){ 
+  #rowid='7SK RNA'
   #define family and class lists
   if(ref_species=="hg38"){
     class_list =c("Satellite","Low_complexity","LTR",'Simple_repeat','DNA','Unknown')
@@ -278,7 +279,7 @@ rmskAnno<-function(rowid){
   }
   
   family_list=unique(rmsk_GRCm38$repFamily)
-  class_list=unique(rmsk_GRCm38$repClass)
+  class_list=c(unique(rmsk_GRCm38$repClass),"LINE SINE")
   
   # if annotation id (rowid) is in the defined annotation list, subset, and outuput bed
   annotation_list=unique(c(class_list,'7SK RNA','yRNA','rRNA'))
@@ -326,30 +327,31 @@ rmskAnno<-function(rowid){
   return(list(df_sub,content))
 }
 
+# Input should be bed6 format with 4th column being name featured in output
 SYAnno<-function(rowid,ref_species){
+  # rowid='sncRNA'
   # rowid='rRNA'
   # ref_species='mm10'
   #read bedfile
-  file_name = ref_table[rowid,paste0(ref_species,"_SY")]
+  file_name = ref_table[rowid,paste0(ref_species,"_Custom")]
   df_sub = read.table(paste0(custom_path,file_name))
   
   #if the file is a .gtf.1 then filter
-  if (grepl(".gtf.1",file_name)){
-    df_sub = subset(df_sub, V3 == 'gene')
-    contents = ""
-    
-    #if the file is a .gtf then filter
-  } else if (grepl(".gtf",file_name)){
-    df_sub = separate(df_sub,col = "V9",into = c("gene","trans",'x'),sep = ";")
-    df_sub$gene = gsub("gene_id ","",df_sub$gene)
-    df_sub$trans = gsub("transcript_id ","",df_sub$trans)
-    df_sub = df_sub[,((colnames(df_sub)%in%'x')==F)]
-    contents = ""
-    
-    #all other files 
-  } else{
+  # if (grepl(".gtf.1",file_name)){
+  #   df_sub = subset(df_sub, V3 == 'gene')
+  #   contents = ""
+  #   #if the file is a .gtf then filter
+  # } else if (grepl(".gtf",file_name)){
+  #   df_sub = separate(df_sub,col = "V9",into = c("gene","trans",'x'),sep = ";")
+  #   df_sub$gene = gsub("gene_id ","",df_sub$gene)
+  #   df_sub$trans = gsub("transcript_id ","",df_sub$trans)
+  #   df_sub = df_sub[,((colnames(df_sub)%in%'x')==F)]
+  #   contents = ""
+  #   
+  #   #all other files 
+  # } else{
     contents = paste0(unique(df_sub$V4),collapse = ', ')
-  }
+  # }
   
   write.table(df_sub,
               file=paste0(out_dir,rowid,"_Custom.bed"), 
@@ -367,8 +369,9 @@ annotation_output=data.frame()
 
 #input data from annotation df
 ref_table = read.table(reftable_path, header = TRUE, sep="\t", row.names = 1)
-#rowid="lincRNA"
+#rowid="sncRNA"
 for (rowid in rownames(ref_table)){
+  
   #determine source to use
   ref_selection =  ref_table[rowid,paste0(ref_species,"_selection")]
   ref_selection=unlist(strsplit(ref_selection,split ="," ))  

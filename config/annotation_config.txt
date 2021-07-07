@@ -1,13 +1,13 @@
 type	AnnoType	hg38_options	hg38_selection	hg38_Custom	mm10_options	mm10_selection	mm10_Custom	description	rmsk_flag	notes	Status
 7SK RNA	transcript_anno	"Gencode, Repeatmasker"	Repeatmasker		"Gencode,Repeatmasker"	Repeatmasker	from_Soyeong/mm10_annotation/mm10_7SKRNA.bed	subset of small nuclear RNA and part of the small nuclear ribonucleoprotein complex (snRNP)	Y		
-lincRNA	transcript_anno	Gencode	Gencode		"Gencode,Custom"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_linc.gtf.1	Generic long non-coding RNA type	Y		
-lncRNA	transcript_anno	Gencode	Gencode		"Gencode,Custom"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_linc.gtf.1	long non-coding RNA type with Intronic + Exonic Regions	Y		
-miRNA	transcript_anno	Gencode	Gencode		"Gencode,Custom"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_miRNA.gtf.1	Micro RNA : A small RNA (~22bp) that silences the expression of target mRNA	Y		
+lincRNA	transcript_anno	Gencode	Gencode		"Gencode,Custom"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_linc.gtf.1.bed	Generic long non-coding RNA type	Y		
+lncRNA	transcript_anno	Gencode	Gencode		"Gencode,Custom"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_linc.gtf.1.bed	long non-coding RNA type with Intronic + Exonic Regions	Y		
+miRNA	transcript_anno	Gencode	Gencode		"Gencode,Custom"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_miRNA.gtf.1.bed	Micro RNA : A small RNA (~22bp) that silences the expression of target mRNA	Y		
 rRNA	transcript_anno	"Gencode,Repeatmasker,refseq"	"Gencode,Repeatmasker,refseq"		"Gencode,Custom,Repeatmasker"	"Gencode,Custom,Repeatmasker"	BK000964.3_TPA_rRNA_repeats2.bed.txt	Ribosomal RNA			
 scRNA	transcript_anno	"Gencode, Repeatmasker"	Repeatmasker		"Gencode,Custom,Repeatmasker"	Repeatmasker	from_Soyeong/mm10_annotation/mm10_scRNA.bed	Small cytoplasmic RNA; remove yRNA	Y		
-sncRNA	transcript_anno	Gencode	Gencode		"Gencode,Custom"	Custom	from_Soyeong/mm10_annotation/mm10_snc.gtf	small non-coading RNA			
-snoRNA	transcript_anno	Gencode	Gencode		"Gencode,Custom"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_sno.gtf.1	Small nucleolar RNAs : Small RNA molecules that are found in the cell nucleolus and are involved in the post-transcriptional modification of other RNAs	Y		
-snRNA	transcript_anno	"Gencode,Repeatmasker"	Gencode		"Gencode,Custom, Repeatmasker"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_snRNA.gtf.1	small nuclear RNA : Small RNA molecules that are found in the cell nucleus and are involved in the processing of pre messenger RNAs	Y		
+sncRNA	transcript_anno	Gencode	Gencode		"Gencode,Custom"	Custom	from_Soyeong/mm10_annotation/mm10_snc.gtf.bed	small non-coading RNA			
+snoRNA	transcript_anno	Gencode	Gencode		"Gencode,Custom"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_sno.gtf.1.bed	Small nucleolar RNAs : Small RNA molecules that are found in the cell nucleolus and are involved in the post-transcriptional modification of other RNAs	Y		
+snRNA	transcript_anno	"Gencode,Repeatmasker"	Gencode		"Gencode,Custom, Repeatmasker"	Gencode	from_Soyeong/mm10_annotation/mouse_gencode_snRNA.gtf.1.bed	small nuclear RNA : Small RNA molecules that are found in the cell nucleus and are involved in the processing of pre messenger RNAs	Y		
 srpRNA	transcript_anno	"Gencode,Repeatmasker"	Repeatmasker		"Gencode,Custom, Repeatmasker"	Repeatmasker	from_Soyeong/mm10_annotation/mm10_srpRNA.bed	"signal recognition particle RNA; can be (7SL, 6S, or 4.5S RNA) 4.5S is coveredin scRNA"	Y		
 tRNA	transcript_anno	"Gencode,Repeatmasker"	Repeatmasker		"Gencode,Custom, Repeatmasker"	Custom	from_Soyeong/mm10_annotation/mm10_tRNA.bed	"transfer RNA, which acts as an adaptor molecule for translation of mRNA."	Y		
 yRNA	transcript_anno	"Gencode,Repeatmasker"	Repeatmasker		"Gencode,Custom, Repeatmasker"	Repeatmasker	from_Soyeong/mm10_annotation/mm10_YRNA.bed	 subset of scRNA	Y		
