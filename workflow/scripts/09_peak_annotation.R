@@ -1400,54 +1400,32 @@ if (JoinJunc==T) {
     
     ########################   
     ## Select summary annotation based on Max(dmax) expression peak or 5'(d5) peak   
-    
     danno=dmax # d5 dmax
     cols_AnnotSelect=c('Same_Comb_type_exon','Same_Comb_type_ncRNA','Oppo_Comb_type_exon','Oppo_Comb_type_ncRNA','Comb_type_exon_Oppo')
     d3[,cols_AnnotSelect]= (danno[,cols_AnnotSelect])
     
     # Select ID for 5' most read or max counts
-    # if (d5$ID!=dmax$ID){print(paste(x,",",d3$ID))}
-    
     d3$start=d5$start
     d3$end=d5$end
-    
     d3$ID=paste0(d5$chr,":",d5$start,"-",d5$end)   
-    
-    
     
     #############################################################
     ## if count < read_depth skip
-    if (d3$Counts_fracMM<read_depth) {next}
-    
-    
-    
-    CollapsedOut=rbind(CollapsedOut[,colnames(CollapsedOut)],d3[1,colnames(CollapsedOut)])
-    
-  }
-  # CollapsedOut$Comb_type_exon_Oppo
-  #  d3$Comb_type_exon_Oppo
-  #  danno$Comb_type_exon_Oppo
-  
-  
+    if (d3$Counts_fracMM<read_depth) {
+      next
+    } else{
+      CollapsedOut=rbind(CollapsedOut[,colnames(CollapsedOut)],d3[1,colnames(CollapsedOut)])
+    }
+  }  
   CollapsedOut=CollapsedOut[is.na(CollapsedOut$ID)==F,]
-  
   Peaksdata2_anno$IDmerge=NA
   Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$ID%in%Junc_peaks==F,]
-  
   Peaksdata2_anno=(rbind(Peaksdata2_anno,CollapsedOut))
   
   
   ######################################################################
   #### Re filter reads after combing counts of spliced reads
-  # if (params$PeakIdnt=='Unique'){Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$Counts_Unique>=read_depth,]}
-  # if (params$PeakIdnt=='MultiMap'){Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$Counts_fracMM>=read_depth,]}
-  # if (params$PeakIdnt=='all'){Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$Counts_fracMM>=read_depth,]}
   Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$Counts_fracMM>=read_depth,]
-  
-  # Peaksdata2_anno$perc_mm=(Peaksdata2_anno$Counts_MM/Peaksdata2_anno$Counts_All)*100
-  
-  ######################################################################
-  #######
 }
 
 
@@ -1464,13 +1442,8 @@ if (JoinJunc==F) {
     trns=trns[grep(",",trns)]
     trns=c(Peaksdata2_anno_trns_exon$Same_ensembl_gene_id,unlist(strsplit(trns,",")))
     dupGeneName=unique(trns[duplicated(trns)])
-    # dupGeneID=unique(dupGeneAll$ID)
-    
-    # grep(dupGeneName,Peaksdata2_anno_trns_exon$Same_ensembl_gene_id)
-    # dup=WT_Peaks_DEGtable_exon[WT_Peaks_DEGtable_exon$Same_ensembl_gene_id%in%dupGeneName,]
-    # single=WT_Peaks_DEGtable_exon[WT_Peaks_DEGtable_exon$Same_ensembl_gene_id%in%dupGeneName==F, ]
-    
     CollapsedOut=as.data.frame(matrix(nrow = 1,ncol=ncol(Peaksdata2_anno_trns_exon)+1));colnames(CollapsedOut)=c(colnames(Peaksdata2_anno_trns_exon),'IDmerge')
+
     for (x in 1:length(dupGeneName)) {
       d1=dupGeneName[x]
       d2=Peaksdata2_anno_trns_exon[grep(d1,Peaksdata2_anno_trns_exon$Same_ensembl_gene_id),]
