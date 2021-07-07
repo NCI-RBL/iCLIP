@@ -95,9 +95,6 @@ Peaksdata2_anno$Comb_type_exon_Oppo =
 
 ###### remove chrM clip peaks
 Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$chr%in%'chrM'==F,] 
-    
-
-incd_rRNA=T 
 ```
   
 <!-- ## Processing data    -->
