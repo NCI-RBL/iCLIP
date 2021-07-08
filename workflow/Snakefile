@@ -429,8 +429,8 @@ rule all:
         #annotations
         join(out_dir,'14_annotation', 'project','annotations.txt'),
         input_peak_annotation,
-        #expand(join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_report.html'),sp=sp_list),
-        #expand(join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_table.txt'),sp=sp_list),
+        expand(join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_report.html'),sp=sp_list),
+        expand(join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_table.txt'),sp=sp_list),
 
 #common and other SMK 
 if source_dir == "":
@@ -1622,7 +1622,7 @@ rule annotation_output:
         c_exon = cond_exon,
         junc = sp_junc,
         p_type = peak_id,
-        rrna = include_rRNA,
+        rrna = refseq_rrna,
     envmodules:
         config['R']
     output:
@@ -1643,4 +1643,4 @@ rule annotation_output:
                 JoinJunc = "{params.junc}", \
                 include_rRNA = "{params.rrna}", \
                 PeakIdnt = "{params.p_type}"))'
-            """
+        """

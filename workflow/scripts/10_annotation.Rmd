@@ -68,7 +68,7 @@ readdepth=as.numeric(params$readdepth)
 species=params$species
 output_table=params$output_table
 PeakIdnt=params$PeakIdnt
-incd_rRNA=params$incd_rRNA
+incd_rRNA=params$include_rRNA
 ```
 
 ```{r echo=F, message=FALSE, warning=FALSE, eval=T, include=F,results=F,}
@@ -284,7 +284,7 @@ x1;x2;x3;x4;x5
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
 
-if (incd_rRNA==F) {
+if (incd_rRNA==FALSE) {
   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 }
 
@@ -309,7 +309,7 @@ p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
 
 ###phil need else statement
 #check if this makes sense
-if (incd_rRNA==F) {
+if (incd_rRNA==FALSE) {
   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 } else{
   p=p
@@ -390,7 +390,7 @@ if (nrow(p)>0) {
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
 
-if (incd_rRNA==F) {
+if (incd_rRNA==FALSE) {
   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 }
 
@@ -415,7 +415,7 @@ ggplotly(gg)
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
 p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-if (incd_rRNA==F) {
+if (incd_rRNA==FALSE) {
   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 }
 
@@ -553,7 +553,7 @@ p=Peaksdata2_anno
 p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
 
 ###phil need else statement
-if (incd_rRNA==F) {
+if (incd_rRNA==FALSE) {
   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 }
 
@@ -665,7 +665,7 @@ p=Peaksdata2_anno
 p=p[p$Comb_type_exon_Oppo%in%'Antisense Feature',]
 
 ###phil need else statement
-if (incd_rRNA==F) {
+if (incd_rRNA==FALSE) {
   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 }
 
@@ -685,7 +685,7 @@ ggplot(p,aes(fill=RNA_Type,x=RNA_Type) )+geom_bar(stat="count")+theme_classic()+
 p=Peaksdata2_anno
 
 ##phil need else statement
-if (incd_rRNA==F) {
+if (incd_rRNA==FALSE) {
   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 }
 
