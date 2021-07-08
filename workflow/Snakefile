@@ -334,14 +334,14 @@ else:
 
 #if samples are running MANORM
 if DE_method == "MANORM":
-    input_peak_annotation = [expand(join(out_dir,'14_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),sp=sp_list),
-            expand(join(out_dir,'14_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_complete.txt'),sp=sp_list),
-            expand(join(out_dir,'15_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom.bed'),sp=sp_list),
-            expand(join(out_dir,'15_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom_P.bed'),sp=sp_list),
-            expand(join(out_dir,'15_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom_N.bed'),sp=sp_list)]
+    input_peak_annotation = [expand(join(out_dir,'13_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),sp=sp_list),
+            expand(join(out_dir,'13_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_complete.txt'),sp=sp_list),
+            expand(join(out_dir,'14_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom.bed'),sp=sp_list),
+            expand(join(out_dir,'14_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom_P.bed'),sp=sp_list),
+            expand(join(out_dir,'14_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom_N.bed'),sp=sp_list)]
 else:
-    input_peak_annotation = [expand(join(out_dir,'14_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),sp=sp_list),
-            expand(join(out_dir,'14_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_complete.txt'),sp=sp_list)]
+    input_peak_annotation = [expand(join(out_dir,'13_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),sp=sp_list),
+            expand(join(out_dir,'13_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_complete.txt'),sp=sp_list)]
 
 
 #local rules
@@ -413,24 +413,24 @@ rule all:
         expand(join(out_dir,'09_dedup','03_unique','{sp}.dedup.unique.i.bam'), sp=sp_list),
 
         #Bed files
-        expand(join(out_dir,'11_bed','{sp}_all.bed'), sp=sp_list),
-        expand(join(out_dir,'11_bed','{sp}_unique.bed'), sp=sp_list),
+        expand(join(out_dir,'12_bed','{sp}_all.bed'), sp=sp_list),
+        expand(join(out_dir,'12_bed','{sp}_unique.bed'), sp=sp_list),
 
         #SAF 
         expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_all.SAF'), sp=sp_list),
         expand(join(out_dir,'12_SAF/{sp}_'+ str(nt_merge) +'_unique.SAF'), sp=sp_list),
 
         #Count features
-        expand(join(out_dir,'13_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'13_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'13_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'12_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'12_counts','uniquereadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'12_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'12_counts','allreadpeaks','{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'), sp=sp_list),
 
         #annotations
-        join(out_dir,'14_annotation', 'project','annotations.txt'),
+        join(out_dir,'13_annotation', 'project','annotations.txt'),
         input_peak_annotation,
-        expand(join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_report.html'),sp=sp_list),
-        expand(join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_table.txt'),sp=sp_list),
+        expand(join(out_dir,'13_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_report.html'),sp=sp_list),
+        expand(join(out_dir,'13_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_table.txt'),sp=sp_list),
 
 #common and other SMK 
 if source_dir == "":
@@ -962,7 +962,7 @@ rule create_bam_unique:
     envmodules:
         config['samtools']        
     output:
-        o1 = join(out_dir,'06_bam_unique','{sp}.{al}.split.{n}.unique.bam'),
+        o1 = join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.bam'),
     shell:
         """
         awk -F '\t' -v OFS='\t' '{{ $(NF+1) = "NH:i:1"; print }}' {input.un} | cat {input.h} - | \
@@ -981,7 +981,7 @@ rule create_bam_mm:
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'06_bam_mm','{sp}.{al}.split.{n}.mm.bam'),
+        o1 = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.bam'),
     shell:
         """
         cat {input.h} {input.mm} | samtools sort | samtools view -Sb > {output.o1}
@@ -992,15 +992,15 @@ rule sort_mm_and_unique:
     sort both the multimapped and unique bam files
     """
     input:
-        un = join(out_dir,'06_bam_unique','{sp}.{al}.split.{n}.unique.bam'),
-        mm = join(out_dir,'06_bam_mm','{sp}.{al}.split.{n}.mm.bam'),
+        un = join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.bam'),
+        mm = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.bam'),
     params:
         rname='14_sort_mu',
     envmodules:
         config['samtools']      
     output:
-        o1 = join(out_dir,'06_bam_unique','{sp}.{al}.split.{n}.unique.s.bam'),
-        o2 = join(out_dir,'06_bam_mm','{sp}.{al}.split.{n}.mm.s.bam'),
+        o1 = join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.s.bam'),
+        o2 = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.s.bam'),
     shell:
         """
         samtools sort {input.un} -o {output.o1}; \
@@ -1012,15 +1012,15 @@ rule index_mm_and_unique:
     index both the multimapped and unique bam files
     """
     input:
-        un = join(out_dir,'06_bam_unique','{sp}.{al}.split.{n}.unique.s.bam'),
-        mm = join(out_dir,'06_bam_mm','{sp}.{al}.split.{n}.mm.s.bam'),
+        un = join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.s.bam'),
+        mm = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.s.bam'),
     params:
         rname='15_index_mu',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'06_bam_unique','{sp}.{al}.split.{n}.unique.i.bam'),
-        o2 = join(out_dir,'06_bam_mm','{sp}.{al}.split.{n}.mm.i.bam'),
+        o1 = join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.i.bam'),
+        o2 = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.i.bam'),
     shell:
         """
         cp {input.un} {output.o1}; samtools index {output.o1}; \
@@ -1033,8 +1033,8 @@ rule merge_splits_unique_mm:
     merge split multimapped bam files into one merged.mm bam file
     """
     input:
-        unique = dynamic(join(out_dir,'06_bam_unique','{sp}.{al}.split.{n}.unique.i.bam')),
-        mm = dynamic(join(out_dir,'06_bam_mm','{sp}.{al}.split.{n}.mm.i.bam'))
+        unique = dynamic(join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.i.bam')),
+        mm = dynamic(join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.i.bam'))
     params:
         rname='16_merge_mu',
     envmodules:
@@ -1334,8 +1334,8 @@ rule create_beds:
     envmodules:
         config['bedtools']  
     output:
-        all = join(out_dir,'11_bed','{sp}_all.bed'),
-        unique = join(out_dir,'11_bed','{sp}_unique.bed')
+        all = join(out_dir,'12_bed','{sp}_all.bed'),
+        unique = join(out_dir,'12_bed','{sp}_unique.bed')
     shell:
         """
         bedtools bamtobed \
@@ -1349,15 +1349,15 @@ rule create_safs:
     create SAF files from the deduped unique bed and all bed files
     """
     input:
-        all = join(out_dir,'11_bed','{sp}_all.bed'),
-        unique = join(out_dir,'11_bed','{sp}_unique.bed')
+        all = join(out_dir,'12_bed','{sp}_all.bed'),
+        unique = join(out_dir,'12_bed','{sp}_unique.bed')
     params:
         rname='30_saf',
     envmodules:
         config['bedtools']  
     output:
-        all = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '_all.SAF'),
-        unique = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '_unique.SAF')
+        all = join(out_dir,'11_SAF','{sp}_' + str(nt_merge) + '_all.SAF'),
+        unique = join(out_dir,'11_SAF','{sp}_' + str(nt_merge) + '_unique.SAF')
     shell:
         """
         bedtools merge \
@@ -1379,14 +1379,14 @@ rule feature_counts_allreads:
     """
     input:
         bam = join(out_dir,'09_dedup','02_sorted','{sp}.dedup.si.bam'),
-        saf = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '_all.SAF')
+        saf = join(out_dir,'11_SAF','{sp}_' + str(nt_merge) + '_all.SAF')
     params:
         rname='31a_allreads',
     envmodules:
         config['subread']  
     output:
-        out_unique = join(out_dir,'13_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
-        out_all = join(out_dir,'13_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
+        out_unique = join(out_dir,'12_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
+        out_all = join(out_dir,'12_counts','allreadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
     shell:
         """
         featureCounts -F SAF \
@@ -1421,14 +1421,14 @@ rule feature_counts_uniquereads:
     """
      input:
         bam = join(out_dir,'09_dedup','02_sorted','{sp}.dedup.si.bam'),
-        saf = join(out_dir,'12_SAF','{sp}_' + str(nt_merge) + '_unique.SAF'),
+        saf = join(out_dir,'11_SAF','{sp}_' + str(nt_merge) + '_unique.SAF'),
     params:
         rname='32b_saf',
     envmodules:
         config['subread']  
     output:
-        out_unique = join(out_dir,'13_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
-        out_all = join(out_dir,'13_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
+        out_unique = join(out_dir,'12_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_uniqueCounts.txt'),
+        out_all = join(out_dir,'12_counts','uniquereadpeaks','{sp}_' + str(nt_merge) + '_allFracMMCounts.txt')
     shell:
         """
         featureCounts -F SAF \
@@ -1459,7 +1459,7 @@ rule project_annotations:
     generate annotation table once per project
     """
     input:
-        expand(join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'12_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
     params:
         rname='36_proj_anno',
         script = join(source_dir,'workflow','scripts','08_annotation.R'),
@@ -1472,14 +1472,14 @@ rule project_annotations:
         i_path = intron_path,
         r_path = rmsk_path,
         custom_path = add_anno_path,
-        base = join(out_dir,'14_annotation', 'project/',),
+        base = join(out_dir,'13_annotation', 'project/',),
         a_config = annotation_config,
     envmodules:
         config['R']
     output:
-        anno = join(out_dir,'14_annotation', 'project','annotations.txt'),
-        nc_anno = join(out_dir,'14_annotation', 'project','ncRNA_annotations.txt'),
-        ref_gencode = join(out_dir,'14_annotation', 'project','ref_gencode.txt'),
+        anno = join(out_dir,'13_annotation', 'project','annotations.txt'),
+        nc_anno = join(out_dir,'13_annotation', 'project','ncRNA_annotations.txt'),
+        ref_gencode = join(out_dir,'13_annotation', 'project','ref_gencode.txt'),
     shell:
         """
         Rscript {params.script} \
@@ -1502,9 +1502,9 @@ if(DE_method=="MANORM"):
         find peak junctions, annotations peaks, merges junction and annotation information
         '''
         input:
-            unique = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
-            all = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
-            anno = join(out_dir,'14_annotation', 'project','annotations.txt'),
+            unique = join(out_dir,'12_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
+            all = join(out_dir,'12_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
+            anno = join(out_dir,'13_annotation', 'project','annotations.txt'),
         params:
             rname = '37_peak_anno',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
@@ -1516,9 +1516,9 @@ if(DE_method=="MANORM"):
             sp = "{sp}",
             n_merge = nt_merge,
             ref_sp = nova_ref,
-            base1 = join(out_dir,'14_annotation','peaks/',),
-            base2 = join(out_dir,'15_MAnorm','input/',),
-            anno_dir = join(out_dir,'14_annotation','project/'),
+            base1 = join(out_dir,'13_annotation','peaks/',),
+            base2 = join(out_dir,'14_MAnorm','input/',),
+            anno_dir = join(out_dir,'13_annotation','project/'),
             a_config = annotation_config,
             g_path = gen_path,
             i_path = intron_path,
@@ -1527,11 +1527,11 @@ if(DE_method=="MANORM"):
             config['R'],
             config['bedtools'],
         output:
-            o1 = join(out_dir,'14_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),
-            o2 = join(out_dir,'14_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_complete.txt'),
-            o3 = join(out_dir,'15_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom.bed'),
-            o4 = join(out_dir,'15_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom_P.bed'),
-            o5 = join(out_dir,'15_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom_N.bed'),
+            o1 = join(out_dir,'13_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),
+            o2 = join(out_dir,'13_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_complete.txt'),
+            o3 = join(out_dir,'14_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom.bed'),
+            o4 = join(out_dir,'14_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom_P.bed'),
+            o5 = join(out_dir,'14_MAnorm', 'input','{sp}_' + str(nt_merge) + '_' + peak_id + '_PeaksforMAnrom_N.bed'),
         shell:
             '''
             Rscript {params.script} \
@@ -1559,9 +1559,9 @@ else:
         find peak junctions, annotations peaks, merges junction and annotation information
         '''
         input:
-            unique = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
-            all = join(out_dir,'13_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
-            anno = join(out_dir,'14_annotation', 'project','annotations.txt'),
+            unique = join(out_dir,'12_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'),
+            all = join(out_dir,'12_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
+            anno = join(out_dir,'13_annotation', 'project','annotations.txt'),
         params:
             rname = '37_peak_anno',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
@@ -1573,8 +1573,8 @@ else:
             sp = "{sp}",
             n_merge = nt_merge,
             ref_sp = nova_ref,
-            base = join(out_dir,'14_annotation','peaks/',),
-            anno_dir = join(out_dir,'14_annotation','project/'),
+            base = join(out_dir,'13_annotation','peaks/',),
+            anno_dir = join(out_dir,'13_annotation','project/'),
             a_config = annotation_config,
             g_path = gen_path,
             i_path = intron_path,
@@ -1583,8 +1583,8 @@ else:
             config['R'],
             config['bedtools'],
         output:
-            o1 = join(out_dir,'14_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),
-            o2 = join(out_dir,'14_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_complete.txt'),
+            o1 = join(out_dir,'13_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_mapq_IN.txt'),
+            o2 = join(out_dir,'13_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_complete.txt'),
         shell:
             '''
             Rscript {params.script} \
@@ -1611,7 +1611,7 @@ rule annotation_output:
     generates an HTML report for peak annotations
     """
     input:
-        peak_in = join(out_dir,'14_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_complete.txt'),
+        peak_in = join(out_dir,'13_annotation', 'peaks','{sp}_' + str(nt_merge) + '_peakannotation_complete.txt'),
     params:
         rname = "38_anno_output",
         R = join(source_dir,'workflow','scripts','10_annotation.Rmd'),
@@ -1626,8 +1626,8 @@ rule annotation_output:
     envmodules:
         config['R']
     output:
-        o1 = join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_report.html'),
-        o2 = join(out_dir,'14_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_table.txt'),
+        o1 = join(out_dir,'13_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_report.html'),
+        o2 = join(out_dir,'13_annotation', '{sp}_' + str(nt_merge) + '_annotation_final_table.txt'),
     shell:
         """
         Rscript -e 'library(rmarkdown); \
