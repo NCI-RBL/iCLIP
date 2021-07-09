@@ -968,7 +968,7 @@ rule create_bam_unique:
         """
         if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
         awk -F '\t' -v OFS='\t' '{{ $(NF+1) = "NH:i:1"; print }}' {input.un} | cat {input.h} - | \
-        samtools sort -T $tmpdir | samtools view -Sb > {output.o1};
+        samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.o1};
         """
 
 rule create_bam_mm:
@@ -986,7 +986,8 @@ rule create_bam_mm:
         o1 = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.bam'),
     shell:
         """
-        cat {input.h} {input.mm} | samtools sort | samtools view -Sb > {output.o1}
+        if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
+        cat {input.h} {input.mm} | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.o1}
         """
 
 rule sort_mm_and_unique:
@@ -1005,8 +1006,9 @@ rule sort_mm_and_unique:
         o2 = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.s.bam'),
     shell:
         """
-        samtools sort {input.un} -o {output.o1}; \
-        samtools sort {input.mm} -o {output.o2};
+        if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
+        samtools sort -T ${{tmpdir}}_u {input.un} -o {output.o1}; \
+        samtools sort -T ${{tmpdir}})_m {input.mm} -o {output.o2};
         """
 
 rule index_mm_and_unique:
@@ -1083,7 +1085,8 @@ rule sort_index_merged:
         o2 = join(out_dir,'08_bam_merged','{sp}.{al}.merged.si.bam.bai'),
     shell:
         """
-        samtools sort {input.f1} -o {output.o1};
+        if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
+        samtools sort -T ${{tmpdir}} {input.f1} -o {output.o1};
         samtools index {output.o1}
         """
 
@@ -1260,7 +1263,8 @@ rule sort_index_dedup:
         bai = join(out_dir,'09_dedup','02_sorted','{sp}.dedup.si.bam.bai'),
     shell:
         """
-        samtools sort {input.f1} -o {output.bam};
+        if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
+        samtools sort -T ${{tmpdir}} {input.f1} -o {output.bam};
         samtools index {output.bam}
         """
 
@@ -1297,7 +1301,8 @@ rule dedup_unique:
     shell:
         """
         set +e
-        samtools view {input.bam} | grep -w 'NH:i:1' | cat {input.h} - |  samtools sort | samtools view -Sb > {output.o1}
+        if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
+        samtools view {input.bam} | grep -w 'NH:i:1' | cat {input.h} - |  samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.o1}
         exitcode=0
         if [ $exitcode -eq 1 ]
         then
