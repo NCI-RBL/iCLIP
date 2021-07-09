@@ -884,7 +884,7 @@ if (splice_aware == "Y"):
         shell:
             """
             if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
-            samtools sort -T $tmpdir {input.f1} > {output.sort};
+            samtools sort -T  {input.f1} > {output.sort};
             samtools index {output.sort}; 
             """
     
