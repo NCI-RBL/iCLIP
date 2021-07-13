@@ -883,9 +883,14 @@ if (splice_aware == "Y"):
             sort = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.sorted.bam'),
         shell:
             """
-            if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
-            samtools sort -T  {input.f1} > {output.sort};
-            samtools index {output.sort}; 
+            if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]
+            then
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir="/dev/shm"
+            fi
+            samtools sort -T ${{tmpdir}} {input.f1} > {output.sort};
+            samtools index {output.sort}
             """
     
     rule merge_unmapped_splits:
@@ -1006,9 +1011,16 @@ rule sort_mm_and_unique:
         o2 = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.s.bam'),
     shell:
         """
-        if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
-        samtools sort -T ${{tmpdir}}_u {input.un} -o {output.o1}; \
-        samtools sort -T ${{tmpdir}})_m {input.mm} -o {output.o2};
+        if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]
+        then 
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            mkdir "${{tmpdir}}/u"
+            mkdir "${{tmpdir}}/m"
+        else 
+            tmpdir="/dev/shm"
+        fi
+        samtools sort -T "${{tmpdir}}/u" {input.un} -o {output.o1}; \
+        samtools sort -T "${{tmpdir}}/m" {input.mm} -o {output.o2};
         """
 
 rule index_mm_and_unique:
