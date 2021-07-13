@@ -514,7 +514,7 @@ if (multiplex_flag == 'Y'):
         envmodules:
             config['singularity'],
         output:
-            o1 = join(out_dir,'{mp}','demux_nomatch5.fastq.gz'),
+            o1 = temp(join(out_dir,'{mp}','demux_nomatch5.fastq.gz')),
         shell:
             """
             {params.s_exec} {params.doc} iCount demultiplex --minimum_length {params.ml} --mismatches {params.mm} {params.cmd}
@@ -532,7 +532,7 @@ if (multiplex_flag == 'Y'):
             rname = '01c_rename',
             cmd = rename_cmd
         output:
-            o1 = join(out_dir,'{mp}','01_renamed','{sp}.fastq.gz')
+            o1 = temp(join(out_dir,'{mp}','01_renamed','{sp}.fastq.gz'))
         shell:
             'cp {params.cmd}'       
 else: 
@@ -546,7 +546,7 @@ else:
             rname = '01_nondemux',
             cmd = nondemux_cmd
         output:
-            o1 = expand(join(out_dir,'{mp}','01_renamed','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list)
+            o1 = temp(expand(join(out_dir,'{mp}','01_renamed','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list))
         shell:
             '{params.cmd}'
 
@@ -567,8 +567,8 @@ rule remove_adaptors:
     envmodules:
         config['singularity'],    
     output:
-        o1 = join(out_dir,'{mp}','01_remove_adaptor','{sp}_trimmed.fastq.gz'),
-        o2 = join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz')
+        o1 = temp(join(out_dir,'{mp}','01_remove_adaptor','{sp}_trimmed.fastq.gz')),
+        o2 = temp(join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz'))
     shell:
         """
         {params.s_exec} {params.doc} iCount cutadapt -ml {params.ml} {params.cmd}
@@ -589,8 +589,8 @@ rule rename_adaptors:
         rname = "03_rename_ad",
         cmd = rename_adapt_cmd
     output:
-        o1 = expand(join(out_dir,'01_remove_adaptor','{sp}_removed_seq.fastq.gz'),sp=sp_list),
-        o2 = expand(join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz'),sp=sp_list)
+        o1 = temp(expand(join(out_dir,'01_remove_adaptor','{sp}_removed_seq.fastq.gz'),sp=sp_list)),
+        o2 = temp(expand(join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz'),sp=sp_list))
     shell:
         '''
         {params.cmd}
@@ -730,7 +730,7 @@ rule split_files:
         base = join(out_dir,'03_split/{sp}.split.'),
         cmd = get_filechunk_size
     output:
-        o1 = dynamic(join(out_dir,'03_split/{sp}.split.{n}.fastq'))
+        o1 = temp(dynamic(join(out_dir,'03_split/{sp}.split.{n}.fastq')))
     shell:
         """
         split --additional-suffix .fastq -l {params.cmd} --numeric-suffixes=10 {input.f1} {params.base}
@@ -748,7 +748,7 @@ rule novoalign:
     envmodules:
         config['novocraft']
     output:
-        o1 = join(out_dir,'04_sam','01_alignment','{sp}.{al}.split.{n}.sam'),
+        o1 = temp(join(out_dir,'04_sam','01_alignment','{sp}.{al}.split.{n}.sam')),
     shell:
         """
         set +e
@@ -780,9 +780,9 @@ if (splice_aware == "Y"):
         envmodules:
             config['samtools']  
         output:
-            tmp = join(out_dir,'04_sam','02_cleanup','{sp}.{al}.split.{n}.tmp.sam'),
-            final = join(out_dir,'04_sam','02_cleanup','{sp}.{al}.split.{n}.final.sam'),
-            unmapped = join(out_dir,'04_sam','02_cleanup','{sp}.{al}.split.{n}.final.unmapped.sam'),
+            tmp = temp(join(out_dir,'04_sam','02_cleanup','{sp}.{al}.split.{n}.tmp.sam')),
+            final = temp(join(out_dir,'04_sam','02_cleanup','{sp}.{al}.split.{n}.final.sam')),
+            unmapped = temp(join(out_dir,'04_sam','02_cleanup','{sp}.{al}.split.{n}.final.unmapped.sam')),
         shell:
             """
             set +e
@@ -812,7 +812,7 @@ if (splice_aware == "Y"):
         envmodules:
             config['java']  
         output:
-            o1 = join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam.gz'),
+            o1 = temp(join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam.gz')),
         shell:
             """
             java -Djava.io.tmpdir={params.base} -jar -Xmx50G -jar {params.doc} \
@@ -829,7 +829,7 @@ if (splice_aware == "Y"):
         params:
             rname = '10c_gzipsam'
         output:
-            o1 = join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam'),
+            o1 = temp(join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam')),
         shell:
             """
             gunzip -c {input.f1} > {output.o1}
@@ -851,9 +851,9 @@ if (splice_aware == "Y"):
         envmodules:
             config['samtools'],
         output:
-            unmasked = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.unmasked.bam'),
-            merged = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.merged.bam'),
-            final = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.bam'),
+            unmasked = temp(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.unmasked.bam')),
+            merged = temp(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.merged.bam')),
+            final = temp(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.bam')),
         shell:
             """
             set +e
@@ -880,7 +880,7 @@ if (splice_aware == "Y"):
         envmodules:
             config['samtools']  
         output:
-            sort = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.sorted.bam'),
+            sort = temp(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.sorted.bam')),
         shell:
             """
             if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]
@@ -968,7 +968,7 @@ rule create_bam_unique:
     envmodules:
         config['samtools']        
     output:
-        o1 = join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.bam'),
+        o1 = temp(join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.bam')),
     shell:
         """
         if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
@@ -988,7 +988,7 @@ rule create_bam_mm:
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.bam'),
+        o1 = temp(join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.bam')),
     shell:
         """
         if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
@@ -1007,8 +1007,8 @@ rule sort_mm_and_unique:
     envmodules:
         config['samtools']      
     output:
-        o1 = join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.s.bam'),
-        o2 = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.s.bam'),
+        o1 = temp(join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.s.bam')),
+        o2 = temp(join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.s.bam')),
     shell:
         """
         if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]
@@ -1035,8 +1035,8 @@ rule index_mm_and_unique:
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.i.bam'),
-        o2 = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.i.bam'),
+        o1 = temp(join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.i.bam')),
+        o2 = temp(join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.i.bam')),
     shell:
         """
         cp {input.un} {output.o1}; samtools index {output.o1}; \
@@ -1249,7 +1249,7 @@ rule dedup:
     envmodules:
         config['umitools']  
     output:
-        o1 = join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.bam'),
+        o1 = temp(join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.bam')),
         o2 = join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.log'),
     shell:
         """
@@ -1309,7 +1309,7 @@ rule dedup_unique:
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'09_dedup','03_unique','{sp}.dedup.unique.bam'),
+        o1 = temp(join(out_dir,'09_dedup','03_unique','{sp}.dedup.unique.bam')),
     shell:
         """
         set +e
@@ -1535,7 +1535,7 @@ if(DE_method=="MANORM"):
             sp = "{sp}",
             n_merge = nt_merge,
             ref_sp = nova_ref,
-            base1 = join(out_dir,'13_annotation','peaks/',),
+            base1 = join(out_dir,'13_annotation','02_peaks/',),
             base2 = join(out_dir,'14_MAnorm','input/',),
             anno_dir = join(out_dir,'13_annotation','01_project/'),
             a_config = annotation_config,
