@@ -62,7 +62,6 @@ blank_theme <- theme_minimal()+
 ```{r echo=F, message=FALSE, warning=FALSE, eval=T, include=F,results=F,}
 peak_in=params$peak_in
 samplename=params$samplename
-ntmerge=params$ntmerge
 readdepth=as.numeric(params$readdepth)
 species=params$species
 output_table=params$output_table

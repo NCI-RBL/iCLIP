@@ -19,7 +19,6 @@ condense_exon = args[5]
 read_depth = args[6]
 DEmethod = args [7]
 sample_id = args[8]
-nt_merge = args[9]
 ref_species = args[10]
 out_dir = args[11]
 out_dir_manorm = args[12]
@@ -344,9 +343,9 @@ if (DEmethod=='MANORM') {
   #write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
   #write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
   
-  write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm,'input/', sample_id, peak_type, "_", "PeaksforMAnrom.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm,'input/', sample_id, peak_type, "_", "PeaksforMAnrom_P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm,'input/', sample_id, peak_type, "_", "PeaksforMAnrom_N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom_P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom_N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
 } else{
   print("MANORM skipped")
 } 
