@@ -1543,6 +1543,7 @@ if(DE_method=="MANORM"):
             g_path = gen_path,
             i_path = intron_path,
             r_path = rmsk_path,
+            error = join(out_dir,'13_annotation','read_depth_error.txt')
         envmodules:
             config['R'],
             config['bedtools'],
@@ -1563,7 +1564,6 @@ if(DE_method=="MANORM"):
                 {params.r_depth} \
                 {params.d_method} \
                 {params.sp} \
-                {params.n_merge} \
                 {params.ref_sp} \
                 {params.base1} \
                 {params.base2} \
@@ -1572,6 +1572,7 @@ if(DE_method=="MANORM"):
                 {params.g_path} \
                 {params.i_path} \
                 {params.r_path} \
+                {params.error}
             '''
 else:
     rule peak_annotations:
