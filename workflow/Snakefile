@@ -471,7 +471,7 @@ if (multiplex_flag == 'Y'):
         input:
             f1 = join(out_dir,'qc', "manifest_clean.txt")
         params:
-            rname="01a_bcQC",
+            rname="01a_qc_barcode",
             py = join(source_dir,'workflow', 'scripts', '02_barcode_qc.py'),
             mm = mismatch,
         envmodules:
@@ -536,7 +536,7 @@ if (multiplex_flag == 'Y'):
         shell:
             'cp {params.cmd}'       
 else: 
-    rule copy_nondemux:
+    rule nondemux:
         """
         copies fastq files from source location and moves into renamed file folder
         """
@@ -559,7 +559,7 @@ rule remove_adaptors:
     input:
         f1 = join(out_dir,'{mp}','01_renamed','{sp}.fastq.gz')
     params:
-        rname='02_adapt',
+        rname='02_remove_adaptors',
         s_exec = singularity_exec,
         ml = 1,
         cmd = adapt_cmd,
@@ -586,7 +586,7 @@ rule rename_adaptors:
         f1 = expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_trimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list),
         f2 = expand(join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz'),zip,mp=mp_list,sp=sp_list)
     params:
-        rname = "03_rename_ad",
+        rname = "03_rename_adaptors",
         cmd = rename_adapt_cmd
     output:
         o1 = temp(expand(join(out_dir,'01_remove_adaptor','{sp}_removed_seq.fastq.gz'),sp=sp_list)),
@@ -603,7 +603,7 @@ rule qc_fastq_pre:
     input:
         f1 = join(out_dir,'{mp}/01_renamed/{sp}.fastq.gz')
     params:
-        rname='04_fqc_pre',
+        rname='04_qc_fastq_pre',
         base = join(out_dir,'{mp}/00_qc_pre/')
     envmodules:
         config['fastqc']
@@ -621,7 +621,7 @@ rule qc_fastq_post:
     input:
         f1 = join(out_dir,'01_remove_adaptor','{sp}_filtered.fastq.gz')
     params:
-        rname='04_fqc_post',
+        rname='04_qc_fastq_post',
         base = join(out_dir, 'qc', '00_qc_post'),
     envmodules:
         config['fastqc']
@@ -654,7 +654,7 @@ rule qc_screen_sp:
     input:
         f1 = join(out_dir,'02_unzip','{sp}.fastq')
     params:
-        rname='06_screen1',
+        rname='06_qc_screen_sp',
         base = join(out_dir, 'qc', '00_qc_screen_species'),
         fq_config = join(source_dir,'config','fqscreen_species_config.conf'),
         cmd = rename_fqscreen1
@@ -681,7 +681,7 @@ rule qc_screen_rrna:
     input:
         f1 = join(out_dir,'02_unzip','{sp}.fastq')
     params:
-        rname='06_screen2',
+        rname='06_qc_screen_rrna',
         base = join(out_dir, 'qc', '00_qc_screen_rrna'),
         fq_config = join(source_dir,'config','fqscreen_rrna_config.conf'),
         cmd = rename_fqscreen2
@@ -708,7 +708,7 @@ rule determine_splits:
     input:
         f1 = expand(join(out_dir,'02_unzip/{sp}.fastq'), sp=sp_list),
     params:
-        rname='07_splitdoc',
+        rname='07_determine_splits',
         sh = join(source_dir, 'workflow', 'scripts', '03_find_split_parameters.sh'),
     output:
         o1 = join(out_dir,'qc','split_params.tsv')
@@ -726,7 +726,7 @@ rule split_files:
         f1 = join(out_dir,'02_unzip/{sp}.fastq'),
         sp = join(out_dir,'qc','split_params.tsv')
     params:
-        rname='08_split',
+        rname='08_split_files',
         base = join(out_dir,'03_split/{sp}.split.'),
         cmd = get_filechunk_size
     output:
@@ -743,7 +743,7 @@ rule novoalign:
     input:
         f1 = join(out_dir,'03_split','{sp}.split.{n}.fastq'),
     params:
-        rname='09_novo',
+        rname='09_novoalign',
         n_index = get_index,
     envmodules:
         config['novocraft']
@@ -806,7 +806,7 @@ if (splice_aware == "Y"):
         input:
             f1 = join(out_dir,'04_sam','02_cleanup','{sp}.{al}.split.{n}.final.sam'),
         params:
-            rname = '10b_convert',
+            rname = '10b_convert_transcript',
             base = join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam'),
             doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
         envmodules:
@@ -827,7 +827,7 @@ if (splice_aware == "Y"):
         input:
             f1 = join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam.gz'),
         params:
-            rname = '10c_gzipsam'
+            rname = '10c_gunzip_sam'
         output:
             o1 = temp(join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam')),
         shell:
@@ -847,7 +847,7 @@ if (splice_aware == "Y"):
             unmasked = join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam'),
             unmapped = join(out_dir,'04_sam','02_cleanup','{sp}.{al}.split.{n}.final.unmapped.sam'),
         params:
-            rname = '10d_mergeunmapped',
+            rname = '10d_merge_unmapped_reads',
         envmodules:
             config['samtools'],
         output:
@@ -876,7 +876,7 @@ if (splice_aware == "Y"):
         input:
             f1 = join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.bam')
         params:
-            rname='10e_merge',
+            rname='10e_sort_index_unmapped_splits',
         envmodules:
             config['samtools']  
         output:
@@ -900,7 +900,7 @@ if (splice_aware == "Y"):
         input:
             sorted_list = dynamic(join(out_dir,'04_sam','04_unmapped','{sp}.{al}.split.{n}.final.sorted.bam')),
         params:
-            rname='10e_merge',
+            rname='10f_merge_unmapped_splits',
         envmodules:
             config['samtools']  
         output:
@@ -919,7 +919,7 @@ rule split_mm_unique:
     input:
         f1 = get_align_input
     params:
-        rname='11_split_mu',
+        rname='11_split_mm_unique',
     envmodules:
         config['samtools']
     output:
@@ -946,7 +946,7 @@ rule sam_to_header:
     input:
         sam = get_align_input
     params:
-        rname='12_sam_head',
+        rname='12_sam_to_header',
     envmodules:
         config['samtools'] 
     output:
@@ -964,7 +964,7 @@ rule create_bam_unique:
         h = join(out_dir,'05_reads','{sp}.{al}.split.{n}.header.txt'),
         un = join(out_dir,'05_reads','{sp}.{al}.split.{n}.unique.txt'),
     params:
-        rname='13a_bam_u',
+        rname='13a_create_bam_unique',
     envmodules:
         config['samtools']        
     output:
@@ -984,7 +984,7 @@ rule create_bam_mm:
         h = join(out_dir,'05_reads','{sp}.{al}.split.{n}.header.txt'),
         mm = join(out_dir,'05_reads','{sp}.{al}.split.{n}.mm.txt'),
     params:
-        rname='13b_bam_m',
+        rname='13b_bcreate_bam_mm',
     envmodules:
         config['samtools']  
     output:
@@ -1003,7 +1003,7 @@ rule sort_mm_and_unique:
         un = join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.bam'),
         mm = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.bam'),
     params:
-        rname='14_sort_mu',
+        rname='14_sort_mm_and_unique',
     envmodules:
         config['samtools']      
     output:
@@ -1031,7 +1031,7 @@ rule index_mm_and_unique:
         un = join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.s.bam'),
         mm = join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.s.bam'),
     params:
-        rname='15_index_mu',
+        rname='15_index_mm_and_unique',
     envmodules:
         config['samtools']  
     output:
@@ -1052,7 +1052,7 @@ rule merge_splits_unique_mm:
         unique = dynamic(join(out_dir,'06_bam','unique','{sp}.{al}.split.{n}.unique.i.bam')),
         mm = dynamic(join(out_dir,'06_bam','mm','{sp}.{al}.split.{n}.mm.i.bam'))
     params:
-        rname='16_merge_mu',
+        rname='16_merge_splits_unique_mm',
     envmodules:
         config['samtools']  
     output:
@@ -1072,7 +1072,7 @@ rule merge_mm_and_unique:
         un = join(out_dir,'07_bam_merged_splits','{sp}.{al}.merged.unique.bam'),
         mm = join(out_dir,'07_bam_merged_splits','{sp}.{al}.merged.mm.bam'),
     params:
-        rname='17_merge_mu',
+        rname='17_merge_mm_and_unique',
     envmodules:
         config['samtools']  
     output:
@@ -1089,7 +1089,7 @@ rule sort_index_merged:
     input:
         f1 = join(out_dir,'08_bam_merged','{sp}.{al}.merged.bam'),
     params:
-        rname='18_si_m',
+        rname='18_sort_index_merged',
     envmodules:
         config['samtools']  
     output:
@@ -1111,7 +1111,7 @@ rule qc_samstats:
     input:
         f1 = join(out_dir,'08_bam_merged','{sp}.{al}.merged.si.bam'),
     params:
-        rname='19_samstats'
+        rname='19_qc_samstats'
     envmodules:
         config['samtools']
     output:
@@ -1161,7 +1161,7 @@ rule qc_alignment:
     input:
         f1 = join(out_dir,'08_bam_merged','{sp}.{al}.merged.si.bam'),
     params:
-        rname = "21_qc_align",
+        rname = "21_qc_alignment",
         R = join(source_dir,'workflow','scripts','04_alignment_stats.R'),
         sampleid = '{sp}.{al}',
         base = join(out_dir, 'qc', '00_qc_post/')
@@ -1196,7 +1196,7 @@ if (multiplex_flag == 'Y'):
             txt_bc = expand(join(out_dir,'{mp}/00_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys()),
             png_bc = expand(join(out_dir,'{mp}/00_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())
         params:
-            rname = "22_qc_ts",
+            rname = "22_qc_troubleshoot",
             R = join(source_dir,'workflow','scripts','05_qc_report.Rmd'),
         envmodules:
             config['R']
@@ -1222,7 +1222,7 @@ else:
             txt_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.txt'), sp=sp_list, al=align_list),
             txt_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.txt'), sp=sp_list, al=align_list),
         params:
-            rname = "22_qc_ts",
+            rname = "22_qc_troubleshoot",
             R = join(source_dir,'workflow','scripts','05_qc_report_nondemux.Rmd'),
         envmodules:
             config['R']
@@ -1267,7 +1267,7 @@ rule sort_index_dedup:
     input:
         f1 = expand(join(out_dir,'09_dedup','01_bam','{{sp}}.{al}.dedup.bam'), al=align_list),
     params:
-        rname='25_si_dedup',
+        rname='25_sort_index_dedup',
     envmodules:
         config['samtools']  
     output:
@@ -1305,7 +1305,7 @@ rule dedup_unique:
         bam = join(out_dir,'09_dedup','02_sorted','{sp}.dedup.si.bam'),
         h = join(out_dir,'09_dedup','02_sorted','{sp}.dedup.header.txt'),
     params:
-        rname='27_split_dedup',
+        rname='27_dedup_unique',
     envmodules:
         config['samtools']  
     output:
@@ -1331,7 +1331,7 @@ rule index_dedup_unique:
     input:
         f1 = join(out_dir,'09_dedup','03_unique','{sp}.dedup.unique.bam'),
     params:
-        rname='28_index_splitu',
+        rname='28_index_dedup_unique',
     envmodules:
         config['samtools']  
     output:
@@ -1349,7 +1349,7 @@ rule create_beds:
         all = join(out_dir,'09_dedup','02_sorted','{sp}.dedup.si.bam'),
         unique = join(out_dir,'09_dedup','03_unique','{sp}.dedup.unique.i.bam'),
     params:
-        rname='29_bed',
+        rname='29_create_beds',
     envmodules:
         config['bedtools']  
     output:
@@ -1371,7 +1371,7 @@ rule create_safs:
         all = join(out_dir,'10_bed','{sp}_all.bed'),
         unique = join(out_dir,'10_bed','{sp}_unique.bed')
     params:
-        rname='30_saf',
+        rname='30_create_safs',
     envmodules:
         config['bedtools']  
     output:
@@ -1400,7 +1400,7 @@ rule feature_counts_allreads:
         bam = join(out_dir,'09_dedup','02_sorted','{sp}.dedup.si.bam'),
         saf = join(out_dir,'11_SAF','{sp}_' + str(nt_merge) + '_all.SAF')
     params:
-        rname='31a_allreads',
+        rname='31a_feature_counts_allreads',
     envmodules:
         config['subread']  
     output:
@@ -1442,7 +1442,7 @@ rule feature_counts_uniquereads:
         bam = join(out_dir,'09_dedup','02_sorted','{sp}.dedup.si.bam'),
         saf = join(out_dir,'11_SAF','{sp}_' + str(nt_merge) + '_unique.SAF'),
     params:
-        rname='32b_saf',
+        rname='31b_feature_counts_uniquereads',
     envmodules:
         config['subread']  
     output:
@@ -1480,7 +1480,7 @@ rule project_annotations:
     input:
         expand(join(out_dir,'12_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_uniqueCounts.txt'), sp=sp_list),
     params:
-        rname='36_proj_anno',
+        rname='32_project_annotations',
         script = join(source_dir,'workflow','scripts','08_annotation.R'),
         ref_sp = nova_ref,
         rrna_flag = refseq_rrna,
@@ -1525,7 +1525,7 @@ if(DE_method=="MANORM"):
             all = join(out_dir,'12_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
             anno = join(out_dir,'13_annotation', '01_project','annotations.txt'),
         params:
-            rname = '37_peak_anno',
+            rname = '33_peak_annotations',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
             p_type = peak_id,
             junc = sp_junc,
@@ -1582,7 +1582,7 @@ else:
             all = join(out_dir,'12_counts', 'allreadpeaks', '{sp}_'+ str(nt_merge) +'_allFracMMCounts.txt'),
             anno = join(out_dir,'13_annotation', '01_project','annotations.txt'),
         params:
-            rname = '37_peak_anno',
+            rname = '33_peak_annotations',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
             p_type = peak_id,
             junc = sp_junc,
@@ -1632,7 +1632,7 @@ rule annotation_output:
     input:
         peak_in = join(out_dir,'13_annotation', '02_peaks','{sp}_' + str(nt_merge) + '_peakannotation_complete.txt'),
     params:
-        rname = "38_anno_output",
+        rname = "34_annotation_output",
         R = join(source_dir,'workflow','scripts','10_annotation.Rmd'),
         sp = "{sp}",
         ref_sp = nova_ref,
