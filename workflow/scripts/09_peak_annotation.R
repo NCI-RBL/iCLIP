@@ -31,6 +31,8 @@ rmsk_path = args[17]
 
 
 if(length(args)==0){
+  rm(list=setdiff(ls(), "params"))
+  
   # wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/"
   wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/"
   setwd(wd)
@@ -39,35 +41,30 @@ if(length(args)==0){
   peak_type= "ALL"
   # peak_unique = "/Users/homanpj/OneDrive\ -\ National\ Institutes\ of\ Health/Loaner/Wolin/CLIP/mESC_clip2/SpliceAware/peaks_FullGenome_Transcme.SplicTrans2/Ro/all/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.AllPeaks50nt.FCountUnique.txt"
   # peak_all = "/Users/homanpj/OneDrive\ -\ National\ Institutes\ of\ Health/Loaner/Wolin/CLIP/mESC_clip2/SpliceAware/peaks_FullGenome_Transcme.SplicTrans2/Ro/all/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.AllPeaks50nt.FCountall_frac.txt"
-  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Control_Clip_50nt_uniqueCounts.txt"
-  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Control_Clip_50nt_allFracMMCounts.txt"
-  # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Ro_Clip_50nt_uniqueCounts.txt"
-  # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/13_counts/allreadpeaks/Ro_Clip_50nt_allFracMMCounts.txt"
+  # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Control_Clip_50nt_uniqueCounts.txt"
+  # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Control_Clip_50nt_allFracMMCounts.txt"
+  # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Ro_Clip_50nt_uniqueCounts.txt"
+  # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Ro_Clip_50nt_allFracMMCounts.txt"
+  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/NextSeq_fCLIP_0218/13_counts/allreadpeaks/WT1_fCLIP_50nt_uniqueCounts.txt"
+  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/NextSeq_fCLIP_0218/13_counts/allreadpeaks/WT1_fCLIP_50nt_allFracMMCounts.txt"
   reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
   
   #output
   out_dir = paste0(wd,"/14_annotation/peaks/")
-  #out_file = paste0(wd,"/workflow/scripts/AnnoTestPIPE/15_peaks/WT1_fCLIP_50nt_peakannotation_complete.txt") ##used variable instead of hardcode
   out_dir_manorm =paste0(wd,"/15_MAnorm/")
   
   #project annotation files
-  #rmsk_path = "/Users/homanpj/Documents/Resources/ref/hg38/repeatmasker/rmsk_GRCh38.txt" #never used
   anno_dir = paste0(wd,"/14_annotation/project/")
-  #ref_dir = "/Users/homanpj/Documents/Resources/ref/" ##never used
   ref_dir = "/Users/homanpj/Documents/Resources/ref/" 
   
   #feature information
-  join_junction = "FALSE"
+  join_junction = "TRUE"
   condense_exon="TRUE"
   read_depth = 5
   DEmethod = "MANORM"
   ref_species="hg38"
-  sample_id = "Control"
-  nt_merge = "50nt"
-
-  
-  #none of these paths are being used - delete
-  #alias_path =  paste0("/Users/homanpj/Documents/Resources/ref/mm10/mm10.chromAlias.txt")##never used
+  sample_id = "WT1"
+  # nt_merge = "50nt"
   
   if(ref_species == "mm10"){
     gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
@@ -107,7 +104,7 @@ varname <- function(x) {
 
 
 #set id for files
-file_id = paste0(sample_id,"_",nt_merge,"_")
+file_id = paste0(sample_id,"_")
 
 ##########################################################################################
 ############### unique read Count
@@ -347,9 +344,9 @@ if (DEmethod=='MANORM') {
   #write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
   #write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
   
-  write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, file_id, peak_type, "_", "PeaksforMAnrom.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, file_id, peak_type, "_", "PeaksforMAnrom_P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, file_id, peak_type, "_", "PeaksforMAnrom_N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm,'input/', sample_id, peak_type, "_", "PeaksforMAnrom.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm,'input/', sample_id, peak_type, "_", "PeaksforMAnrom_P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm,'input/', sample_id, peak_type, "_", "PeaksforMAnrom_N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
 } else{
   print("MANORM skipped")
 } 
@@ -728,6 +725,14 @@ peaks_OppoAnno = peak_calling(peaks_Oppo,"Oppo_")
 #########################################################################################3
 ref_gencode = fread(gencode_path, header=T, sep="\t",stringsAsFactors = F,data.table=F)
 
+
+#remove TEC genes
+ref_gencode = subset(ref_gencode, transcript_type != "TEC") 
+ref_gencode = subset(ref_gencode, gene_type != "TEC") 
+
+## combine all Pseudogenes
+# ref_gencode[grep('pseudogene',ref_gencode$gene_type),'gene_type']='pseudogene'
+
 #dplyr::rename cols
 ref_gencode = ref_gencode %>% 
   dplyr::rename(
@@ -743,7 +748,9 @@ introns=fread(intron_path,
               col.names = c('chr','start','end','attribute','V5','strand'))
 
 #remove Non-Chromosome contigs
-introns=introns[grepl("_",introns$chr)==F,]
+# introns=introns[grepl("_",introns$chr)==F,]
+introns$chr=(gsub('chr[0-9]+_|chr[X-Y]_|chrUn_|_alt|_random|_fix','',introns$chr))
+introns$chr=(gsub('v','.',introns$chr))
 
 #split attribute col
 introns=separate(introns,
@@ -926,6 +933,8 @@ intronexon_Opposite = IE_calling(peaks_OppoAnno,'Oppo',"Oppo_")
 #read in rmsk
 rmsk_GRCm38=fread(rmsk_path, header=T, sep="\t",stringsAsFactors = F,
                   data.table=F)
+rmsk_GRCm38$genoName=gsub('chr[0-9]+_|chr[X-Y]_|chrUn_|_alt|_random|_fix',"",rmsk_GRCm38$genoName)
+rmsk_GRCm38$genoName=gsub("v",".",rmsk_GRCm38$genoName)
 
 rpmsk_anno <- function(ColumnName,Annotable,peaksTable){
   
@@ -1443,49 +1452,58 @@ if (JoinJunc==F) {
     dupGeneName=unique(trns[duplicated(trns)])
     
     if(length(dupGeneName)>0){
-    CollapsedOut=as.data.frame(matrix(nrow = 1,ncol=ncol(Peaksdata2_anno_trns_exon)+1));colnames(CollapsedOut)=c(colnames(Peaksdata2_anno_trns_exon),'IDmerge')
-    for (x in 1:length(dupGeneName)) {
-      d1=dupGeneName[x]
-      d2=Peaksdata2_anno_trns_exon[grep(d1,Peaksdata2_anno_trns_exon$Same_ensembl_gene_id),]
-      
-      if (nrow(d2)==0) {
-        next
-      } else {
-        d2$ID=paste0(d2$chr[1],":",min(d2$start),"-",max(d2$end))
+      CollapsedOut=as.data.frame(matrix(nrow = 1,ncol=ncol(Peaksdata2_anno_trns_exon)+1));colnames(CollapsedOut)=c(colnames(Peaksdata2_anno_trns_exon),'IDmerge')
+      for (x in 1:length(dupGeneName)) {
+        d1=dupGeneName[x]
+        d2=Peaksdata2_anno_trns_exon[grep(d1,Peaksdata2_anno_trns_exon$Same_ensembl_gene_id),]
         
-        if (unique(d2$strand)=="+") {
-          d3=d2[d2$start%in%min(d2$start),]
-        } else if (unique(d2$strand)=="-") {
-          d3=d2[d2$start%in%max(d2$start),]
+        if (nrow(d2)==0) {
+          next
+        } else {
+          d2$ID=paste0(d2$chr[1],":",min(d2$start),"-",max(d2$end))
+          
+          if (unique(d2$strand)=="+") {
+            d3=d2[d2$start%in%min(d2$start),]
+          } else if (unique(d2$strand)=="-") {
+            d3=d2[d2$start%in%max(d2$start),]
+          }
+          
+          d3[,'start']=min(d2$start)
+          d3[,'end']=max(d2$end)
+          d3$IDmerge=paste(d2$ID,collapse = ",")
+          
+          trns=trns[grep(",",d2$Same_ensembl_gene_id)]
+          d3$Same_ensembl_gene_id=paste0(unique(c(d2$Same_ensembl_gene_id,unlist(strsplit(trns,",")))),collapse = ",")
+          trns=trns[grep(",",d2$Same_gene_name_comb)]
+          d3$Same_gene_name_comb=paste0(unique(c(d2$Same_gene_name_comb,unlist(strsplit(trns,",")))),collapse = ",")
+          trns=trns[grep(",",d2$`Opposite Strand: Host_gene_ensembl_id`)]
+          d3$Oppo_ensembl_gene_id=paste0(unique(c(d2$Oppo_ensembl_gene_id,unlist(strsplit(trns,",")))),collapse = ",")
+          trns=trns[grep(",",d2$Oppo_gene_name_comb)]
+          d3$Oppo_gene_name_comb=paste0(unique(c(d2$Oppo_gene_name_comb,unlist(strsplit(trns,",")))),collapse = ",")
+          
+          CollapsedOut=rbind(CollapsedOut,d3)
         }
-        
-        d3[,'start']=min(d2$start)
-        d3[,'end']=max(d2$end)
-        d3$IDmerge=paste(d2$ID,collapse = ",")
-        
-        trns=trns[grep(",",d2$Same_ensembl_gene_id)]
-        d3$Same_ensembl_gene_id=paste0(unique(c(d2$Same_ensembl_gene_id,unlist(strsplit(trns,",")))),collapse = ",")
-        trns=trns[grep(",",d2$Same_gene_name_comb)]
-        d3$Same_gene_name_comb=paste0(unique(c(d2$Same_gene_name_comb,unlist(strsplit(trns,",")))),collapse = ",")
-        trns=trns[grep(",",d2$`Opposite Strand: Host_gene_ensembl_id`)]
-        d3$Oppo_ensembl_gene_id=paste0(unique(c(d2$Oppo_ensembl_gene_id,unlist(strsplit(trns,",")))),collapse = ",")
-        trns=trns[grep(",",d2$Oppo_gene_name_comb)]
-        d3$Oppo_gene_name_comb=paste0(unique(c(d2$Oppo_gene_name_comb,unlist(strsplit(trns,",")))),collapse = ",")
-        
-        CollapsedOut=rbind(CollapsedOut,d3)
       }
-    }
-    
+      
       rownames(CollapsedOut)=NULL
       CollapsedOut=CollapsedOut[-1,]
       CollapsedOutID= unique(unlist(strsplit(CollapsedOut$IDmerge,",")))
       Peaksdata2_anno$IDmerge=NA
       Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$ID%in%CollapsedOutID==F,]
       Peaksdata2_anno=(rbind(Peaksdata2_anno,CollapsedOut))
-
+      
     } else { print("Multiple peaks not found in single Gene")}
   }  
 }  
+
+## correct lnLc annotation - keep lnLc annotation above to hepl track source of lnc annotation
+for (x in c('Same_gene_type','Same_gene_type_ALL','Same_type_simple_comb','Same_type_comb','Oppo_gene_type','Oppo_gene_type_ALL','Same_type_simple_comb','Oppo_type_simple_comb','Oppo_type_comb')) {
+  
+  Peaksdata2_anno[,x]=gsub("lnLcRNA","lncRNA",Peaksdata2_anno[,x])
+  Peaksdata2_anno[,x]=gsub("linLcRNA","lincRNA",Peaksdata2_anno[,x])
+  
+}
+
 
 #write out for junction annotation 
 write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_complete.txt'),sep = "\t")
@@ -1494,4 +1512,3 @@ write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_complete.txt'
 write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID')],
             file=paste0(out_dir,file_id,"peakannotation_mapq_IN.txt"), 
             sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
-

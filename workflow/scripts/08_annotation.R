@@ -17,9 +17,12 @@ reftable_path = args[11]
 
 #testing information
 if(length(args)==0){
-  setwd("/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/")
+  rm(list=setdiff(ls(), "params"))
+  
+  # setwd("/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/")
+  setwd("/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/")
   ref_dir = "/Users/homanpj/Documents/Resources/ref/"
-  ref_species = "mm10" ### need better name, match to snakemake
+  ref_species = "hg38" ### need better name, match to snakemake
   reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
   refseq_rRNA=T
   
@@ -35,7 +38,7 @@ if(length(args)==0){
     custom_path= paste0(ref_dir,'mm10/AdditionalAnno/')
     
   } else if (ref_species == "hg38"){
-    out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/project/"
+    out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/14_annotation/project/"
     gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
     refseq_path = paste0(ref_dir, "hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
     canonical_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
@@ -105,6 +108,8 @@ write.table(ref_gencode_t,paste0(out_dir,"ref_gencode.txt"),col.names=T,sep = "\
 ############### canonical paths
 ##########################################################################################
 # canonical=fread(canonical_path, header=T, sep="\t",stringsAsFactors = F,data.table=F)
+# canonical$chr=(gsub('chr[0-9]+_|chr[X-Y]_|chrUn_|_alt|_random|_fix','',canonical$chr))
+# canonical$chr=(gsub('v','.',canonical$chr))
 # 
 # #remove version
 # canonical$transcript=removeVersion(canonical$transcript)
@@ -122,7 +127,9 @@ introns=fread(intron_path,
               col.names = c('chr','start','end','attribute','V5','strand'))
 
 #remove Non-Chromosome contigs
-introns=introns[grepl("_",introns$chr)==F,]
+# introns=introns[grepl("_",introns$chr)==F,]
+introns$chr=(gsub('chr[0-9]+_|chr[X-Y]_|chrUn_|_alt|_random|_fix','',introns$chr))
+introns$chr=(gsub('v','.',introns$chr))
 
 #split attribute col
 introns=separate(introns,
@@ -155,7 +162,7 @@ intron_exon$ID=paste0(intron_exon$chr,':',intron_exon$start,'-',intron_exon$end)
 # get repeat regions and extra small RNA locations
 rmsk_GRCm38=fread(rmsk_path, header=T, sep="\t",stringsAsFactors = F,
                   data.table=F)
-rmsk_GRCm38$genoName=gsub("chr[0-9]+_|chrUn_|_random|_alt|_fix|chr[A-Z]_","",rmsk_GRCm38$genoName)
+rmsk_GRCm38$genoName=gsub('chr[0-9]+_|chr[X-Y]_|chrUn_|_alt|_random|_fix',"",rmsk_GRCm38$genoName)
 rmsk_GRCm38$genoName=gsub("v",".",rmsk_GRCm38$genoName)
 
 ##########################################################################################
@@ -191,7 +198,7 @@ if (ref_species=='hg38' && refseq_rRNA==TRUE) {
   Refseq_rRNA$gene_type='rRNA' #rRNA_RefSeq'
   Refseq_rRNA$gene_type_ALL=Refseq_rRNA$gene_type
   Refseq_rRNA=dplyr::rename(Refseq_rRNA, "name"=gene_synonym)
-  Refseq_rRNA$chr=gsub("chr[0-9]+_|chrUn_|_random|_fix","",Refseq_rRNA$chr)
+  Refseq_rRNA$chr=gsub('chr[0-9]+_|chr[X-Y]_|chrUn_|_alt|_random|_fix',"",Refseq_rRNA$chr)
   Refseq_rRNA$chr=gsub("v",".",Refseq_rRNA$chr)
   Refseq_rRNA=Refseq_rRNA[is.na(Refseq_rRNA$chr)==F,]
   
@@ -352,7 +359,7 @@ SYAnno<-function(rowid,ref_species){
   # } else{
   
   colnames(df_sub)=c('chr','start','end','name','type','strand')
-    # contents = paste0(unique(df_sub$V4),collapse = ', ')
+  # contents = paste0(unique(df_sub$V4),collapse = ', ')
   contents=""
   # }
   
