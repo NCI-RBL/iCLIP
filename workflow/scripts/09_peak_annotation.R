@@ -27,7 +27,7 @@ reftable_path = args[13]
 gencode_path = args[14]
 intron_path = args[15]
 rmsk_path = args[16]
-
+output_file_error = args[17]
 
 if(length(args)==0){
   rm(list=setdiff(ls(), "params"))
@@ -138,6 +138,21 @@ colnames(FtrCount)[which(colnames(FtrCount)%in%c('Chr','Start','End','Strand'))]
 FtrCount=FtrCount[duplicated(FtrCount)==F,]
 
 ##########################################################################################
+############### run filter check
+##########################################################################################
+if(nrow(FtrCount[FtrCount$Counts_fracMM>=read_depth,])==0){
+  text1 = "Based on the read_depth parameters give all peaks are being filtered. Please update read_depth in config file to continue processing"
+  writeLines(paste0(text1, "\n", 
+                    "max read counts: ", max(FtrCount$Counts_fracMM), "\n",
+                    "min read counts: ", min(FtrCount$Counts_fracMM), "\n",
+                    "current read count threshold: ", read_depth), output_file_error)
+  print("Read depth params error")
+  invokeRestart("abort")
+} else{
+  print("Peaks pass read_depth filter")
+}
+
+##########################################################################################
 ##############################  splice junctions
 ##########################################################################################
 if (join_junction==T) {
@@ -157,7 +172,6 @@ if (join_junction==T) {
   if (nrow(FtrCount_fracJCount)>0) {
     print("Junctions were identitified")
     JoinJunc=T
-    
     
     FtrCount_fracJCount=merge(FtrCount_fracJCount,FtrCount[,c("ID","strand")],by.x="PrimaryGene",by.y="ID",all.x=T)
     
@@ -185,11 +199,10 @@ if (join_junction==T) {
                        JunctionID=FtrCount_fracJCount$JunctionID,
                        rID=FtrCount_fracJCount$rID
     )
-    
-    
     FtrCount.GR=GRanges(seqnames = as.character(FtrCount$chr), 
                         ranges=IRanges(start = as.numeric(FtrCount$start), end = as.numeric(FtrCount$end)),strand = FtrCount$strand,
                         ID=FtrCount$ID)
+    
     
     #Add Junction ID
     junctionID <- function(Ftr_in, j_in, j_name, p_name){
@@ -215,20 +228,16 @@ if (join_junction==T) {
     ### identify PEAK ID for Site1 and Site2 location of splice junction
     Junc_PLOut=Junc_PL[,c('PrimaryGene_Junction1','JunctionID_Junction1','strand_Peaks1','ID_Peaks1','ID_Peaks2')]
     
-    
     ### Identify peaks that are linked between splice juntions
     ##### Remove Peaks where Peak1, Peak2 are duplicated
     ############## Junction ID can be off by a few NT because different splice start/end in peak
-    
     Junc_PLOut=Junc_PLOut[duplicated(Junc_PLOut[,c('ID_Peaks1','ID_Peaks2')])==F,]
     Junc_PLOut$JoinID=paste0(Junc_PLOut$ID_Peaks1,",",Junc_PLOut$ID_Peaks2)
-    
-    
+
     ##################################################
     ##### Combine all connected peaks
     ##### get all unique PrimaryGene_Junction
     # Combine_linked_peaks= function(JUNCTION_REFERENCE_TABLE)
-    
     d2=unique(Junc_PLOut$JoinID)
     PGene_TBL2=(matrix(nrow=nrow(Junc_PLOut),ncol=ncol(Junc_PLOut)+3));colnames(PGene_TBL2)=c(colnames(Junc_PLOut),'chr','start','end')
     
@@ -294,15 +303,11 @@ if (join_junction==T) {
     FtrCount_Junc_peaks=FtrCount[FtrCount$ID%in%Junc_peaks,]
     FtrCount=FtrCount[FtrCount$ID%in%Junc_peaks==F,]
     
-    
     ######################################################################
     ### Trim peaks without Splicing
     FtrCount=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
     FtrCount=rbind(FtrCount,FtrCount_Junc_peaks)
     ######################################################################
-    #######
-    
-    
   } else { 
     print("No junctions were identified")
     JoinJunc=F
@@ -312,12 +317,11 @@ if (join_junction==T) {
     
   }
   
-}
-
-if (join_junction==F) {
+} else{
   JoinJunc=F
   FtrCount=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
 }
+
 
 FtrCount=FtrCount[duplicated(FtrCount)==F,]
 
@@ -331,18 +335,12 @@ FtrCount$ID2=paste0(FtrCount$chr,":",FtrCount$start,"-",FtrCount$end,"_",FtrCoun
 #write final junction output
 write.table(FtrCount,paste0(out_dir,file_id,"peakjunction.txt"),sep = "\t")
 
-
+##########################################################################################
+##############################  MANORM
+##########################################################################################
 
 if (DEmethod=='MANORM') {
   print("Running MANORM")
-  #if (dir.exists(file.path(paste0(wd,"/15_MAnorm")))==F) {dir.create(paste0(wd,"/15_MAnorm"))} ##snakemake handles this
-  #if (dir.exists(file.path(paste0(wd,"/15_MAnorm/","input/")))==F) {dir.create(paste0(wd,"/15_MAnorm/","input/"))}##snakemake handles this
-  
-  ###remove hard coding
-  #write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  #write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  #write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(wd,"/15_MAnorm/","input/",sample_id,"_",peak_type,"PeaksforMAnrom_",nt_merge,'_peakDepth',read_depth,".N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  
   write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
   write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom_P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
   write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom_N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
@@ -539,7 +537,6 @@ bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
     print(paste0('Overlaps with ',nrow(ab_OL),' Regions from '))[1]
   } else{
     print("does not overlap with ")[1]
-    # print("DO SOMETHING")
   }
   
   print((match.call())$Annotable)
