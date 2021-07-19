@@ -25,6 +25,7 @@ from os.path import join
 import pandas as pd
 from collections import defaultdict
 import yaml
+import csv
 
 ###############################################################
 # config handling, set parameters
@@ -1659,3 +1660,180 @@ rule annotation_output:
                 include_rRNA = "{params.rrna}", \
                 PeakIdnt = "{params.p_type}"))'
         """
+if(DE_method=="MANORM"):
+    rule MANORM_beds:
+        input:
+            f1 = join(out_dir,'10_bed','{sp}_all.bed'),
+        params:
+            rname = "35a_MANORM_beds"
+        output:
+            o1 = join(out_dir,'14_MAnorm', '01_input','{sp}_ReadsforMAnrom_P.bed'),
+            o2 = join(out_dir,'14_MAnorm', '01_input','{sp}_ReadsforMAnrom_N.bed'),
+        shell:
+            """
+            awk '$6=="+"' {input.f1} > {output.o1}
+            awk '$6=="-"' {input.f1} > {output.o2}
+            """
+
+def get_manorm_list():
+    list_path=manorm_manifest
+    
+    #read file
+    with open(list_path) as f:
+        reader = csv.reader(f, delimiter="\t")
+        manorm_file = list(reader)
+
+        #for each group in comparison list
+        manorm_list=[]
+        for group in manorm_file:
+            
+            #for each individual id
+            for id in group:
+                id = id.replace("  ", "_")
+            
+            #append final list
+            manorm_list.append(id)
+        
+        #remove header
+        manorm_list.pop(0)
+
+    return(manorm_list)
+
+strands=['P','N']
+manorm_manifest = config['contrast_manifest']
+manorm_list = get_manorm_list()
+
+def get_MANORM_analysis_input(wildcards):
+    gid_1 = wildcards.group_id.split("_")[0]
+    gid_2 = wildcards.group_id.split("_")[1]
+
+    input_list = [join(out_dir,'14_MAnorm', '01_input',gid_1 + '_PeaksforMAnrom.bed'),
+                join(out_dir,'14_MAnorm', '01_input',gid_1 + '_ReadsforMAnrom_' + wildcards.strands + '.bed'),
+                join(out_dir,'14_MAnorm', '01_input',gid_1 + '_PeaksforMAnrom_' + wildcards.strands + '.bed'),
+                join(out_dir,'14_MAnorm', '01_input',gid_2 + '_PeaksforMAnrom.bed'),
+                join(out_dir,'14_MAnorm', '01_input',gid_2 + '_ReadsforMAnrom_' + wildcards.strands + '.bed'),
+                join(out_dir,'14_MAnorm', '01_input',gid_2 + '_PeaksforMAnrom_' + wildcards.strands + '.bed')]
+    return(input_list)
+
+def get_MANORM_gid1(wildcards):
+    gid = wildcards.group_id.split("_")[0]
+    return(gid)
+
+def get_MANORM_gid2(wildcards):
+    gid = wildcards.group_id.split("_")[1]
+    return(gid)
+
+    rule MANORM_analysis:
+        '''
+        manorm \
+                --p1 outdir/15_MAnorm/input/Sample_50nt_ALL_PeaksforMAnrom_N.bed \
+                --p2 outdir/15_MAnorm/input/background_50nt_ALL_PeaksforMAnrom_N.bed \
+                --r1 outdir/10_bed/Sample_Clip_all.N.bed \
+                --r2 outdir/10_bed/background_Clip_all.N.bed \
+                --s1 0 \
+                --s2 0 \
+                -p 1 \
+                -d 25 \
+                -n 10000 \
+                -s \
+                -o outdir/15_MAnorm/Samplevsbackground/ \
+                --name1 Sample_Neg \
+                --name2 background_Neg
+        '''
+        input:
+            get_MANORM_analysis_input
+        params:
+            rname = "35b_MANORM_analysis",
+            gid_1 = get_MANORM_gid1,
+            gid_2 = get_MANORM_gid2,
+            base = join(out_dir,'14_MAnorm','02_analysis', '{group_id}/')
+        envmodules:
+            config['manorm']
+        output:
+            o1 = join(out_dir,'14_MAnorm','02_analysis', '{group_id}','{group_id}_MAnormPeaks.txt')
+        shell:
+            """
+            manorm \
+            --p1  join({{out_dir}},'14_MAnorm','01_input','{params.gid1}_PeaksforMAnrom_{{strand}}.bed') \
+            --p2  join({{out_dir}},'14_MAnorm','01_input','{params.gid2}_PeaksforMAnrom_{{strand}}.bed') \
+            --r1  join({{out_dir}},'14_MAnorm','01_input','{params.gid1}_ReadsforMAnrom_{{strand}}.bed') \
+            --r2 join({{out_dir}},'14_MAnorm','01_input','{params.gid2}_ReadssforMAnrom_{{strand}}.bed') \
+            --s1 0 \
+            --s2 0 \
+            -p 1 \
+            -d 25 \
+            -n 10000 \
+            -s \
+            -o {params.base} \
+            --name1 {params.gid_1}_{{strand}} \
+            --name2 {params.gid_2}_{{strand}}
+            """
+            
+def get_MANORM_prcoessing_input(wildcards):
+    gid_1 = wildcards.group_id.split("_")[0]
+    gid_2 = wildcards.group_id.split("_")[1]
+
+    input_list = [join(out_dir,'14_MAnorm', '02_peaks', gid_1 + '_peakannotation_complete.txt'),
+                join(out_dir,'14_MAnorm', '02_peaks', gid_1 + '_peakannotation_complete.txt'),
+                join(out_dir,'14_MAnorm','02_analysis', wildcards.group_id, wildcards.group_id + '_MAnormPeaks.txt')]
+    return(input_list)
+
+    rule MANORM_processing:
+        '''
+        INpeaksAnno = args[1]
+        samplename=args[4]
+        background=args[5]
+        peak_anno_g1= args[6] 'samplename1_peakannotation_complete.txt'
+        peak_anno_g2= args[7] 'samplename2_peakannotation_complete.txt'
+        pos_manorm=args[8] 'samplename1_Pos_MAvalues.xls'
+        neg_manorm=args[9] 'samplename1_Neg_MAvalues.xls'
+        output_file=args[10] 'paste0(INMAnormComp,samplename,"vs",background,"_MAnormPeaks.txt")'
+        '''
+        input:
+            get_MANORM_input_processing()
+        params:
+            rname = "35c_MANORM_processing",
+            script = join(source_dir,'workflow','scripts','12_MAnormAnnotation.Rmd'),
+            anno = join(out_dir,'13_annotation','02_peaks'),
+            gid_1 = get_MANORM_gid1,
+            gid_2 = get_MANORM_gid2,
+        envmodules:
+            config['R']
+        output:
+            o1 = join(out_dir,'14_MAnorm','02_analysis', '{group_id}','{group_id}_MAnormPeaks2.txt')
+        shell:
+            """
+            Rscript {params.script} \
+                {params.anno} \
+                {params.gid_1} \
+                {params.gid_2} \
+                join(out_dir,'14_MAnorm', '02_peaks', {params.gid_1} + '_peakannotation_complete.txt') \
+                join(out_dir,'14_MAnorm', '02_peaks', {params.gid_2} + '_peakannotation_complete.txt') \
+                join(out_dir,'14_MAnorm','02_analysis', {params.gid_1}, {params.gid_1} + 'samplename1_Pos_MAvalues.xls') \
+                join(out_dir,'14_MAnorm','02_analysis', {params.gid_1}, {params.gid_1} + 'samplename1_Neg_MAvalues.xls') \
+                {output.o1}
+            """
+
+    rule MANORM_RMD:
+        input:
+            f1 = join(out_dir,'14_MAnorm','02_analysis', '{group_id}','{group_id}_MAnormPeaks.txt')
+        params:
+            rname = "35d_MANORM_RMD",
+            R = join(source_dir,'workflow','scripts','12_MAnormAnnotation.Rmd'),
+            gid_1 = get_MANORM_gid1,
+            gid_2 = get_MANORM_gid2,
+            p_id = peak_type
+        envmodules:
+            config['R']
+        output:
+            o1 = join(out_dir,'14_MAnorm','{groupid}_manorm_report.html')
+        shell:
+            """
+            Rscript -e 'library(rmarkdown); \
+            rmarkdown::render("{params.R}",
+                output_file = "{output.o1}", \
+                params= list(peak_in="{input.f1}", \
+                    samplename="{params.gid_1}", \
+                    background="{params.gid_2}", \
+                    PeakIdnt="{params.p_id}"))'
+            """
