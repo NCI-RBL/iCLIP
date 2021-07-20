@@ -350,8 +350,8 @@ def get_MANORM_processing_input(wildcards):
 
     input_list = [join(out_dir,'13_annotation', '02_peaks', gid_1 + '_peakannotation_complete.txt'),
                 join(out_dir,'13_annotation', '02_peaks', gid_2 + '_peakannotation_complete.txt'),
-                join(out_dir,'14_MAnorm','02_analysis', wildcards.group_id + "_P", gid_1 + '_MAvalues.xls'),
-                join(out_dir,'14_MAnorm','02_analysis', wildcards.group_id + "_N", gid_1 + '_MAvalues.xls')]
+                join(out_dir,'14_MAnorm','02_analysis', wildcards.group_id + "_P", wildcards.group_id + '_all_MAvalues.xls'),
+                join(out_dir,'14_MAnorm','02_analysis', wildcards.group_id + "_N", wildcards.group_id + '_all_MAvalues.xls')]
     return(input_list)
 
 ###############################################################
@@ -1790,13 +1790,6 @@ if(DE_method=="MANORM"):
             
     rule MANORM_processing:
         '''
-        samplename=args[1]
-background=args[2]
-peak_anno_g1= args[3]
-peak_anno_g2= args[4]
-pos_manorm=args[5]
-neg_manorm=args[6]
-output_file=args[7]
         '''
         input:
             get_MANORM_processing_input
