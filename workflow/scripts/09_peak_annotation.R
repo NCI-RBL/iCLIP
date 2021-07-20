@@ -29,23 +29,66 @@ intron_path = args[15]
 rmsk_path = args[16]
 output_file_error = args[17]
 
+
 if(length(args)==0){
   rm(list=setdiff(ls(), "params"))
   
-  # wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/"
-  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/"
+  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/mm10_final/"
   setwd(wd)
   wd="."
   
   peak_type= "ALL"
-  # peak_unique = "/Users/homanpj/OneDrive\ -\ National\ Institutes\ of\ Health/Loaner/Wolin/CLIP/mESC_clip2/SpliceAware/peaks_FullGenome_Transcme.SplicTrans2/Ro/all/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.AllPeaks50nt.FCountUnique.txt"
-  # peak_all = "/Users/homanpj/OneDrive\ -\ National\ Institutes\ of\ Health/Loaner/Wolin/CLIP/mESC_clip2/SpliceAware/peaks_FullGenome_Transcme.SplicTrans2/Ro/all/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.AllPeaks50nt.FCountall_frac.txt"
-  # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Control_Clip_50nt_uniqueCounts.txt"
+  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/mm10_final/12_counts/allreadpeaks/Control_Clip_uniqueCounts.txt"
+  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/mm10_final/12_counts/allreadpeaks/Control_Clip_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Control_Clip_50nt_uniqueCounts.txt"
+  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
+  
+  #output
+  out_dir = paste0(wd,"/13_annotation/02_peaks/")
+  out_dir_manorm =paste0(wd,"/14_MAnorm/")
+  
+  #project annotation files
+  anno_dir = paste0(wd,"/13_annotation/01_project/")
+  ref_dir = "/Users/homanpj/Documents/Resources/ref/" 
+  
+  #feature information
+  join_junction = "TRUE"
+  condense_exon="TRUE"
+  read_depth = 0
+  DEmethod = "MANORM"
+  ref_species="mm10"
+  sample_id = "Control"
+  # nt_merge = "50nt"
+  output_file_error= paste0(wd,"/13_annotation/02_peaks/")
+  
+  if(ref_species == "mm10"){
+    gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
+    intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
+    rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
+    
+  } else if (ref_species == "hg38"){
+    gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
+    intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
+    rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
+  }
+}
+
+
+if(length(args)==0){
+  rm(list=setdiff(ls(), "params"))
+  
+  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/"
+  # wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/"
+  setwd(wd)
+  wd="."
+  
+  peak_type= "ALL"
+  peak_unique = "/Users/homanpj/OneDrive\ -\ National\ Institutes\ of\ Health/Loaner/Wolin/CLIP/mESC_clip2/SpliceAware/peaks_FullGenome_Transcme.SplicTrans2/Ro/all/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.AllPeaks50nt.FCountUnique.txt"
+  peak_all = "/Users/homanpj/OneDrive\ -\ National\ Institutes\ of\ Health/Loaner/Wolin/CLIP/mESC_clip2/SpliceAware/peaks_FullGenome_Transcme.SplicTrans2/Ro/all/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.AllPeaks50nt.FCountall_frac.txt"
   # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Control_Clip_50nt_allFracMMCounts.txt"
   # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Ro_Clip_50nt_uniqueCounts.txt"
   # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Ro_Clip_50nt_allFracMMCounts.txt"
-  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/NextSeq_fCLIP_0218/13_counts/allreadpeaks/WT1_fCLIP_50nt_uniqueCounts.txt"
-  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/NextSeq_fCLIP_0218/13_counts/allreadpeaks/WT1_fCLIP_50nt_allFracMMCounts.txt"
+  # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/NextSeq_fCLIP_0218/13_counts/allreadpeaks/WT2_fCLIP_50nt_uniqueCounts.txt"
+  # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/NextSeq_fCLIP_0218/13_counts/allreadpeaks/WT2_fCLIP_50nt_allFracMMCounts.txt"
   reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
   
   #output
@@ -61,9 +104,9 @@ if(length(args)==0){
   condense_exon="TRUE"
   read_depth = 5
   DEmethod = "MANORM"
-  ref_species="hg38"
-  sample_id = "WT1"
-  # nt_merge = "50nt"
+  ref_species="mm10"
+  sample_id = "Control"
+  nt_merge = "50nt"
   
   if(ref_species == "mm10"){
     gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
@@ -233,7 +276,7 @@ if (join_junction==T) {
     ############## Junction ID can be off by a few NT because different splice start/end in peak
     Junc_PLOut=Junc_PLOut[duplicated(Junc_PLOut[,c('ID_Peaks1','ID_Peaks2')])==F,]
     Junc_PLOut$JoinID=paste0(Junc_PLOut$ID_Peaks1,",",Junc_PLOut$ID_Peaks2)
-
+    
     ##################################################
     ##### Combine all connected peaks
     ##### get all unique PrimaryGene_Junction
@@ -332,8 +375,8 @@ FtrCount$ID=paste0(FtrCount$chr,":",FtrCount$start,"-",FtrCount$end)
 FtrCount$ID2=paste0(FtrCount$chr,":",FtrCount$start,"-",FtrCount$end,"_",FtrCount$Strand)
 
 
-#write final junction output
-write.table(FtrCount,paste0(out_dir,file_id,"peakjunction.txt"),sep = "\t")
+#write final junction output - Do not ude so dont need to write
+# write.table(FtrCount,paste0(out_dir,file_id,"peakjunction.txt"),sep = "\t")
 
 ##########################################################################################
 ##############################  MANORM
@@ -490,7 +533,10 @@ bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
                      header=F, sep="\t",stringsAsFactors = F)
   colnames(ab_OL) = c(paste0(colnames(peaksTable_output)),
                       paste0(colnames(anno_output)),'ntOL')
-  head(ab_OL)
+
+                system(paste0('rm ', out_dir, file_prefix, 'peakstable.bed'))
+                system(paste0('rm ', out_dir, file_prefix, 'annotable.bed'))
+                system(paste0('rm ', out_dir, file_prefix, 'peaks_OL.txt'))
   
   #add width
   ab_OL$width = ab_OL$end-ab_OL$start
@@ -551,8 +597,10 @@ bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
 
 peak_calling<-function(peak_in,nmeprfix){
   if(length(args)==0){
-    peak_in=peaks
-    nmeprfix='Same_'
+    # peak_in=peaks
+    # nmeprfix='Same_'
+    peak_in=peaks_Oppo
+    nmeprfix='Oppo_'
   }
   
   print((match.call())$peak_in)
@@ -586,16 +634,25 @@ peak_calling<-function(peak_in,nmeprfix){
   PeaksdataOut$type=gsub('scRNA,yRNA','yRNA',PeaksdataOut$type)
   
   ##########################################################################################
-  ############### duplicates / unique 
+  ############### Summarize Peak annotation
   ##########################################################################################
-  #handle duplicates
-  dup=PeaksdataOut[(is.na(PeaksdataOut$gene_type_ALL)==F)|(is.na(PeaksdataOut$type)==F),'ID']
-  peaksTable_single=PeaksdataOut[!(PeaksdataOut$ID%in%dup),]
-  peaksTable_double=PeaksdataOut[(PeaksdataOut$ID%in%dup),]
+  #separate annotated and non annotated peaks 
+  anno=PeaksdataOut[(is.na(PeaksdataOut$gene_type_ALL)==F)|(is.na(PeaksdataOut$type)==F),'ID']
   
-  u=unique(peaksTable_double$ID)
-  peaksTable_colapsed=as.data.frame(matrix(nrow=length(u),ncol=ncol(peaksTable_double)));
-  colnames(peaksTable_colapsed)=colnames(peaksTable_double)
+  if (length(anno)<nrow(PeaksdataOut)&length(anno)>0) { #Only subset of peaks are annotated (most likely)
+    peaksTable_Anno=PeaksdataOut[(PeaksdataOut$ID%in%anno),,drop=F]
+    peaksTable_noAnno=PeaksdataOut[!(PeaksdataOut$ID%in%anno),,drop=F]
+  } else if (length(anno)==nrow(PeaksdataOut)) { #"All peaks are annotated"
+    peaksTable_Anno=PeaksdataOut[(PeaksdataOut$ID%in%anno),,drop=F]
+    peaksTable_noAnno=as.data.frame(matrix(nrow=1,ncol=ncol(PeaksdataOut)))
+      colnames(peaksTable_noAnno)=colnames(PeaksdataOut)
+  }
+  
+if(length(anno)>0) { 
+
+  u=unique(peaksTable_Anno$ID)
+  peaksTable_colapsed=as.data.frame(matrix(nrow=length(u),ncol=ncol(peaksTable_Anno)));
+  colnames(peaksTable_colapsed)=colnames(peaksTable_Anno)
   
   ## Checking for conflicting annotations from gencode and additional supplied annotations
   ## If conflict prioritize Supplied annotations 
@@ -603,7 +660,7 @@ peak_calling<-function(peak_in,nmeprfix){
   
   for(x in 1:length(u)){
     PeaksdataOutU=u[x]
-    pam=peaksTable_double[peaksTable_double$ID%in%PeaksdataOutU,]
+    pam=peaksTable_Anno[peaksTable_Anno$ID%in%PeaksdataOutU,]
     
     #Comb Annotation
     pam_1=pam$gene_type_ALL ### type from Gencode 
@@ -664,7 +721,7 @@ peak_calling<-function(peak_in,nmeprfix){
     pam_gmerge=pam_gmerge[!is.na(pam_gmerge$a),,drop=F]
     pam_gmerge=paste(unique(pam_gmerge$a),collapse = ',')
     
-    peaksTable_colapsed[x,colnames(peaksTable_double)]=(pam[1,colnames(peaksTable_double),drop=T])
+    peaksTable_colapsed[x,colnames(peaksTable_Anno)]=(pam[1,colnames(peaksTable_Anno),drop=T])
     peaksTable_colapsed[x,'type_simple_comb']=pam_c2
     peaksTable_colapsed[x,'type_comb']=pam_c
     peaksTable_colapsed[x,'gene_name_comb']=pam_gmerge
@@ -673,15 +730,14 @@ peak_calling<-function(peak_in,nmeprfix){
   rnatype=peaksTable_colapsed[,c('ID','ensembl_gene_id','external_gene_name','gene_type',"gene_type_ALL",
                                  'type','transcript_name','type_simple_comb','type_comb','gene_name_comb')]
   
-  peaksTable_single[,c('type_simple_comb','type_comb','gene_name_comb')]=NA
+  peaksTable_noAnno[,c('type_simple_comb','type_comb','gene_name_comb')]=NA
   
-  peaksTable_colapsed=rbind(peaksTable_colapsed,peaksTable_single)
+  peaksTable_colapsed=rbind(peaksTable_colapsed,peaksTable_noAnno)
   peaksTable_colapsed=peaksTable_colapsed[!is.na(peaksTable_colapsed$ID),]
   
   rnames=c("ensembl_gene_id","external_gene_name","gene_type","gene_type_ALL","type","transcript_name","type_simple_comb","type_comb","gene_name_comb")
   
-  colnames(peaksTable_colapsed)[colnames(peaksTable_colapsed)%in%rnames]=
-    paste0(nmeprfix,rnames)
+  colnames(peaksTable_colapsed)[colnames(peaksTable_colapsed)%in%rnames]=paste0(nmeprfix,rnames)
   
   type_start = c('lincRNA-exon,lncRNA','lincRNA-intron,lncRNA')
   type_end = c('lincRNA-exon','lincRNA-intron')
@@ -697,6 +753,14 @@ peak_calling<-function(peak_in,nmeprfix){
                                                                    peaksTable_colapsed[,paste0(nmeprfix,cols_to_change)] )
     }
   }
+
+}else { print("No Peaks Annotated")
+  peaksTable_colapsed=PeaksdataOut
+  rnames=c("ensembl_gene_id","external_gene_name","gene_type","gene_type_ALL","type","transcript_name","type_simple_comb","type_comb","gene_name_comb")
+  peaksTable_colapsed[,rnames]=NA
+  colnames(peaksTable_colapsed)[colnames(peaksTable_colapsed)%in%rnames]=paste0(nmeprfix,rnames)
+}  
+  
   return(peaksTable_colapsed)
 }
 
@@ -804,17 +868,22 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
   p=peak_in[,c('chr','start','end','ID','ID2','strand')]
   a=anno_IntExn[,c('chr','start','end','transcript_id','transcript_id','strand',ColumnName)]
   
-  ###phil why are we clearing this column
+  ###phil why are we clearing this column # Setting up bed 6 file but needneed column to be clear for bedtools intersect
   a[,5]=""
   colnames(a)[colnames(a)%in%c('chr','start','end','strand')]=paste0(c('chr','start','end','strand'),'_anno')
   
-  ###phil - why are we writing the Same files over again?
+  ###phil - why are we writing the Same files over again? ## setting up bedtools intersect
   write.table(a,file=paste0(out_dir,file_id,"annotable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
   write.table(p,file=paste0(out_dir,file_id,"peakstable.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
   
   system(paste0('bedtools intersect -a ', out_dir, file_id, 'peakstable.bed -b ', out_dir, file_id, 'annotable.bed -wao -s  >', out_dir, file_id, 'peaks_OL.txt'))
-  
+
+         
   exoninof=fread(paste0(out_dir,file_id,"peaks_OL.txt"), header=F, sep="\t",stringsAsFactors = F,data.table=F)
+      system(paste0('rm ', out_dir, file_id, 'peakstable.bed'))
+      system(paste0('rm ', out_dir, file_id, 'annotable.bed'))
+      system(paste0('rm ', out_dir, file_id, 'peaks_OL.txt'))
+  
   colnames(exoninof)=c(paste0(colnames(p)),paste0(colnames(a)),'ntOL')
   exoninof=exoninof[exoninof$ntOL>0,]
   exoninof$width_anno=exoninof$end_anno-exoninof$start_anno
@@ -823,6 +892,8 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
   exoninof$OLper=exoninof$ntOL/exoninof$width
   
   exoninof=exoninof[(exoninof$OLper_anno>.75 | exoninof$OLper>.51), ]
+  
+  
   ################################################################################################################################  
   ## yes only doing distance calculation for Same strand features
   if (Peak_Strand_ref=='Same') {
@@ -1002,7 +1073,7 @@ rpmsk_anno <- function(ColumnName,Annotable,peaksTable){
   #if there is no ID remove
   peaksTable_colapsed = peaksTable_colapsed[!is.na(peaksTable_colapsed$ID),]
   
-  ###phil why are we adding NA columns
+  ###phil why are we adding NA columns ## This is a check to make sure rows with empty annotations get an NA
   peaksTable_colapsed[is.na(peaksTable_colapsed[,ColumnName]),ColumnName]=NA
   peaksTable_colapsed[peaksTable_colapsed[,ColumnName]%in%"",ColumnName]=NA
   
