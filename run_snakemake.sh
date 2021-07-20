@@ -56,7 +56,7 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   fi
 
   # copy config inputs for ref
-  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml' 'config/index_config.yaml' ${config_multiplex_manifest} ${config_sample_manifest} '${output_dir}/log/${log_time}/Snakefile')
+  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml' 'config/index_config.yaml' ${config_multiplex_manifest} ${config_sample_manifest} 'workflow/Snakefile')
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
@@ -93,8 +93,10 @@ elif [[ $pipeline = "DAG" ]]; then
   snakemake -s workflow/Snakefile --configfile .tests/snakemake_config.yaml --rulegraph | dot -Tpdf > dag.pdf
 #Create error report
 elif [[ $pipeline = "error" ]]; then
+  echo
   echo "creating error log"
   grep -i error ${error_dir}*_iCLIP.out > ${error_dir}error_log.txt
+  echo "view error log: cat ${error_dir}error_log.txt"
 #Dry-run pipeline
 else
   #run snakemake
