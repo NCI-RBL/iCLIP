@@ -375,7 +375,7 @@ split_value = check_split(split_value)
 
 #create manorm list
 manorm_list = get_manorm_list()
-print(manorm_list)
+
 ###############################################################
 # rule all
 ###############################################################
@@ -507,7 +507,7 @@ rule all:
         #MANORM
         input_manorm_input,
         input_manorm_analysis,
-        input_manorm_post_proccessing,
+        #input_manorm_post_proccessing,
         #input_manorm_reports
 
 #common and other SMK 
@@ -1734,10 +1734,6 @@ rule annotation_output:
                 peak_in = "{input.peak_in}", \
                 output_table = "{output.o2}", \
                 readdepth = "{params.r_depth}", \
-                species = "{params.ref_sp}", \
-                Condense = "{params.c_exon}", \
-                JoinJunc = "{params.junc}", \
-                include_rRNA = "{params.rrna}", \
                 PeakIdnt = "{params.p_type}"))'
         """
 
