@@ -8,13 +8,13 @@ library(argparse)
 
 #set args
 parser <- ArgumentParser()
-parser$add_argument("samplename", action="store_true", default=FALSE, help="Sampleid for sample MAnorm comparion")
-parser$add_argument("background", action="store_true", default=FALSE, help="Sampleid for background MAnorm comparion")
-parser$add_argument("peak_anno_g1", action="store_true", default=FALSE, help="peakannotation_complete.txt for sample")
-parser$add_argument("peak_anno_g2", action="store_true", default=FALSE, help="peakannotation_complete.txt for background")
-parser$add_argument("pos_manorm", action="store_true", default=FALSE, help="Positive _MAvalues.xls for sample")
-parser$add_argument("neg_manorm", action="store_true", default=FALSE, help="Negative _MAvalues.xls for sample")
-parser$add_argument("output_file", action="store_true", default=FALSE, help="output text file name")
+parser$add_argument("-s","--samplename", dest="samplename", required=TRUE, help="Sampleid for sample MAnorm comparion")
+parser$add_argument("-b","--background", dest="background", required=TRUE, help="Sampleid for background MAnorm comparion")
+parser$add_argument("-p1","--peak_anno_g1", dest="peak_anno_g1", required=TRUE, help="peakannotation_complete.txt for sample")
+parser$add_argument("-p2","--peak_anno_g2", dest="peak_anno_g2", required=TRUE, help="peakannotation_complete.txt for background")
+parser$add_argument("-pos","--pos_manorm", dest="post_manorm", required=TRUE, help="Positive _MAvalues.xls for sample")
+parser$add_argument("-neg","--neg_manorm", dest="neg_manorm", required=TRUE, help="Negative _MAvalues.xls for sample")
+parser$add_argument("-o","--output_file", dest="output_file", required=TRUE, help="output text file name")
 
 args <- parser$parse_args()
 samplename = args$samplename
@@ -25,16 +25,15 @@ pos_manorm = args$pos_manorm
 neg_manorm = args$neg_manorm
 output_file = args$output_file
 
-if(samplename==TRUE){
-  samplename = "Ro_Clip"
-  background = "Control_Clip"
-  peak_anno_g1 = "~/../../Volumes/sevillas2/hg38_final/13_annotation/02_peaks/Ro_Clip_peakannotation_complete.txt"
-  peak_anno_g2 =  "~/../../Volumes/sevillas2/hg38_final/13_annotation/02_peaks/Control_Clip_peakannotation_complete.txt"
-  pos_manorm =  "~/../../Volumes/sevillas2/hg38_final/14_MAnorm/02_analysis/Ro_Clip_Control_Clip_P/Ro_Clip_MAvalues.xls"
-  neg_manorm = "~/../../Volumes/sevillas2/hg38_final/14_MAnorm/02_analysis/Ro_Clip_vs_Control_Clip_N/Ro_Clip_MAvalues.xls"
-  output_file = "~/../../Volumes/sevillas2/hg38_final/14_MAnorm/02_analysis/Ro_Clip_vs_Control_Clip/RO_Clip_vs_Control_Clip_post_processing.txt"
-  
-} 
+#testing
+# samplename = "Ro_Clip"
+# background = "Control_Clip"
+# peak_anno_g1 = "~/../../Volumes/sevillas2/hg38_final/13_annotation/02_peaks/Ro_Clip_peakannotation_complete.txt"
+# peak_anno_g2 =  "~/../../Volumes/sevillas2/hg38_final/13_annotation/02_peaks/Control_Clip_peakannotation_complete.txt"
+# pos_manorm =  "~/../../Volumes/sevillas2/hg38_final/14_MAnorm/02_analysis/Ro_Clip_Control_Clip_P/Ro_Clip_MAvalues.xls"
+# neg_manorm = "~/../../Volumes/sevillas2/hg38_final/14_MAnorm/02_analysis/Ro_Clip_vs_Control_Clip_N/Ro_Clip_MAvalues.xls"
+# output_file = "~/../../Volumes/sevillas2/hg38_final/14_MAnorm/02_analysis/Ro_Clip_vs_Control_Clip/RO_Clip_vs_Control_Clip_post_processing.txt"
+
 ############################################################################################################
 # Sample1 Processing
 SmplA_Peaks=fread(peak_anno_g1, header=T, sep="\t",stringsAsFactors = F,data.table=F)

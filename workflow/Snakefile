@@ -1813,13 +1813,13 @@ output_file=args[7]
         shell:
             """
             Rscript {params.script} \
-                {params.gid_1} \
-                {params.gid_2} \
-                "{out_dir}13_annotation/02_peaks/{params.gid_1}_peakannotation_complete.txt" \
-                "{out_dir}13_annotation/02_peaks/{params.gid_2}_peakannotation_complete.txt" \
-                "{out_dir}14_MAnorm/02_analysis/{wildcards.group_id}_P/{params.gid_1}_MAvalues.xls" \
-                "{out_dir}14_MAnorm/02_analysis/{wildcards.group_id}_N/{params.gid_1}_MAvalues.xls" \
-                {output.o1}
+                --samplename {params.gid_1} \
+                --background {params.gid_2} \
+                --peak_anno_g1 "{out_dir}13_annotation/02_peaks/{params.gid_1}_peakannotation_complete.txt" \
+                --peak_anno_g2 "{out_dir}13_annotation/02_peaks/{params.gid_2}_peakannotation_complete.txt" \
+                --pos_manorm "{out_dir}14_MAnorm/02_analysis/{wildcards.group_id}_P/{params.gid_1}_MAvalues.xls" \
+                --neg_manorm "{out_dir}14_MAnorm/02_analysis/{wildcards.group_id}_N/{params.gid_1}_MAvalues.xls" \
+                --output_file {output.o1}
             """
 
     rule MANORM_RMD:
