@@ -3,12 +3,20 @@
 library(Rsamtools,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
 library(dplyr)
 library(ggplot2)
+library(argparse)
 
-args <- commandArgs(trailingOnly = TRUE)
-sampleid = args[1]
-bam_aligned = args[2]
-bam_unaligned = args[3]
-output_dir = args[4]
+#set args
+parser <- ArgumentParser()
+parser$add_argument("-s","--sampleid", dest="sampleid", required=TRUE, help="Sample id")
+parser$add_argument("-ba","--bam_aligned", dest="bam_aligned", required=TRUE, help="Aligned bam file for sample id")
+parser$add_argument("-bu","--bam_unaligned", dest="bam_unaligned", required=TRUE, help="Unaligned bam file for sample id")
+parser$add_argument("-o","--output_dir", dest="output_dir", required=TRUE, help="output dir location")
+
+args <- parser$parse_args()
+sampleid = args$sampleid
+bam_aligned = args$bam_aligned
+bam_unaligned = args$bam_unaligned
+output_dir = args$output_dir
 
 Seq_Processing <- function(txt_in,cat){
   

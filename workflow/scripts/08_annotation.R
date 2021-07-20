@@ -1,52 +1,62 @@
 library(data.table)
 library(dplyr)
 library(tidyr)
+library(argparse)
 
-args <- commandArgs(trailingOnly = TRUE)
-ref_species = args[1]
-refseq_rRNA = args[2]
-alias_path = args[3]
-gencode_path = args[4]
-refseq_path = args[5]
-canonical_path = args[6]
-intron_path = args[7]
-rmsk_path = args[8]
-custom_path = args[9]
-out_dir = args[10]
-reftable_path = args[11]
+#set args
+parser <- ArgumentParser()
+parser$add_argument("-ref","--ref_species", dest="ref_species", required=TRUE, help="reference species name")
+parser$add_argument("-rrna","--refseq_rRNA", dest="refseq_rRNA", required=TRUE, help="Whether to include rrna")
+parser$add_argument("-a","--alias_path", dest="alias_path", required=TRUE, help="path for alias")
+parser$add_argument("-g","--gencode_path", dest="gencode_path", required=TRUE, help="path for gencode")
+parser$add_argument("-rseq","--refseq_path", dest="refseq_path", required=TRUE, help="path for refseq")
+parser$add_argument("-c","--canonical_path", dest="canonical_path", required=TRUE, help="path for canonical")
+parser$add_argument("-i","--intron_path", dest="intron_path", required=TRUE, help="path for intron")
+parser$add_argument("-rmsk","--rmsk_path", dest="rmsk_path", required=TRUE, help="path for rmsk")
+parser$add_argument("-cust","--custom_path", dest="custom_path", required=TRUE, help="path for custom annotations")
+parser$add_argument("-o","--out_dir", dest="out_dir", required=TRUE, help="path for output dir")
+parser$add_argument("-reft","--reftable_path", dest="reftable_path", required=TRUE, help="path for reftable")
+
+args <- parser$parse_args()
+ref_species = args$ref_species
+refseq_rRNA = args$refseq_rRNA
+alias_path = args$alias_path
+gencode_path = args$gencode_path
+refseq_path = args$refseq_path
+canonical_path = args$canonical_path
+intron_path = args$intron_path
+rmsk_path = args$rmsk_path
+custom_path = args$custom_path
+out_dir = args$out_dir
+reftable_path = args$reftable_path
 
 #testing information
-if(length(args)==0){
-  rm(list=setdiff(ls(), "params"))
+# setwd("/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/")
+# ref_dir = "/Users/homanpj/Documents/Resources/ref/"
+# ref_species = "hg38" ### need better name, match to snakemake
+# reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
+# refseq_rRNA=T
   
-  # setwd("/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/")
-  setwd("/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/")
-  ref_dir = "/Users/homanpj/Documents/Resources/ref/"
-  ref_species = "hg38" ### need better name, match to snakemake
-  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
-  refseq_rRNA=T
-  
-  ### fix need to figure out how to keep all this info - maybe a config? dict?
-  alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
-  if(ref_species == "mm10"){
-    out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/14_annotation/project/"
-    gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
-    refseq_path = paste0(ref_dir, "mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
-    canonical_path = paste0(ref_dir,"mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
-    intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
-    rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
-    custom_path= paste0(ref_dir,'mm10/AdditionalAnno/')
+# ### fix need to figure out how to keep all this info - maybe a config? dict?
+# alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
+# if(ref_species == "mm10"){
+#   out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/14_annotation/project/"
+#   gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
+#   refseq_path = paste0(ref_dir, "mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
+#   canonical_path = paste0(ref_dir,"mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
+#   intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
+#   rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
+#   custom_path= paste0(ref_dir,'mm10/AdditionalAnno/')
     
-  } else if (ref_species == "hg38"){
-    out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/14_annotation/project/"
-    gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
-    refseq_path = paste0(ref_dir, "hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
-    canonical_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
-    intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
-    rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
-    custom_path= ""
-  } 
-}
+# } else if (ref_species == "hg38"){
+#   out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/14_annotation/project/"
+#   gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
+#   refseq_path = paste0(ref_dir, "hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
+#   canonical_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
+#   intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
+#   rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
+#   custom_path= ""
+# } 
 
 ##########################################################################################
 ############### GENCODE ANNOTATION

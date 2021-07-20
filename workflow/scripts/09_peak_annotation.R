@@ -4,122 +4,85 @@ library(GenomicRanges)
 library(stringr)
 library(dplyr)
 library(data.table)
+library(argparse)
 
-#TO DO
-#fix variables
-#remove all paths and link directly in snakemake
-# fix arg list
+#set args
+parser <- ArgumentParser()
+parser$add_argument("-pt","--peak_type", dest="peak_type", required=TRUE, help="peak type (all, unique)")
+parser$add_argument("-pu","--peak_unique", dest="peak_unique", required=TRUE, help="path for unique peaks")
+parser$add_argument("-pa","--peak_all", dest="peak_all", required=TRUE, help="path all peaks")
+parser$add_argument("-jj","--join_junction", dest="join_junction", required=TRUE, help="include junctions (T or F)")
+parser$add_argument("-ce","--condense_exon", dest="condense_exon", required=TRUE, help="condense exons (T or F)")
+parser$add_argument("-rdepth","--read_depth", dest="read_depth", required=TRUE, help="read depth filtering parameter")
+parser$add_argument("-de","--demethod", dest="demethod", required=TRUE, help="DE method (MANORM or none)")
+parser$add_argument("-s","--sample_id", dest="sample_id", required=TRUE, help="sample id")
+parser$add_argument("-sp","--ref_species", dest="ref_species", required=TRUE, help="reference species")
+parser$add_argument("-anno","--anno_dir", dest="anno_dir", required=TRUE, help="path for annotation dir")
+parser$add_argument("-reft","--reftable_path", dest="reftable_path", required=TRUE, help="path for reftable")
+parser$add_argument("-g","--gencode_path", dest="gencode_path", required=TRUE, help="path for gencode")
+parser$add_argument("-i","--intron_path", dest="intron_path", required=TRUE, help="path for intron")
+parser$add_argument("-rmsk","--rmsk_path", dest="rmsk_path", required=TRUE, help="path for rmsk")
+parser$add_argument("-od","--out_dir", dest="out_dir", required=TRUE, help="path for output dir")
+parser$add_argument("-odm","--out_dir_manorm", dest="out_dir_manorm", required=FALSE, help="path for manorm output dir")
+parser$add_argument("-o","--output_file_error", dest="output_file_error", required=FALSE, help="path for output error file")
 
-args <- commandArgs(trailingOnly = TRUE)
-peak_type = args[1]
-peak_unique = args[2]
-peak_all = args[3]
-join_junction = args[4]
-condense_exon = args[5]
-read_depth = args[6]
-DEmethod = args [7]
-sample_id = args[8]
-ref_species = args[9]
-out_dir = args[10]
-out_dir_manorm = args[11]
-anno_dir = args[12]
-reftable_path = args[13]
-gencode_path = args[14]
-intron_path = args[15]
-rmsk_path = args[16]
-output_file_error = args[17]
+args <- parser$parse_args()
+peak_type = args$peak_type
+peak_unique = args$peak_unique
+peak_all = args$peak_all
+join_junction = args$join_junction
+condense_exon = args$condense_exon
+read_depth = args$read_depth
+DEmethod = args$demethod
+sample_id = args$sample_id
+ref_species = args$ref_species
+anno_dir = args$anno_dir
+reftable_path = args$reftable_path
+gencode_path = args$gencode_path
+intron_path = args$intron_path
+rmsk_path = args$rmsk_path
+out_dir = args$out_dir
+out_dir_manorm = args$out_dir_manorm
+output_file_error = args$output_file_error
 
 
-if(length(args)==0){
-  rm(list=setdiff(ls(), "params"))
+# ##testing
+# wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/mm10_final/"
+# setwd(wd)
+# wd="."
   
-  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/mm10_final/"
-  setwd(wd)
-  wd="."
+# peak_type= "ALL"
+# peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/mm10_final/12_counts/allreadpeaks/Control_Clip_uniqueCounts.txt"
+# peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/mm10_final/12_counts/allreadpeaks/Control_Clip_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Control_Clip_50nt_uniqueCounts.txt"
+# reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
   
-  peak_type= "ALL"
-  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/mm10_final/12_counts/allreadpeaks/Control_Clip_uniqueCounts.txt"
-  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/mm10_final/12_counts/allreadpeaks/Control_Clip_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Control_Clip_50nt_uniqueCounts.txt"
-  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
+# #output
+# out_dir = paste0(wd,"/13_annotation/02_peaks/")
+# out_dir_manorm =paste0(wd,"/14_MAnorm/")
   
-  #output
-  out_dir = paste0(wd,"/13_annotation/02_peaks/")
-  out_dir_manorm =paste0(wd,"/14_MAnorm/")
+# #project annotation files
+# anno_dir = paste0(wd,"/13_annotation/01_project/")
+# ref_dir = "/Users/homanpj/Documents/Resources/ref/" 
   
-  #project annotation files
-  anno_dir = paste0(wd,"/13_annotation/01_project/")
-  ref_dir = "/Users/homanpj/Documents/Resources/ref/" 
+# #feature information
+# join_junction = "TRUE"
+# condense_exon="TRUE"
+# read_depth = 0
+# DEmethod = "MANORM"
+# ref_species="mm10"
+# sample_id = "Control"
+# output_file_error= paste0(wd,"/13_annotation/02_peaks/")
   
-  #feature information
-  join_junction = "TRUE"
-  condense_exon="TRUE"
-  read_depth = 0
-  DEmethod = "MANORM"
-  ref_species="mm10"
-  sample_id = "Control"
-  # nt_merge = "50nt"
-  output_file_error= paste0(wd,"/13_annotation/02_peaks/")
-  
-  if(ref_species == "mm10"){
-    gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
-    intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
-    rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
+# if(ref_species == "mm10"){
+#   gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
+#   intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
+#   rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
     
-  } else if (ref_species == "hg38"){
-    gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
-    intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
-    rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
-  }
-}
-
-
-if(length(args)==0){
-  rm(list=setdiff(ls(), "params"))
-  
-  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/Phil_mm10Test/"
-  # wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/"
-  setwd(wd)
-  wd="."
-  
-  peak_type= "ALL"
-  peak_unique = "/Users/homanpj/OneDrive\ -\ National\ Institutes\ of\ Health/Loaner/Wolin/CLIP/mESC_clip2/SpliceAware/peaks_FullGenome_Transcme.SplicTrans2/Ro/all/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.AllPeaks50nt.FCountUnique.txt"
-  peak_all = "/Users/homanpj/OneDrive\ -\ National\ Institutes\ of\ Health/Loaner/Wolin/CLIP/mESC_clip2/SpliceAware/peaks_FullGenome_Transcme.SplicTrans2/Ro/all/Ro_Clip_iCountcutadpt_all.unique.NH.mm.ddup.AllPeaks50nt.FCountall_frac.txt"
-  # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Control_Clip_50nt_allFracMMCounts.txt"
-  # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Ro_Clip_50nt_uniqueCounts.txt"
-  # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/Ro_Clip_50nt_allFracMMCounts.txt"
-  # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/NextSeq_fCLIP_0218/13_counts/allreadpeaks/WT2_fCLIP_50nt_uniqueCounts.txt"
-  # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/NextSeq_fCLIP_0218/13_counts/allreadpeaks/WT2_fCLIP_50nt_allFracMMCounts.txt"
-  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
-  
-  #output
-  out_dir = paste0(wd,"/14_annotation/peaks/")
-  out_dir_manorm =paste0(wd,"/15_MAnorm/")
-  
-  #project annotation files
-  anno_dir = paste0(wd,"/14_annotation/project/")
-  ref_dir = "/Users/homanpj/Documents/Resources/ref/" 
-  
-  #feature information
-  join_junction = "TRUE"
-  condense_exon="TRUE"
-  read_depth = 5
-  DEmethod = "MANORM"
-  ref_species="mm10"
-  sample_id = "Control"
-  nt_merge = "50nt"
-  
-  if(ref_species == "mm10"){
-    gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
-    intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
-    rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
-    
-  } else if (ref_species == "hg38"){
-    gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
-    intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
-    rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
-  }
-}
-
+# } else if (ref_species == "hg38"){
+#   gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
+#   intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
+#   rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
+# }
 
 #annotation paths
 gencode_transc_path = paste0(anno_dir,"ref_gencode.txt")
@@ -133,17 +96,6 @@ sncRNA_path = paste0(anno_dir, "sncRNA_gencode.bed")
 rRNA_BK00964_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
 rRNA_rmsk_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
 tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
-
-
-
-removeVersion <- function(ids){
-  return(unlist(lapply(stringr::str_split(ids, "[.]"), "[[",1)))
-}
-
-varname <- function(x) {
-  deparse(substitute(x))}
-
-
 
 #set id for files
 file_id = paste0(sample_id,"_")
@@ -819,6 +771,9 @@ introns=separate(introns,
                  remove = T,sep = "_")
 
 #split out transcript id
+removeVersion <- function(ids){
+  return(unlist(lapply(stringr::str_split(ids, "[.]"), "[[",1)))
+}
 introns$transcript_id = removeVersion(introns$transcript_id)
 
 # intron table is 0 based while exon starts at 1

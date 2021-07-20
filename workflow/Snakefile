@@ -1257,7 +1257,7 @@ rule qc_alignment:
         """
         samtools view -F 4 {input.f1} | awk '{{print length($10)}}' > {output.bam_a}; \
         samtools view -f 4 {input.f1} | awk '{{print length($10)}}' > {output.bam_u}; \
-        Rscript {params.R} {params.sampleid} {output.bam_a} {output.bam_u} {params.base}
+        Rscript {params.R} --sampleid {params.sampleid} --bam_aligned {output.bam_a} --bam_unaligned {output.bam_u} --output_dir {params.base}
         """
 
 #pipeline splits to handle multiplexed QC vs non-multiplexed QC
@@ -1582,19 +1582,20 @@ rule project_annotations:
     shell:
         """
         Rscript {params.script} \
-            {params.ref_sp} \
-            {params.rrna_flag} \
-            {params.a_path} \
-            {params.g_path} \
-            {params.rs_path} \
-            {params.c_path} \
-            {params.i_path} \
-            {params.r_path} \
-            {params.custom_path} \
-            {params.base} \
-            {params.a_config}
+            --ref_species {params.ref_sp} \
+            --refseq_rRNA {params.rrna_flag} \
+            --alias_path  {params.a_path} \
+            --gencode_path {params.g_path} \
+            --refseq_path {params.rs_path} \
+            --canonical_path {params.c_path} \
+            --intron_path {params.i_path} \
+            --rmsk_path {params.r_path} \
+            --custom_path {params.custom_path} \
+            --out_dir {params.base} \
+            --reftable_path {params.a_config}
         """
 
+#pipeline splits to include manorm outputs with annotation outputs, if required
 if(DE_method=="MANORM"):
     rule peak_annotations:
         '''
@@ -1635,23 +1636,23 @@ if(DE_method=="MANORM"):
         shell:
             '''
             Rscript {params.script} \
-                {params.p_type} \
-                {input.unique} \
-                {input.all} \
-                {params.junc} \
-                {params.c_exon} \
-                {params.r_depth} \
-                {params.d_method} \
-                {params.sp} \
-                {params.ref_sp} \
-                {params.base1} \
-                {params.base2} \
-                {params.anno_dir} \
-                {params.a_config} \
-                {params.g_path} \
-                {params.i_path} \
-                {params.r_path} \
-                {params.error}
+                --peak_type {params.p_type} \
+                --peak_unique {input.unique} \
+                --peak_all {input.all} \
+                --join_junction {params.junc} \
+                --condense_exon {params.c_exon} \
+                --read_depth {params.r_depth} \
+                --demethod {params.d_method} \
+                --sample_id {params.sp} \
+                --ref_species {params.ref_sp} \
+                --anno_dir {params.anno_dir} \
+                --reftable_path {params.a_config} \
+                --gencode_path {params.g_path} \
+                --intron_path {params.i_path} \
+                --rmsk_path {params.r_path} \
+                --out_dir {params.base1} \
+                --out_dir_manorm {params.base2} \
+                --output_file_error {params.error}
             '''
 else:
     rule peak_annotations:
@@ -1687,21 +1688,21 @@ else:
         shell:
             '''
             Rscript {params.script} \
-                {params.p_type} \
-                {input.unique} \
-                {input.all} \
-                {params.junc} \
-                {params.c_exon} \
-                {params.r_depth} \
-                {params.d_method} \
-                {params.sp} \
-                {params.ref_sp} \
-                {params.base} \
-                {params.anno_dir} \
-                {params.a_config} \
-                {params.g_path} \
-                {params.i_path} \
-                {params.r_path} \
+                --peak_type {params.p_type} \
+                --peak_unique {input.unique} \
+                --peak_all {input.all} \
+                --join_junction {params.junc} \
+                --condense_exon {params.c_exon} \
+                --read_depth {params.r_depth} \
+                --demethod {params.d_method} \
+                --sample_id {params.sp} \
+                --ref_species {params.ref_sp} \
+                --anno_dir {params.anno_dir} \
+                --reftable_path {params.a_config} \
+                --gencode_path {params.g_path} \
+                --intron_path {params.i_path} \
+                --rmsk_path {params.r_path} \
+                --out_dir {params.base}
             '''
 
 rule annotation_output:
@@ -1737,6 +1738,7 @@ rule annotation_output:
                 PeakIdnt = "{params.p_type}"))'
         """
 
+#pipeline will continue through manorm processing, if required
 if(DE_method=="MANORM"):
     rule MANORM_beds:
         input:
