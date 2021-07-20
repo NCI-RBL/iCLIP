@@ -8,6 +8,7 @@ output_dir: "hg38_full/"
 #path to manifest files
 sample_manifest: ".tests/sample_hg38_full.tsv"
 multiplex_manifest: ".tests/multiplex_hg38_full.tsv"
+contrast_manifest: ".test/contrasts_example.tsv"
 
 #path to fastq files
 fastq_dir: ".tests/"
