@@ -8,7 +8,7 @@ __default__:
 
 novoalign:
     mem: 1TB
-    partition: largemem
+    partition: norm
     time: 10-00:00:00
     threads: 32
     
