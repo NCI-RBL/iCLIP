@@ -307,17 +307,16 @@ def get_manorm_list():
         #for each group in comparison list
         manorm_list=[]
         for group in manorm_file:
-
+            
             #for each individual id
             for id in group:
-                id = id.replace(" ", "_vs_")
+                id = id.replace(",", "_vs_")
             
             #append final list
             manorm_list.append(id)
         
         #remove header
         manorm_list.pop(0)
-
     return(manorm_list)
 
 #get the input files for analysis
@@ -833,7 +832,7 @@ rule novoalign:
         novoalign -d {params.n_index} -k \
         -f {input.f1} -F STDFQ -c 32 \
         -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
-        -R 0 -r All 999 > {output.o1}
+        -R 0 -r 10 999 > {output.o1}
         exitcode=$?
         if [ $exitcode -eq 1 ]
         then
@@ -870,7 +869,7 @@ if (splice_aware == "Y"):
             exitcode=$?
             if [ $exitcode -eq 1 ]
             then
-                exit 1
+                exit 0
             else
                 exit 0
             fi
