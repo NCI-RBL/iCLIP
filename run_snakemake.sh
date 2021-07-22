@@ -56,7 +56,7 @@ if [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   fi
 
   # copy config inputs for ref
-  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml' 'config/index_config.yaml' ${config_multiplex_manifest} ${config_sample_manifest} 'workflow/Snakefile')
+  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml' 'config/index_config.yaml' ${config_multiplex_manifest} ${config_sample_manifest} 'workflow/Snakefile' 'workflow/scripts/create_error_report.sh')
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
