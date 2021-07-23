@@ -82,6 +82,9 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   echo
   echo "Running pipeline"
 
+  #Run check that output dir in config matches output dir on cmd
+  if [[ ! $config_output_dir == $output_dir ]]; then err "Output dir provided: $output_dir does not match snakemake_config: $config_output_dir. Update and re-run"; fi
+  
   #parse config
   eval $(parse_yaml ${output_dir}/snakemake_config.yaml "config_")
 
@@ -128,9 +131,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   #submit jobs locally
   else
     #remove iCount dir if it already exist - will cause error in demux
-    if [ -d "/tmp/iCount" ]; then 
-      rm -r /tmp/iCount/ 
-    fi
+    if [ -d "/tmp/iCount" ]; then rm -r /tmp/iCount/; fi
     
     snakemake \
     -s ${output_dir}/log/${log_time}/00_Snakefile \
