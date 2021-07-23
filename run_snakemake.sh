@@ -7,7 +7,7 @@ helpFunction()
 {
    echo ""
    echo "Usage: $0 -p pipeline"
-   echo -e "\t-p options: initialize, cluster, local, dry-run, unlock"
+   echo -e "\t-p options: initialize, cluster, local, dry-run, unlock, report"
    echo "Usage: $1 -o output_dir"
    echo -e "\t-o path to output directory"
    exit 1 # Exit script after printing help
@@ -187,6 +187,11 @@ elif [[ $pipeline = "DAG" ]]; then
   -s workflow/Snakefile \
   --configfile .tests/snakemake_config.yaml \
   --rulegraph | dot -Tpdf > ${output_dir}/dag.pdf
+elif [[ $pipeline = "report" ]]; then
+  snakemake -s workflow/Snakfile \
+  --report ${output_dir}/runlocal_snakemake_report.html \
+  --directory $output_dir \
+  --configfile ${output_dir}/snakemake_config.yaml 
 #Dry-run pipeline
 else
   echo
