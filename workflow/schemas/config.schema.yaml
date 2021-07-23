@@ -18,6 +18,9 @@ properties:
   multiplex_manifest:
     type: string
     description: /path/to/multiplex/manifest
+  contrast_manifest:
+    type: string
+    description: /path/to/contrast/manifest
   fastq_dir:
     type: string
     description: /path/to/fastq/files
@@ -65,6 +68,10 @@ properties:
     type: string
     enum: ["Y","N","y","n"]
     description: whether to include RefSeq rRNA's in annotations
+  condense_exon:
+    type: string
+    enum: ["Y","N","y","n"]
+    description: whether to collapse exons during annotation
 
 # entries that have to be in the config file for successful validation
 required:
