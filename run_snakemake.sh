@@ -146,6 +146,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     --restart-times 1 \
     -j 500 \
     --rerun-incomplete \
+    --stats ${output_dir}/log/${log_time}/snakemake.stats \
     --cluster \
     "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
@@ -161,7 +162,8 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     --configfile ${output_dir}/log/${log_time}/00_snakemake_config.yaml \
     --printshellcmds \
     --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yml \
-    --cores 8
+    --cores 8 \
+    --stats ${output_dir}/log/${log_time}/snakemake.stats
   fi
 #Unlock pipeline
 elif [[ $pipeline = "unlock" ]]; then
