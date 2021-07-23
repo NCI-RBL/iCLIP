@@ -1,6 +1,8 @@
 #!/bin/bash
 
+##############################################################################
 #handle arguments
+
 helpFunction()
 {
    echo ""
@@ -26,6 +28,7 @@ if [ -z "$pipeline" ] || [ -z "$output_dir" ]; then
    helpFunction
 fi
 
+#####
 #handle yaml file
 parse_yaml() {
    local prefix=$2
@@ -43,6 +46,24 @@ parse_yaml() {
    }'
 }
 
+##########
+#Run check that output dir in config matches output dir on cmd
+check_initialization(){
+  if [[ ! -d $output_dir ]] || [[ ! -d "${output_dir}/log" ]]; then 
+    echo "ERROR: You must initalize the dir before beginning pipeline"
+    exit 1
+  fi
+}
+check_output_dir(){
+  eval $(parse_yaml ${output_dir}/snakemake_config.yaml "config_")
+  config_output_dir=$(echo $config_output_dir | sed 's:/*$::')
+
+  if [[ ! ${config_output_dir} == $output_dir ]]; then 
+    echo "ERROR: Output dir provided: $output_dir does not match snakemake_config: ${config_output_dir}. Update and re-run"
+    exit 1
+  fi
+}    
+  
 # set timestamp
 log_time=`date +"%Y%m%d_%H%M"`
 s_time=`date +"%Y%m%d_%H%M%S"`
@@ -82,9 +103,10 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   echo
   echo "Running pipeline"
 
-  #Run check that output dir in config matches output dir on cmd
-  if [[ ! $config_output_dir == $output_dir ]]; then err "Output dir provided: $output_dir does not match snakemake_config: $config_output_dir. Update and re-run"; fi
-  
+  #run checks
+  check_initialization
+  check_output_dir
+
   #parse config
   eval $(parse_yaml ${output_dir}/snakemake_config.yaml "config_")
 
@@ -169,6 +191,11 @@ elif [[ $pipeline = "DAG" ]]; then
 else
   echo
   echo "Starting dry-run"
+  
+  #run check
+  check_initialization
+  check_output_dir
+  
   snakemake -s workflow/Snakefile \
   --configfile ${output_dir}/snakemake_config.yaml \
   --printshellcmds \
