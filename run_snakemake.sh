@@ -117,7 +117,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   mkdir "${output_dir}/log/${log_time}"
   
   # copy config inputs for ref
-  files_save=('${output_dir}/snakemake_config.yaml' '${output_dir}/cluster_config.yml' '${output_dir}/index_config.yaml' ${config_multiplex_manifest} ${config_sample_manifest} 'workflow/Snakefile' 'workflow/scripts/create_error_report.sh')
+  files_save=("${output_dir}/snakemake_config.yaml" "${output_dir}/cluster_config.yml" "${output_dir}/index_config.yaml" ${config_multiplex_manifest} ${config_sample_manifest} 'workflow/Snakefile' 'workflow/scripts/create_error_report.sh')
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
