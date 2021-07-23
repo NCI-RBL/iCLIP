@@ -1,5 +1,4 @@
 pipeline=$1
-error_dir=$2
 
 #handle yaml file
 parse_yaml() {
@@ -91,12 +90,6 @@ elif [[ $pipeline = "test" ]]; then
 #Create DAG
 elif [[ $pipeline = "DAG" ]]; then
   snakemake -s workflow/Snakefile --configfile .tests/snakemake_config.yaml --rulegraph | dot -Tpdf > dag.pdf
-#Create error report
-elif [[ $pipeline = "error" ]]; then
-  echo
-  echo "creating error log"
-  grep -i error ${error_dir}*_iCLIP.out > ${error_dir}error_log.txt
-  echo "view error log: cat ${error_dir}error_log.txt"
 #Dry-run pipeline
 else
   #run snakemake
