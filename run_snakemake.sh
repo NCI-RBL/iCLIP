@@ -127,6 +127,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   #submit jobs to cluster
   if [[ $pipeline = "cluster" ]]; then
     echo
+    echo "Output dir: ${output_dir}"
     echo "Pipeline jobid:"
     
     sbatch \
@@ -209,3 +210,4 @@ else
   --cluster-config ${output_dir}/cluster_config.yml \
   -npr
 fi
+echo
