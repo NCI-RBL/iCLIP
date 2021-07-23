@@ -151,7 +151,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     --cluster \
     "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
-    --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}.out"
+    --job-name={params.rname} --output={cluster.output} --error={cluster.error}"
   #submit jobs locally
   else
     #remove iCount dir if it already exist - will cause error in demux

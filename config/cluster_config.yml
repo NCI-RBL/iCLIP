@@ -5,21 +5,18 @@ __default__:
     partition: norm
     time: 10-00:00:00
     threads: 32
-
-novoalign:
-    mem: 100g
-    partition: norm
-    time: 10-00:00:00
-    threads: 32
+    output: logs/${{SLURM_JOBID}}.%j.{rule}.{wildcards}.out
+    error: logs/${{SLURM_JOBID}}.%j.{rule}.{wildcards}.err
     
 mapq_recalc:
     mem: 1TB
     partition: largemem
-    time: 10-00:00:00
-    threads: 32
     
 qc_alignment:
     mem: 1TB
     partition: largemem
-    time: 10-00:00:00
-    threads: 32
+
+create_beds:
+    mem: 1TB
+    partition: largmem
+    time: 2-00:00:00
