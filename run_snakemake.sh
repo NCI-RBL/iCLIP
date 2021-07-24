@@ -209,7 +209,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
     --job-name={params.rname} --output={cluster.output} --error={cluster.error}" \
-    |tee ${otuput_dir}/log/${log_time}/snakemake.log
+    |tee ${output_dir}/log/${log_time}/snakemake.log
 
   #submit jobs locally
   else
