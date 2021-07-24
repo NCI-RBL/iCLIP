@@ -18,5 +18,5 @@ qc_alignment:
 
 create_beds:
     mem: 1TB
-    partition: largmem
+    partition: largemem
     time: 2-00:00:00
