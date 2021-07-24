@@ -31,28 +31,28 @@ import csv
 # config handling, set parameters
 ###############################################################
 #snakemake config
-source_dir = config['source_dir']
-cont_dir = config['container_dir']
-out_dir = config['output_dir'].rstrip('/') + '/'
-fastq_dir = config['fastq_dir'].rstrip('/') + '/'
+source_dir = config['sourceDir']
+cont_dir = config['containerDir']
+out_dir = config['outputDir'].rstrip('/') + '/'
+fastq_dir = config['fastqDir'].rstrip('/') + '/'
 
-sample_manifest = config['sample_manifest']
-multiplex_manifest = config['multiplex_manifest']
-manorm_manifest = config['contrast_manifest']
+sample_manifest = config['samplemanifest']
+multiplex_manifest = config['multiplexmanifest']
+manorm_manifest = config['contrastmanifest']
 
-nova_ref = config['novoalign_reference']
-splice_aware = config['splice_aware'].capitalize()
-include_rRNA = config['include_rRNA'].capitalize()
-splice_bp = config['splice_bp_length']
-multiplex_flag = config['multiplex_flag'].capitalize()
-mismatch = config['mismatch_allowance']
-split_value =  config['split_value']
-min_count = config['minimum_count']
-nt_merge = str(config['nt_merge']) + 'nt'
-peak_id = config['peak_id'].upper()
-DE_method = config['DE_method'].upper()
-sp_junc = config['splice_junction'].upper()
-condense_exon = config['condense_exon'].upper()
+nova_ref = config['reference']
+splice_aware = config['spliceaware'].capitalize()
+include_rRNA = config['includerRNA'].capitalize()
+splice_bp = config['spliceBPlength']
+multiplex_flag = config['multiplexflag'].capitalize()
+mismatch = config['mismatch']
+split_value =  config['split']
+min_count = config['mincount']
+nt_merge = str(config['ntmerge']) + 'nt'
+peak_id = config['peakid'].upper()
+DE_method = config['DEmethod'].upper()
+sp_junc = config['splicejunction'].upper()
+condense_exon = config['condenseexon'].upper()
 
 
 #expand reference selection
@@ -67,13 +67,13 @@ index_manifest = join(source_dir, 'config', 'index_config.yaml')
 with open(index_manifest) as file:
     index_list = yaml.load(file, Loader=yaml.FullLoader)
 
-gen_path = index_list[nova_ref]['gencode_path']
-rseq_path = index_list[nova_ref]['refseq_path']
-can_path = index_list[nova_ref]['canonical_path']
-intron_path = index_list[nova_ref]['intron_path']
-rmsk_path = index_list[nova_ref]['rmsk_path']
-alias_path = index_list[nova_ref]['alias_path']
-add_anno_path = index_list[nova_ref]['additional_anno_path']
+gen_path = index_list[nova_ref]['gencodepath']
+rseq_path = index_list[nova_ref]['refseqpath']
+can_path = index_list[nova_ref]['canonicalpath']
+intron_path = index_list[nova_ref]['intronpath']
+rmsk_path = index_list[nova_ref]['rmskpath']
+alias_path = index_list[nova_ref]['aliaspath']
+add_anno_path = index_list[nova_ref]['additionalannopath']
 
 #singularity exec command
 singularity_exec = "singularity exec -B /data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir + ",/fdb,/scratch"
@@ -257,8 +257,8 @@ def get_filechunk_size(wildcards):
         sub_df=split_df[(split_df['path']==fq_path)]
 
         #split can only create a max of 99 split files; handle large file sets to ensure max reads per 99 files
-        if (sub_df.iloc[0]['filenum']>98):
-            chunk_size = int(((sub_df.iloc[0]['chunksize'] * sub_df.iloc[0]['filenum']) / 98)+.9)
+        if (sub_df.iloc[0]['filenum']>89):
+            chunk_size = int(((sub_df.iloc[0]['chunksize'] * sub_df.iloc[0]['filenum']) / 88)+.9)
         else:
             chunk_size = sub_df.iloc[0]['chunksize']
 
@@ -282,9 +282,9 @@ def get_index(wildcards):
     if (wildcards.al == "unaware"):
         nova_index = index_list[nova_ref]['std']
     elif (wildcards.al == "masked"):
-        nova_index = index_list[nova_ref]['spliceaware_masked'][str(splice_bp)+'bp']
+        nova_index = index_list[nova_ref]['spliceawaremasked'][str(splice_bp)+'bp']
     elif (wildcards.al == "unmasked"):
-        nova_index = index_list[nova_ref]['spliceaware_unmasked'][str(splice_bp)+'bp']
+        nova_index = index_list[nova_ref]['spliceawareunmasked'][str(splice_bp)+'bp']
     
     return(nova_index)
 
@@ -439,15 +439,15 @@ rule all:
         # expand(join(out_dir,'01_remove_adaptor','{sp}_removed_seq.fastq.gz'),sp=sp_list),
 
         #FastQC
-        expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        #expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
+        #expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
         
         #FastQ Screen
-        expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
-        expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
+        #expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
+        #expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
         
         #Determine file split parameters
-        join(out_dir,'qc','split_params.tsv'),
+        #join(out_dir,'qc','split_params.tsv'),
         
         #Merge splits
         expand(join(out_dir,'07_bam_merged_splits/{sp}.{al}.merged.unique.bam'), sp=sp_list, al=align_list),
@@ -832,7 +832,7 @@ rule novoalign:
         novoalign -d {params.n_index} -k \
         -f {input.f1} -F STDFQ -c 32 \
         -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
-        -R 0 -r ALL 999 > {output.o1}
+        -R 0 -r ALL 10 > {output.o1}
         exitcode=$?
         if [ $exitcode -eq 1 ]
         then
@@ -1557,7 +1557,7 @@ rule project_annotations:
     generate annotation table once per project
     """
     input:
-        expand(join(out_dir,'12_counts', 'allreadpeaks', '{sp}_uniqueCounts.txt'), sp=sp_list),
+        join(out_dir, 'qc', 'manifest_clean.txt'),
     params:
         rname='32_project_annotations',
         script = join(source_dir,'workflow','scripts','08_annotation.R'),
