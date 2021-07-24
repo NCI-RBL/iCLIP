@@ -1,7 +1,8 @@
 #!/bin/bash
 
-##############################################################################
-#handle arguments
+#########################################################
+# handle arguments
+#########################################################
 
 helpFunction()
 {
@@ -46,8 +47,10 @@ parse_yaml() {
    }'
 }
 
-##########
-#Run check that output dir in config matches output dir on cmd
+#########################################################
+# Check functions
+#########################################################
+
 check_initialization(){
   if [[ ! -d $output_dir ]] || [[ ! -d "${output_dir}/log" ]]; then 
     echo "ERROR: You must initalize the dir before beginning pipeline"
@@ -56,14 +59,38 @@ check_initialization(){
 }
 check_output_dir(){
   eval $(parse_yaml ${output_dir}/snakemake_config.yaml "config_")
-  config_output_dir=$(echo $config_output_dir | sed 's:/*$::')
+  config_outputDir=$(echo $config_outputDir | sed 's:/*$::')
 
-  if [[ ! ${config_output_dir} == $output_dir ]]; then 
-    echo "ERROR: Output dir provided: $output_dir does not match snakemake_config: ${config_output_dir}. Update and re-run"
+  if [[ ! ${config_outputDir} == $output_dir ]]; then 
+    echo "ERROR: Output dir provided: $output_dir does not match snakemake_config: ${config_outputDir}. Update and re-run."
     exit 1
   fi
 }    
+
+check_existence(){
+ if [[ ! -f "$1" ]]; then
+    echo "ERROR: File does not exist: $1"
+    exit 1
+  fi
+}
+
+check_readaccess(){
+  check_existence()
   
+  if [[ -r "$1" ]]; then
+    echo "ERROR: User does does not have read access to: $1"
+    exit 1
+  fi
+}
+  
+check_writeaccess(){
+  if [[ -w "$1" ]]; then
+    echo "ERROR: User does does not have write access to: $1"
+    exit 1
+  fi
+}
+
+#########################################################  
 # set timestamp
 log_time=`date +"%Y%m%d_%H%M"`
 s_time=`date +"%Y%m%d_%H%M%S"`
@@ -71,6 +98,9 @@ s_time=`date +"%Y%m%d_%H%M%S"`
 #remove trailing / on directories
 output_dir=$(echo $output_dir | sed 's:/*$::')
 
+#########################################################
+# Pipeline options
+#########################################################
 #Run initialization step
 if [[ $pipeline = "initialize" ]]; then
   echo
@@ -103,21 +133,48 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   echo
   echo "Running pipeline"
 
+  #parse config
+  eval $(parse_yaml ${output_dir}/snakemake_config.yaml "config_")
+  source_dir=$(echo $config_sourceDir | sed 's:/*$::')
+  eval $(parse_yaml ${output_dir}/index_config.yaml "yaml_")
+  
   #run checks
   check_initialization
   check_output_dir
 
-  #parse config
-  eval $(parse_yaml ${output_dir}/snakemake_config.yaml "config_")
-
-  #remove trailing / on directories
-  source_dir=$(echo $config_source_dir | sed 's:/*$::')
+  if [[ $config_reference == "hg38" ]]; then
+    check_readaccess "${yaml_hg38_std}"
+    check_readaccess "${yaml_hg38_spliceawareunmasked_50bp}"
+    check_readaccess "${yaml_hg38_spliceawareunmasked_75bp}"
+    check_readaccess "${yaml_hg38_spliceawaremasked_50bp}"
+    check_readaccess "${yaml_hg38_spliceawaremasked_75bp}"
+    check_readaccess "${yaml_hg38_gencodepath}"
+    check_readaccess "${yaml_hg38_refseqpath}"
+    check_readaccess "${yaml_hg38_canonicalpath}"
+    check_readaccess "${yaml_hg38_intronpath}"
+    check_readaccess "${yaml_hg38_rmskpath}"
+    check_readaccess "${yaml_hg38_sypath}"
+    check_readaccess "${yaml_hg38_aliaspath}"
+  else
+    check_readaccess "${yaml_mm10_std}"
+    check_readaccess "${yaml_mm10_spliceawareunmasked_50bp}"
+    check_readaccess "${yaml_mm10_spliceawareunmasked_75bp}"
+    check_readaccess "${yaml_mm10_spliceawaremasked_50bp}"
+    check_readaccess "${yaml_mm10_spliceawaremasked_75bp}"
+    check_readaccess "${yaml_mm10_gencodepath}"
+    check_readaccess "${yaml_mm10_refseqpath}"
+    check_readaccess "${yaml_mm10_canonicalpath}"
+    check_readaccess "${yaml_mm10_intronpath}"
+    check_readaccess "${yaml_mm10_rmskpath}"
+    check_readaccess "${yaml_mm10_sypath}"
+    check_readaccess "${yaml_mm10_aliaspath}"
+  fi
 
   #create run log dir
   mkdir "${output_dir}/log/${log_time}"
   
   # copy config inputs for ref
-  files_save=("${output_dir}/snakemake_config.yaml" "${output_dir}/cluster_config.yml" "${output_dir}/index_config.yaml" ${config_multiplex_manifest} ${config_sample_manifest} 'workflow/Snakefile' 'workflow/scripts/create_error_report.sh')
+  files_save=("${output_dir}/snakemake_config.yaml" "${output_dir}/cluster_config.yml" "${output_dir}/index_config.yaml" ${config_multiplexManifest} ${config_sampleManifest} 'workflow/Snakefile' 'workflow/scripts/create_error_report.sh')
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
@@ -153,7 +210,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
     --job-name={params.rname} --output={cluster.output} --error={cluster.error}" \
     |tee ${otuput_dir}/log/${log_time}/snakemake.log
-    
+
   #submit jobs locally
   else
     #remove iCount dir if it already exist - will cause error in demux
@@ -192,6 +249,7 @@ elif [[ $pipeline = "DAG" ]]; then
   -s workflow/Snakefile \
   --configfile .tests/snakemake_config.yaml \
   --rulegraph | dot -Tpdf > ${output_dir}/dag.pdf
+#Report
 elif [[ $pipeline = "report" ]]; then
   snakemake -s workflow/Snakfile \
   --report ${output_dir}/runlocal_snakemake_report.html \
