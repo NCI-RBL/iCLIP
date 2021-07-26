@@ -179,7 +179,7 @@ def demux_cmd(wildcards):
     barcodes = ' '.join(sub_df['barcode'].tolist())
 
     #create command
-    cmd_line = fastq_dir + multiplex_dict[wildcards.mp] + ' ' + sub_df.iloc[0]['adaptor'] + ' ' + barcodes + ' --out_dir ' + out_dir + wildcards.mp + '/'
+    cmd_line = fastq_dir + multiplex_dict[wildcards.mp] + ' ' + sub_df.iloc[0]['adaptor'] + ' ' + barcodes + ' --out_dir ' + '/lscratch/${{SLURM_JOB_ID}}/' + wildcards.mp + '/'
 
     return(cmd_line)
 
@@ -197,7 +197,7 @@ def nondemux_cmd(wildcards):
 def rename_cmd(wildcards):
     bc = samp_dict[wildcards.mp][wildcards.sp]
 
-    cmd_line = out_dir + wildcards.mp + '/demux_' + bc + '.fastq.gz' + ' ' + out_dir + wildcards.mp + '/01_renamed/' + wildcards.sp + '.fastq.gz'
+    cmd_line = '/lscratch/${{SLURM_JOB_ID}}/' + wildcards.mp + '/demux_' + bc + '.fastq.gz' + ' ' + out_dir + wildcards.mp + '/01_renamed/' + wildcards.sp + '.fastq.gz'
 
     return(cmd_line)
 
@@ -577,6 +577,10 @@ if (multiplex_flag == 'Y'):
         multiplex       sample          group       barcode     adaptor
         SIM_iCLIP_S1    Ro_Clip         CLIP        NNNTGGCNN   AGATCGGAAGAGCGGTTCAG
         SIM_iCLIP_S1    Control_Clip    CNTRL       NNNCGGANN   AGATCGGAAGAGCGGTTCAG
+
+        renames demultiplexed files based on
+        from: {out_dir}/{multiplex_id}/demux_{barcode}.fastq.gz
+        to: {out_dir}/{multiplex_id}/01_renamed/demux_{sample_id}.fast.gz
         """
         input:
             f1 = get_fq_names,
@@ -585,33 +589,19 @@ if (multiplex_flag == 'Y'):
             rname='01b_demux',
             s_exec = singularity_exec,
             doc = join(cont_dir,'icount.sif'),
-            cmd = demux_cmd,
+            cmd1 = demux_cmd,
+            cmd2 = rename_cmd,
             ml = 15,
             mm = mismatch
         envmodules:
             config['singularity'],
         output:
-            o1 = temp(join(out_dir,'{mp}','demux_nomatch5.fastq.gz')),
-        shell:
-            """
-            {params.s_exec} {params.doc} iCount demultiplex --minimum_length {params.ml} --mismatches {params.mm} {params.cmd}
-            """
-
-    rule rename_demux:
-        """
-        renames demultiplexed files based on
-        from: {out_dir}/{multiplex_id}/demux_{barcode}.fastq.gz
-        to: {out_dir}/{multiplex_id}/01_renamed/demux_{sample_id}.fast.gz
-        """
-        input:
-            join(out_dir,'{mp}','demux_nomatch5.fastq.gz'),
-        params:
-            rname = '01c_rename',
-            cmd = rename_cmd
-        output:
             o1 = temp(join(out_dir,'{mp}','01_renamed','{sp}.fastq.gz'))
         shell:
-            'cp {params.cmd}'       
+            """
+            {params.s_exec} {params.doc} iCount demultiplex --minimum_length {params.ml} --mismatches {params.mm} {params.cmd1};
+            cp {params.cmd2}
+            """ 
 else: 
     rule nondemux:
         """
@@ -648,7 +638,7 @@ rule remove_adaptors:
         o2 = temp(join(out_dir,'{mp}','01_remove_adaptor','{sp}_untrimmed.fastq.gz'))
     shell:
         """
-        {params.s_exec} {params.doc} iCount cutadapt -ml {params.ml} {params.cmd}
+        {params.s_exec} {params.doc} iCount cutadapt -ml {params.ml} {params.cmd};
         """
 
 rule rename_adaptors:
