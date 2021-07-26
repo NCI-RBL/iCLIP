@@ -5,8 +5,8 @@ __default__:
     partition: norm
     time: 10-00:00:00
     threads: 32
-    output: ${{SLURM_JOBID}}.%j.{rule}.{wildcards}.out
-    error: ${{SLURM_JOBID}}.%j.{rule}.{wildcards}.err
+    output: %j.{wildcards}.out
+    error: %j.{wildcards}.err
     
 mapq_recalc:
     mem: 1TB
