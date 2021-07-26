@@ -190,7 +190,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     sbatch \
     --job-name="iCLIP" \
     --gres=lscratch:200 \
-    --time=24:00:00 \
+    --time=10-00:00:00 \
     --output=${output_dir}/log/${log_time}/00_%j_%x.out \
     --mail-type=BEGIN,END,FAIL \
     snakemake \
