@@ -36,9 +36,9 @@ cont_dir = config['containerDir']
 out_dir = config['outputDir'].rstrip('/') + '/'
 fastq_dir = config['fastqDir'].rstrip('/') + '/'
 
-sample_manifest = config['samplemanifest']
-multiplex_manifest = config['multiplexmanifest']
-manorm_manifest = config['contrastmanifest']
+sample_manifest = config['sampleManifest']
+multiplex_manifest = config['multiplexManifest']
+manorm_manifest = config['contrastManifest']
 
 nova_ref = config['reference']
 splice_aware = config['spliceaware'].capitalize()
@@ -291,9 +291,9 @@ def get_index(wildcards):
 #determine alignment input based on splice_aware flag
 def get_align_input(wildcards):
     if (splice_aware == "N"):
-        f1 = join(out_dir,'04_sam','01_alignment','{sp}.{al}.split.{n}.sam'),
+        f1 = join(out_dir,'04_sam','01_alignment',wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam'),
     else:
-        f1 = join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam'),
+        f1 = join(out_dir,'04_sam','03_genomic',wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam'),
     return(f1)
 
 #read in contrast list for manorm
