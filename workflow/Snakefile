@@ -631,14 +631,14 @@ rule qc_fastq_pre:
     Runs FastQC report on each sample before adaptors have been removed
     """
     input:
-        f1 = expand(join(out_dir,'{mp}/01_preprocess/{sp}.fastq.gz'),mp=mp_list,sp=sp_list)
+        f1 = expand(join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz'),mp=mp_list,sp=sp_list)
     params:
         rname='04_qc_fastq_pre',
-        base = join(out_dir,'{mp}/00_qc_pre/')
+        base = join(out_dir,'{mp}','00_qc_pre/')
     envmodules:
         config['fastqc']
     output:
-        o1 = join(out_dir,'{mp}/00_qc_pre/{sp}_fastqc.html')
+        o1 = join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html')
     shell:
         """
         fastqc {input.f1} -o {params.base}
