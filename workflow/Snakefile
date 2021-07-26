@@ -1029,9 +1029,9 @@ rule sam_to_header:
     output:
         h = join(out_dir,'05_reads','{sp}.{al}.split.{n}.header.txt'),
     shell:
-        """
-        samtools view -H {input.sam} > {output.h};
-        """
+        '''
+        samtools view -H {input.sam} > {output.h}
+        '''
 
 rule create_bam_unique:
     """
