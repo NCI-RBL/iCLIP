@@ -122,7 +122,7 @@ if [[ $pipeline = "initialize" ]]; then
   fi
   
   # copy config inputs to edit
-  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml' 'config/index_config.yaml')
+  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml' 'config/index_config.yaml' 'workflow/Snakefile')
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
