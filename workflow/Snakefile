@@ -233,19 +233,6 @@ def adapt_cmd(wildcards):
     
     return(cmd)
     
-#create cmd to rename fastq screen outputs
-def rename_fqscreen1(wildcards):
-    n_in = join(out_dir, 'qc', '00_qc_screen_species',wildcards.sp + '_screen')
-    n_out = join(out_dir, 'qc', '00_qc_screen_species',wildcards.sp + '_filtered')
-    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
-    return(cmd)
-
-def rename_fqscreen2(wildcards):
-    n_in = join(out_dir, 'qc', '00_qc_screen_rrna',wildcards.sp + '_screen')
-    n_out = join(out_dir, 'qc', '00_qc_screen_rrna',wildcards.sp + '_filtered')
-    cmd = 'mv ' + n_in + '.txt ' + n_out + '.txt; mv ' + n_in + '.png ' + n_out + '.png; mv '+ n_in + '.html ' + n_out + '.html'
-    return(cmd)
-
 #determine the number of lines to split each file by reading split_params.tsv file
 def get_filechunk_size(wildcards):
     fq_path=join(out_dir,'02_unzip',wildcards.sp + '.fastq ')
@@ -438,8 +425,8 @@ rule all:
         expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
         
         #FastQ Screen
-        expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
-        expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
         
         # #Determine file split parameters
         # #join(out_dir,'qc','split_params.tsv'),
@@ -595,11 +582,12 @@ if (multiplex_flag == 'Y'):
         shell:
             """
             #make tmp dir for pipeline if running locally
-            if [ ! -d {out_dir}tmp ]; then mkdir {out_dir}tmp; fi;
-            if [ ! -d {out_dir}tmp/{wildcards.mp} ]; then mkdir {out_dir}tmp/{wildcards.mp}; fi;
+            if [[ -d /lscratch/${{SLURM_JOB_ID}} ]]; then tmp_dir="/lscratch/${{SLURM_JOB_ID}}/"; else tmp_dir={out_dir}tmp; fi;
+            if [ $tmp_dir = {out_dir}tmp ] & [ ! -d {out_dir}tmp ]; then mkdir {out_dir}tmp; fi;
+            if [ $tmp_dir = {out_dir}tmp ] & [ ! -d {out_dir}tmp/{wildcards.mp} ]; then mkdir {out_dir}tmp/{wildcards.mp}; fi;
 
             {params.s_exec} {params.doc} iCount demultiplex --minimum_length {params.ml} --mismatches {params.mm} {params.cmd1};
-            cp {params.cmd2}
+            mv {params.cmd2}
             """ 
 else: 
     rule nondemux:
@@ -615,8 +603,12 @@ else:
             o1 = temp(expand(join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list))
         shell:
             """
-            if [ ! -d {out_dir}tmp ]; then mkdir {out_dir}tmp; fi;
-            {params.cmd}
+            #make tmp dir for pipeline if running locally
+            if [[ -d /lscratch/${{SLURM_JOB_ID}} ]]; then tmp_dir="/lscratch/${{SLURM_JOB_ID}}/"; else tmp_dir={out_dir}tmp; fi;
+            if [ $tmp_dir = {out_dir}tmp ] & [ ! -d {out_dir}tmp ]; then mkdir {out_dir}tmp; fi;
+            if [ $tmp_dir = {out_dir}tmp ] & [ ! -d {out_dir}tmp/{wildcards.mp} ]; then mkdir {out_dir}tmp/{wildcards.mp}; fi;
+
+            mv {params.cmd}
             """
 
 rule remove_adaptors:
@@ -691,28 +683,32 @@ rule qc_screen:
         tmp = join('{sp}_filtered.fastq'),
         base_species = join(out_dir, 'qc', '00_qc_screen_species'),
         conf_species = join(source_dir,'config','fqscreen_species_config.conf'),
-        cmd_species = rename_fqscreen1,
         base_rrna = join(out_dir, 'qc', '00_qc_screen_rrna'),
         conf_rrna = join(source_dir,'config','fqscreen_rrna_config.conf'),
-        cmd_rrna = rename_fqscreen2
     threads: 24
     envmodules:
         config['bowtie2'],
         config['perl'],
         config['fastq_screen'],
     output:
-        o1 = join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),
-        o2 = join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),
+        o1 = join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),
+        o2 = join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),
     shell:
         '''
-        if [[ -d /lscratch/${{SLURM_JOB_ID}} ]]; then tmp_dir="/lscratch/${{SLURM_JOB_ID}}/"; else tmp_dir={out_dir}/tmp; fi;
-        gunzip {input.f1} ${{tmp_dir}}/{params.tmp};
+        #make tmp dir for pipeline if running locally
+        if [[ -d /lscratch/${{SLURM_JOB_ID}} ]]; then tmp_dir="/lscratch/${{SLURM_JOB_ID}}/"; else tmp_dir={out_dir}tmp; fi;
+        if [ "$tmp_dir" = {out_dir}tmp ] & [ ! -d {out_dir}tmp ]; then mkdir {out_dir}tmp; fi;
+
+        #gunzip input files
+        gunzip -c {input.f1} > ${{tmp_dir}}/{params.tmp};
+
+        #run screen
         fastq_screen --conf {params.conf_species} --outdir {params.base_species} \
             --threads {threads} --subset 1000000 --aligner bowtie2 --force \
-            ${{tmp_dir}}/{params.tmp}; {params.cmd_species};
+            ${{tmp_dir}}/{params.tmp};
         fastq_screen --conf {params.conf_rrna} --outdir {params.base_rrna} \
             --threads {threads} --subset 1000000 --aligner bowtie2 --force \
-            ${{tmp_dir}}/{params.tmp}; {params.cmd_rrna}
+            ${{tmp_dir}}/{params.tmp};
         
         '''
 
