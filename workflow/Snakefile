@@ -16,8 +16,6 @@ P. Homan
 located at: https://github.com/RBL-NCI/iCLIP.git
 '''
 
-report: "report/workflow.rst"
-
 # Allow users to fix the underlying OS via singularity.
 container: "docker://continuumio/miniconda3"
 
@@ -493,8 +491,8 @@ rule all:
 
 #common and other SMK 
 if source_dir == "":
-    include: "rules/common.smk"
-    include: "rules/other.smk"
+    include: "workflow/rules/common.smk"
+    include: "workflow/rules/other.smk"
 else:
     include: join(source_dir,"workflow/rules/common.smk")
     include: join(source_dir,"workflow/rules/other.smk")
@@ -585,6 +583,9 @@ if (multiplex_flag == 'Y'):
             if [[ -d /lscratch/${{SLURM_JOB_ID}} ]]; then tmp_dir="/lscratch/${{SLURM_JOB_ID}}/"; else tmp_dir={out_dir}tmp; fi;
             if [ $tmp_dir = {out_dir}tmp ] & [ ! -d {out_dir}tmp ]; then mkdir {out_dir}tmp; fi;
             if [ $tmp_dir = {out_dir}tmp ] & [ ! -d {out_dir}tmp/{wildcards.mp} ]; then mkdir {out_dir}tmp/{wildcards.mp}; fi;
+
+            #remove previous icount tmps
+            if [ -d /tmp/iCount/ ]; then rm -r /tmp/iCount/; fi
 
             {params.s_exec} {params.doc} iCount demultiplex --minimum_length {params.ml} --mismatches {params.mm} {params.cmd1};
             mv {params.cmd2}
