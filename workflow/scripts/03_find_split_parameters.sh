@@ -8,7 +8,7 @@ n_lines=$(($n_sequences*4))
 for file in "${@:3}"; do
   #determine the length of the file, and number of split files to be created
   #based on N of lines
-  file_len=$(sed -n \$= "$file")
+  file_len=$(zcat $file | echo $((`wc -l`)))
 
   if [[ "$(($file_len/$n_lines))" -lt 1 ]]; then
     raw_split=1
