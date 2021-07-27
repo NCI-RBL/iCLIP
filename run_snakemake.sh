@@ -214,7 +214,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   #submit jobs locally
   else
     #remove iCount dir if it already exist - will cause error in demux
-    if [ -d "/tmp/iCount" ]; then rm -r /tmp/iCount/; fi
+    if [ -d "/tmp/iCount" ]; then rm -r "/tmp/iCount/"; fi
     
     snakemake \
     -s ${output_dir}/log/${log_time}/00_Snakefile \
@@ -251,10 +251,12 @@ elif [[ $pipeline = "DAG" ]]; then
   --rulegraph | dot -Tpdf > ${output_dir}/dag.pdf
 #Report
 elif [[ $pipeline = "report" ]]; then
-  snakemake -s workflow/Snakfile \
-  --report ${output_dir}/runlocal_snakemake_report.html \
-  --directory $output_dir \
-  --configfile ${output_dir}/snakemake_config.yaml 
+  echo
+  echo "Creating Snakemake Report"
+  snakemake \
+  -s ${output_dir}/Snakefile \
+  --configfile ${output_dir}/snakemake_config.yaml \
+  --report ${output_dir}/log/runlocal_snakemake_report.html 
 #Dry-run pipeline
 else
   echo
