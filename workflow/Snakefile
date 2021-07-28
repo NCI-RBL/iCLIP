@@ -406,15 +406,15 @@ rule all:
         expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
 
         #FastQC
-        #expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
-        #expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
         
         #FastQ Screen
-        #expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
-        #expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
         
         #Determine file split parameters
-        #join(out_dir,'qc','split_params.tsv'),
+        join(out_dir,'qc','split_params.tsv'),
         
         # #Merge splits
         # expand(join(out_dir,'07_bam_merged_splits/{sp}.{al}.merged.unique.bam'), sp=sp_list, al=align_list),
@@ -799,26 +799,13 @@ if (splice_aware == "Y"):
             config['java']  
         output:
             o1 = temp(join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam.gz')),
+            o2 = temp(join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam')),
         shell:
             """
             java -Djava.io.tmpdir={params.base} -jar -Xmx50G -jar {params.doc} \
             -f {input.f1} \
-            -a 50000 -n 25 -u -s {params.base}
-            """
-
-    rule gunzip_sam:
-        """
-        unzips sam file
-        """
-        input:
-            f1 = join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam.gz'),
-        params:
-            rname = '10c_gunzip_sam'
-        output:
-            o1 = temp(join(out_dir,'04_sam','03_genomic','{sp}.{al}.split.{n}.sam')),
-        shell:
-            """
-            gunzip -c {input.f1} > {output.o1}
+            -a 50000 -n 25 -u -s {params.base}; 
+            gunzip -c {output.o1} > {output.o2}
             """
 
     rule merge_unmapped_reads:
