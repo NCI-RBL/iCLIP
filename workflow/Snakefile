@@ -389,7 +389,7 @@ else:
     input_manorm_reports = [expand(join(out_dir,'13_annotation', '02_peaks','{sp}_peakannotation_mapq_IN.txt'),sp=sp_list)]
 
 #local rules
-localrules: check_manifest, determine_splits
+localrules: check_manifest, determine_splits, multiqc
 
 rule all:
     input:
@@ -400,9 +400,9 @@ rule all:
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
         
         #different inputs for multiplexed or nonmultiplexed pipeline
-        input_multiplex,
+        # input_multiplex,
         
-        #Remove adaptors, rename samples
+        # #Remove adaptors, rename samples
         expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
 
         #FastQC
@@ -413,19 +413,19 @@ rule all:
         expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
         expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
         
-        #Determine file split parameters
+        # #Determine file split parameters
         join(out_dir,'qc','split_params.tsv'),
         
-        #Merge splits
-        expand(join(out_dir,'03_bams','{sp}.{al}.merged.unique.bam'), sp=sp_list, al=align_list),
-        expand(join(out_dir,'03_bams','{sp}.{al}.merged.mm.bam'),sp=sp_list, al=align_list),
+        # Merge splits
+        expand(join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.unique.bam'), sp=sp_list, al=align_list),
+        expand(join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.mm.bam'),sp=sp_list, al=align_list),
 
         # #Merge unique and mm
-        # expand(join(out_dir,'03_bams','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
+        # expand(join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
 
         # #Sort and index merged
-        # expand(join(out_dir,'03_bams','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
-        # expand(join(out_dir,'03_bams','{sp}.{al}.merged.si.bam.bai'), sp=sp_list, al=align_list),
+        # expand(join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
+        # expand(join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.si.bam.bai'), sp=sp_list, al=align_list),
 
         # #Samstats
         # expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'), sp=sp_list, al=align_list),
@@ -554,7 +554,7 @@ if (multiplex_flag == 'Y'):
         envmodules:
             config['singularity'],
         output:
-            o1 = temp(join(out_dir,'{mp}','01_preprocess','demux_nomatch5.fastq.gz')),
+            o1 = join(out_dir,'{mp}','01_preprocess','demux_nomatch5.fastq.gz'),
         shell:
             """
             {params.s_exec} {params.doc} iCount demultiplex --minimum_length {params.ml} --mismatches {params.mm} {params.cmd}
@@ -572,7 +572,7 @@ if (multiplex_flag == 'Y'):
             rname = '01c_rename',
             cmd = rename_cmd
         output:
-            o1 = temp(join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz'))
+            o1 = join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz')
         shell:
             """
             #move files
@@ -609,10 +609,12 @@ rule remove_adaptors:
     envmodules:
         config['singularity'],    
     output:
-        o1 = temp(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')),
-        o2 = temp(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'))
+        o1 = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),
+        o2 = join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz')
     shell:
         """
+        if [ -d "/tmp/iCount/" ]; then rm -r "/tmp/iCount/"; fi
+        
         {params.cmd}
         """
 
@@ -628,7 +630,7 @@ rule qc_fastq_pre:
     envmodules:
         config['fastqc']
     output:
-        o1 = temp(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'))
+        o1 = join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html')
     shell:
         """
         fastqc {input.f1} -o {params.base}
@@ -646,7 +648,7 @@ rule qc_fastq_post:
     envmodules:
         config['fastqc']
     output:
-        o1 = temp(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'))
+        o1 = join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html')
     shell:
         """
         fastqc {input.f1} -o {params.base}
@@ -673,25 +675,33 @@ rule qc_screen:
         config['perl'],
         config['fastq_screen'],
     output:
-        o1 = temp(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt')),
-        o2 = temp(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt')),
+        o1 = join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),
+        o2 = join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),
     shell:
         '''
-        #make tmp dir for pipeline if running locally
-        if [[ -d /lscratch/${{SLURM_JOB_ID}} ]]; then tmp_dir="/lscratch/${{SLURM_JOB_ID}}/"; else tmp_dir={out_dir}tmp; fi;
-        if [ "$tmp_dir" = {out_dir}tmp ] & [ ! -d {out_dir}tmp ]; then mkdir {out_dir}tmp; fi;
+        #set / create tmp dir
+        if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+        else
+            tmpdir="{out_dir}01_preprocess/qc_screen"
+            if [ ! -d "${{tmpdir}}" ]; then 
+                mkdir "$tmpdir"
+            fi
+        fi
 
         #gunzip input files
-        gunzip -c {input.f1} > ${{tmp_dir}}/{params.tmp};
-
+        gunzip -c {input.f1} > ${{tmpdir}}/{params.tmp};
+        
         #run screen
         fastq_screen --conf {params.conf_species} --outdir {params.base_species} \
             --threads {threads} --subset 1000000 --aligner bowtie2 --force \
-            ${{tmp_dir}}/{params.tmp};
+            ${{tmpdir}}/{params.tmp};
         fastq_screen --conf {params.conf_rrna} --outdir {params.base_rrna} \
             --threads {threads} --subset 1000000 --aligner bowtie2 --force \
-            ${{tmp_dir}}/{params.tmp};
+            ${{tmpdir}}/{params.tmp};
         
+        #remove gunzipped file
+        rm ${{tmpdir}}/{params.tmp}
         '''
 
 rule determine_splits:
@@ -723,10 +733,10 @@ rule split_files:
         base = join(out_dir,'01_preprocess','splits','{sp}.split.'),
         cmd = get_filechunk_size
     output:
-        o1 = temp(dynamic(join(out_dir,'01_preprocess','splits','{sp}.split.{n}.fastq.gz')))
+        o1 = dynamic(join(out_dir,'01_preprocess','splits','{sp}.split.{n}.fastq.gz'))
     shell:
         """
-        gunzip {input.f1} | split --additional-suffix .fastq -l {params.cmd} --numeric-suffixes=1 --filter ='gzip > $FILE.gz' - {params.base};
+        zcat {input.f1} | split --additional-suffix .fastq -l {params.cmd} --numeric-suffixes=1 --filter='gzip > $FILE.gz' - {params.base}
         """
 
 rule novoalign:
@@ -741,10 +751,10 @@ rule novoalign:
     envmodules:
         config['novocraft']
     output:
-        o1 = temp(join(out_dir,'01_preprocess','01_alignment','{sp}.{al}.split.{n}.sam')),
+        o1 = join(out_dir,'01_preprocess','01_alignment','{sp}.{al}.split.{n}.sam'),
     shell:
         """
-        gunzip {input.f1} | \
+        zcat {input.f1} | \
         novoalign -d {params.n_index} -k \
         -f - -F STDFQ -c 32 \
         -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
@@ -766,18 +776,20 @@ if (splice_aware == "Y"):
         envmodules:
             config['samtools']  
         output:
-            mapped = temp(join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.mapped.sam')),
-            unmapped = temp(join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.unmapped.sam')),
+            mapped = join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.mapped.sam'),
+            unmapped = join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.unmapped.sam'),
         shell:
             """
+            #set / create tmp dir
             if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
                 tmpdir="/lscratch/${{SLURM_JOB_ID}}"
             else
-                tmpdir=out_dir + "tmp/"
+                tmpdir=out_dir + "01_preprocess/sam_cleanup/"
 
                 if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
             fi
 
+            #run cleanup
             set +e
             samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${{tmpdir}}{params.base}.tmp.sam;
             samtools view -H {input.f1} | cat - ${{tmpdir}}{params.base}.tmp.sam > {output.mapped}; 
@@ -788,7 +800,7 @@ if (splice_aware == "Y"):
                 exit 1
             else
                 exit 0
-            fi
+            fi                    
             """
 
     rule convert_transcript:
@@ -812,12 +824,12 @@ if (splice_aware == "Y"):
         envmodules:
             config['java']  
         output:
-            converted = temp(join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam')),
+            converted = join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam'),
         shell:
             """
             java -Djava.io.tmpdir={params.base} -jar -Xmx50G -jar {params.doc} \
-            -f {input.f1} \
-            -a 50000 -n 25 -u -s {params.base};
+                -f {input.f1} \
+                -a 50000 -n 25 -u -s {params.base};
             gunzip -c {output.converted}.gz > {output.converted}
             """
 
@@ -837,18 +849,33 @@ if (splice_aware == "Y"):
         envmodules:
             config['samtools'],
         output:
-            unmasked = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.unmasked.bam')),
-            merged = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.merged.bam')),
-            final = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.bam')),
-            sort = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.sorted.bam')),
+            unmasked = join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.unmasked.bam'),
+            merged = join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.merged.bam'),
+            final = join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.bam'),
+            sort = join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam'),
         shell:
             """
             set +e
+            #convert input to bam
             samtools view -S -b {input.converted} > {output.unmasked};
+
+            #merge unmapped sam and unmasked bam into final output
             samtools merge -f {output.merged} {input.unmapped} {output.unmasked};
+
+            #pull header from merged and add to final output
             samtools view -h -o {output.final} {output.merged};
 
-            samtools sort {output.final} > {output.sort};
+            #set / create tmp dir
+            if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir=out_dir + "01_preprocess/merge_unmapped/"
+
+                if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+            fi
+            
+            #sort and index final outupt
+            samtools sort -T ${{tmpdir}} {output.final} -o {output.sort};
             samtools index {output.sort}; 
             exitcode=$?
             if [ $exitcode -eq 1 ]
@@ -864,13 +891,13 @@ if (splice_aware == "Y"):
         merge all sample unmapped reads into one file
         """
         input:
-            sorted_list = dynamic(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.sorted.bam')),
+            sorted_list = dynamic(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
         params:
             rname='10e_merge',
         envmodules:
             config['samtools']  
         output:
-            final = join(out_dir,'02_unmapped','{sp}.{al}.complete.bam'),
+            final = join(out_dir,'03_bam','00_unmapped','{sp}.{al}.complete.bam'),
         shell:
             """
             samtools merge -f {output.final} {input.sorted_list} 
@@ -899,7 +926,7 @@ rule split_mm_unique:
         set +e
         samtools view {input.f1} | grep -v 'NH:i' > {output.o1}; \
         samtools view {input.f1} | grep 'NH:i' > {output.o2};
-        samtools view -H {input.sam} > {output.h}
+        samtools view -H {input.f1} > {output.h}
         exitcode=$?
         if [ $exitcode -eq 1 ]
         then
@@ -928,12 +955,13 @@ rule create_bam_mm_unique:
         sort_m = temp(join(out_dir,'01_preprocess','05_mm','{sp}.{al}.split.{n}.mm.si.bam')),
     shell:
         """
+        #set / create tmp dir
         if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
             mkdir "${{tmpdir}}/u";
             mkdir "${{tmpdir}}/m";
         else
-            tmpdir=out_dir + "tmp/"
+            tmpdir=out_dir + "01_preprocess/create_bam"
 
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
             if [ ! -d "${{tmpdir}}/u" ]; then mkdir "${{tmpdir}}/u";
@@ -949,7 +977,7 @@ rule create_bam_mm_unique:
         
         #sort unique and mm bam
         samtools sort -T "${{tmpdir}}/u" {output.bam_u} -o {output.sort_u};
-        samtools sort -T "${{tmpdir}}/m" {input.bam_m} -o {output.sort_m};
+        samtools sort -T "${{tmpdir}}/m" {output.bam_m} -o {output.sort_m};
         samtools index {output.sort_u};
         samtools index {output.sort_m};
         """
@@ -967,8 +995,8 @@ rule merge_splits_unique_mm:
     envmodules:
         config['samtools']  
     output:
-        unique = join(out_dir,'03_bams','{sp}.{al}.merged.unique.bam'),
-        mm = join(out_dir,'03_bams','{sp}.{al}.merged.mm.bam'),
+        unique = join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.unique.bam'),
+        mm = join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.mm.bam'),
     shell:
         """
         samtools merge -f {output.unique} {input.unique};
@@ -978,58 +1006,42 @@ rule merge_splits_unique_mm:
 rule merge_mm_and_unique:
     """
     merge merged.mm and merged.unique bam files by sample
+    sort and index output
+    run samtools
     """
     input:
-        un = join(out_dir,'03_bams','{sp}.{al}.merged.unique.bam'),
-        mm = join(out_dir,'03_bams','{sp}.{al}.merged.mm.bam'),
+        un = join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.unique.bam'),
+        mm = join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.mm.bam'),
     params:
         rname='17_merge_mm_and_unique',
     envmodules:
         config['samtools']  
     output:
-        o1 = join(out_dir,'03_bams','{sp}.{al}.merged.bam'),
+        merged = join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.bam'),
+        sort = join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.si.bam'),
+        samstat = join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt')
     shell:
         """
-        samtools merge -f {output.o1} {input.un} {input.mm}
-        """
+        #set / create tmp dir
+        if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            mkdir "${{tmpdir}}/u";
+            mkdir "${{tmpdir}}/m";
+        else
+            tmpdir=out_dir + "01_preprocess/merge_mu"
 
-rule sort_index_merged:
-    """
-    sort merged.bam
-    """
-    input:
-        f1 = join(out_dir,'03_bams','{sp}.{al}.merged.bam'),
-    params:
-        rname='18_sort_index_merged',
-    envmodules:
-        config['samtools']  
-    output:
-        o1 = join(out_dir,'03_bams','{sp}.{al}.merged.si.bam'),
-        o2 = join(out_dir,'03_bams','{sp}.{al}.merged.si.bam.bai'),
-    shell:
-        """
-        if [ -w "/lscratch/${{SLURM_JOB_ID}}" ];then tmpdir="/lscratch/${{SLURM_JOB_ID}}";else tmpdir="/dev/shm";fi
-        samtools sort -T ${{tmpdir}} {input.f1} -o {output.o1};
-        samtools index {output.o1}
-        """
+            if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+        fi
 
-rule qc_samstats:
-    """
-    generate statistics for sam file before deduplication
-    http://www.htslib.org/doc/samtools-stats.html
-    > $1
-    """
-    input:
-        f1 = join(out_dir,'03_bams','{sp}.{al}.merged.si.bam'),
-    params:
-        rname='19_qc_samstats'
-    envmodules:
-        config['samtools']
-    output:
-        o1 = join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt')
-    shell:
-        """
-        samtools view -h {input.f1} | samtools stats - > {output.o1}
+        #merge uniuqe and mm
+        samtools merge -f {output.merged} {input.un} {input.mm};
+
+        #sort and index
+        samtools sort -T ${{tmpdir}} {output.merged} -o {output.sort};
+        samtools index {output.o1};
+
+        #run samstats
+        samtools view -h {output.merged} | samtools stats - > {output.samstat}
         """
 
 rule multiqc:
@@ -1038,13 +1050,12 @@ rule multiqc:
     https://multiqc.info/docs/#running-multiqc
     """
     input:
-        f1 = expand(join(out_dir,'{mp}/00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        f1 = expand(join(out_dir,'{mp}', '00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
         f2 = expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
         f3 = expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered.txt'),sp=sp_list),
         f4 = expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered.txt'),sp=sp_list),
         f5 = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'),sp=sp_list, al=align_list)
     params:
-        rname = '20_multiqc',
         out = join(out_dir,'qc'),
         qc_config = join(source_dir,'config','multiqc_config.yaml'),
         dir_pre = expand(join(out_dir,'{mp}','00_qc_pre'),mp = samp_dict.keys()),
@@ -1104,8 +1115,8 @@ if (multiplex_flag == 'Y'):
             png_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png'), sp=sp_list, al=align_list),
             txt_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.txt'), sp=sp_list, al=align_list),
             txt_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.txt'), sp=sp_list, al=align_list),
-            txt_bc = expand(join(out_dir,'{mp}/00_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys()),
-            png_bc = expand(join(out_dir,'{mp}/00_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())
+            txt_bc = expand(join(out_dir,'{mp}', '00_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys()),
+            png_bc = expand(join(out_dir,'{mp}',' 00_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())
         params:
             rname = "22_qc_troubleshoot",
             R = join(source_dir,'workflow','scripts','05_qc_report.Rmd'),
@@ -1153,7 +1164,7 @@ rule dedup:
     deduplicate 
     """
     input:
-        f1 = join(out_dir,'03_bams','{sp}.{al}.merged.si.bam'),
+        f1 = join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.si.bam'),
     params:
         rname='23_dedup',
         umi = umi_parameter
@@ -1161,15 +1172,30 @@ rule dedup:
         config['umitools']  
     output:
         #o1 = temp(join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.bam')),
-        o1 = join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.bam'),
-        o2 = join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.log'),
+        o1 = join(out_dir,'03_bam','02_dedup','{sp}.{al}.dedup.bam'),
+        o2 = join(out_dir,'03_bam','02_dedup','{sp}.{al}.dedup.log'),
     shell:
         """
+        #set / create tmp dir
+        if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            mkdir "${{tmpdir}}/u";
+            mkdir "${{tmpdir}}/m";
+        else
+            tmpdir=out_dir + "01_preprocess/merge_mu"
+
+            if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+        fi
+
         umi_tools dedup \
-        -I {input.f1} \
-        --method unique --multimapping-detection-method=NH --umi-separator={params.umi} \
-        -S {output.o1} \
-        --log2stderr -L {output.o2};
+            -I {input.f1} \
+            --method unique --multimapping-detection-method=NH --umi-separator={params.umi} \
+            -S {output.o1} \
+            --log2stderr -L {output.o2};
+
+        samtools sort -T ${{tmpdir}} {input.f1} -o {output.bam};
+        samtools index {output.bam}
+        
         """
 
 rule sort_index_dedup:
@@ -1177,7 +1203,7 @@ rule sort_index_dedup:
     sort dedup.bam file
     """
     input:
-        f1 = expand(join(out_dir,'09_dedup','01_bam','{{sp}}.{al}.dedup.bam'), al=align_list),
+        f1 = expand(join(out_dir,'03_bam','02_dedup','{{sp}}.{al}.dedup.bam'), al=align_list),
     params:
         rname='25_sort_index_dedup',
     envmodules:
