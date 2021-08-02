@@ -345,7 +345,8 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 split_value = check_split(split_value)
 
 #create manorm list
-manorm_list = get_manorm_list()
+if DE_method == "MANORM": 
+    manorm_list = get_manorm_list()
 
 ###############################################################
 # rule all
@@ -400,7 +401,7 @@ rule all:
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
         
         #different inputs for multiplexed or nonmultiplexed pipeline
-        # input_multiplex,
+        input_multiplex,
         
         #Remove adaptors, rename samples
         expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
@@ -829,7 +830,7 @@ if (splice_aware == "Y"):
                 if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
             fi
 
-            java -Djava.io.tmpdir=${{tmpdir}}} -jar -Xmx50G -jar {params.doc} \
+            java -Djava.io.tmpdir=${{tmpdir}} -jar -Xmx50G -jar {params.doc} \
                 -f {input.f1} \
                 -a 50000 -n 25 -u -s {params.base};
             gunzip -c {output.converted}.gz > {output.converted}
@@ -973,8 +974,7 @@ rule create_bam_mm_unique:
         fi
 
         #create unique bam
-        awk -F '\t' -v OFS='\t' '{{ $(NF+1) = "NH:i:1"; print }}' {input.un} | cat {input.h} - | \
-        samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_u};
+        awk -F '\t' -v OFS='\t' '{{ $(NF+1) = "NH:i:1"; print }}' {input.un} | cat {input.h} - | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_u};
         
         #create mm bam
         cat {input.h} {input.mm} | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_m};
