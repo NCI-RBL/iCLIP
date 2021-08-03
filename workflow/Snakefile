@@ -315,7 +315,7 @@ def get_MANORM_gid2(wildcards):
     return(gid)
 
 #get input files for post-processing
-def get_MANORM_processing_input(wildcards):
+def get_MANORM_post_processing(wildcards):
     gid_1 = wildcards.group_id.split("_vs_")[0]
     gid_2 = wildcards.group_id.split("_vs_")[1]
 
@@ -374,14 +374,18 @@ else:
 
 #if samples are running MANORM
 if DE_method == "MANORM":
+    #peak_annotation; MANORM_beds
     input_manorm_input = [expand(join(out_dir,'06_MAnorm', '01_input','{sp}_PeaksforMAnrom.bed'),sp=sp_list),
             expand(join(out_dir,'06_MAnorm', '01_input','{sp}_PeaksforMAnrom_{strand}.bed'),sp=sp_list,strand=strand_list),
             expand(join(out_dir,'06_MAnorm', '01_input','{sp}_ReadsforMAnrom_{strand}.bed'),sp=sp_list,strand=strand_list)]
 
+    #MANORM_analysis
     input_manorm_analysis = [expand(join(out_dir,'06_MAnorm','02_analysis', '{group_id}_{strand}','{group_id}_all_MAvalues.xls'),group_id=manorm_list,strand=strand_list)]
     
+    #MANORM_post_processing
     input_manorm_post_proccessing = [expand(join(out_dir,'06_MAnorm','02_analysis', '{group_id}','{group_id}_post_processing.txt'),group_id=manorm_list)]
     
+    #MANORM_RMD
     input_manorm_reports = [expand(join(out_dir,'06_MAnorm','03_report','{group_id}_manorm_report.html'),group_id=manorm_list)]
 else:
     input_manorm_input = [expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_mapq_IN.txt'),sp=sp_list)]
@@ -464,10 +468,10 @@ rule all:
         expand(join(out_dir,'05_annotation', '{sp}_annotation_final_report.html'),sp=sp_list),
         expand(join(out_dir,'05_annotation', '{sp}_annotation_final_table.txt'),sp=sp_list),
 
-        # #MANORM
-        # input_manorm_input,
-        # input_manorm_analysis,
-        #input_manorm_post_proccessing,
+        #MANORM
+        input_manorm_input,
+        input_manorm_analysis,
+        input_manorm_post_proccessing,
         #input_manorm_reports
 
 #common and other SMK 
@@ -1610,11 +1614,11 @@ if(DE_method=="MANORM"):
             --name2 {params.gid_2}
             """
             
-    rule MANORM_processing:
+    rule MANORM_post_processing:
         '''
         '''
         input:
-            get_MANORM_processing_input
+            get_MANORM_post_processing
         params:
             rname = "19c_MANORM_processing",
             script = join(source_dir,'workflow','scripts','11_MAnormProcess.R'),
