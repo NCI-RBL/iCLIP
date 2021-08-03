@@ -3,7 +3,7 @@ title: ""
 output: html_document
 params:
   contrasts: '/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/contrastsx.txt'
-  peak_in:      "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/15_MAnorm/WT1vsKO1/WT1vsKO1_MAnormPeaksx.txt"
+  peak_in:  "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/15_MAnorm/WT1vsKO1/WT1vsKO1_MAnormPeaksx.txt"
   PeakIdnt: "ALL"
   samplename: 'WT'
   background: 'KO' 
