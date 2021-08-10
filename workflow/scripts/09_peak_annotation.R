@@ -20,6 +20,7 @@ parser$add_argument("-s","--sample_id", dest="sample_id", required=TRUE, help="s
 parser$add_argument("-sp","--ref_species", dest="ref_species", required=TRUE, help="reference species")
 parser$add_argument("-anno","--anno_dir", dest="anno_dir", required=TRUE, help="path for annotation dir")
 parser$add_argument("-reft","--reftable_path", dest="reftable_path", required=TRUE, help="path for reftable")
+parser$add_argument("-ref","--ref_path", dest="ref_path", required=TRUE, help="path for references")
 parser$add_argument("-g","--gencode_path", dest="gencode_path", required=TRUE, help="path for gencode")
 parser$add_argument("-i","--intron_path", dest="intron_path", required=TRUE, help="path for intron")
 parser$add_argument("-rmsk","--rmsk_path", dest="rmsk_path", required=TRUE, help="path for rmsk")
@@ -39,6 +40,7 @@ sample_id = args$sample_id
 ref_species = args$ref_species
 anno_dir = args$anno_dir
 reftable_path = args$reftable_path
+ref_path = args$ref_path
 gencode_path = args$gencode_path
 intron_path = args$intron_path
 rmsk_path = args$rmsk_path
@@ -47,43 +49,46 @@ out_dir_manorm = args$out_dir_manorm
 output_file_error = args$output_file_error
 
 
-# ##testing
-# rm(list=setdiff(ls(), "params"))
-wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/"
-setwd(wd)
-wd="."
+##testing
+testing="N"
+if(testing=="Y"){
+  
+  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/"
+  setwd(wd)
+  wd="."
 
-peak_type= "ALL"
-peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_uniqueCounts.txt"
-peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
-reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
+  peak_type= "ALL"
+  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_uniqueCounts.txt"
+  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
+  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
 
-#output
-out_dir = paste0(wd,"/13_annotation_test/13_annotation/02_peaks/")
-out_dir_manorm =paste0(wd,"/14_MAnorm/")
+  #output
+  out_dir = paste0(wd,"/13_annotation_test/13_annotation/02_peaks/")
+  out_dir_manorm =paste0(wd,"/14_MAnorm/")
 
-#project annotation files
-anno_dir = paste0(wd,"/13_annotation_test/13_annotation/01_project/")
-ref_dir = "/Users/homanpj/Documents/Resources/ref/"
+  #project annotation files
+  anno_dir = paste0(wd,"/13_annotation_test/13_annotation/01_project/")
+  ref_path = "/Users/homanpj/Documents/Resources/ref/"
 
-#feature information
-join_junction = "TRUE"
-condense_exon="TRUE"
-read_depth = 3
-DEmethod = "MANORM"
-ref_species="hg38"
-sample_id = "WT-NOPFA"
-output_file_error= paste0(wd,"/13_annotation_test/13_annotation/02_peaks/")
+  #feature information
+  join_junction = "TRUE"
+  condense_exon="TRUE"
+  read_depth = 3
+  DEmethod = "MANORM"
+  ref_species="hg38"
+  sample_id = "WT-NOPFA"
+  output_file_error= paste0(wd,"/13_annotation_test/13_annotation/02_peaks/")
+}
 
 if(ref_species == "mm10"){
-  gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
-  intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
-  rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
+  gencode_path = paste0(ref_path, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
+  intron_path = paste0(ref_path, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
+  rmsk_path = paste0(ref_path,"mm10/repeatmasker/rmsk_GRCm38.txt")
 
 } else if (ref_species == "hg38"){
-  gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
-  intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
-  rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
+  gencode_path = paste0(ref_path,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
+  intron_path = paste0(ref_path,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
+  rmsk_path = paste0(ref_path,"hg38/repeatmasker/rmsk_GRCh38.txt")
 }
 
 #annotation paths
