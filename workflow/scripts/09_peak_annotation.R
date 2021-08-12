@@ -50,26 +50,26 @@ output_file_error = args$output_file_error
 
 
 ##testing
-testing="N"
+testing="SSC"
 if(testing=="Y"){
   
   wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/"
   setwd(wd)
   wd="."
-
+  
   peak_type= "ALL"
   peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_uniqueCounts.txt"
   peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
   reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
-
+  
   #output
   out_dir = paste0(wd,"/13_annotation_test/13_annotation/02_peaks/")
   out_dir_manorm =paste0(wd,"/14_MAnorm/")
-
+  
   #project annotation files
   anno_dir = paste0(wd,"/13_annotation_test/13_annotation/01_project/")
   ref_path = "/Users/homanpj/Documents/Resources/ref/"
-
+  
   #feature information
   join_junction = "TRUE"
   condense_exon="TRUE"
@@ -78,13 +78,31 @@ if(testing=="Y"){
   ref_species="hg38"
   sample_id = "WT-NOPFA"
   output_file_error= paste0(wd,"/13_annotation_test/13_annotation/02_peaks/")
+} else if (testing=="SSC"){
+  peak_type = "ALL"
+  peak_unique = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_uniqueCounts.txt"
+  peak_all = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_allFracMMCounts.txt"
+  join_junction = TRUE
+  condense_exon = TRUE
+  read_depth = 5
+  DEmethod = "MANORM"
+  sample_id = "WT-NOPFA"
+  ref_species = "hg38"
+  anno_dir = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/13_annotation/01_project/"
+  reftable_path = "~/../../Volumes/RBL_NCI/Wolin/Phil/6-22-21-HaCaT_fCLIP/pipeline/annotation_config.txt"
+  ref_path = "~/../../Volumes/RBL_NCI/Wolin/Phil/6-22-21-HaCaT_fCLIP/pipeline/annotation_config.txt"
+  gencode_path = "/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt"
+  intron_path = "/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed"
+  rmsk_path = "/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCh38.txt"
+  out_dir = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/13_annotation/02_peaks"
+  out_dir_manorm = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/14_MAnorm/01_input/"
+  output_file_error = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/13_annotation/read_depth_error.txt"
 }
 
 if(ref_species == "mm10"){
   gencode_path = paste0(ref_path, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
   intron_path = paste0(ref_path, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
   rmsk_path = paste0(ref_path,"mm10/repeatmasker/rmsk_GRCm38.txt")
-
 } else if (ref_species == "hg38"){
   gencode_path = paste0(ref_path,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
   intron_path = paste0(ref_path,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
@@ -112,10 +130,26 @@ file_id = paste0(sample_id,"_")
 ##########################################################################################
 FtrCount_uniq=read.delim(peak_unique, header=T, sep="\t",
                          stringsAsFactors = F,comment.char = '#')
-colnames(FtrCount_uniq)[7]='Counts'; #FtrCount_uniq[is.na(FtrCount_uniq$Start),]
-FtrCount_uniq$Start=as.numeric(FtrCount_uniq$Start)#+1
-FtrCount_uniq$End=as.numeric(FtrCount_uniq$End)
+colnames(FtrCount_uniq)[7]='Counts'
+
+FtrCount_uniq = FtrCount_uniq %>%
+  #grab first listed start,end coordinates
+  separate(Start, c("Start", "rm"), ";") %>%
+  select(-rm) %>%
+  separate(End, c("End", "rm"), ";") %>%
+  select(-rm) %>%
+  #convert to numeric
+  as.numeric(Start) %>%
+  as.numeric(End)
+
+#remove rows without start,end
 FtrCount_uniq=FtrCount_uniq[!is.na(FtrCount_uniq$Start),]
+FtrCount_uniq=FtrCount_uniq[!is.na(FtrCount_uniq$End),]
+
+#remove rows with both strands listed
+FtrCount_uniq = subset(FtrCount_uniq,Strand%in%c("+","-"))
+
+#create unique ids
 FtrCount_uniq$ID=paste0(FtrCount_uniq$Chr,":",FtrCount_uniq$Start,"-",FtrCount_uniq$End)
 FtrCount_uniq$ID2=paste0(FtrCount_uniq$Chr,":",FtrCount_uniq$Start,"-",FtrCount_uniq$End,"_",FtrCount_uniq$Strand)
 
@@ -125,9 +159,25 @@ FtrCount_uniq$ID2=paste0(FtrCount_uniq$Chr,":",FtrCount_uniq$Start,"-",FtrCount_
 FtrCount_frac=read.delim(peak_all, header=T, sep="\t",
                          stringsAsFactors = F,comment.char = '#')
 colnames(FtrCount_frac)[7]='Counts'
-FtrCount_frac$Start=as.numeric(FtrCount_frac$Start)#+1
-FtrCount_frac$End=as.numeric(FtrCount_frac$End)
+
+FtrCount_frac = FtrCount_frac %>%
+  #grab first listed start,end coordinates
+  separate(Start, c("Start", "rm"), ";") %>%
+  select(-rm) %>%
+  separate(End, c("End", "rm"), ";") %>%
+  select(-rm) %>%
+  #convert to numeric
+  as.numeric(Start) %>%
+  as.numeric(End)
+
+#remove rows without start,end
 FtrCount_frac=FtrCount_frac[!is.na(FtrCount_frac$Start),]
+FtrCount_frac=FtrCount_frac[!is.na(FtrCount_frac$End),]
+
+#remove rows with both strands listed
+FtrCount_frac = subset(FtrCount_frac,Strand%in%c("+","-"))
+
+#create unique ids
 FtrCount_frac$ID=paste0(FtrCount_frac$Chr,":",FtrCount_frac$Start,"-",FtrCount_frac$End)
 
 ##########################################################################################
@@ -161,24 +211,32 @@ if (join_junction==T) {
   
   print("Running Join Junction")
   
-  if (peak_type=="Unique") {
-    FtrCount_fracJCount=read.delim(paste0(PeaksUniq,".jcounts"), header=T,sep="\t",stringsAsFactors = F,comment.char = '#') 
-  }  else  {
-    FtrCount_fracJCount=read.delim(paste0(peak_all,".jcounts"), header=T,sep="\t",stringsAsFactors = F,comment.char = '#') 
+  #grab peaks file
+  if (peak_type=="UNIQUE") {
+    FtrCount_fracJCount=read.delim(paste0(peak_unique,".jcounts"), 
+                                   header=T,sep="\t",stringsAsFactors = F,comment.char = '#') 
+  } else{
+    FtrCount_fracJCount=read.delim(paste0(peak_all,".jcounts"), 
+                                   header=T,sep="\t",stringsAsFactors = F,comment.char = '#') 
   }    
   
   # rename last Col
   colnames(FtrCount_fracJCount)[ncol(FtrCount_fracJCount)]='counts'
-  FtrCount_fracJCount=FtrCount_fracJCount[is.na(FtrCount_fracJCount$PrimaryGene)==F,]
+  
+  #filter if primary gene is missing
+  FtrCount_fracJCount=FtrCount_fracJCount[!is.na(FtrCount_fracJCount$PrimaryGene),]
   
   if (nrow(FtrCount_fracJCount)>0) {
     print("Junctions were identitified")
     JoinJunc=T
     
-    FtrCount_fracJCount=merge(FtrCount_fracJCount,FtrCount[,c("ID","strand")],by.x="PrimaryGene",by.y="ID",all.x=T)
+    #merge JCount with unique/all merge
+    FtrCount_fracJCount=merge(FtrCount_fracJCount,
+                              FtrCount[,c("ID","strand")],by.x="PrimaryGene",by.y="ID",all.x=T)
     
     #split primary gene col
-    FtrCount_fracJCount=separate(FtrCount_fracJCount,PrimaryGene,into=c('chr','start','end'),sep = ":|-",remove = F)
+    FtrCount_fracJCount=separate(FtrCount_fracJCount,PrimaryGene,
+                                 into=c('chr','start','end'),sep = ":|-",remove = F)
     
     ### remove junctions where splicing is within peak
     site_1=FtrCount_fracJCount$Site1_location>=FtrCount_fracJCount$start&FtrCount_fracJCount$Site1_location<=FtrCount_fracJCount$end
@@ -189,20 +247,26 @@ if (join_junction==T) {
     #create Unique Row/junction ID
     FtrCount_fracJCount$rID=seq(1,nrow(FtrCount_fracJCount))
     
-    jcount1.GR=GRanges(seqnames = as.character(FtrCount_fracJCount$Site1_chr), ranges=IRanges(start = as.numeric(FtrCount_fracJCount$Site1_location), end = as.numeric(FtrCount_fracJCount$Site1_location)),strand = FtrCount_fracJCount$strand,
+    jcount1.GR=GRanges(seqnames = as.character(FtrCount_fracJCount$Site1_chr), 
+                       ranges=IRanges(start = as.numeric(FtrCount_fracJCount$Site1_location), 
+                                      end = as.numeric(FtrCount_fracJCount$Site1_location)),
+                       strand = FtrCount_fracJCount$strand,
                        PrimaryGene=FtrCount_fracJCount$PrimaryGene,
                        count=FtrCount_fracJCount$counts,
                        JunctionID=FtrCount_fracJCount$JunctionID,
-                       rID=FtrCount_fracJCount$rID
-    )
-    jcount2.GR=GRanges(seqnames = as.character(FtrCount_fracJCount$Site2_chr), ranges=IRanges(start = as.numeric(FtrCount_fracJCount$Site2_location), end = as.numeric(FtrCount_fracJCount$Site2_location)),strand = FtrCount_fracJCount$strand,
+                       rID=FtrCount_fracJCount$rID)
+    jcount2.GR=GRanges(seqnames = as.character(FtrCount_fracJCount$Site2_chr), 
+                       ranges=IRanges(start = as.numeric(FtrCount_fracJCount$Site2_location), 
+                                      end = as.numeric(FtrCount_fracJCount$Site2_location)),
+                       strand = FtrCount_fracJCount$strand,
                        PrimaryGene=FtrCount_fracJCount$PrimaryGene,
                        count=FtrCount_fracJCount$counts,
                        JunctionID=FtrCount_fracJCount$JunctionID,
-                       rID=FtrCount_fracJCount$rID
-    )
+                       rID=FtrCount_fracJCount$rID)
     FtrCount.GR=GRanges(seqnames = as.character(FtrCount$chr), 
-                        ranges=IRanges(start = as.numeric(FtrCount$start), end = as.numeric(FtrCount$end)),strand = FtrCount$strand,
+                        ranges=IRanges(start = as.numeric(FtrCount$start), 
+                                       end = as.numeric(FtrCount$end)),
+                        strand = FtrCount$strand,
                         ID=FtrCount$ID)
     
     
@@ -282,7 +346,6 @@ if (join_junction==T) {
     ##################################################
     ##### check no reeated peaks 
     ##### get all unique PrimaryGene_Junction
-    length(unique(PGene_TBL2$PrimaryGene_Junction1))
     d3=unique(PGene_TBL2$PrimaryGene_Junction1)
     PGene_TBL3=(matrix(nrow=nrow(PGene_TBL2),ncol=ncol(PGene_TBL2)+1));colnames(PGene_TBL3)=c(colnames(PGene_TBL2),"nrows")
     
@@ -300,7 +363,6 @@ if (join_junction==T) {
     # #######################################################
     # ##### Get all peaks with junctions
     Junc_peaks=unique(c(Junc_PL$ID_Peaks1,Junc_PL$ID_Peaks2))
-    # Junc_peaks2=unique(unlist(str_split(PGene_TBL2$JoinID,pattern = ",")))
     
     FtrCount_Junc_peaks=FtrCount[FtrCount$ID%in%Junc_peaks,]
     FtrCount=FtrCount[FtrCount$ID%in%Junc_peaks==F,]
@@ -313,10 +375,7 @@ if (join_junction==T) {
   } else { 
     print("No junctions were identified")
     JoinJunc=F
-    ######################################################################
     FtrCount=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
-    ######################################################################  } 
-    
   }
   
 } else{
@@ -324,28 +383,35 @@ if (join_junction==T) {
   FtrCount=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
 }
 
-
+#remove duplicates
 FtrCount=FtrCount[duplicated(FtrCount)==F,]
 
+#remove chrom M
 FtrCount=FtrCount[!FtrCount$chr%in%c('chrM'),]
-FtrCount=FtrCount[duplicated(FtrCount)==F,]
 
-FtrCount$ID=paste0(FtrCount$chr,":",FtrCount$start,"-",FtrCount$end)
-FtrCount$ID2=paste0(FtrCount$chr,":",FtrCount$start,"-",FtrCount$end,"_",FtrCount$Strand)
-
-
-#write final junction output - Do not ude so dont need to write
-# write.table(FtrCount,paste0(out_dir,file_id,"peakjunction.txt"),sep = "\t")
+###phil both these cols already exist
+#FtrCount$ID=paste0(FtrCount$chr,":",FtrCount$start,"-",FtrCount$end)
+#FtrCount$ID2=paste0(FtrCount$chr,":",FtrCount$start,"-",FtrCount$end,"_",FtrCount$Strand)
 
 ##########################################################################################
 ##############################  MANORM
 ##########################################################################################
-
 if (DEmethod=='MANORM') {
   print("Running MANORM")
-  write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom_P.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-  write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom_N.bed"), sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  
+  #write peaks bed file
+  write.table(FtrCount[,c('chr','start','end','ID','ID','strand')],
+              file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom.bed"), 
+              sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  #write peaks + bed file
+  write.table(FtrCount[FtrCount$strand%in%"+",c('chr','start','end','ID','ID','strand')],
+              file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom_P.bed"), 
+              sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
+  
+  #write peaks - bed file
+  write.table(FtrCount[FtrCount$strand%in%"-",c('chr','start','end','ID','ID','strand')],
+              file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom_N.bed"), 
+              sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
 } else{
   print("MANORM skipped")
 } 
@@ -365,9 +431,11 @@ peaks_Oppo$strand=gsub("pos","-",peaks_Oppo$strand)
 #read in references
 ref_gencode_trans = read.table(gencode_transc_path,header=TRUE,sep="\t")
 ref_table = read.table(reftable_path, header = TRUE, sep="\t", row.names = 1)
+
 rpmk_Anno_RNA_comb=data.frame()
 gencode_Anno_RNA_comb=data.frame()
-gencodeCol=c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')
+gencodeCol=c('chr','start','end','strand','ensembl_gene_id',
+             'transcript_id','external_gene_name','gene_type','gene_type_ALL')
 gencode_Anno_RNA_comb=ref_gencode_trans[,gencodeCol]  
 custom_Anno_RNA_comb=data.frame()
 refseq_Anno_RNA_comb=data.frame()
@@ -640,7 +708,7 @@ peak_calling<-function(peak_in,nmeprfix){
       
       #lincRNA are from an older Gencode version (VM18 or older) so don't use    
       if (grepl('lncRNA',pam_1)&grepl('lincRNA',pam_2)) {pam_1[pam_2$a%in%'lincRNA',]='lncRNA'}
-   
+      
       #change ribozyme (gencode) to RNA type from additional anno
       if (grepl('ribozyme',pam_1)) {pam_1[pam_1$a%in%'ribozyme',]=unique(pam_2$a)}
       
