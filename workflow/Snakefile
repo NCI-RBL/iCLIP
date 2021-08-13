@@ -780,8 +780,8 @@ if (splice_aware == "Y"):
             """
             #run cleanup
             set +e
-            samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${output.tmp};
-            samtools view -H {input.f1} | cat - ${output.tmp}> {output.mapped}; 
+            samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > {output.tmp};
+            samtools view -H {input.f1} | cat - {output.tmp}> {output.mapped}; 
             samtools view -f 4 {input.f1} > {output.unmapped};
             exitcode=$?
             if [ $exitcode -eq 1 ]
