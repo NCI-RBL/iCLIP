@@ -769,28 +769,19 @@ if (splice_aware == "Y"):
         input:
             f1 = join(out_dir,'01_preprocess','01_alignment','{sp}.{al}.split.{n}.sam'),
         params:
-            rname = '07a_sam_cleanup',
-            base = '{sp}.{al}.split.{n}'
+            rname = '07a_sam_cleanup'
         envmodules:
             config['samtools']  
         output:
+            tmp = join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.sam'),
             mapped = join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.mapped.sam'),
             unmapped = join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.unmapped.sam'),
         shell:
             """
-            #set / create tmp dir
-            if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
-                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
-            else
-                tmpdir="{out_dir}01_preprocess/02_tmp_cleanup/"
-
-                if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
-            fi
-
             #run cleanup
             set +e
-            samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${{tmpdir}}{params.base}.tmp.sam;
-            samtools view -H {input.f1} | cat - ${{tmpdir}}{params.base}.tmp.sam > {output.mapped}; 
+            samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${output.tmp};
+            samtools view -H {input.f1} | cat - ${output.tmp}> {output.mapped}; 
             samtools view -f 4 {input.f1} > {output.unmapped};
             exitcode=$?
             if [ $exitcode -eq 1 ]
@@ -1504,7 +1495,7 @@ else:
             ref_sp = nova_ref,
             base = join(out_dir,'05_annotation','02_peaks/',),
             anno_dir = join(out_dir,'05_annotation','01_project/'),
-            ref_dir = add_anno_path
+            ref_dir = add_anno_path,
             a_config = annotation_config,
             g_path = gen_path,
             i_path = intron_path,
