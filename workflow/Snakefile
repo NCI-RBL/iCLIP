@@ -903,9 +903,12 @@ if (splice_aware == "Y"):
 
 rule split_mm_unique:
     """
+    novoalign creates files where NH = the number of possible alignments and IH = the number of 
+    acutal alignments in a file 
+
     creates two text files from sam file
-    1. unique file without NH:i
-    2. MM file with NH:i
+    1. unique file without IH:i flag
+    2. MM file with IH:i flag
 
     read sam file header, print to header txt
     """
@@ -936,6 +939,10 @@ rule split_mm_unique:
 
 rule create_bam_mm_unique:
     """
+    umitools dedup can only reference NH flags since novoalign creates files where NH = the 
+    number of possible alignments and IH = the number of acutal alignments in a file we must 
+    replace the NH flags with the IH flags to deduplicate based off the correct value
+
     add nh:i:1 tag, cat header, create unique bam file
     """
     input:
@@ -947,6 +954,7 @@ rule create_bam_mm_unique:
     envmodules:
         config['samtools']        
     output:
+        tmp = temp(join(out_dir,'01_preprocess','{sp}.{al}.split.{n}.tmp.sam')),
         bam_u = temp(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.bam')),
         bam_m = temp(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.bam')),
         sort_u = temp(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.si.bam')),
@@ -968,11 +976,82 @@ rule create_bam_mm_unique:
             if [ ! -d $tmpdir_m ]; then mkdir $tmpdir_m; fi
         fi
 
-        #create unique bam
-        awk -F '\t' -v OFS='\t' '{{ $(NF+1) = "NH:i:1"; print }}' {input.un} | cat {input.h} - | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_u};
+        ################################################
+        #create unique bam, correcting NH header
+        #create the new file
+        touch {output.tmp}
+
+        #read the sam file
+        while read rd; do 
         
-        #create mm bam
-        cat {input.h} {input.mm} | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_m};
+        #if the line doesn't have IH
+        if [[ ! $rd == *"IH:i"* ]]; then 
+
+            #if the line doesnt have NH then add NH:i:1
+            if [[ ! $rd == *"NH:i"* ]]; then 
+                echo $rd | awk '{ $(NF+1) = "NH:i:1"; print }' >> {ouput.tmp}
+            
+            #if it does have NH then replace it with NH:i:1
+            else 
+                replacement="NH:i:1"
+                fixed=${rd/NH:i:[0-9]*/$replacement}
+                echo $fixed >> {ouput.tmp}
+            fi
+        
+        #if does have IH (and will always have an NH)
+        #replace the NH value with the IH value
+        else
+            IH=`echo $rd | grep -o "IH:i:[0-9]*"`
+            IH_num=`echo ${IH/IH:i:/}`
+
+            NH=`echo $rd | grep -o "NH:i:.*\S"`
+            NH_num=`echo ${NH/NH:i:/}`
+
+            NH_complete=`echo ${NH/$NH_num/$IH_num}`
+
+            echo ${rd/$NH/$NH_complete} >> {ouput.tmp}
+        fi
+        done < {input.un}
+        
+        cat {input.h} {input.tmp} | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_u};
+        
+        ################################################
+        #create mm bam, correcting NH header
+        #create the new file
+        touch {output.tmp}
+
+        #read the sam file
+        while read rd; do 
+        
+        #if the line doesn't have IH
+        if [[ ! $rd == *"IH:i"* ]]; then 
+
+            #if the line doesnt have NH then add NH:i:1
+            if [[ ! $rd == *"NH:i"* ]]; then 
+                echo $rd | awk '{ $(NF+1) = "NH:i:1"; print }' >> {ouput.tmp}
+            
+            #if it does have NH then replace it with NH:i:1
+            else 
+                replacement="NH:i:1"
+                fixed=${rd/NH:i:[0-9]*/$replacement}
+                echo $fixed >> {ouput.tmp}
+            fi
+        
+        #if does have IH (and will always have an NH)
+        #replace the NH value with the IH value
+        else
+            IH=`echo $rd | grep -o "IH:i:[0-9]*"`
+            IH_num=`echo ${IH/IH:i:/}`
+
+            NH=`echo $rd | grep -o "NH:i:.*\S"`
+            NH_num=`echo ${NH/NH:i:/}`
+
+            NH_complete=`echo ${NH/$NH_num/$IH_num}`
+
+            echo ${rd/$NH/$NH_complete} >> {ouput.tmp}
+        fi
+        done < {input.un}
+        cat {input.h} {input.tmp} | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_m};
         
         #sort unique and mm bam
         samtools sort -T ${{tmpdir_u}} {output.bam_u} -o {output.sort_u};
@@ -1175,10 +1254,13 @@ rule dedup:
     shell:
         """
         umi_tools dedup \
-            -I {input.f1} \
-            --method unique --multimapping-detection-method=NH --umi-separator={params.umi} \
-            -S {output.bam} \
-            --log2stderr -L {output.log};
+        -I {input.f1} \
+        --method unique 
+        --multimapping-detection-method=NH \
+        --umi-separator={params.umi} \
+        -S {output.bam} \
+        --log2stderr \
+        -L {output.log};
         """
 
 rule dedup_si_header:
