@@ -229,8 +229,8 @@ def get_filechunk_size(wildcards):
         sub_df=split_df[(split_df['path']==fq_path)]
 
         #split can only create a max of 99 split files; handle large file sets to ensure max reads per 99 files
-        if (sub_df.iloc[0]['filenum']>89):
-            chunk_size = int(((sub_df.iloc[0]['chunksize'] * sub_df.iloc[0]['filenum']) / 88)+.9)
+        if (sub_df.iloc[0]['filenum']>98):
+            chunk_size = int(((sub_df.iloc[0]['chunksize'] * sub_df.iloc[0]['filenum']) / 98)+.9)
         else:
             chunk_size = sub_df.iloc[0]['chunksize']
 
@@ -773,9 +773,9 @@ if (splice_aware == "Y"):
         envmodules:
             config['samtools']  
         output:
-            tmp = join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.sam'),
-            mapped = join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.mapped.sam'),
-            unmapped = join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.unmapped.sam'),
+            tmp = temp(join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.sam')),
+            mapped = temp(join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.mapped.sam')),
+            unmapped = temp(join(out_dir,'01_preprocess','02_cleanup','{sp}.{al}.split.{n}.tmp.unmapped.sam')),
         shell:
             """
             #run cleanup
@@ -813,7 +813,7 @@ if (splice_aware == "Y"):
         envmodules:
             config['java']  
         output:
-            converted = join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam'),
+            converted = temp(join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam')),
         shell:
             """
             #set / create tmp dir
@@ -847,10 +847,10 @@ if (splice_aware == "Y"):
         envmodules:
             config['samtools'],
         output:
-            unmasked = join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.unmasked.bam'),
-            merged = join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.merged.bam'),
-            final = join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.bam'),
-            sort = join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam'),
+            unmasked = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.unmasked.bam')),
+            merged = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.merged.bam')),
+            final = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.bam')),
+            sort = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
         shell:
             """
             set +e
@@ -916,14 +916,14 @@ rule split_mm_unique:
     envmodules:
         config['samtools']
     output:
-        o1 = join(out_dir,'02_reads','{sp}.{al}.split.{n}.unique.txt'),
-        o2 = join(out_dir,'02_reads','{sp}.{al}.split.{n}.mm.txt'),
-        h = join(out_dir,'02_reads','{sp}.{al}.split.{n}.header.txt'),
+        unique = temp(join(out_dir,'02_reads','{sp}.{al}.split.{n}.unique.txt')),
+        mm = temp(join(out_dir,'02_reads','{sp}.{al}.split.{n}.mm.txt')),
+        h = temp(join(out_dir,'02_reads','{sp}.{al}.split.{n}.header.txt')),
     shell:
         """
         set +e
-        samtools view {input.f1} | grep -v 'NH:i' > {output.o1}; \
-        samtools view {input.f1} | grep 'NH:i' > {output.o2};
+        samtools view {input.f1} | grep -v 'IH:i' > {output.unique}; \
+        samtools view {input.f1} | grep 'IH:i' > {output.mm};
         samtools view -H {input.f1} > {output.h}
         exitcode=$?
         if [ $exitcode -eq 1 ]
@@ -947,10 +947,10 @@ rule create_bam_mm_unique:
     envmodules:
         config['samtools']        
     output:
-        bam_u = join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.bam'),
-        bam_m = join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.bam'),
-        sort_u = join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.si.bam'),
-        sort_m = join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.si.bam'),
+        bam_u = temp(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.bam')),
+        bam_m = temp(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.bam')),
+        sort_u = temp(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.si.bam')),
+        sort_m = temp(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.si.bam')),
     shell:
         """
         #set / create tmp dir
@@ -1016,9 +1016,9 @@ rule merge_mm_and_unique:
     envmodules:
         config['samtools']  
     output:
-        merged = join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.bam'),
+        merged = temp(join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.bam')),
         sort = join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.si.bam'),
-        samstat = join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt')
+        samstat = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'))
     shell:
         """
         #set / create tmp dir
@@ -1090,12 +1090,12 @@ rule qc_alignment:
         config['samtools'],
         config['R']
     output:
-        bam_a = join(out_dir, 'qc', '00_qc_post','{sp}.{al}_align_len.txt'),
-        bam_u = join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unalign_len.txt'),
-        png_align = join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png'),
-        png_unalign = join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png'),
-        txt_align = join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.txt'),
-        txt_unalign = join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.txt'),
+        bam_a = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_align_len.txt'))
+        bam_u = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unalign_len.txt')),
+        png_align = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png')),
+        png_unalign = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png')),
+        txt_align = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.txt')),
+        txt_unalign = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.txt')),
     shell:
         """
         samtools view -F 4 {input.f1} | awk '{{print length($10)}}' > {output.bam_a}; \
@@ -1170,8 +1170,8 @@ rule dedup:
     envmodules:
         config['umitools']  
     output:
-        bam = join(out_dir,'03_bam','02_dedup','{sp}.{al}.dedup.bam'),
-        log = join(out_dir,'03_bam','02_dedup','{sp}.{al}.dedup.log'),
+        bam = temp(join(out_dir,'03_bam','02_dedup','{sp}.{al}.dedup.bam')),
+        log = temp(join(out_dir,'03_bam','02_dedup','{sp}.{al}.dedup.log')),
     shell:
         """
         umi_tools dedup \
@@ -1194,7 +1194,7 @@ rule dedup_si_header:
         config['samtools']  
     output:
         bam = join(out_dir,'03_bam','02_dedup','{sp}.dedup.si.bam'),
-        head = join(out_dir,'03_bam','02_dedup','{sp}.dedup.header.txt'),
+        head = temp(join(out_dir,'03_bam','02_dedup','{sp}.dedup.header.txt')),
     shell:
         """
         #set / create tmp dir
