@@ -231,6 +231,10 @@ def get_filechunk_size(wildcards):
         #split can only create a max of 99 split files; handle large file sets to ensure max reads per 99 files
         if (sub_df.iloc[0]['filenum']>98):
             chunk_size = int(((sub_df.iloc[0]['chunksize'] * sub_df.iloc[0]['filenum']) / 98)+.9)
+
+            #check the size is divisible by 4, if not increase the size until it is
+            while (chunk_size % 4 !=0):
+                chunk_size = chunk_size + 1
         else:
             chunk_size = sub_df.iloc[0]['chunksize']
 
