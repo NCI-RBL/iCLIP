@@ -1,12 +1,24 @@
 ---
 title: ""
 output: html_document
+# params:
+#   samplename: "WT-NOPFA"
+#   peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/13_annotation/02_peaks/WT-NOPFA_peakannotation_complete.txt"
+#   output_table: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/13_annotation/02_peaks/WT-NOPFA_peakannotation_final.txt"
+#   readdepth: 5
+#   PeakIdnt: "ALL" #MultiMap, Unique, all
 params:
-  samplename: "Ro"
-  peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/mm10_final/13_annotation/02_peaks/Control_peakannotation_complete.txt"
-  output_table: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/mm10_final/13_annotation/02_peaks/Control_peakannotation_final.txt"
+  samplename: "WT-NOPFA"
+  peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/13_annotation_test/13_annotation/02_peaks/WT-NOPFA_peakannotation_complete.txt"
+  output_table: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/13_annotation_test/13_annotation/02_peaks/WT-NOPFA_peakannotation_final.txt"
   readdepth: 5
   PeakIdnt: "ALL" #MultiMap, Unique, all
+# params:
+#   samplename: "untrans"
+#   peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/DPR_iCLIP/080818_DPR_CLIP/14_peaks/02_peaks/untrans_peakannotation_complete.txt"
+#   output_table: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/DPR_iCLIP/080818_DPR_CLIP/14_peaks/02_peaks/untrans_peakannotation_final.txt"
+#   readdepth: 5
+#   PeakIdnt: "ALL" #MultiMap, Unique, all
 ---
  
  <!-- # Load libraries, set theme -->
@@ -41,6 +53,8 @@ library('gplots')
 library(ggpubr)
 library(circlize)
 library('regioneR')
+library(scales)
+
 blank_theme <- theme_minimal()+
   theme(
   axis.title.x = element_blank(),
@@ -83,6 +97,8 @@ Peaksdata2_anno$Comb_type_exon_Oppo =
                       "Antisense Feature","protein_coding: Intron","lncRNA","no Feature"))  
 ###### remove chrM clip peaks
 Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$chr%in%'chrM'==F,] 
+# Peaksdata2_anno=Peaksdata2_anno[1:10,]
+
 ```
 
 # CLIP peak annotations: `r toString(samplename)`  
@@ -203,23 +219,21 @@ All annotations from RNA type, Repeat regions, and Intronic/exonic regions are a
 ## Overview of targets by CLIP peak catagory   
 
 ```{r , echo=F, include=T, eval=T, fig.align='default', fig.ncol=2, fig.height=3.5, fig.width=7, out.height=200, out.width="50%", fig.show="hold", layout='l-screen', results = FALSE, message=FALSE , warning=F}
-
 nc_color=c("ncRNA"="#1B9E77","rRNA" ="#1fb487",
            "yRNA"= "#2bdba6" ,
            "protein_coding: exon"="#D95F02", "Repeat Element"="#7570B3" ,"pseudogene"="#E7298A", "Antisense Feature"="#66A61E", "protein_coding: Intron"="#E6AB02", "lncRNA"="#A6761D", "no Feature"="#666666")
-
 #Plot 1
 if (params$PeakIdnt=='UNIQUE'){
   x1=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,y=Length,color=Comb_type_exon_Oppo,text=Same_external_gene_name))+geom_point(size=1)+
     # scale_x_continuous(trans = "log2",limits = c(.5,NA))+
-    scale_y_continuous(trans = "log2",limits = c(NA,NA)) +
+    scale_y_continuous(trans = "log2",limits = c(NA,NA), oob = squish_infinite) +
     theme_classic()+
     ylab("Peak Width")+xlab("Peak Counts (unique)")+ggtitle("Comparison of peak counts and Peak Width")+
  scale_color_manual(values=nc_color) 
 } else if (params$PeakIdnt=='ALL'){
   x1=ggplot(Peaksdata2_anno,aes(x=Counts_fracMM,y=Length,color=Comb_type_exon_Oppo,text=Same_external_gene_name))+geom_point(size=1)+
       # scale_x_continuous(trans = "log2",limits = c(4,NA))+
-      scale_y_continuous(trans = "log2",limits = c(NA,NA)) + 
+      scale_y_continuous(trans = "log2",limits = c(NA,NA), oob = squish_infinite) + 
     theme_classic()+
     ylab("Peak Width")+xlab("Peak Counts (Unique+ FracMM)")+ggtitle("Comparison of peak counts and Peak Width")+  labs(color='RNA Type')+
  scale_color_manual(values=nc_color) 
@@ -273,29 +287,28 @@ if (nrow(Peaksdata2_anno)>1) {
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
 p=Peaksdata2_anno
-p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
+p$PlotColumn=p$Comb_type_exon_Oppo
 if (incd_rRNA==FALSE) {
   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 }
 if (nrow(p)>0) {
 #change types
-p[is.na(p$Same_Comb_type_exon),'Same_Comb_type_exon']='no Feature'
-colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
+p[is.na(p$PlotColumn),'PlotColumn']='no Feature'
+colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
 p$RNA=''
 #plot
 gg=ggplot(p,aes(fill=RNA_Type,x=RNA) ) +
   geom_bar(position="stack",width=.5) +
-  theme_classic()+ggtitle("BioType - Counted by catagory\n(Each Clip Peak only Counted Once)") +
+  theme_classic()+ggtitle("BioType: # of peaks per catagory") +
   scale_fill_manual(values=nc_color) 
 ggplotly(gg)
 }else{print("No ncRNA")}
-
 ```
 
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
 p=Peaksdata2_anno
-p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
+p$PlotColumn=p$Comb_type_exon_Oppo
 ###phil need else statement
 #check if this makes sense
 if (incd_rRNA==FALSE) {
@@ -304,12 +317,13 @@ if (incd_rRNA==FALSE) {
   p=p
 }
 #filter
-p=p[p$Same_Comb_type_exon%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
+p=p[p$PlotColumn%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
 #if there are remaining types
 if (nrow(p)>0) {
   p$RNA=""
   gg=ggplot(p,aes(fill=Same_Comb_type_ncRNA,x=RNA) ) +
-    geom_bar(width=.5)+theme_classic()+ggtitle("ncRNA only: # of peaks per catagory") +
+    geom_bar(width=.5)+theme_classic()+
+    ggtitle("ncRNA only: # of peaks per catagory") +
     labs(fill='RNA Type') +
     scale_color_brewer(palette = "Paired")+scale_fill_brewer(palette = "Paired") + 
     blank_theme + 
@@ -329,34 +343,33 @@ if (nrow(p)>0) {
  
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
 p=Peaksdata2_anno
-p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
+p$PlotColumn=p$Comb_type_exon_Oppo
 p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
-
 if (nrow(p)>0) {
-p[is.na(p$Comb_type_exon),'Same_Comb_type_exon']='no Feature'
-colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
+p[is.na(p$Comb_type_exon),'PlotColumn']='no Feature'
+colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
 p$RNA=''
 #plot
-gg=ggplot(p,aes(fill=RNA_Type,x=RNA) )+geom_bar(position="stack",width=.5) +
+gg=ggplot(p,aes(fill=RNA_Type,x=RNA) )+
+  geom_bar(position="stack",width=.5) +
   theme_classic() +
-  ggtitle("Number of peaks by catagory") +
+  ggtitle("BioType: # of peaks per catagory") +
   scale_fill_manual(values=nc_color) 
 ggplotly(gg)
 }else{print("No ncRNA")}
-
 ```
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,eval=T,include=T}
 p=Peaksdata2_anno
-p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
+p$PlotColumn=p$Comb_type_exon_Oppo
 p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
-p=p[p$Same_Comb_type_exon%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
+p=p[p$PlotColumn%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
 #if there are remaining types
 if (nrow(p)>0) {
   p$RNA=""
   gg=ggplot(p,aes(fill=Same_Comb_type_ncRNA,x=RNA) ) +
     geom_bar(width=.5)+theme_classic()+
-    ggtitle("Number of peaks by catagory : ncRNA only\n(Determined by unique reads only)") +
+    ggtitle("ncRNA only: # of peaks per catagory") +
     labs(fill='ncRNA Type')+
     scale_color_brewer(palette = "Paired")+ 
     scale_fill_brewer(palette = "Paired") +  blank_theme+ 
@@ -377,20 +390,17 @@ if (nrow(p)>0) {
 <br>   
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,include=F,eval=T}
-
 p=Peaksdata2_anno
-p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-p$Same_Comb_type_exon=as.character(p$Same_Comb_type_exon)
-p[p$Same_Comb_type_ncRNA%in%'rRNA','Same_Comb_type_exon']='rRNA'
-p[p$Same_Comb_type_ncRNA%in%'yRNA','Same_Comb_type_exon']='yRNA'
-p$Same_Comb_type_exon=factor(p$Same_Comb_type_exon, levels = c("ncRNA","rRNA","yRNA", "protein_coding: exon", "Repeat Element","pseudogene","Antisense Feature","protein_coding: Intron","lncRNA","no Feature"))
+p$PlotColumn=p$Comb_type_exon_Oppo
+p$PlotColumn=as.character(p$PlotColumn)
+p[p$Same_Comb_type_ncRNA%in%'rRNA','PlotColumn']='rRNA'
+p[p$Same_Comb_type_ncRNA%in%'yRNA','PlotColumn']='yRNA'
+p$PlotColumn=factor(p$PlotColumn, levels = c("ncRNA","rRNA","yRNA", "protein_coding: exon", "Repeat Element","pseudogene","Antisense Feature","protein_coding: Intron","lncRNA","no Feature"))
 u=c("ncRNA","rRNA","yRNA", "protein_coding: exon", "Repeat Element","pseudogene","Antisense Feature","protein_coding: Intron","lncRNA","no Feature")
-
-
 if (nrow(p)>0) {
 fcount=data.frame(u,1:length(u));colnames(fcount)=c('RNA_Type','order');fcount$Counts_Unique=NA;fcount$Counts_MM=NA;fcount$Peak_count=NA
 for (x in 1:length(u)) {
-  pam=p[p$Same_Comb_type_exon%in%u[x],]
+  pam=p[p$PlotColumn%in%u[x],]
   fcount[x,1]=u[x]
   fcount[x,'Counts_Unique']=colSums(pam[,'Counts_Unique',drop=F],na.rm = T)
   fcount[x,'Counts_fracMM']=colSums(pam[,'Counts_fracMM',drop=F],na.rm = T)
@@ -402,35 +412,27 @@ fcount$RNA_Type=factor(fcount$RNA_Type,
               "pseudogene","Antisense Feature","protein_coding: Intron","lncRNA","no Feature"))
 }
 } else {print('No Features')}
-
 ```
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,include=T,eval=T}
-
 if (exists('fcount')) {
   
-
 gg1 = ggplot(fcount,aes(fill=RNA_Type,x=RNA,y=Counts_Unique)) +
   geom_bar(stat='identity',position="stack",width=.5)+theme_classic() +
   ggtitle("BioType - # of reads (unique) by catagory)") +
   scale_fill_manual(values=nc_color)  
 ggplotly(gg1)
-
 } else {print('No Features')}
 ```
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,include=T,eval=T}
 if (exists('fcount')) {
-
 gg2 = ggplot(fcount,aes(fill=RNA_Type,x=RNA,y=Counts_fracMM)) +
   geom_bar(stat='identity',position="stack",width=.5) +
   theme_classic() +
   ggtitle("BioType - # of reads (unique + Frac. MM) by catagory)")+
   scale_fill_manual(values=nc_color)
 ggplotly(gg2)
-
-
 } else {print('No Features')}
-
 ```
 <br>    
 
@@ -439,12 +441,12 @@ ggplotly(gg2)
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,include=F,eval=T}
 p=Peaksdata2_anno
-p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-p$Same_Comb_type_exon=as.character(p$Same_Comb_type_exon)
-p[p$Same_Comb_type_ncRNA%in%'rRNA','Same_Comb_type_exon']='rRNA'
-p[p$Same_Comb_type_ncRNA%in%'yRNA','Same_Comb_type_exon']='yRNA'
-p$Same_Comb_type_exon=factor(p$Same_Comb_type_exon, levels = c("ncRNA","rRNA","yRNA", "protein_coding: exon", "Repeat Element","pseudogene","Antisense Feature","protein_coding: Intron","lncRNA","no Feature"))
-p=p[p$Same_Comb_type_exon%in%'ncRNA',]
+p$PlotColumn=p$Comb_type_exon_Oppo
+p$PlotColumn=as.character(p$PlotColumn)
+p[p$Same_Comb_type_ncRNA%in%'rRNA','PlotColumn']='rRNA'
+p[p$Same_Comb_type_ncRNA%in%'yRNA','PlotColumn']='yRNA'
+p$PlotColumn=factor(p$PlotColumn, levels = c("ncRNA","rRNA","yRNA", "protein_coding: exon", "Repeat Element","pseudogene","Antisense Feature","protein_coding: Intron","lncRNA","no Feature"))
+p=p[p$PlotColumn%in%'ncRNA',]
 if (nrow(p)>0) {
   u=unique(p$Same_Comb_type_ncRNA)
   nccount=data.frame(u,1:length(u));colnames(nccount)=c('Same_RNA_Subtype','Counts_All');nccount$Counts_Unique=NA;nccount$Counts_MM=NA;nccount$Peak_count=NA
@@ -456,11 +458,9 @@ if (nrow(p)>0) {
     nccount[x,'Counts_fracMM']=colSums(pam[,'Counts_fracMM',drop=F],na.rm = T)
     nccount[x,'Peak_count']=nrow(pam)
   }
-}else{print('No additional ncRNA')}
-
+}else{print('No Significant ncRNA CLIP peaks')}
 ```
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,include=T,eval=T}
-
 if (exists('nccount')) {
 nccount$RNA=''
 #plot
@@ -472,8 +472,7 @@ gg1 = ggplot(nccount,aes(fill=Same_RNA_Subtype,x=RNA,y=Counts_Unique) ) +
   blank_theme + 
   coord_polar("y",start=0)
 plot(gg1)
-
-}else{print('No additional ncRNA')}
+}else{print('No Unique counts for ncRNA peaks')}
 #plot
 ```
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,include=T,eval=T}
@@ -488,8 +487,7 @@ gg2 = ggplot(nccount,aes(fill=Same_RNA_Subtype,x=RNA,y=Counts_fracMM) ) +
   blank_theme + 
   coord_polar("y",start=0)
 plot(gg2)
-}else{print('No additional ncRNA')}
-
+}else{print('No unique + Frac. MM counts for ncRNA CLIP peaks')}
 ```      
 <br>   
 
@@ -503,27 +501,26 @@ plot(gg2)
 
 ```{r fig.asp=.5, fig.align='center',fig.height=6, fig.width=8,echo=F,warning=F,eval=T, include=T}
 p=Peaksdata2_anno
-p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-###phil need else statement
+p$PlotColumn=p$Comb_type_exon_Oppo
 if (incd_rRNA==FALSE) {
   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 }
-colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
+colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
 if (nrow(p)>0) {
 p$RNA=''
 #plot
 gg = ggplot(p,aes(x=RNA_Type,y=Counts_Unique,fill=RNA_Type)) +
   geom_violin()+theme_classic()+geom_jitter(height = 0, width = 0.1,size=0.5,aes(text=ID))+
-  scale_y_continuous(trans = "log2") +
+  scale_y_continuous(trans = "log2", oob = squish_infinite) +
   ggtitle('Peak Counts (Unique) for\nby Feature') +
   ylab("Counts")+xlab("") +
   theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(size=15),axis.text=element_text(size=12))+theme(legend.position = "none") +
   theme(legend.position = "none") +
   theme(axis.text.x = element_text(angle = -45))+
   scale_fill_manual(values=nc_color) 
-if (nrow(p)==1) {gg
-  }else {ggplotly(gg)}
 
+if (nrow(p)==1|nrow(p)>5000) {gg
+  }else { ggplotly(gg)}
 }else{print('No Features')}
 ```  
 <br/>    
@@ -532,26 +529,33 @@ if (nrow(p)==1) {gg
 
 ```{r fig.asp=.5, fig.align='center',fig.height=6, fig.width=8,echo=F,warning=F,eval=T, include=T}
 p=Peaksdata2_anno
-p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-p=p[p$Same_Comb_type_exon%in%'ncRNA',]
+p$PlotColumn=p$Same_Comb_type_ncRNA
+  p=p[p$Comb_type_exon_Oppo%in%'ncRNA',]
+colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
+
 if (nrow(p)>0) {
   p$ID=paste0(p$ID,"\n",p$Same_gene_name_comb)
-  colnames(p)[colnames(p)%in%'Same_Comb_type_ncRNA']='RNA_Type'
-  #plot
-  gg = ggplot(p,aes(x=RNA_Type,y=Counts_Unique,fill=RNA_Type)) +
-    geom_violin()+theme_classic()+geom_jitter(height = 0, width = 0.1,size=0.5,aes(text=ID))+
-    scale_y_continuous(trans = "log2") +
-    ggtitle('Peak Counts (Unique)\nby Feature') +
-    ylab("Counts") +
-    xlab("")+
-    theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(size=15),axis.text=element_text(size=12))+theme(legend.position = "none") +
-    theme(axis.text.x = element_text(angle = -45))+scale_fill_brewer(palette = "Paired")#+ylim(min(p$Counts_Unique),max(p$Counts_Unique))
-  
-  if (nrow(p)==1) {gg
+#plot
+gg = ggplot(p,aes(x=RNA_Type,y=Counts_Unique,fill=RNA_Type)) +
+  geom_violin()+theme_classic()+
+geom_jitter(height = 0, width = 0.1,size=0.5,aes(text=ID))+
+  scale_y_continuous(trans = "log2", oob = squish_infinite) +
+  ggtitle('Peak Counts (Unique) for\nby ncRNA Type') +
+  ylab("Counts")+xlab("") +
+  theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(size=15),axis.text=element_text(size=12))+theme(legend.position = "none") +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = -45))+
+scale_fill_brewer(palette = "Paired")
+
+if (nrow(p)==1|nrow(p)>5000) {gg
   }else { ggplotly(gg,tooltip = c("text", "y"))}
- 
-}else{print('No ncRNA')}
-```  
+}else{print('No Features')}
+
+
+```
+
+
+
 <br>   
 <br>   
 
@@ -562,24 +566,22 @@ Does include rRNA
 
 ```{r fig.asp=.5, fig.align='center',fig.height=6, fig.width=8,echo=F,warning=F,eval=T, include=T}
 p=Peaksdata2_anno
-p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-colnames(p)[colnames(p)%in%'Same_Comb_type_exon']='RNA_Type'
+p$PlotColumn=p$Comb_type_exon_Oppo
+colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
 if (nrow(p)>0) {
 p$RNA=''
 #plot
 gg=ggplot(p,aes(x=RNA_Type,y=Counts_fracMM,fill=RNA_Type)) +
     geom_violin()+theme_classic()+geom_jitter(height = 0, width = 0.1,size=0.5,aes(text=ID))+
-  scale_y_continuous(trans = "log2")+
+  scale_y_continuous(trans = "log2", oob = squish_infinite)+
   ggtitle('Peak Counts (Unique + Frac. MM)\nby Feature') +
   ylab("Counts")+xlab("")+
   theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(size=15),axis.text=element_text(size=12))+theme(legend.position = "none") +
   theme(axis.text.x = element_text(angle = -45))+
   scale_fill_manual(values=nc_color) 
-if (nrow(p)==1) {gg
+if (nrow(p)==1|nrow(p)>5000) {gg
   }else { ggplotly(gg)}
-
 }else {print("No Features")}
-
 ```  
 <br/>    
 
@@ -587,23 +589,23 @@ if (nrow(p)==1) {gg
 
 ```{r fig.asp=.5,fig.align='center',fig.height=6, fig.width=8,echo=F,warning=F,eval=T}
 p=Peaksdata2_anno
-p$Same_Comb_type_exon=p$Comb_type_exon_Oppo
-p=p[p$Same_Comb_type_exon%in%'ncRNA',]
+p$PlotColumn=p$Same_Comb_type_ncRNA
+  p=p[p$Comb_type_exon_Oppo%in%'ncRNA',]
+colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
+
 if (nrow(p)>0) {
-  colnames(p)[colnames(p)%in%'Same_Comb_type_ncRNA']='RNA_Type'
-  p$ID=paste0(p$ID,"\n",p$Same_gene_name_comb)
-  #plot
+p$ID=paste0(p$ID,"\n",p$Same_gene_name_comb)
+#plot
   gg=ggplot(p,aes(x=RNA_Type,y=Counts_fracMM,fill=RNA_Type) ) +
     geom_violin()+theme_classic()+geom_jitter(height = 0, width = 0.05,size=.5,aes(text=ID)) +
-    scale_y_continuous(trans = "log2") +
+    scale_y_continuous(trans = "log2", oob = squish_infinite) +
     ggtitle('Peak Counts (Unique + Frac. MM)\nby ncRNA Type')+ylab("Counts") +
     xlab("") +
     theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(size=15),axis.text=element_text(size=12)) +
     theme(legend.position = "none") +
     theme(axis.text.x = element_text(angle = -45))+scale_fill_brewer(palette = "Paired")#+ylim(min(p$Counts_Unique),max(p$Counts_Unique))
-  if (nrow(p)==1) {gg
+  if (nrow(p)==1|nrow(p)>5000) {gg
   }else { ggplotly(gg,tooltip = c("text", "y"))}
-
  
 }else {print("No Features")}
 ```  
@@ -628,7 +630,7 @@ colnames(p)[colnames(p)%in%'Oppo_Comb_type_exon']='RNA_Type'
 p$RNA=''
 #plot
 ggplot(p,aes(fill=RNA_Type,x=RNA_Type) )+geom_bar(stat="count")+theme_classic()+
-  ggtitle("Opposite Strand Feature - Number of peaks by catagory\n(Determined by unique reads only)") +
+  ggtitle("Opposite Strand Feature - Number of peaks by catagory") +
   xlab("")+
   theme(plot.title = element_text(hjust = 0.5),axis.title=element_text(size=15),axis.text=element_text(size=10),legend.position = "none",axis.text.x = element_text(angle = -45,vjust = .5))+
   scale_fill_manual(values=nc_color) 
@@ -641,10 +643,9 @@ p=Peaksdata2_anno
 if (incd_rRNA==FALSE) {
   p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 }
-
-p$transition=paste0(p$Same_Comb_type_exon,'->\n',p$Oppo_Comb_type_exon)
 p=p[p$Comb_type_exon_Oppo%in%'Antisense Feature',]
 if (nrow(p)>0) {
+  p$transition=paste0(p$Same_Comb_type_exon,'->\n',p$Oppo_Comb_type_exon)
 colnames(p)[colnames(p)%in%'transition']='RNA_Type'
 p$Difference=''
 #plot
@@ -654,7 +655,6 @@ gg = ggplot(p,aes(fill=Same_Comb_type_exon,x=factor(Oppo_Comb_type_exon)) ) +
   theme(plot.title = element_text(hjust = 0.5,size=20),axis.title=element_text(size=15),axis.text=element_text(size=10),legend.position = "right",axis.text.x = element_text(angle = -45,vjust = .5))
 ggplotly(gg)
 }else {print("No Features")}
-
 ```
 
 <br>  
@@ -673,11 +673,9 @@ gg = ggplot(p) +
     axis.title=element_text(size=15),axis.text=element_text(size=10),
     legend.text = element_text( size=10)) +
   theme(axis.text.x = element_text(angle = -45))
-  if (nrow(p)==1) {gg
+  if (nrow(p)==1|nrow(p)>5000) {gg
   }else { ggplotly(gg)}
-
 }else {print("No Features")}
-
 ```
 
 ```{r fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=T,include=F}
