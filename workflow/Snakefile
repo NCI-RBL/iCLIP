@@ -409,21 +409,21 @@ rule all:
         #expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
         
         #different inputs for multiplexed or nonmultiplexed pipeline
-        #input_multiplex,
+        input_multiplex,
         
         #Remove adaptors, rename samples
-        #expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
+        expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
 
         #FastQC
-        #expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
-        #expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
         
         #FastQ Screen
-        #expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
-        #xpand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
+        expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
         
         #Determine file split parameters
-        #join(out_dir,'qc','split_params.tsv'),
+        join(out_dir,'qc','split_params.tsv'),
         
         #Merge splits
         expand(join(out_dir,'03_bam','01_merged','{sp}.{al}.merged.unique.bam'), sp=sp_list, al=align_list),
@@ -438,7 +438,7 @@ rule all:
         input_unmapped,
         
         #MultiQC Report
-        #join(out_dir,'qc/multiqc_report.html'),
+        join(out_dir,'qc/multiqc_report.html'),
 
         #Alignment stats
         #expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png'), sp=sp_list, al=align_list),
@@ -556,7 +556,7 @@ if (multiplex_flag == 'Y'):
         envmodules:
             config['singularity'],
         output:
-            o1 = join(out_dir,'{mp}','01_preprocess','demux_nomatch5.fastq.gz'),
+            o1 = temp(join(out_dir,'{mp}','01_preprocess','demux_nomatch5.fastq.gz')),
         shell:
             """
             {params.s_exec} {params.doc} iCount demultiplex --minimum_length {params.ml} --mismatches {params.mm} {params.cmd}
@@ -611,8 +611,8 @@ rule remove_adaptors:
     envmodules:
         config['singularity'],    
     output:
-        o1 = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),
-        o2 = join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz')
+        o1 = temp(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')),
+        o2 = temp(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'))
     shell:
         """
         if [ -d "/tmp/iCount/" ]; then rm -r "/tmp/iCount/"; fi
@@ -632,7 +632,7 @@ rule qc_fastq_pre:
     envmodules:
         config['fastqc']
     output:
-        o1 = join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html')
+        o1 = temp(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'))
     shell:
         """
         fastqc {input.f1} -o {params.base}
@@ -650,7 +650,7 @@ rule qc_fastq_post:
     envmodules:
         config['fastqc']
     output:
-        o1 = join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html')
+        o1 = temp(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'))
     shell:
         """
         fastqc {input.f1} -o {params.base}
@@ -677,8 +677,8 @@ rule qc_screen:
         config['perl'],
         config['fastq_screen'],
     output:
-        o1 = join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),
-        o2 = join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),
+        o1 = temp(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt')),
+        o2 = temp(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt')),
     shell:
         '''
         #set / create tmp dir
@@ -965,7 +965,9 @@ rule create_bam_mm_unique:
         sort_m = temp(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.si.bam')),
     shell:
         """
+        ################################################
         #set / create tmp dir
+        ################################################
         if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
             mkdir "${{tmpdir}}/u";
@@ -982,6 +984,7 @@ rule create_bam_mm_unique:
 
         ################################################
         #create unique bam, correcting NH header
+        ################################################
         #create the new file
         touch {output.tmp}
 
@@ -993,34 +996,35 @@ rule create_bam_mm_unique:
 
             #if the line doesnt have NH then add NH:i:1
             if [[ ! $rd == *"NH:i"* ]]; then 
-                echo $rd | awk '{ $(NF+1) = "NH:i:1"; print }' >> {ouput.tmp}
+                echo $rd | awk '{{ $(NF+1) = "NH:i:1"; print }}' >> {output.tmp}
             
             #if it does have NH then replace it with NH:i:1
             else 
                 replacement="NH:i:1"
-                fixed=${rd/NH:i:[0-9]*/$replacement}
-                echo $fixed >> {ouput.tmp}
+                fixed=${{rd/NH:i:[0-9]*/$replacement}}
+                echo $fixed >> {output.tmp}
             fi
         
         #if does have IH (and will always have an NH)
         #replace the NH value with the IH value
         else
             IH=`echo $rd | grep -o "IH:i:[0-9]*"`
-            IH_num=`echo ${IH/IH:i:/}`
+            IH_num=`echo ${{IH/IH:i:/}}`
 
             NH=`echo $rd | grep -o "NH:i:.*\S"`
-            NH_num=`echo ${NH/NH:i:/}`
+            NH_num=`echo ${{NH/NH:i:/}}`
 
-            NH_complete=`echo ${NH/$NH_num/$IH_num}`
+            NH_complete=`echo ${{NH/$NH_num/$IH_num}}`
 
-            echo ${rd/$NH/$NH_complete} >> {ouput.tmp}
+            echo ${{rd/$NH/$NH_complete}} >> {output.tmp}
         fi
         done < {input.un}
         
-        cat {input.h} {input.tmp} | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_u};
+        cat {input.h} {output.tmp} | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_u};
         
         ################################################
         #create mm bam, correcting NH header
+        ################################################
         #create the new file
         touch {output.tmp}
 
@@ -1032,32 +1036,34 @@ rule create_bam_mm_unique:
 
             #if the line doesnt have NH then add NH:i:1
             if [[ ! $rd == *"NH:i"* ]]; then 
-                echo $rd | awk '{ $(NF+1) = "NH:i:1"; print }' >> {ouput.tmp}
+                echo $rd | awk '{{ $(NF+1) = "NH:i:1"; print }}' >> {output.tmp}
             
             #if it does have NH then replace it with NH:i:1
             else 
                 replacement="NH:i:1"
-                fixed=${rd/NH:i:[0-9]*/$replacement}
-                echo $fixed >> {ouput.tmp}
+                fixed=${{rd/NH:i:[0-9]*/$replacement}}
+                echo $fixed >> {output.tmp}
             fi
         
         #if does have IH (and will always have an NH)
         #replace the NH value with the IH value
         else
             IH=`echo $rd | grep -o "IH:i:[0-9]*"`
-            IH_num=`echo ${IH/IH:i:/}`
+            IH_num=`echo ${{IH/IH:i:/}}`
 
             NH=`echo $rd | grep -o "NH:i:.*\S"`
-            NH_num=`echo ${NH/NH:i:/}`
+            NH_num=`echo ${{NH/NH:i:/}}`
 
-            NH_complete=`echo ${NH/$NH_num/$IH_num}`
+            NH_complete=`echo ${{NH/$NH_num/$IH_num}}`
 
-            echo ${rd/$NH/$NH_complete} >> {ouput.tmp}
+            echo ${{rd/$NH/$NH_complete}} >> {output.tmp}
         fi
         done < {input.un}
-        cat {input.h} {input.tmp} | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_m};
+        cat {input.h} {output.tmp} | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_m};
         
+        ################################################
         #sort unique and mm bam
+        ################################################
         samtools sort -T ${{tmpdir_u}} {output.bam_u} -o {output.sort_u};
         samtools sort -T ${{tmpdir_m}} {output.bam_m} -o {output.sort_m};
         samtools index {output.sort_u};
@@ -1173,7 +1179,7 @@ rule qc_alignment:
         config['samtools'],
         config['R']
     output:
-        bam_a = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_align_len.txt'))
+        bam_a = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_align_len.txt')),
         bam_u = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unalign_len.txt')),
         png_align = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png')),
         png_unalign = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png')),
