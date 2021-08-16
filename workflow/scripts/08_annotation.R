@@ -19,7 +19,7 @@ parser$add_argument("-reft","--reftable_path", dest="reftable_path", required=TR
 
 args <- parser$parse_args()
 ref_species = args$ref_species
-refseq_rRNA = args$refseq_rRNA
+refseq_rRNA = as.logical(args$refseq_rRNA)
 alias_path = args$alias_path
 gencode_path = args$gencode_path
 refseq_path = args$refseq_path
@@ -37,12 +37,12 @@ reftable_path = args$reftable_path
 # ref_species = "hg38" ### need better name, match to snakemake
 # reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
 # refseq_rRNA=T
-# out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/13_annotation_test/13_annotation/01_project/"
+# out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/13_annotation/01_project/"
 # 
 # ### fix need to figure out how to keep all this info - maybe a config? dict?
 # alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
 # if(ref_species == "mm10"){
-#   gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
+#   gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt")
 #   refseq_path = paste0(ref_dir, "mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
 #   canonical_path = paste0(ref_dir,"mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
 #   intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
@@ -50,7 +50,7 @@ reftable_path = args$reftable_path
 #   custom_path= paste0(ref_dir,'mm10/AdditionalAnno/')
 # 
 # } else if (ref_species == "hg38"){
-#   gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
+#   gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
 #   refseq_path = paste0(ref_dir, "hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
 #   canonical_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
 #   intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")

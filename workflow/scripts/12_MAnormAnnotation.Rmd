@@ -2,11 +2,10 @@
 title: ""
 output: html_document
 params:
-  peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP//14_MAnormx/02_analysis/WT_fCLIP_vs_WT-NOPFA/WT_fCLIP_vs_WT-NOPFA_MAnorm_final_table.txt"
+  peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/14_MAnorm/02_analysis/Y5KO_fCLIPvsKO_fCLIP/Y5KO_fCLIP_vs_KO_fCLIP_MAnorm_final.txt"
   PeakIdnt: "ALL"
-  samplename: 'WT_fCLIP'
-  background: 'WT-NOPFA'
-  interactive: FALSE
+  samplename: 'Y5KO_fCLIP'
+  background: 'KO_fCLIP'
   pval_Cut: .005
   FC_cut: 1 
 ---
@@ -71,11 +70,44 @@ peak_in=params$peak_in
 compRow=params$compRow
 samplename=params$samplename
 background=params$background
-pval_Cut=params$pval_Cut
-FC_cut=params$FC_cut
+pval_Cut=as.numeric(params$pval_Cut)
+FC_cut=as.numeric(params$FC_cut)
 
 incd_rRNA=T  
 
+```
+
+```{r echo=F, message=FALSE, warning=FALSE, eval=T, include=F,results=F,}
+nc_color= c(
+  'yRNA'= "#A6CEE3",
+'snRNA'= "#1F78B4",
+'snoRNA'="#B2DF8A" ,
+'srpRNA'= "#33A02C",
+'tRNA'=   "#FB9A99",
+'7SKRNA'= "#E31A1C",
+'scRNA'=  "#FDBF6F",
+'sncRNA'= "#FF7F00",
+'scaRNA'= "#CAB2D6",
+'miRNA'= "#6A3D9A" ,
+'vaultRNA'= "#FFFF99",
+'sRNA'= "#B15928"   ,
+'rRNA'=  "#1fb487"  ,
+'miscRNA'= "grey",
+'misc_RNA'= "grey"
+)
+
+
+class_color=c(
+  "ncRNA"="#1B9E77",
+   "rRNA" ="#1fb487",
+   "yRNA"= "#2bdba6" ,
+   "protein_coding: exon"="#D95F02",
+   "Repeat Element"="#7570B3" ,
+   "pseudogene"="#E7298A", 
+   "Antisense Feature"="#66A61E", 
+   "protein_coding: Intron"="#E6AB02", 
+   "lncRNA"="#A6761D", 
+   "no Feature"="#666666")
 ```
 
 ```{r echo=F, message=FALSE, warning=FALSE, eval=T, include=F,results=F,}
@@ -122,9 +154,7 @@ MAnorm used to identify Peaks preferentially expressed in the `r (samplename)` s
 
 
 ```{r ,fig.asp=.5, fig.align='center',fig.height=3.5, fig.width=7,echo=F,warning=F,eval=T,include=T}
-nc_color=c("ncRNA"="#1B9E77","rRNA" ="#1fb487",
-           "yRNA"= "#2bdba6" ,
-           "protein_coding: exon"="#D95F02", "Repeat Element"="#7570B3" ,"pseudogene"="#E7298A", "Antisense Feature"="#66A61E", "protein_coding: Intron"="#E6AB02", "lncRNA"="#A6761D", "no Feature"="#666666")
+
 p=Peaksdata2_anno
 p$`Both Strand: RNA_type_Classification`=factor(p$`Both Strand: RNA_type_Classification`, levels = c("ncRNA","rRNA", "protein_coding: exon", "Repeat Element","pseudogene","Antisense Feature","protein_coding: Intron","lncRNA","no Feature"))
 p[(p$`Both Strand: RNA_type_Classification`=='ncRNA'&p$`Same Strand: ncRNA_Classification`=='rRNA'),'Both Strand: RNA_type_Classification']='rRNA'
@@ -141,7 +171,7 @@ g1=ggplot(p,aes(x=FC,y=-log10(P_value),color=`Both Strand: RNA_type_Classificati
   geom_vline(xintercept=(FC_cut),size=.5,col='black',linetype="dashed")+
   geom_vline(xintercept=(-FC_cut),size=.5,col='black',linetype="dashed")+
   # scale_color_brewer(palette = "Dark2") 
- scale_color_manual(values=nc_color)
+ scale_color_manual(values=class_color)
 g2=ggplot(p,aes(x=log2(p[,paste0(samplename,'-normalized_Count')]),y=FC,color=-log10(P_value),
                             text=paste0('ID: ',ID,
                                         '\nHostGene: ',`Same Strand: Host_gene_name`,
@@ -175,7 +205,7 @@ g3=ggplot(p,aes(x=log2(p[,paste0(samplename,'-normalized_Count')]),y=FC,color=`B
   geom_hline(yintercept=(FC_cut),size=.5,col='black',linetype="dashed")+
   geom_hline(yintercept=(-FC_cut),size=.5,col='black',linetype="dashed")+
     # scale_color_brewer(palette = "Dark2") 
- scale_color_manual(values=nc_color) 
+ scale_color_manual(values=class_color) 
 
 if (nrow(p)<5000) {
   g1=ggplotly(g1,tooltip = c("text"))
@@ -209,14 +239,14 @@ if (params$PeakIdnt=='UNIQUE'){
     scale_y_continuous(trans = "log2",limits = c(NA,NA), oob = squish_infinite) +
     theme_classic()+
     ylab("Peak Width")+xlab("Peak Counts (unique)")+ggtitle("Comparison of peak counts and Peak Width")+
- scale_color_manual(values=nc_color) 
+ scale_color_manual(values=class_color) 
 } else if (params$PeakIdnt=='ALL'){
   x1=ggplot(Peaksdata2_anno,aes(x=Counts_Multimappers_Scaled,y=Length,color=`Both Strand: RNA_type_Classification`,text=`Same Strand: Host_gene_name`))+geom_point(size=1)+
       # scale_x_continuous(trans = "log2",limits = c(4,NA))+
       scale_y_continuous(trans = "log2",limits = c(NA,NA), oob = squish_infinite) + 
     theme_classic()+
     ylab("Peak Width")+xlab("Peak Counts (Unique+ FracMM)")+ggtitle("Comparison of peak counts and Peak Width")+  labs(color='RNA Type')+
- scale_color_manual(values=nc_color) 
+ scale_color_manual(values=class_color) 
 }
 #plot 2
 x2=ggplot(Peaksdata2_anno,aes(x=Length))+geom_histogram(bins = 100)+
@@ -226,25 +256,25 @@ x2=ggplot(Peaksdata2_anno,aes(x=Length))+geom_histogram(bins = 100)+
 x3=ggplot(Peaksdata2_anno,aes(x=Length,line=`Both Strand: RNA_type_Classification`,color=`Both Strand: RNA_type_Classification`))+geom_density(size=.5)+
   # scale_x_continuous(trans = "log2",limits = c(8,NA)) + 
   theme_classic()+ylab("Density")+xlab("Peak Width")+ggtitle("Distribution of peak Width")+  labs(color='RNA Type')+
- scale_color_manual(values=nc_color) 
+ scale_color_manual(values=class_color) 
 #plot 4
 x4=ggplot(Peaksdata2_anno,aes(x=Length,line=`Both Strand: RNA_type_Classification`,color=`Both Strand: RNA_type_Classification`))+geom_freqpoly(bins = 100)+
   # scale_x_continuous(trans = "log2",limits = c(8,NA)) + 
   theme_classic()+ylab("# of peaks")+xlab("Peak Width")+ggtitle("Distribution of peak Width")+  labs(color='RNA Type')+
- scale_color_manual(values=nc_color) 
+ scale_color_manual(values=class_color) 
 #plot 5
 if (params$PeakIdnt=='UNIQUE'){
 x5=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,line=`Both Strand: RNA_type_Classification`,color=`Both Strand: RNA_type_Classification`))+geom_density()+
   # scale_x_continuous(trans = "log2",limits = c(.25,NA)) + 
   theme_classic()+ylab("Density")+xlab("Peak Counts (unique)")+ggtitle("Distribution of peak counts")+ 
   labs(color='RNA Type')+
- scale_color_manual(values=nc_color) 
+ scale_color_manual(values=class_color) 
 } else if (params$PeakIdnt=='ALL'){
   x5=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,line=`Both Strand: RNA_type_Classification`,color=`Both Strand: RNA_type_Classification`))+geom_density() +
     # scale_x_continuous(trans = "log2",limits = c(.25,NA)) + 
     theme_classic()+ylab("Density")+xlab("Peak Counts (Unique+ FracMM)")+ggtitle("Distribution of peak counts") +
     labs(color='RNA Type') +
- scale_color_manual(values=nc_color) 
+ scale_color_manual(values=class_color) 
 }
 #plot all graphs
 if (nrow(Peaksdata2_anno)>1) {
@@ -281,7 +311,7 @@ p$RNA=''
 gg=ggplot(p,aes(fill=RNA_Type,x=RNA) ) +
   geom_bar(position="stack",width=.5) +
   theme_classic()+ggtitle("BioType: # of peaks per catagory") +
- scale_fill_manual(values=nc_color) 
+ scale_fill_manual(values=class_color) 
 ggplotly(gg)
 }else{print("No ncRNA")}
 ```
@@ -301,16 +331,22 @@ if (incd_rRNA==FALSE) {
 p=p[p$PlotColumn%in%'ncRNA','Same Strand: ncRNA_Classification',drop=F]
 #if there are remaining types
 if (nrow(p)>0) {
+if(length(unique(p$`Same Strand: ncRNA_Classification`)[unique(p$`Same Strand: ncRNA_Classification`)%in%names(nc_color)==F])>0){
+  print(paste0('unexpected ncRNA catagory: ',unique(p$`Same Strand: ncRNA_Classification`)[unique(p$`Same Strand: ncRNA_Classification`)%in%names(nc_color)==F]))
+}else{
+nc_color_sel=nc_color[unique(p$`Same Strand: ncRNA_Classification`)]
+nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]   
   p$RNA=""
   gg=ggplot(p,aes(fill=`Same Strand: ncRNA_Classification`,x=RNA) ) +
     geom_bar(width=.5)+theme_classic()+
     ggtitle("ncRNA only: # of peaks per catagory") +
     labs(fill='RNA Type') +
-    scale_color_brewer(palette = "Paired")+scale_fill_brewer(palette = "Paired") + 
+    scale_color_manual(values=nc_color_sel)+scale_fill_manual(values=nc_color_sel) + 
     blank_theme + 
     coord_polar("y",start=0)
   (gg) ###updating print to be consistent
   # ggplotly(gg)
+}
 }else{print("No ncRNA")}
  
 ```    
@@ -335,7 +371,7 @@ gg=ggplot(p,aes(fill=RNA_Type,x=RNA) )+
   geom_bar(position="stack",width=.5) +
   theme_classic() +
   ggtitle("BioType: # of peaks per catagory") +
-  scale_fill_manual(values=nc_color) 
+  scale_fill_manual(values=class_color) 
 ggplotly(gg)
 }else{print("No ncRNA")}
 ```
@@ -347,16 +383,23 @@ p=p[!p$`Same Strand: ncRNA_Classification`%in%'rRNA',]
 p=p[p$PlotColumn%in%'ncRNA','Same Strand: ncRNA_Classification',drop=F]
 #if there are remaining types
 if (nrow(p)>0) {
+if(length(unique(p$`Same Strand: ncRNA_Classification`)[unique(p$`Same Strand: ncRNA_Classification`)%in%names(nc_color)==F])>0){
+  print(paste0('unexpected ncRNA catagory: ',unique(p$`Same Strand: ncRNA_Classification`)[unique(p$`Same Strand: ncRNA_Classification`)%in%names(nc_color)==F]))
+}else{
+nc_color_sel=nc_color[unique(p$`Same Strand: ncRNA_Classification`)]
+nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]  
+
   p$RNA=""
   gg=ggplot(p,aes(fill=`Same Strand: ncRNA_Classification`,x=RNA) ) +
     geom_bar(width=.5)+theme_classic()+
     ggtitle("ncRNA only: # of peaks per catagory") +
     labs(fill='ncRNA Type')+
-    scale_color_brewer(palette = "Paired")+ 
-    scale_fill_brewer(palette = "Paired") +  blank_theme+ 
+    scale_color_manual(values=nc_color_sel)+ 
+    scale_fill_manual(values=nc_color_sel) +  blank_theme+ 
     coord_polar("y",start=0)
   (gg)
   # ggplotly(gg)
+}
 }else{print("No ncRNA")}
 ```       
 
@@ -399,7 +442,7 @@ if (exists('fcount')) {
 gg1 = ggplot(fcount,aes(fill=RNA_Type,x=RNA,y=Counts_Unique)) +
   geom_bar(stat='identity',position="stack",width=.5)+theme_classic() +
   ggtitle("BioType - # of reads (unique) by catagory)") +
-  scale_fill_manual(values=nc_color)  
+  scale_fill_manual(values=class_color)  
 ggplotly(gg1)
 } else {print('No Features')}
 ```
@@ -411,7 +454,7 @@ gg2 = ggplot(fcount,aes(fill=RNA_Type,x=RNA,y=Counts_Multimappers_Scaled)) +
   geom_bar(stat='identity',position="stack",width=.5) +
   theme_classic() +
   ggtitle("BioType - # of reads (unique + Frac. MM) by catagory)")+
-  scale_fill_manual(values=nc_color)
+  scale_fill_manual(values=class_color)
 ggplotly(gg2)
 }else(print('No Features'))
 ```
@@ -444,15 +487,23 @@ if (nrow(p)>0) {
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,include=T,eval=T}
 if (exists('nccount')) {
 nccount$RNA=''
+
+if(length(unique(nccount$Same_RNA_Subtype)[unique(nccount$Same_RNA_Subtype)%in%names(nc_color)==F])>0){
+  print(paste0('unexpected ncRNA catagory: ',unique(nccount$Same_RNA_Subtype)[unique(nccount$Same_RNA_Subtype)%in%names(nc_color)==F]))
+}else{
+nc_color_sel=nc_color[unique(nccount$Same_RNA_Subtype)]
+nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]
+
 #plot
 gg1 = ggplot(nccount,aes(fill=Same_RNA_Subtype,x=RNA,y=Counts_Unique) ) +
   geom_bar(stat='identity',width=.5)+theme_classic() +
   ggtitle("ncRNA only: # of reads (unique) by catagory") + 
   labs(color='RNA Type') +
-  scale_color_brewer(palette = "Paired")+scale_fill_brewer(palette = "Paired") + 
+  scale_color_manual(values=nc_color_sel)+scale_fill_manual(values=nc_color_sel) + 
   blank_theme + 
   coord_polar("y",start=0)
 plot(gg1)
+}
 }else{print('No Unique counts for ncRNA peaks')}
 #plot
 ```
@@ -460,14 +511,20 @@ plot(gg1)
   
 if (exists('nccount')) {
 nccount$RNA=''
+if(length(unique(nccount$Same_RNA_Subtype)[unique(nccount$Same_RNA_Subtype)%in%names(nc_color)==F])>0){
+  print(paste0('unexpected ncRNA catagory: ',unique(nccount$Same_RNA_Subtype)[unique(nccount$Same_RNA_Subtype)%in%names(nc_color)==F]))
+}else{
+nc_color_sel=nc_color[unique(nccount$Same_RNA_Subtype)]
+nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]
 gg2 = ggplot(nccount,aes(fill=Same_RNA_Subtype,x=RNA,y=Counts_Multimappers_Scaled) ) +
   geom_bar(stat='identity',width=.5)+theme_classic() +
   ggtitle("ncRNA only: # of reads (unique + Frac. MM) by catagory") + 
   labs(color='RNA Type') +
-  scale_color_brewer(palette = "Paired")+scale_fill_brewer(palette = "Paired") +
+  scale_color_manual(values=nc_color_sel)+scale_fill_manual(values=nc_color_sel) +
   blank_theme + 
   coord_polar("y",start=0)
 plot(gg2)
+}
 }else{print('No unique + Frac. MM counts for ncRNA CLIP peaks')}
 ```      
 <br>   
@@ -498,7 +555,7 @@ gg = ggplot(p,aes(x=RNA_Type,y=Counts_Unique,fill=RNA_Type)) +
   theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(size=15),axis.text=element_text(size=12))+theme(legend.position = "none") +
   theme(legend.position = "none") +
   theme(axis.text.x = element_text(angle = -45))+
-  scale_fill_manual(values=nc_color) 
+  scale_fill_manual(values=class_color) 
 
 if (nrow(p)==1|nrow(p)>5000) {gg
   }else { ggplotly(gg)}
@@ -516,6 +573,12 @@ colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
 
 if (nrow(p)>0) {
   p$ID=paste0(p$ID,"\n",p$Same_gene_name_comb)
+  
+if(length(unique(p$RNA_Type)[unique(p$RNA_Type)%in%names(nc_color)==F])>0){
+  print(paste0('unexpected ncRNA catagory: ',unique(p$RNA_Type)[unique(p$RNA_Type)%in%names(nc_color)==F]))
+}else{  
+  nc_color_sel=nc_color[unique(p$RNA_Type)]
+  nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]  
   #plot
   gg = ggplot(p,aes(x=RNA_Type,y=Counts_Unique,fill=RNA_Type)) +
     geom_violin()+theme_classic()+geom_jitter(height = 0, width = 0.1,size=0.5,aes(text=ID))+
@@ -524,11 +587,11 @@ if (nrow(p)>0) {
     ylab("Counts") +
     xlab("")+
     theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(size=15),axis.text=element_text(size=12))+theme(legend.position = "none") +
-    theme(axis.text.x = element_text(angle = -45))+scale_fill_brewer(palette = "Paired")#+ylim(min(p$Counts_Unique),max(p$Counts_Unique))
+    theme(axis.text.x = element_text(angle = -45))+scale_fill_manual(values=nc_color_sel)#+ylim(min(p$Counts_Unique),max(p$Counts_Unique))
   
   if (nrow(p)==1|nrow(p)>5000) {gg
   }else { ggplotly(gg,tooltip = c("text", "y"))}
- 
+} 
 }else{print('No ncRNA')}
 ```  
 <br>   
@@ -553,7 +616,7 @@ gg=ggplot(p,aes(x=RNA_Type,y=Counts_Multimappers_Scaled,fill=RNA_Type)) +
   ylab("Counts")+xlab("")+
   theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(size=15),axis.text=element_text(size=12))+theme(legend.position = "none") +
   theme(axis.text.x = element_text(angle = -45))+  
-  scale_fill_manual(values=nc_color) 
+  scale_fill_manual(values=class_color) 
 if (nrow(p)==1|nrow(p)>5000) {gg
   }else { ggplotly(gg)}
 }else {print("No Features")}
@@ -570,6 +633,12 @@ colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
 
 if (nrow(p)>0) {
   p$ID=paste0(p$ID,"\n",p$Same_gene_name_comb)
+  
+  if(length(unique(p$RNA_Type)[unique(p$RNA_Type)%in%names(nc_color)==F])>0){
+  print(paste0('unexpected ncRNA catagory: ',unique(p$RNA_Type)[unique(p$RNA_Type)%in%names(nc_color)==F]))
+}else{  
+  nc_color_sel=nc_color[unique(p$RNA_Type)]
+  nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]
   #plot
   gg=ggplot(p,aes(x=RNA_Type,y=Counts_Multimappers_Scaled,fill=RNA_Type) ) +
     geom_violin()+theme_classic()+geom_jitter(height = 0, width = 0.05,size=.5,aes(text=ID)) +
@@ -578,10 +647,10 @@ if (nrow(p)>0) {
     xlab("") +
     theme(plot.title = element_text(hjust = 0.5,size = 15),axis.title=element_text(size=15),axis.text=element_text(size=12)) +
     theme(legend.position = "none") +
-    theme(axis.text.x = element_text(angle = -45))+scale_fill_brewer(palette = "Paired")#+ylim(min(p$Counts_Unique),max(p$Counts_Unique))
+    theme(axis.text.x = element_text(angle = -45))+scale_fill_manual(values=nc_color_sel)#+ylim(min(p$Counts_Unique),max(p$Counts_Unique))
   if (nrow(p)==1|nrow(p)>5000) {gg
   }else { ggplotly(gg,tooltip = c("text", "y"))}
- 
+} 
 }else {print("No Features")}
 ```  
 <br>   
