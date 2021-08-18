@@ -112,22 +112,9 @@ FtrCount_uniq=read.delim(peak_unique, header=T, sep="\t",
                          stringsAsFactors = F,comment.char = '#')
 colnames(FtrCount_uniq)[7]='Counts'
 
-# FtrCount_uniq= FtrCount_uniq %>%
-#   #grab first listed start,end coordinates
-#   separate(Start, c("Start", "rm"), ";") %>%
-#   select(-rm) %>%
-#   separate(End, c("End", "rm"), ";") %>%
-#   select(-rm) %>%
-#   #convert to numeric
-#   as.numeric(Start) %>%
-#   as.numeric(End)
-
 #remove rows without start,end
 FtrCount_uniq=FtrCount_uniq[!is.na(FtrCount_uniq$Start),]
 FtrCount_uniq=FtrCount_uniq[!is.na(FtrCount_uniq$End),]
-
-#remove rows with both strands listed
-FtrCount_uniq = subset(FtrCount_uniq,Strand%in%c("+","-"))
 
 #create unique ids
 FtrCount_uniq$ID=paste0(FtrCount_uniq$Chr,":",FtrCount_uniq$Start,"-",FtrCount_uniq$End,"_",FtrCount_uniq$Strand)
@@ -139,22 +126,9 @@ FtrCount_frac=read.delim(peak_all, header=T, sep="\t",
                          stringsAsFactors = F,comment.char = '#')
 colnames(FtrCount_frac)[7]='Counts'
 
-# FtrCount_frac = FtrCount_frac %>%
-#   #grab first listed start,end coordinates
-#   separate(Start, c("Start", "rm"), ";") %>%
-#   select(-rm) %>%
-#   separate(End, c("End", "rm"), ";") %>%
-#   select(-rm) %>%
-#   #convert to numeric
-#   as.numeric(Start) %>%
-#   as.numeric(End)
-
 #remove rows without start,end
 FtrCount_frac=FtrCount_frac[!is.na(FtrCount_frac$Start),]
 FtrCount_frac=FtrCount_frac[!is.na(FtrCount_frac$End),]
-
-#remove rows with both strands listed
-FtrCount_frac = subset(FtrCount_frac,Strand%in%c("+","-"))
 
 #create unique ids
 FtrCount_frac$ID=paste0(FtrCount_frac$Chr,":",FtrCount_frac$Start,"-",FtrCount_frac$End,"_",FtrCount_frac$Strand)
@@ -189,9 +163,7 @@ if(nrow(FtrCount[FtrCount$Counts_fracMM>=read_depth,])==0){
 print('join_Junc')
 system.time(
   
-if (join_junction) {
-print(paste0('check rows - ',nrow(FtrCount)))
-  
+if (join_junction) {  
   print("Running Join Junction")
   
   #grab peaks file
@@ -202,7 +174,7 @@ print(paste0('check rows - ',nrow(FtrCount)))
     FtrCount_fracJCount=read.delim(paste0(peak_all,".jcounts"), 
                                    header=T,sep="\t",stringsAsFactors = F,comment.char = '#') 
   }    
-  #print(paste0('jcount ID: ',FtrCount_fracJCount[1,1]))
+
   # rename last Col
   colnames(FtrCount_fracJCount)[ncol(FtrCount_fracJCount)]='counts'
   
@@ -214,11 +186,8 @@ print(paste0('check rows - ',nrow(FtrCount)))
     JoinJunc=T
     
     #merge JCount with unique/all merge
-
        FtrCount_fracJCount=merge(FtrCount_fracJCount,FtrCount[,c("ID","strand")],by.x="PrimaryGene",by.y="ID",all.x=T)
-    
-    print(paste0('check rows: merge jcounts- ',nrow(FtrCount_fracJCount)))
-    
+        
     #split primary gene col
     FtrCount_fracJCount=separate(FtrCount_fracJCount,PrimaryGene,
                                  into=c('ID','strand'),sep = "_",remove = F)
@@ -232,7 +201,6 @@ print(paste0('check rows - ',nrow(FtrCount)))
       FtrCount_fracJCount$Site2_location<=FtrCount_fracJCount$end
     FtrCount_fracJCount=FtrCount_fracJCount[site_1!=site_2,]
     FtrCount_fracJCount$JunctionID=paste0(FtrCount_fracJCount$Site1_chr,':',FtrCount_fracJCount$Site1_location,'-',FtrCount_fracJCount$Site2_location,'_',FtrCount_fracJCount$strand)
-# print(paste0('check rows: rmv samepeaksplicing- ',nrow(FtrCount_fracJCount)))
     
     #create Unique Row/junction ID
     FtrCount_fracJCount$rID=seq(1,nrow(FtrCount_fracJCount))
@@ -299,8 +267,7 @@ print(paste0('check rows - ',nrow(FtrCount)))
     
     Junc_PLOut_short=Junc_PLOut
     for (x in 1:length(d2)) {
-    a=Junc_PLOut[x,]
-    # for (a in Junc_PLOut_short$ID) {
+      a=Junc_PLOut[x,]
     
       id=c(a$ID_Peaks1,a$ID_Peaks2)
       id_chr=separate(as.data.frame(id),1,sep=":",into = c('chr','ID'))$chr%>%unique()
@@ -312,6 +279,7 @@ print(paste0('check rows - ',nrow(FtrCount)))
       
       ## look again to see if more locations with found connected peaks
       id2=sort(unique(c(idcomb$ID_Peaks1,idcomb$ID_Peaks2)))
+      
       ## If new peaks come up check unill no new peaks  
       while (FALSE%in%(id2%in%id)) {
         id=id2
@@ -412,8 +380,6 @@ if (DEmethod=='MANORM') {
   print("Running MANORM")
   
   manorm_bed=FtrCount[,c('chr','start','end','ID','ID','strand')]
-  ### Change start from 0 base to 1 base
-  # manorm_bed$start=manorm_bed$start+1
   
   #write peaks bed file
   write.table(manorm_bed,
@@ -432,9 +398,8 @@ if (DEmethod=='MANORM') {
   print("MANORM skipped")
 } 
 ##########################################################################################
-##############################  Peak info - starts old 07_peak_generation
+##############################  Peak info
 ##########################################################################################
-#read in peaks and alias file generated from 06_peak_junction.R
 peaks = FtrCount[,c('chr','start','end','ID','ID','strand')]
 peaks_Oppo=peaks 
 peaks_Oppo$strand=gsub("\\+","pos",peaks_Oppo$strand) 
@@ -511,7 +476,6 @@ if (dim(refseq_Anno_RNA_comb)[1] == 0) {
 } else {refseq_Anno_RNA_comb=refseq_Anno_RNA_comb[,c("chr","start","end","strand","gene_type","ensembl_gene_id")]
 colnames(refseq_Anno_RNA_comb)=annocol}
 
-
 Anno_RNA_comb=rbind(
   rpmk_Anno_RNA_comb,
   custom_Anno_RNA_comb,
@@ -523,7 +487,6 @@ Anno_RNA_comb=Anno_RNA_comb[duplicated(Anno_RNA_comb)==F,]
 ##########################################################################################
 ##############################  call peaks
 ##########################################################################################
-
 #merge references depending on species, run annotation
 bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
   #testing
@@ -638,14 +601,7 @@ bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
   return(ab_OL) 
 }
 
-peak_calling<-function(peak_in,nmeprfix){
-  if(length(args)==0){
-    # peak_in=peaks
-    # nmeprfix='Same_'
-    # peak_in=peaks_Oppo
-    # nmeprfix='Oppo_'
-  }
-  
+peak_calling<-function(peak_in,nmeprfix){  
   print((match.call())$peak_in)
   
   colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')
@@ -812,14 +768,10 @@ peak_calling<-function(peak_in,nmeprfix){
   return(peaksTable_colapsed)
 }
 
-print(paste0('check rows - ',nrow(peaks)))
 ### fix designations - 1 = "Same" 2 = "Oppo"? Same strand and complementary strand?
 #can prob  be more descriptive
 print('GencodeAnno')
-system.time({peaks_SameAnno = peak_calling(peaks,"Same_")})
-system.time({peaks_OppoAnno = peak_calling(peaks_Oppo,"Oppo_")})
 
-print(paste0('check rows - ',nrow(peaks_SameAnno)))
 ##########################################################################################
 ##############################  INTRON EXON ANNOTATION
 ##########################################################################################
@@ -944,7 +896,6 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
   exoninof$OLper_anno=exoninof$ntOL/exoninof$width_anno
   exoninof$width=exoninof$end-exoninof$start
   exoninof$OLper=exoninof$ntOL/exoninof$width
-  
   exoninof=exoninof[(exoninof$OLper_anno>.75 | exoninof$OLper>.51), ]
   
   
