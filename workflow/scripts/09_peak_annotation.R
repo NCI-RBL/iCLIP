@@ -50,44 +50,44 @@ output_file_error = args$output_file_error
 ##testing
 testing="N"
 if(testing=="Y"){
-# rm(list=setdiff(ls(), "params"))
-#   wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/"
-#   setwd(wd)
-#   wd="."
-# 
-#   peak_type= "ALL"
-#   peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaksPH/WT-NOPFA_uniqueCounts.txt"
-#   peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaksPH/WT-NOPFA_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
-#   reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
-# 
-#   #output
-#   out_dir = paste0(wd,"/13_annotation_test/13_annotation/02_peaks/")
-#   out_dir_manorm =paste0(wd,"/14_MAnorm/")
-# 
-#   #project annotation files
-#   anno_dir = paste0(wd,"/13_annotation_test/13_annotation/01_project/")
-#   ref_path = "/Users/homanpj/Documents/Resources/ref/"
-# 
-#   #feature information
-#   join_junction = "TRUE"
-#   condense_exon="TRUE"
-#   read_depth = 3
-#   DEmethod = "MANORM"
-#   ref_species="hg38"
-#   sample_id = "WT-NOPFA"
-#   output_file_error= paste0(wd,"/13_annotation_test/13_annotation/02_peaks/")
-# 
-# 
-# if(ref_species == "mm10"){
-#   gencode_path = paste0(ref_path, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
-#   intron_path = paste0(ref_path, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
-#   rmsk_path = paste0(ref_path,"mm10/repeatmasker/rmsk_GRCm38.txt")
-# 
-# } else if (ref_species == "hg38"){
-#   gencode_path = paste0(ref_path,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
-#   intron_path = paste0(ref_path,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
-#   rmsk_path = paste0(ref_path,"hg38/repeatmasker/rmsk_GRCh38.txt")
-# }
+rm(list=setdiff(ls(), "params"))
+  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/"
+  setwd(wd)
+  wd="."
+
+  peak_type= "ALL"
+  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_uniqueCounts.txt"
+  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
+  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
+
+  #output
+  out_dir = paste0(wd,"/13_annotation_test/13_annotation/02_peaks/")
+  out_dir_manorm =paste0(wd,"/14_MAnorm/")
+
+  #project annotation files
+  anno_dir = paste0(wd,"/13_annotation_test/13_annotation/01_project/")
+  ref_path = "/Users/homanpj/Documents/Resources/ref/"
+
+  #feature information
+  join_junction = "TRUE"
+  condense_exon="TRUE"
+  read_depth = 5
+  DEmethod = "MANORM"
+  ref_species="hg38"
+  sample_id = "WT-NOPFA"
+  output_file_error= paste0(wd,"/13_annotation_test/13_annotation/02_peaks/")
+
+
+if(ref_species == "mm10"){
+  gencode_path = paste0(ref_path, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
+  intron_path = paste0(ref_path, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
+  rmsk_path = paste0(ref_path,"mm10/repeatmasker/rmsk_GRCm38.txt")
+
+} else if (ref_species == "hg38"){
+  gencode_path = paste0(ref_path,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
+  intron_path = paste0(ref_path,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
+  rmsk_path = paste0(ref_path,"hg38/repeatmasker/rmsk_GRCh38.txt")
+}
 }
 #annotation paths
 gencode_transc_path = paste0(anno_dir,"ref_gencode.txt")
@@ -131,7 +131,6 @@ FtrCount_uniq = subset(FtrCount_uniq,Strand%in%c("+","-"))
 
 #create unique ids
 FtrCount_uniq$ID=paste0(FtrCount_uniq$Chr,":",FtrCount_uniq$Start,"-",FtrCount_uniq$End,"_",FtrCount_uniq$Strand)
-FtrCount_uniq$ID2=paste0(FtrCount_uniq$Chr,":",FtrCount_uniq$Start,"-",FtrCount_uniq$End,"_",FtrCount_uniq$Strand)
 
 ##########################################################################################
 ############### all reads
@@ -187,8 +186,11 @@ if(nrow(FtrCount[FtrCount$Counts_fracMM>=read_depth,])==0){
 ##########################################################################################
 ##############################  splice junctions
 ##########################################################################################
+print('join_Junc')
+system.time(
+  
 if (join_junction) {
-  print(paste0('check rows - ',nrow(FtrCount)))
+print(paste0('check rows - ',nrow(FtrCount)))
   
   print("Running Join Junction")
   
@@ -200,7 +202,7 @@ if (join_junction) {
     FtrCount_fracJCount=read.delim(paste0(peak_all,".jcounts"), 
                                    header=T,sep="\t",stringsAsFactors = F,comment.char = '#') 
   }    
-#print(paste0('jcount ID: ',FtrCount_fracJCount[1,1]))
+  #print(paste0('jcount ID: ',FtrCount_fracJCount[1,1]))
   # rename last Col
   colnames(FtrCount_fracJCount)[ncol(FtrCount_fracJCount)]='counts'
   
@@ -212,10 +214,11 @@ if (join_junction) {
     JoinJunc=T
     
     #merge JCount with unique/all merge
-    FtrCount_fracJCount=merge(FtrCount_fracJCount,
-                              FtrCount[,c("ID","strand")],by.x="PrimaryGene",by.y="ID",all.x=T)
-print(paste0('check rows: merge jcounts- ',nrow(FtrCount_fracJCount)))
 
+       FtrCount_fracJCount=merge(FtrCount_fracJCount,FtrCount[,c("ID","strand")],by.x="PrimaryGene",by.y="ID",all.x=T)
+    
+    print(paste0('check rows: merge jcounts- ',nrow(FtrCount_fracJCount)))
+    
     #split primary gene col
     FtrCount_fracJCount=separate(FtrCount_fracJCount,PrimaryGene,
                                  into=c('ID','strand'),sep = "_",remove = F)
@@ -224,12 +227,12 @@ print(paste0('check rows: merge jcounts- ',nrow(FtrCount_fracJCount)))
     
     ### remove junctions where splicing is within peak
     site_1=FtrCount_fracJCount$Site1_location>=FtrCount_fracJCount$start&
-          FtrCount_fracJCount$Site1_location<=FtrCount_fracJCount$end
+      FtrCount_fracJCount$Site1_location<=FtrCount_fracJCount$end
     site_2=FtrCount_fracJCount$Site2_location>=FtrCount_fracJCount$start&
-          FtrCount_fracJCount$Site2_location<=FtrCount_fracJCount$end
+      FtrCount_fracJCount$Site2_location<=FtrCount_fracJCount$end
     FtrCount_fracJCount=FtrCount_fracJCount[site_1!=site_2,]
     FtrCount_fracJCount$JunctionID=paste0(FtrCount_fracJCount$Site1_chr,':',FtrCount_fracJCount$Site1_location,'-',FtrCount_fracJCount$Site2_location,'_',FtrCount_fracJCount$strand)
-print(paste0('check rows: rmv samepeaksplicing- ',nrow(FtrCount_fracJCount)))
+# print(paste0('check rows: rmv samepeaksplicing- ',nrow(FtrCount_fracJCount)))
     
     #create Unique Row/junction ID
     FtrCount_fracJCount$rID=seq(1,nrow(FtrCount_fracJCount))
@@ -294,13 +297,18 @@ print(paste0('check rows: rmv samepeaksplicing- ',nrow(FtrCount_fracJCount)))
     d2=unique(Junc_PLOut$JoinID)
     PGene_TBL2=(matrix(nrow=nrow(Junc_PLOut),ncol=ncol(Junc_PLOut)+4));colnames(PGene_TBL2)=c(colnames(Junc_PLOut),'chr','start','end','strand')
     
+    Junc_PLOut_short=Junc_PLOut
     for (x in 1:length(d2)) {
-      a=Junc_PLOut[x,]
+    a=Junc_PLOut[x,]
+    # for (a in Junc_PLOut_short$ID) {
+    
       id=c(a$ID_Peaks1,a$ID_Peaks2)
-      gsub("_","_\\\\",id)
+      id_chr=separate(as.data.frame(id),1,sep=":",into = c('chr','ID'))$chr%>%unique()
       
-      idcomb=Junc_PLOut[grep(gsub("_","_\\\\",paste(id,collapse = "|")),Junc_PLOut$JoinID),]
-      # if (nrow(idcomb)>1) {asdfaf}
+      
+      Junc_PLOut_chr=Junc_PLOut_short[grepl(paste0(id_chr,':'),Junc_PLOut_short$JoinID,fixed = T),]
+      idcomb=Junc_PLOut_chr[grepl(gsub("_","_\\\\",paste(id,collapse = "|")),Junc_PLOut_chr$JoinID),]
+      if (nrow(idcomb)==0) {next}
       
       ## look again to see if more locations with found connected peaks
       id2=sort(unique(c(idcomb$ID_Peaks1,idcomb$ID_Peaks2)))
@@ -308,7 +316,7 @@ print(paste0('check rows: rmv samepeaksplicing- ',nrow(FtrCount_fracJCount)))
       while (FALSE%in%(id2%in%id)) {
         id=id2
         # xxx2 Look Again
-        idcomb=Junc_PLOut[grep(gsub("_","_\\\\",paste(id2,collapse = "|")),Junc_PLOut$JoinID),]
+        idcomb=Junc_PLOut_chr[grep(gsub("_","_\\\\",paste(id2,collapse = "|")),Junc_PLOut_chr$JoinID),]
         # xxx3 Get Peak IDS to end while loop
         id2=sort(unique(c(idcomb$ID_Peaks1,idcomb$ID_Peaks2)))
       }
@@ -325,17 +333,24 @@ print(paste0('check rows: rmv samepeaksplicing- ',nrow(FtrCount_fracJCount)))
       PGene_TBL2[x,'end']=max((id2_coord[,c('start','end')]))
       PGene_TBL2[x,'strand_Peaks1']=unique(as.character(idcomb$strand_Peaks1))
       PGene_TBL2[x,'ID_Peaks1']=paste(sort(unique(idcomb$ID_Peaks1)),collapse = ',')
-        if (length(unique(as.character(idcomb$strand_Peaks1)))>1) {Select_pos_and_Neg_strands}
+      if (length(unique(as.character(idcomb$strand_Peaks1)))>1) {Select_pos_and_Neg_strands}
       PGene_TBL2[x,'ID_Peaks2']=paste(sort(unique(idcomb$ID_Peaks2)),collapse = ',')
+      
+      
+  #### Remove Joined ID from master junction table Junc_PLOut
+      # Junc_PLOut=Junc_PLOut[idcomb$ID_Peaks2%in%Junc_PLOut==F,]
+      Junc_PLOut_short=Junc_PLOut_short[grepl(gsub("_","_\\\\",paste(idcomb$ID_Peaks2,collapse = "|")),Junc_PLOut_short$JoinID)==F,]
+      
     }
     remove('d2','a','id','idcomb','x')
-    
     PGene_TBL2=as.data.frame(PGene_TBL2)
+    PGene_TBL2=PGene_TBL2[is.na(PGene_TBL2$PrimaryGene_Junction1)==F,]
     PGene_TBL2=PGene_TBL2[duplicated(PGene_TBL2)==F,]
     PGene_TBL2$linkedID=paste0(PGene_TBL2$chr,":",PGene_TBL2$start,"-",PGene_TBL2$end,"_",PGene_TBL2$strand)
     
+    
     ##################################################
-    ##### check no reeated peaks 
+    ##### check no repeated peaks 
     ##### get all unique PrimaryGene_Junction
     d3=unique(PGene_TBL2$PrimaryGene_Junction1)
     PGene_TBL3=(matrix(nrow=nrow(PGene_TBL2),ncol=ncol(PGene_TBL2)+1));colnames(PGene_TBL3)=c(colnames(PGene_TBL2),"nrows")
@@ -355,20 +370,20 @@ print(paste0('check rows: rmv samepeaksplicing- ',nrow(FtrCount_fracJCount)))
     # ##### Get all peaks with junctions
     Junc_peaks=unique(c(Junc_PL$ID_Peaks1,Junc_PL$ID_Peaks2))
     
-print(paste0('check rows: All- ',nrow(FtrCount)))
-print(paste0('check rows: Junc_peaks- ',length(Junc_peaks)))
-
+    print(paste0('check rows: All- ',nrow(FtrCount)))
+    print(paste0('check rows: Junc_peaks- ',length(Junc_peaks)))
+    
     FtrCount_Junc_peaks=FtrCount[FtrCount$ID%in%Junc_peaks,]
     FtrCount=FtrCount[FtrCount$ID%in%Junc_peaks==F,]
     
-print(paste0('check rows: junc- ',nrow(FtrCount_Junc_peaks)))
-print(paste0('check rows: no junc- ',nrow(FtrCount)))
-
+    print(paste0('check rows: junc- ',nrow(FtrCount_Junc_peaks)))
+    print(paste0('check rows: no junc- ',nrow(FtrCount)))
+    
     ######################################################################
     ### Trim peaks without Splicing
     FtrCount=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
-print(paste0('check rows: no junc filt- ',nrow(FtrCount)))
-
+    print(paste0('check rows: no junc filt- ',nrow(FtrCount)))
+    
     FtrCount=rbind(FtrCount,FtrCount_Junc_peaks)
     ######################################################################
   } else { 
@@ -381,7 +396,7 @@ print(paste0('check rows: no junc filt- ',nrow(FtrCount)))
   JoinJunc=F
   FtrCount=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
 }
-
+)
 #remove duplicates
 FtrCount=FtrCount[duplicated(FtrCount)==F,]
 
@@ -420,7 +435,7 @@ if (DEmethod=='MANORM') {
 ##############################  Peak info - starts old 07_peak_generation
 ##########################################################################################
 #read in peaks and alias file generated from 06_peak_junction.R
-peaks = FtrCount[,c('chr','start','end','ID','ID2','strand')]
+peaks = FtrCount[,c('chr','start','end','ID','ID','strand')]
 peaks_Oppo=peaks 
 peaks_Oppo$strand=gsub("\\+","pos",peaks_Oppo$strand) 
 peaks_Oppo$strand=gsub("\\-","+",peaks_Oppo$strand)
@@ -543,7 +558,7 @@ bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
   
   peaksTable_output=peaksTable[is.na(peaksTable$start)==F,]
   peaksTable_output=base::subset(peaksTable_output,chr %in% unique(anno_output$chr_anno))
-  peaksTable_output=peaksTable_output[,c('chr','start','end','ID','ID2','strand')]
+  peaksTable_output=peaksTable_output[,c('chr','start','end','ID','ID','strand')]
   write.table(peaksTable_output,
               file = paste0(out_dir,file_prefix,"peakstable.bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
@@ -800,8 +815,9 @@ peak_calling<-function(peak_in,nmeprfix){
 print(paste0('check rows - ',nrow(peaks)))
 ### fix designations - 1 = "Same" 2 = "Oppo"? Same strand and complementary strand?
 #can prob  be more descriptive
-peaks_SameAnno = peak_calling(peaks,"Same_")
-peaks_OppoAnno = peak_calling(peaks_Oppo,"Oppo_")
+print('GencodeAnno')
+system.time({peaks_SameAnno = peak_calling(peaks,"Same_")})
+system.time({peaks_OppoAnno = peak_calling(peaks_Oppo,"Oppo_")})
 
 print(paste0('check rows - ',nrow(peaks_SameAnno)))
 ##########################################################################################
@@ -903,7 +919,7 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
   ColumnName=c("feature","exon_number")
   
   ###fix variable swap
-  p=peak_in[,c('chr','start','end','ID','ID2','strand')]
+  p=peak_in[,c('chr','start','end','ID','ID','strand')]
   a=anno_IntExn[,c('chr','start','end','transcript_id','transcript_id','strand',ColumnName)]
   
   ###phil why are we clearing this column # Setting up bed 6 file but needneed column to be clear for bedtools intersect
@@ -960,7 +976,7 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
   for (x in 1:nrow(peak_in)) {
     
     #subset ids
-    l=peak_in[x,c('ID','ID2')]
+    l=peak_in[x,c('ID','ID')]
     g=exoninof[exoninof$ID%in%l$ID,]
     
     #if there are ids in both lists
@@ -1053,7 +1069,7 @@ rpmsk_anno <- function(ColumnName,Annotable,peaksTable){
   #create df of ids and start location
   peaksTable=separate(peaksTable,ID,into=c('start','strand'),sep="_",remove=F)
   peaksTable=separate(peaksTable,start,into=c('chr','start','end'),sep=":|-",remove=F)
-
+  
   #create granges obj for peaks
   peaksTable.GR <- GRanges(seqnames = as.character(peaksTable$chr), 
                            ranges=IRanges(start = as.numeric(peaksTable$start),
@@ -1375,7 +1391,7 @@ peak_attrib_Oppo = peak_attributes(rpmsk_Opposite,"Oppo_")
 #merge attributes
 PeaksdataOut = merge(peak_attrib_Same,
                      peak_attrib_Oppo[,colnames(peak_attrib_Oppo)[!colnames(peak_attrib_Oppo) %in% 
-                                                                    c("chr","start","end","strand","ID2" )]],
+                                                                    c("chr","start","end","strand" )]],
                      by='ID')
 ##########################################################################################
 ##############################  Assigning Clip peak attributes - merged strands
@@ -1622,7 +1638,7 @@ for (x in c('Same_gene_type','Same_gene_type_ALL','Same_type_simple_comb','Same_
 # Peaksdata2_anno$ID=paste0(Peaksdata2_anno$chr,':',Peaksdata2_anno$start+1,'-',Peaksdata2_anno$end,'_',Peaksdata2_anno$strand)
 
 #write out for junction annotation 
-write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_complete.txt'),sep = "\t")
+write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_complete_Optimized.txt'),sep = "\t")
 
 #write out for mapq
 write.table(Peaksdata2_anno[,c('chr','start','end','strand','ID')],
