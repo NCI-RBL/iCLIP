@@ -48,9 +48,9 @@ output_file_error = args$output_file_error
 
 
 ##testing
-testing="N"
+testing="SSC"
 if(testing=="Y"){
-rm(list=setdiff(ls(), "params"))
+  rm(list=setdiff(ls(), "params"))
   wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/"
   setwd(wd)
   wd="."
@@ -78,17 +78,36 @@ rm(list=setdiff(ls(), "params"))
   output_file_error= paste0(wd,"/13_annotation_test/13_annotation/02_peaks/")
 
 
-if(ref_species == "mm10"){
-  gencode_path = paste0(ref_path, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
-  intron_path = paste0(ref_path, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
-  rmsk_path = paste0(ref_path,"mm10/repeatmasker/rmsk_GRCm38.txt")
+  if(ref_species == "mm10"){
+    gencode_path = paste0(ref_path, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
+    intron_path = paste0(ref_path, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
+    rmsk_path = paste0(ref_path,"mm10/repeatmasker/rmsk_GRCm38.txt")
+  
+  } else if (ref_species == "hg38"){
+    gencode_path = paste0(ref_path,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
+    intron_path = paste0(ref_path,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
+    rmsk_path = paste0(ref_path,"hg38/repeatmasker/rmsk_GRCh38.txt")
+  }
+} else if(testing=="SSC"){
+  peak_type= "ALL"
+  peak_unique = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_uniqueCounts.txt"
+  peak_all = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_allFracMMCounts.txt"
+  join_junction = "TRUE"
+  condense_exon="TRUE"
+  read_depth = 5
+  DEmethod = "MANORM"
+  sample_id = "WT-NOPFA"
+  ref_species="hg38"
+  anno_dir = "~/../../Volumes/sevillas2-1/annotations_test/05_annotation/01_project/"
+  reftable_path = "~/../../Volumes/sevillas2-2/git/iCLIP/config/annotation_config.txt"
+  gencode_path = "~/../../Volumes/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt"
+  intron_path = "~/../../Volumes/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed"
+  rmsk_path = "~/../../Volumes/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCh38.txt"
+  out_dir = "~/../../Volumes/sevillas2-1/annotations_test/05_annotation/02_peaks"
+  out_dir_manorm = "~/../../Volumes/sevillas2-1/annotations_test/06_MAnorm/01_input/"
+  output_file_error = "~/../../Volumes/sevillas2-1/annotations_test/05_annotation/read_depth_error.txt"
+}
 
-} else if (ref_species == "hg38"){
-  gencode_path = paste0(ref_path,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
-  intron_path = paste0(ref_path,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
-  rmsk_path = paste0(ref_path,"hg38/repeatmasker/rmsk_GRCh38.txt")
-}
-}
 #annotation paths
 gencode_transc_path = paste0(anno_dir,"ref_gencode.txt")
 lncra_path = paste0(anno_dir,"lncRNA_gencode.txt")
@@ -106,40 +125,32 @@ tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
 file_id = paste0(sample_id,"_")
 
 ##########################################################################################
-############### unique read Count
+############### unique, all read count input - then merge
 ##########################################################################################
-FtrCount_uniq=read.delim(peak_unique, header=T, sep="\t",
-                         stringsAsFactors = F,comment.char = '#')
-colnames(FtrCount_uniq)[7]='Counts'
-
-#remove rows without start,end
-FtrCount_uniq=FtrCount_uniq[!is.na(FtrCount_uniq$Start),]
-FtrCount_uniq=FtrCount_uniq[!is.na(FtrCount_uniq$End),]
-
-#create unique ids
-FtrCount_uniq$ID=paste0(FtrCount_uniq$Chr,":",FtrCount_uniq$Start,"-",FtrCount_uniq$End,"_",FtrCount_uniq$Strand)
-
-##########################################################################################
-############### all reads
-##########################################################################################
-FtrCount_frac=read.delim(peak_all, header=T, sep="\t",
-                         stringsAsFactors = F,comment.char = '#')
-colnames(FtrCount_frac)[7]='Counts'
-
-#remove rows without start,end
-FtrCount_frac=FtrCount_frac[!is.na(FtrCount_frac$Start),]
-FtrCount_frac=FtrCount_frac[!is.na(FtrCount_frac$End),]
-
-#create unique ids
-FtrCount_frac$ID=paste0(FtrCount_frac$Chr,":",FtrCount_frac$Start,"-",FtrCount_frac$End,"_",FtrCount_frac$Strand)
-
-##########################################################################################
-############### merge
-##########################################################################################
-FtrCount=merge(FtrCount_uniq[,(colnames(FtrCount_uniq) %in% "Geneid")==F],
-               FtrCount_frac[,c('ID','Counts')],
-               by='ID',suffixes=c("_Unique","_fracMM"),all.x=T)
-colnames(FtrCount)[which(colnames(FtrCount)%in%c('Chr','Start','End','Strand'))]=c('chr','start','end','strand')
+FtrCount_input<-function(count.file){
+  FTR_df=read.delim(count.file, header=T, sep="\t",
+                           stringsAsFactors = F,comment.char = '#')
+  colnames(FTR_df)[7]='Counts'
+  
+  #remove rows without start,end
+  FTR_df=FTR_df[!is.na(FTR_df$Start) | !is.na(FTR_df$End),]
+  
+  #create unique ids
+  FTR_df$ID=paste0(FTR_df$Chr,":",FTR_df$Start,"-",FTR_df$End,"_",FTR_df$Strand)
+  
+  return(FTR_df)
+}
+FtrCount=merge(subset(FtrCount_input(peak_unique),select=-c(Geneid)),
+               FtrCount_input(peak_all)[,c('ID','Counts')],
+               by='ID',suffixes=c("_Unique","_fracMM"),
+               all.x=T)
+FtrCount = FtrCount %>%
+  dplyr::rename(
+    chr = Chr,
+    start = Start,
+    end = End,
+    strand = Strand
+  )
 FtrCount=FtrCount[duplicated(FtrCount)==F,]
 
 ##########################################################################################
@@ -158,24 +169,22 @@ if(nrow(FtrCount[FtrCount$Counts_fracMM>=read_depth,])==0){
 }
 
 ##########################################################################################
-##############################  splice junctions
+############### splice junctions
 ##########################################################################################
-print('join_Junc')
-system.time(
-  
 if (join_junction) {  
   print("Running Join Junction")
   
+  ############### Pre-Processing
   #grab peaks file
-  if (peak_type=="UNIQUE") {print('USE unique peaks .jcounts')
+  if (peak_type=="UNIQUE") {
     FtrCount_fracJCount=read.delim(paste0(peak_unique,".jcounts"), 
                                    header=T,sep="\t",stringsAsFactors = F,comment.char = '#') 
-  } else{print('USE ALL peaks .jcounts')
+  } else{
     FtrCount_fracJCount=read.delim(paste0(peak_all,".jcounts"), 
                                    header=T,sep="\t",stringsAsFactors = F,comment.char = '#') 
   }    
 
-  # rename last Col
+  #rename last Col
   colnames(FtrCount_fracJCount)[ncol(FtrCount_fracJCount)]='counts'
   
   #filter if primary gene is missing
@@ -184,27 +193,40 @@ if (join_junction) {
   if (nrow(FtrCount_fracJCount)>0) {
     print("Junctions were identitified")
     JoinJunc=T
-    
+
     #merge JCount with unique/all merge
-       FtrCount_fracJCount=merge(FtrCount_fracJCount,FtrCount[,c("ID","strand")],by.x="PrimaryGene",by.y="ID",all.x=T)
-        
-    #split primary gene col
-    FtrCount_fracJCount=separate(FtrCount_fracJCount,PrimaryGene,
-                                 into=c('ID','strand'),sep = "_",remove = F)
-    FtrCount_fracJCount=separate(FtrCount_fracJCount,ID,
-                                 into=c('chr','start','end'),sep = ":|-",remove = T)
+    FtrCount_fracJCount=FtrCount_fracJCount %>%
+      merge(
+        FtrCount[,c("ID","strand")],
+        by.x="PrimaryGene",
+        by.y="ID",
+        all.x=T) %>%
+      separate(
+        PrimaryGene,
+        into=c('ID','strand'),
+        sep = "_",
+        remove = F) %>%
+      separate(
+        ID,
+        into=c('chr','start','end'),
+        sep = ":|-",
+        remove = T)
     
-    ### remove junctions where splicing is within peak
+    #remove junctions where splicing is within peak
     site_1=FtrCount_fracJCount$Site1_location>=FtrCount_fracJCount$start&
       FtrCount_fracJCount$Site1_location<=FtrCount_fracJCount$end
     site_2=FtrCount_fracJCount$Site2_location>=FtrCount_fracJCount$start&
       FtrCount_fracJCount$Site2_location<=FtrCount_fracJCount$end
     FtrCount_fracJCount=FtrCount_fracJCount[site_1!=site_2,]
-    FtrCount_fracJCount$JunctionID=paste0(FtrCount_fracJCount$Site1_chr,':',FtrCount_fracJCount$Site1_location,'-',FtrCount_fracJCount$Site2_location,'_',FtrCount_fracJCount$strand)
+    FtrCount_fracJCount$JunctionID=paste0(FtrCount_fracJCount$Site1_chr,':',
+                                          FtrCount_fracJCount$Site1_location,'-',
+                                          FtrCount_fracJCount$Site2_location,'_',
+                                          FtrCount_fracJCount$strand)
     
-    #create Unique Row/junction ID
-    FtrCount_fracJCount$rID=seq(1,nrow(FtrCount_fracJCount))
-    
+    #renumber rownames
+    FtrCount_fracJCount$rID = 1:nrow(FtrCount_fracJCount)
+
+    #create GR objects
     jcount1.GR=GRanges(seqnames = as.character(FtrCount_fracJCount$Site1_chr), 
                        ranges=IRanges(start = as.numeric(FtrCount_fracJCount$Site1_location), 
                                       end = as.numeric(FtrCount_fracJCount$Site1_location)),
@@ -228,10 +250,12 @@ if (join_junction) {
                         ID=FtrCount$ID)
     
     
-    #Add Junction ID
+    ############### Add Junction ID
     junctionID <- function(Ftr_in, j_in, j_name, p_name){
-      xo=as.data.frame(GenomicRanges::findOverlaps(j_in, Ftr_in, 
-                                                   type = "any",ignore.strand=F))
+      xo=as.data.frame(GenomicRanges::findOverlaps(j_in, 
+                                                   Ftr_in, 
+                                                   type = "any",
+                                                   ignore.strand=F))
       qh=as.data.frame(j_in[xo$queryHits],row.names = NULL)
       colnames(qh)=paste0(colnames(qh),j_name)
       
@@ -241,145 +265,151 @@ if (join_junction) {
       return(cbind(qh,sh))
     }
     
-    ### Junction 1 ID
+    #add id's
     Junc_PL1 = junctionID(FtrCount.GR, jcount1.GR,"_Junction1","_Peaks1")
-    ### Junction 2 ID
     Junc_PL2 = junctionID(FtrCount.GR, jcount2.GR,"_Junction2","_Peaks2")
     
-    Junc_PL=merge(Junc_PL1,Junc_PL2,by.x='rID_Junction1',by.y='rID_Junction2')
-    Junc_PL=Junc_PL[(is.na(Junc_PL$ID_Peaks1)|is.na(Junc_PL$ID_Peaks2))==F,]
+    #merge and filter
+    Junc_PL=merge(Junc_PL1,Junc_PL2,by.x='rID_Junction1',by.y='rID_Junction2')[,c('PrimaryGene_Junction1',
+                                                                                  'JunctionID_Junction1',
+                                                                                  'strand_Peaks1',
+                                                                                  'ID_Peaks1',
+                                                                                  'ID_Peaks2')]
+    Junc_PL= Junc_PL %>%
+      subset(!is.na(ID_Peaks1) | !is.na(ID_Peaks2)) %>%
+      distinct(ID_Peaks1,ID_Peaks2, .keep_all= TRUE)
     
-    ### identify PEAK ID for Site1 and Site2 location of splice junction
-    Junc_PLOut=Junc_PL[,c('PrimaryGene_Junction1','JunctionID_Junction1','strand_Peaks1','ID_Peaks1','ID_Peaks2')]
+    #create join id col
+    Junc_PL$JoinID=paste0(Junc_PL$ID_Peaks1,",",Junc_PL$ID_Peaks2)
     
-    ### Identify peaks that are linked between splice juntions
-    ##### Remove Peaks where Peak1, Peak2 are duplicated
-    ############## Junction ID can be off by a few NT because different splice start/end in peak
-    Junc_PLOut=Junc_PLOut[duplicated(Junc_PLOut[,c('ID_Peaks1','ID_Peaks2')])==F,]
-    Junc_PLOut$JoinID=paste0(Junc_PLOut$ID_Peaks1,",",Junc_PLOut$ID_Peaks2)
-    
-    ##################################################
-    ##### Combine all connected peaks
-    ##### get all unique PrimaryGene_Junction
-    # Combine_linked_peaks= function(JUNCTION_REFERENCE_TABLE)
-    d2=unique(Junc_PLOut$JoinID)
-    PGene_TBL2=(matrix(nrow=nrow(Junc_PLOut),ncol=ncol(Junc_PLOut)+4));colnames(PGene_TBL2)=c(colnames(Junc_PLOut),'chr','start','end','strand')
-    
-    Junc_PLOut_short=Junc_PLOut
-    for (x in 1:length(d2)) {
-      a=Junc_PLOut[x,]
-    
-      id=c(a$ID_Peaks1,a$ID_Peaks2)
-      id_chr=separate(as.data.frame(id),1,sep=":",into = c('chr','ID'))$chr%>%unique()
+
+    ############### Combine all connected peaks
+    #create output df
+    PGene_TBL2 = setNames(data.frame(matrix(ncol = 10, nrow = length(unique(Junc_PL$JoinID)))), 
+                          c("PrimaryGene_Junction1", "JunctionID_Junction1", "JoinID","chr",
+                            "start","end","strand_Peaks1","ID_Peaks1","ID_Peaks2","strand"))
+    for (rowid in 1:length(unique(Junc_PL$JoinID))) {
+      #determine chrom id ie "ML143376.1"
+      id_chr=unique(separate(Junc_PL[rowid,c("ID_Peaks1","ID_Peaks2")],1,
+                      sep=":",
+                      into = c('chr','ID'))$chr)
       
+      #find row that matches chromid
+      Junc_PL_chr=Junc_PL[grepl(paste0(id_chr,':'),
+                                Junc_PL$JoinID,
+                                fixed = T),]
       
-      Junc_PLOut_chr=Junc_PLOut_short[grepl(paste0(id_chr,':'),Junc_PLOut_short$JoinID,fixed = T),]
-      idcomb=Junc_PLOut_chr[grepl(gsub("_","_\\\\",paste(id,collapse = "|")),Junc_PLOut_chr$JoinID),]
-      if (nrow(idcomb)==0) {next}
+      #find row that matches id from peak 1 and 2
+      idcomb=Junc_PL_chr[grepl(gsub("_","_\\\\",
+                                    paste(Junc_PL[rowid,c("ID_Peaks1","ID_Peaks2")], collapse = "|")),
+                               Junc_PL_chr$JoinID),]
+
+        if (nrow(idcomb)==0) {
+          next
+        } else{
       
-      ## look again to see if more locations with found connected peaks
-      id2=sort(unique(c(idcomb$ID_Peaks1,idcomb$ID_Peaks2)))
-      
-      ## If new peaks come up check unill no new peaks  
-      while (FALSE%in%(id2%in%id)) {
-        id=id2
-        # xxx2 Look Again
-        idcomb=Junc_PLOut_chr[grep(gsub("_","_\\\\",paste(id2,collapse = "|")),Junc_PLOut_chr$JoinID),]
-        # xxx3 Get Peak IDS to end while loop
+        ## look again to see if more locations with found connected peaks
         id2=sort(unique(c(idcomb$ID_Peaks1,idcomb$ID_Peaks2)))
+        
+        ## If new peaks come up check until no new peaks
+        id = c(Junc_PL[rowid,c("ID_Peaks1")],Junc_PL[rowid,c("ID_Peaks2")])
+        while (length(setdiff(id2,id))!=0) {
+          id=id2
+          
+          #Look Again
+          idcomb=Junc_PL_chr[grep(gsub("_","_\\\\",
+                                       paste(id2,collapse = "|")),
+                                  Junc_PL_chr$JoinID),]
+          
+          # Get Peak IDS to end while loop
+          id2=sort(unique(c(idcomb$ID_Peaks1,
+                            idcomb$ID_Peaks2)))
+        }
+
+        #separate coordinates
+        id2_coord = as.data.frame(id2) %>%
+          separate(1,
+                   sep = "_",
+                   into = c('ID','strand')) %>%
+          separate(ID, 
+                   sep = ":|-",
+                   into = c('chr','start','end'),
+                   remove = T)
+        
+        #convert start/end to numeric
+        id2_coord[c("start","end")] <- sapply(id2_coord[c("start","end")],as.numeric)
+        
+        #update df
+        PGene_TBL2[rowid,] = list(paste(sort(unique(idcomb$PrimaryGene_Junction1)),collapse = ','),
+                                 paste(sort(unique(idcomb$JunctionID_Junction1)),collapse = ','),
+                                 paste(sort(unique(idcomb$JoinID)),collapse = ','),
+                                 unique(id2_coord$chr),
+                                 min((id2_coord[,c('start','end')])),
+                                 max((id2_coord[,c('start','end')])),
+                                 unique(as.character(idcomb$strand_Peaks1)),
+                                 paste(sort(unique(idcomb$ID_Peaks1)),collapse = ','),
+                                 paste(sort(unique(idcomb$ID_Peaks2)),collapse = ','))
+        
+        #phil - Unclear what this is doing? 
+        #if (length(unique(as.character(idcomb$strand_Peaks1)))>1) {Select_pos_and_Neg_strands}
       }
-      
-      id2_coord=separate(as.data.frame(id2),1,sep = "_",into = c('ID','strand'))
-      id2_coord=separate(id2_coord,ID,sep = ":|-",into = c('chr','start','end'),remove = T)
-      id2_coord$start=as.numeric(id2_coord$start)
-      id2_coord$end=as.numeric(id2_coord$end)
-      PGene_TBL2[x,'PrimaryGene_Junction1']=paste(sort(unique(idcomb$PrimaryGene_Junction1)),collapse = ',')
-      PGene_TBL2[x,'JunctionID_Junction1']=paste(sort(unique(idcomb$JunctionID_Junction1)),collapse = ',')
-      PGene_TBL2[x,'JoinID']=paste(sort(unique(idcomb$JoinID)),collapse = ',')
-      PGene_TBL2[x,'chr']=unique(id2_coord$chr)
-      PGene_TBL2[x,'start']=min((id2_coord[,c('start','end')]))
-      PGene_TBL2[x,'end']=max((id2_coord[,c('start','end')]))
-      PGene_TBL2[x,'strand_Peaks1']=unique(as.character(idcomb$strand_Peaks1))
-      PGene_TBL2[x,'ID_Peaks1']=paste(sort(unique(idcomb$ID_Peaks1)),collapse = ',')
-      if (length(unique(as.character(idcomb$strand_Peaks1)))>1) {Select_pos_and_Neg_strands}
-      PGene_TBL2[x,'ID_Peaks2']=paste(sort(unique(idcomb$ID_Peaks2)),collapse = ',')
-      
-      
-  #### Remove Joined ID from master junction table Junc_PLOut
-      # Junc_PLOut=Junc_PLOut[idcomb$ID_Peaks2%in%Junc_PLOut==F,]
-      Junc_PLOut_short=Junc_PLOut_short[grepl(gsub("_","_\\\\",paste(idcomb$ID_Peaks2,collapse = "|")),Junc_PLOut_short$JoinID)==F,]
-      
     }
-    remove('d2','a','id','idcomb','x')
-    PGene_TBL2=as.data.frame(PGene_TBL2)
-    PGene_TBL2=PGene_TBL2[is.na(PGene_TBL2$PrimaryGene_Junction1)==F,]
-    PGene_TBL2=PGene_TBL2[duplicated(PGene_TBL2)==F,]
-    PGene_TBL2$linkedID=paste0(PGene_TBL2$chr,":",PGene_TBL2$start,"-",PGene_TBL2$end,"_",PGene_TBL2$strand)
+
+    #filter
+    PGene_TBL2=PGene_TBL2 %>%
+      subset(!is.na(PrimaryGene_Junction1)) %>%
+      distinct(.keep_all=TRUE)
+
+    #create linked id
+    PGene_TBL2$linkedID=paste0(PGene_TBL2$chr,":",
+                               PGene_TBL2$start,"-",
+                               PGene_TBL2$end,"_",
+                               PGene_TBL2$strand)
+
+    ############### check no repeated peaks 
+    #phil - PGene_TBL3 is never used
+    #d3=unique(PGene_TBL2$PrimaryGene_Junction1)
+    #PGene_TBL3=(matrix(nrow=nrow(PGene_TBL2),ncol=ncol(PGene_TBL2)+1));colnames(PGene_TBL3)=c(colnames(PGene_TBL2),"nrows")
     
-    
-    ##################################################
-    ##### check no repeated peaks 
-    ##### get all unique PrimaryGene_Junction
-    d3=unique(PGene_TBL2$PrimaryGene_Junction1)
-    PGene_TBL3=(matrix(nrow=nrow(PGene_TBL2),ncol=ncol(PGene_TBL2)+1));colnames(PGene_TBL3)=c(colnames(PGene_TBL2),"nrows")
-    
-    for (x in 1:length(d3)) {
-      a2=PGene_TBL2[x,]
-      id2=unlist(str_split (a2$JoinID,pattern = ","))
-      idcomb2=PGene_TBL2[grep(gsub("_","_\\\\",paste(id2,collapse = "|")),PGene_TBL2$JoinID),]
+    #for (x in 1:length(d3)) {
+    #  a2=PGene_TBL2[x,]
+    #  id2=unlist(str_split (a2$JoinID,pattern = ","))
+    #  idcomb2=PGene_TBL2[grep(gsub("_","_\\\\",paste(id2,collapse = "|")),PGene_TBL2$JoinID),]
       
-      PGene_TBL3[x,1:3]=as.matrix(a2[,1:3])
-      PGene_TBL3[x,'nrows']=nrow(idcomb2)
-    }
-    remove('d3','a2','id2','idcomb2','x')
-    PGene_TBL3=as.data.frame(PGene_TBL3)
-    
-    # #######################################################
-    # ##### Get all peaks with junctions
+    #  PGene_TBL3[x,1:3]=as.matrix(a2[,1:3])
+    #  PGene_TBL3[x,'nrows']=nrow(idcomb2)
+    #}
+    #remove('d3','a2','id2','idcomb2','x')
+    #PGene_TBL3=as.data.frame(PGene_TBL3)
+  
+    ############### Get all peaks with junctions
     Junc_peaks=unique(c(Junc_PL$ID_Peaks1,Junc_PL$ID_Peaks2))
-    
-    print(paste0('check rows: All- ',nrow(FtrCount)))
-    print(paste0('check rows: Junc_peaks- ',length(Junc_peaks)))
-    
-    FtrCount_Junc_peaks=FtrCount[FtrCount$ID%in%Junc_peaks,]
-    FtrCount=FtrCount[FtrCount$ID%in%Junc_peaks==F,]
-    
-    print(paste0('check rows: junc- ',nrow(FtrCount_Junc_peaks)))
-    print(paste0('check rows: no junc- ',nrow(FtrCount)))
-    
-    ######################################################################
-    ### Trim peaks without Splicing
-    FtrCount=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
-    print(paste0('check rows: no junc filt- ',nrow(FtrCount)))
-    
-    FtrCount=rbind(FtrCount,FtrCount_Junc_peaks)
-    ######################################################################
+
+    #Trim peaks without Splicing
+    FtrCount=FtrCount[FtrCount$ID%in%Junc_peaks==F & FtrCount$Counts_fracMM>=read_depth,]
+    FtrCount_trimmed=rbind(FtrCount,FtrCount[FtrCount$ID%in%Junc_peaks,])
+
   } else { 
     print("No junctions were identified")
     JoinJunc=F
-    FtrCount=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
+    FtrCount_trimmed=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
   }
   
 } else{
   JoinJunc=F
-  FtrCount=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
+  FtrCount_trimmed=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
 }
-)
-#remove duplicates
-FtrCount=FtrCount[duplicated(FtrCount)==F,]
 
-#remove chrom M
-FtrCount=FtrCount[!FtrCount$chr%in%c('chrM'),]
+#remove duplicates, remove chrom M
+FtrCount_trimmed=FtrCount_trimmed[duplicated(FtrCount_trimmed)==F & !FtrCount_trimmed$chr%in%c('chrM'),]
 
-print(paste0('check rows: joinJunc out - ',nrow(FtrCount)))
-# xxxxx
 ##########################################################################################
 ##############################  MANORM
 ##########################################################################################
 if (DEmethod=='MANORM') {
   print("Running MANORM")
   
-  manorm_bed=FtrCount[,c('chr','start','end','ID','ID','strand')]
+  manorm_bed=FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')]
   
   #write peaks bed file
   write.table(manorm_bed,
@@ -397,11 +427,16 @@ if (DEmethod=='MANORM') {
 } else{
   print("MANORM skipped")
 } 
+
+
+##################################################
+#CLEAN
+##################################################
+
 ##########################################################################################
 ##############################  Peak info
 ##########################################################################################
-peaks = FtrCount[,c('chr','start','end','ID','ID','strand')]
-peaks_Oppo=peaks 
+peaks_Oppo=FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')] 
 peaks_Oppo$strand=gsub("\\+","pos",peaks_Oppo$strand) 
 peaks_Oppo$strand=gsub("\\-","+",peaks_Oppo$strand)
 peaks_Oppo$strand=gsub("pos","-",peaks_Oppo$strand)
@@ -410,14 +445,16 @@ peaks_Oppo$strand=gsub("pos","-",peaks_Oppo$strand)
 ##############################  reference, annotation table
 ##########################################################################################
 #read in references
-ref_gencode_trans = read.table(gencode_transc_path,header=TRUE,sep="\t")
 ref_table = read.table(reftable_path, header = TRUE, sep="\t", row.names = 1)
 
-rpmk_Anno_RNA_comb=data.frame()
-gencode_Anno_RNA_comb=data.frame()
 gencodeCol=c('chr','start','end','strand','ensembl_gene_id',
              'transcript_id','external_gene_name','gene_type','gene_type_ALL')
+ref_gencode_trans = read.table(gencode_transc_path,header=TRUE,sep="\t")
 gencode_Anno_RNA_comb=ref_gencode_trans[,gencodeCol]  
+
+#create annotation dfs
+rpmk_Anno_RNA_comb=data.frame()
+gencode_Anno_RNA_comb=data.frame()
 custom_Anno_RNA_comb=data.frame()
 refseq_Anno_RNA_comb=data.frame()
 
@@ -452,38 +489,28 @@ for (rowid in rownames(ref_table)){
 }  
 
 gencode_Anno_RNA_comb=gencode_Anno_RNA_comb[duplicated(gencode_Anno_RNA_comb)==F,]
-rpmk_Anno_RNA_comb=rpmk_Anno_RNA_comb[duplicated(rpmk_Anno_RNA_comb)==F,]
-custom_Anno_RNA_comb=custom_Anno_RNA_comb[duplicated(custom_Anno_RNA_comb)==F,]
-refseq_Anno_RNA_comb=refseq_Anno_RNA_comb[duplicated(refseq_Anno_RNA_comb)==F,]
 
-annocol=c("chr","start","end","strand","type","transcript_name")
+#prepare annotations
+prep_annotation<-function(df.in,col.in){
+  
+  df_clean = df.in %>%
+    distinct()
+  
+  if (dim(df_clean)[1] == 0) {
+    df_out=as.data.frame(matrix(ncol=length(annocol),nrow=0))
+    colnames(df_out)=annocol
+  } else {
+    df_out=df_out[,col.in]
+    colnames(df_out)=c("chr","start","end","strand","type","transcript_name")
+  }
+  return(df_out)
+}
 
-if (dim(custom_Anno_RNA_comb)[1] == 0) {
-  custom_Anno_RNA_comb=as.data.frame(matrix(ncol=length(annocol),nrow=0))
-  colnames(custom_Anno_RNA_comb)=annocol
-} else {custom_Anno_RNA_comb=custom_Anno_RNA_comb[,c("chr","start","end","strand","type","name")]
-colnames(custom_Anno_RNA_comb)=annocol}
-
-if (dim(rpmk_Anno_RNA_comb)[1] == 0) {
-  rpmk_Anno_RNA_comb=as.data.frame(matrix(ncol=length(annocol),nrow=0))
-  colnames(rpmk_Anno_RNA_comb)=annocol
-} else {rpmk_Anno_RNA_comb=rpmk_Anno_RNA_comb[,c('chr','start','end','strand','type','name')]
-colnames(rpmk_Anno_RNA_comb)=annocol}
-
-if (dim(refseq_Anno_RNA_comb)[1] == 0) {
-  refseq_Anno_RNA_comb=as.data.frame(matrix(ncol=length(annocol),nrow=0))
-  colnames(refseq_Anno_RNA_comb)=annocol
-} else {refseq_Anno_RNA_comb=refseq_Anno_RNA_comb[,c("chr","start","end","strand","gene_type","ensembl_gene_id")]
-colnames(refseq_Anno_RNA_comb)=annocol}
-
-Anno_RNA_comb=rbind(
-  rpmk_Anno_RNA_comb,
-  custom_Anno_RNA_comb,
-  refseq_Anno_RNA_comb
-)
-
-Anno_RNA_comb=Anno_RNA_comb[duplicated(Anno_RNA_comb)==F,]
-
+Anno_RNA_comb = rbind(
+  prep_annotation(rpmk_Anno_RNA_comb,c("chr","start","end","strand","type","name")),
+  prep_annotation(custom_Anno_RNA_comb,c("chr","start","end","strand","type","name")),
+  prep_annotation(refseq_Anno_RNA_comb,c("chr","start","end","strand","gene_type","ensembl_gene_id"))) %>%
+  distinct()
 ##########################################################################################
 ##############################  call peaks
 ##########################################################################################
@@ -1435,7 +1462,7 @@ PeaksdataOut[,'Comb_type_exon_Oppo']=factor(PeaksdataOut[,'Comb_type_exon_Oppo']
 # ##############################  Merge peak annotations with peak junctions
 # ##########################################################################################
 # 
-Peaksdata2_anno = merge(FtrCount,
+Peaksdata2_anno = merge(FtrCount_trimmed,
                         PeaksdataOut[,!colnames(PeaksdataOut)%in%c('chr','start','end','strand')],
                         by='ID')
 ##########################################################################################
