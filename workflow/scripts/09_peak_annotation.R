@@ -46,6 +46,9 @@ out_dir = args$out_dir
 out_dir_manorm = args$out_dir_manorm
 output_file_error = args$output_file_error
 
+start_time=Sys.time()
+end_time=Sys.time()
+end_time-start_time
 
 ##testing
 testing="SSC"
@@ -90,22 +93,22 @@ if(testing=="Y"){
   }
 } else if(testing=="SSC"){
   peak_type= "ALL"
-  peak_unique = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_uniqueCounts.txt"
-  peak_all = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT-NOPFA_allFracMMCounts.txt"
+  peak_unique = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT_fCLIP_uniqueCounts.txt"
+  peak_all = "~/../../Volumes/RBL_NCI/Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT_fCLIP_allFracMMCounts.txt"
   join_junction = "TRUE"
   condense_exon="TRUE"
   read_depth = 5
   DEmethod = "MANORM"
   sample_id = "WT-NOPFA"
   ref_species="hg38"
-  anno_dir = "~/../../Volumes/sevillas2-1/annotations_test/05_annotation/01_project/"
-  reftable_path = "~/../../Volumes/sevillas2-2/git/iCLIP/config/annotation_config.txt"
+  anno_dir = "~/../../Volumes/sevillas2-2/annotations_test/05_annotation/01_project/"
+  reftable_path = "~/../../Volumes/sevillas2-1/git/iCLIP/config/annotation_config.txt"
   gencode_path = "~/../../Volumes/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt"
   intron_path = "~/../../Volumes/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed"
   rmsk_path = "~/../../Volumes/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCh38.txt"
-  out_dir = "~/../../Volumes/sevillas2-1/annotations_test/05_annotation/02_peaks/"
-  out_dir_manorm = "~/../../Volumes/sevillas2-1/annotations_test/06_MAnorm/01_input/"
-  output_file_error = "~/../../Volumes/sevillas2-1/annotations_test/05_annotation/read_depth_error.txt"
+  out_dir = "~/../../Volumes/sevillas2-2/annotations_test/05_annotation/02_peaks/"
+  out_dir_manorm = "~/../../Volumes/sevillas2-2/annotations_test/06_MAnorm/01_input/"
+  output_file_error = "~/../../Volumes/sevillas2-2/annotations_test/05_annotation/read_depth_error.txt"
 }
 
 #annotation paths
@@ -123,7 +126,7 @@ tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
 
 #set id for files
 file_id = paste0(sample_id,"_")
-
+start_time=Sys.time()
 ##########################################################################################
 ############### unique, all read count input - then merge
 ##########################################################################################
@@ -145,14 +148,13 @@ FtrCount=merge(subset(FtrCount_input(peak_unique),select=-c(Geneid)),
                by='ID',suffixes=c("_Unique","_fracMM"),
                all.x=T)
 FtrCount = FtrCount %>%
-  dplyr::rename(
+  rename(
     chr = Chr,
     start = Start,
     end = End,
     strand = Strand
   )
 FtrCount=FtrCount[duplicated(FtrCount)==F,]
-
 ##########################################################################################
 ############### run filter check
 ##########################################################################################
@@ -167,13 +169,11 @@ if(nrow(FtrCount[FtrCount$Counts_fracMM>=read_depth,])==0){
 } else{
   print("Peaks pass read_depth filter")
 }
-
-##########################################################################################
+#########################################################################################
 ############### splice junctions
 ##########################################################################################
 if (join_junction) {  
   print("Running Join Junction")
-  
   ############### Pre-Processing
   #grab peaks file
   if (peak_type=="UNIQUE") {
@@ -189,7 +189,6 @@ if (join_junction) {
   
   #filter if primary gene is missing
   FtrCount_fracJCount=FtrCount_fracJCount[!is.na(FtrCount_fracJCount$PrimaryGene),]
-  
   if (nrow(FtrCount_fracJCount)>0) {
     print("Junctions were identitified")
     JoinJunc=T
@@ -222,7 +221,6 @@ if (join_junction) {
                                           FtrCount_fracJCount$Site1_location,'-',
                                           FtrCount_fracJCount$Site2_location,'_',
                                           FtrCount_fracJCount$strand)
-    
     #renumber rownames
     FtrCount_fracJCount$rID = 1:nrow(FtrCount_fracJCount)
     
@@ -248,7 +246,6 @@ if (join_junction) {
                                        end = as.numeric(FtrCount$end)),
                         strand = FtrCount$strand,
                         ID=FtrCount$ID)
-    
     
     ############### Add Junction ID
     junctionID <- function(Ftr_in, j_in, j_name, p_name){
@@ -282,28 +279,212 @@ if (join_junction) {
     #create join id col
     Junc_PL$JoinID=paste0(Junc_PL$ID_Peaks1,",",Junc_PL$ID_Peaks2)
     
-    
     ############### Combine all connected peaks
     #create output df
     PGene_TBL2 = setNames(data.frame(matrix(ncol = 10, nrow = length(unique(Junc_PL$JoinID)))), 
                           c("PrimaryGene_Junction1", "JunctionID_Junction1", "JoinID","chr",
                             "start","end","strand_Peaks1","ID_Peaks1","ID_Peaks2","strand"))
+    end_time=Sys.time()
+    end_time-start_time
+    ##########################################################################################
+    #new v1 [rowid,col]
+    test_df=Junc_PL[1:1000,]
+    PGene_TBL2 = data.frame(matrix(ncol = 10, nrow = length(unique(Junc_PL$JoinID))))
+    start_time=Sys.time()
+    test_df$matchid=paste(test_df$ID_Peaks1,test_df$ID_Peaks2,sep="|")
+    test_df = test_df %>%
+      separate(ID_Peaks1,
+               sep = "_",
+               into = c('ID','strand')) %>%
+      separate(ID, 
+               sep = ":|-",
+               into = c('chr','start','end'),
+               remove = T)
+    
+    test_df[c("start","end")] <- sapply(test_df[c("start","end")],as.numeric)
+
+    for (rowid in rownames(test_df)){
+      #generate search id
+      #IE "chr1:100007068-100007156_\\+|chr1:100082000-100082149_\\+"
+      #determine which rows in df partially match any part of search id
+      match_df=test_df[grepl(gsub("_","_\\\\",test_df[rowid,"matchid"]),
+                             test_df$matchid),]
+      
+      #until we find all rows matching all partial matches
+      match_original=rowid
+      match_current=rownames(match_df)
+      
+      while(length(setdiff(match_current,match_original))>0){
+        for (rowid2 in setdiff(match_current,match_original)){
+          #determine which rows in df partially match any part of search id
+          match_df2=test_df[grepl(gsub("_","_\\\\",test_df[rowid2,"matchid"]),
+                                  test_df$matchid),]
+          
+          #original list is current, and current list is new matched df
+          match_original=match_current
+          match_current=unique(c(rownames(match_df2),match_current))
+          match_df=rbind(match_df,match_df2) %>%
+            distinct
+        }
+      }
+
+      #update df
+      PGene_TBL2[rowid,'PrimaryGene_Junction1']=paste(sort(unique(match_df$PrimaryGene_Junction1)),collapse = ',')
+      PGene_TBL2[rowid,'JunctionID_Junction1']=paste(sort(unique(match_df$JunctionID_Junction1)),collapse = ',')
+      PGene_TBL2[rowid,'JoinID']=paste(sort(unique(match_df$JoinID)),collapse = ',')
+      PGene_TBL2[rowid,'chr']=unique(match_df$chr)
+      PGene_TBL2[rowid,'start']=min((match_df[,c('start','end')]))
+      PGene_TBL2[rowid,'end']=max((match_df[,c('start','end')]))
+      PGene_TBL2[rowid,'strand_Peaks1']=unique(as.character(match_df$strand_Peaks1))
+      PGene_TBL2[rowid,'ID_Peaks1']=paste(sort(unique(match_df$ID_Peaks1)),collapse = ',')
+      PGene_TBL2[rowid,'ID_Peaks2']=paste(sort(unique(match_df$ID_Peaks2)),collapse = ',')
+    }
+    end_time=Sys.time()
+    end_time-start_time
+    ##########################################################################################
+    #newv2
+    test_df=Junc_PL[1:1000,]
+    PGene_TBL2 = setNames(data.frame(matrix(ncol = 10, nrow = length(unique(Junc_PL$JoinID)))), 
+                          c("PrimaryGene_Junction1", "JunctionID_Junction1", "JoinID","chr",
+                            "start","end","strand_Peaks1","ID_Peaks1","ID_Peaks2","strand"))
+    start_time=Sys.time()
+    test_df$matchid=paste(test_df$ID_Peaks1,test_df$ID_Peaks2,sep="|")
+    test_df = test_df %>%
+      separate(ID_Peaks1,
+               sep = "_",
+               into = c('ID','strand')) %>%
+      separate(ID, 
+               sep = ":|-",
+               into = c('chr','start','end'),
+               remove = T)
+    
+    test_df[c("start","end")] <- sapply(test_df[c("start","end")],as.numeric)
+    
+    for (rowid in rownames(test_df)){
+      #generate search id
+      #IE "chr1:100007068-100007156_\\+|chr1:100082000-100082149_\\+"
+      #determine which rows in df partially match any part of search id
+      match_df=test_df[grepl(gsub("_","_\\\\",test_df[rowid,"matchid"]),
+                             test_df$matchid),]
+      
+      #until we find all rows matching all partial matches
+      match_original=rowid
+      match_current=rownames(match_df)
+      
+      while(length(setdiff(match_current,match_original))>0){
+        for (rowid2 in setdiff(match_current,match_original)){
+          #determine which rows in df partially match any part of search id
+          match_df2=test_df[grepl(gsub("_","_\\\\",test_df[rowid2,"matchid"]),
+                                  test_df$matchid),]
+          
+          #original list is current, and current list is new matched df
+          match_original=match_current
+          match_current=unique(c(rownames(match_df2),match_current))
+          match_df=rbind(match_df,match_df2) %>%
+            distinct
+        }
+      }
+      
+      #update df
+      PGene_TBL2[rowid,] = list(paste(sort(unique(match_df$PrimaryGene_Junction1)),collapse = ','),
+                                paste(sort(unique(match_df$JunctionID_Junction1)),collapse = ','),
+                                paste(sort(unique(match_df$JoinID)),collapse = ','),
+                                unique(match_df$chr),
+                                min((match_df[,c('start','end')])),
+                                max((match_df[,c('start','end')])),
+                                unique(as.character(match_df$strand_Peaks1)),
+                                paste(sort(unique(match_df$ID_Peaks1)),collapse = ','),
+                                paste(sort(unique(match_df$ID_Peaks2)),collapse = ','))
+    }
+    end_time=Sys.time()
+    end_time-start_time
+    ##########################################################################################
+    #old
+    test_df=Junc_PL[1:1000,]
+    PGene_TBL2 = data.frame(matrix(ncol = 10, nrow = length(unique(Junc_PL$JoinID))))
+    start_time=Sys.time()
+    for (rowid in 1:length(unique(test_df$JoinID))) {
+      #determine chrom id ie "ML143376.1"
+      id_chr=unique(separate(test_df[rowid,c("ID_Peaks1","ID_Peaks2")],1,
+                             sep=":",
+                             into = c('chr','ID'))$chr)
+      #find rows that matches chromid in their junctionid
+      #aka any rows that are on the same location
+      Junc_PL_chr=test_df[grepl(paste0(id_chr,':'),
+                                test_df$JoinID,
+                                fixed = T),]
+      #find rows that matches id from peak 1 and 2
+      idcomb=Junc_PL_chr[grepl(gsub("_","_\\\\",
+                                    paste(test_df[rowid,c("ID_Peaks1","ID_Peaks2")], collapse = "|")),
+                               Junc_PL_chr$JoinID),]
+      if (nrow(idcomb)==0) {
+        next
+      } else{
+        
+        ## look again to see if more locations with found connected peaks
+        id2=sort(unique(c(idcomb$ID_Peaks1,idcomb$ID_Peaks2)))
+        
+        ## If new peaks come up check until no new peaks
+        id = c(test_df[rowid,c("ID_Peaks1")],test_df[rowid,c("ID_Peaks2")])
+        while (length(setdiff(id2,id))!=0) {
+          id=id2
+          
+          #Look Again
+          idcomb=Junc_PL_chr[grep(gsub("_","_\\\\",
+                                       paste(id2,collapse = "|")),
+                                  Junc_PL_chr$JoinID),]
+          
+          # Get Peak IDS to end while loop
+          id2=sort(unique(c(idcomb$ID_Peaks1,
+                            idcomb$ID_Peaks2)))
+        }
+        
+        #separate coordinates
+        id2_coord = as.data.frame(id2) %>%
+          separate(1,
+                   sep = "_",
+                   into = c('ID','strand')) %>%
+          separate(ID, 
+                   sep = ":|-",
+                   into = c('chr','start','end'),
+                   remove = T)
+        
+        #convert start/end to numeric
+        id2_coord[c("start","end")] <- sapply(id2_coord[c("start","end")],as.numeric)
+        
+        #update df
+        PGene_TBL2[rowid,'PrimaryGene_Junction1']=paste(sort(unique(match_df$PrimaryGene_Junction1)),collapse = ',')
+        PGene_TBL2[rowid,'JunctionID_Junction1']=paste(sort(unique(match_df$JunctionID_Junction1)),collapse = ',')
+        PGene_TBL2[rowid,'JoinID']=paste(sort(unique(match_df$JoinID)),collapse = ',')
+        PGene_TBL2[rowid,'chr']=unique(match_df$chr)
+        PGene_TBL2[rowid,'start']=min((match_df[,c('start','end')]))
+        PGene_TBL2[rowid,'end']=max((match_df[,c('start','end')]))
+        PGene_TBL2[rowid,'strand_Peaks1']=unique(as.character(match_df$strand_Peaks1))
+        PGene_TBL2[rowid,'ID_Peaks1']=paste(sort(unique(match_df$ID_Peaks1)),collapse = ',')
+        PGene_TBL2[rowid,'ID_Peaks2']=paste(sort(unique(match_df$ID_Peaks2)),collapse = ',')
+        
+        #phil - Unclear what this is doing? 
+        #if (length(unique(as.character(idcomb$strand_Peaks1)))>1) {Select_pos_and_Neg_strands}
+      }
+    }
+    end_time=Sys.time()
+    end_time-start_time
+    ##########################################################################################
+    
     for (rowid in 1:length(unique(Junc_PL$JoinID))) {
       #determine chrom id ie "ML143376.1"
       id_chr=unique(separate(Junc_PL[rowid,c("ID_Peaks1","ID_Peaks2")],1,
                              sep=":",
                              into = c('chr','ID'))$chr)
-      
-      #find row that matches chromid
+      #find rows that matches chromid in their junctionid
+      #aka any rows that are on the same location
       Junc_PL_chr=Junc_PL[grepl(paste0(id_chr,':'),
                                 Junc_PL$JoinID,
                                 fixed = T),]
-      
-      #find row that matches id from peak 1 and 2
+      #find rows that matches id from peak 1 and 2
       idcomb=Junc_PL_chr[grepl(gsub("_","_\\\\",
                                     paste(Junc_PL[rowid,c("ID_Peaks1","ID_Peaks2")], collapse = "|")),
                                Junc_PL_chr$JoinID),]
-      
       if (nrow(idcomb)==0) {
         next
       } else{
@@ -403,8 +584,11 @@ if (join_junction) {
 #remove duplicates, remove chrom M
 FtrCount_trimmed=FtrCount_trimmed[duplicated(FtrCount_trimmed)==F & !FtrCount_trimmed$chr%in%c('chrM'),]
 
+end_time=Sys.time()
+end_time-start_time
+start_time=Sys.time()
 ##########################################################################################
-##############################  MANORM
+############### MANORM
 ##########################################################################################
 if (DEmethod=='MANORM') {
   print("Running MANORM")
@@ -427,19 +611,13 @@ if (DEmethod=='MANORM') {
 } else{
   print("MANORM skipped")
 } 
-
-
+end_time=Sys.time()
+end_time-start_time
+start_time=Sys.time()
 ##########################################################################################
-##############################  Peak info
+############### reference, annotation table
 ##########################################################################################
-peaks_Oppo=FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')] 
-peaks_Oppo$strand=gsub("\\+","pos",peaks_Oppo$strand) 
-peaks_Oppo$strand=gsub("\\-","+",peaks_Oppo$strand)
-peaks_Oppo$strand=gsub("pos","-",peaks_Oppo$strand)
-
-##########################################################################################
-##############################  reference, annotation table
-##########################################################################################
+print("prep references")
 #read in references
 ref_table = read.table(reftable_path, header = TRUE, sep="\t", row.names = 1)
 
@@ -508,8 +686,587 @@ Anno_RNA_comb = rbind(
   prep_annotation(refseq_Anno_RNA_comb,c("chr","start","end","strand","gene_type","ensembl_gene_id"))) %>%
   distinct()
 
+end_time=Sys.time()
+end_time-start_time
+start_time=Sys.time()
 ##########################################################################################
-##############################  INTRON EXON ANNOTATION
+############### call peaks
+##########################################################################################
+end_time=Sys.time()
+end_time-start.time
+
+print("Call peaks")
+
+nmeprfix="Same_"
+peaksTable=FtrCount[,c('chr','start','end','ID','ID','strand')]
+colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id','external_gene_name','gene_type','gene_type_ALL')
+Annotable=gencode_Anno_RNA_comb[,colMerge]
+ColumnName=c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
+pass_n="pass1"
+
+
+peaksTable=PeaksdataOut
+Annotable=Anno_RNA_comb
+ColumnName=c('type','transcript_name')
+pass_n="pass2"
+
+#merge references depending on species, run annotation
+bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
+  
+  #set file prefix
+  file_prefix = paste0(file_id,pass_n,"_")
+  
+  ## the multiple chr is a space filler was to make a bed6 file for bedtools 
+  anno_output = Annotable[,c('chr','start','end','chr','chr','strand',ColumnName)] %>%
+    dplyr::rename(
+      chr_anno = chr,
+      start_anno = start,
+      end_anno = end,
+      strand_anno = strand
+    )
+
+  #clear chr cols 4,5
+  anno_output[,4:5]="."
+  
+  #output bed files
+  write.table(anno_output,
+              file = paste0(out_dir,file_prefix,"annotable.bed"), 
+              sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
+  
+  #write out peakstable
+  peaksTable_output=subset(peaksTable,!is.na(peaksTable$start) & 
+                                   chr %in% unique(anno_output$chr_anno))[,c('chr','start','end','ID','ID','strand')]
+  write.table(peaksTable_output,
+              file = paste0(out_dir,file_prefix,"peakstable.bed"), 
+              sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
+  
+  # merge bedfiles into output text
+  system(paste0('bedtools intersect -a ', 
+                out_dir, file_prefix,'peakstable.bed -b ', 
+                out_dir, file_prefix,'annotable.bed -wao -s > ',
+                out_dir, file_prefix,'peaks_OL.txt'))
+  
+  #read in merged file
+  ab_OL = read.table(paste0(out_dir,file_prefix,"peaks_OL.txt"), 
+                     header=F, sep="\t",stringsAsFactors = F, col.names =  c(colnames(peaksTable_output),
+                      colnames(anno_output),'ntOL'))
+  
+  #subset 
+  ab_OL=ab_OL[ab_OL$ntOL>0,]
+  
+  #add width
+  ab_OL$width = ab_OL$end-ab_OL$start
+  ab_OL$width_anno = ab_OL$end_anno-ab_OL$start_anno
+  
+  if (nrow(ab_OL)>0){
+    #add nt / width in annotation and read
+    ab_OL$OLper_anno = ab_OL$ntOL/ab_OL$width_anno
+    ab_OL$OLper = ab_OL$ntOL/ab_OL$width
+    
+    #subset
+    ab_OL=ab_OL[(ab_OL$OLper_anno>.75 | ab_OL$OLper>.51), ]
+    
+    #ID duplicates and unique
+    dup=unique(ab_OL[duplicated(ab_OL$ID),'ID'])
+    ab_OL_single=ab_OL[!(ab_OL$ID%in%dup),]
+    ab_OL_double=ab_OL[(ab_OL$ID%in%dup),]
+    
+    unique_list=unique(ab_OL_double$ID)
+    ab_OL_colapsed=as.data.frame(matrix(nrow=length(unique_list),ncol=ncol(ab_OL_double)))
+    colnames(ab_OL_colapsed)=colnames(ab_OL_double)
+    
+    for(x in 1:length(unique_list)){
+      pam = subset(ab_OL_double,ID %in% unique_list[x])
+      ab_OL_colapsed[x,!(colnames(ab_OL_double) %in% c(ColumnName))]=pam[1,
+                                                                        !(colnames(ab_OL_double)%in%c(ColumnName)),drop=T]
+      
+      for (cx in 1:length(ColumnName)) {
+        ab_OL_colapsed[x,ColumnName[cx]]=paste(sort(unique((pam[,ColumnName[cx]]))), collapse =",")
+      }
+    }
+    start_time=Sys.time()
+    end_time=Sys.time()
+    end_time-start_time
+    
+    
+    ab_OL_colapsed=rbind(ab_OL_colapsed,ab_OL_single)
+    ab_OL_colapsed=ab_OL_colapsed[!is.na(ab_OL_colapsed$ID),]
+    ab_OL_colapsed[(ab_OL_colapsed$ntOL<=0),ColumnName]=NA
+  } else{
+    next
+  }
+  
+  #merge tables
+  ab_OL_colapsed = merge(peaksTable,
+                         ab_OL_colapsed[,c('ID',ColumnName)],
+                         by='ID',all.x=T)
+  
+  return(ab_OL_colapsed) 
+}
+
+peak_calling<-function(peak_in,nmeprfix){
+  colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id',
+               'external_gene_name','gene_type','gene_type_ALL')
+  colSelect=c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
+  
+  PeaksdataOut=bam_anno2(peak_in,
+                         gencode_Anno_RNA_comb[,colMerge],
+                         colSelect,
+                         "pass1")
+  
+  PeaksdataOut=bam_anno2(PeaksdataOut,
+                         Anno_RNA_comb,
+                         c('type','transcript_name'),
+                         "pass2")
+  
+  ##########################################################################################
+  ############### Clean up
+  ##########################################################################################
+  # change lincRNA,rRNA to rRNA only
+  # do not change the name if there is actually a lincRNA name separate from the rRNA grepl(',',p$name)==F)
+  PeaksdataOut[(grepl(',',PeaksdataOut$name)==F)&(PeaksdataOut$type%in%'lincRNA-exon,rRNA'),'type']='rRNA'
+  PeaksdataOut[(grepl(',',PeaksdataOut$name)==F)&(PeaksdataOut$type%in%'lincRNA-intron,rRNA'),'type']='rRNA'
+  PeaksdataOut[(grepl(',',PeaksdataOut$name)==F)&(PeaksdataOut$type%in%'lncRNA,rRNA'),'type']='rRNA'
+  
+  # change all psueudogene classes to pseudogene
+  PeaksdataOut[grep('pseudogene',PeaksdataOut$gene_type_ALL),'gene_type_ALL']='pseudogene'
+  
+  # change all sc RNA to yRNA names
+  PeaksdataOut$type=gsub('scRNA,yRNA','yRNA',PeaksdataOut$type)
+  
+  ##########################################################################################
+  ############### Summarize Peak annotation
+  ##########################################################################################
+  #separate annotated and non annotated peaks 
+  anno=PeaksdataOut[(is.na(PeaksdataOut$gene_type_ALL)==F)|(is.na(PeaksdataOut$type)==F),'ID']
+  
+  #If there are peaks not annotated with an ID
+  if (length(anno)<nrow(PeaksdataOut)&length(anno)>0) { 
+    peaksTable_Anno=PeaksdataOut[(PeaksdataOut$ID%in%anno),,drop=F]
+    peaksTable_noAnno=PeaksdataOut[!(PeaksdataOut$ID%in%anno),,drop=F]
+  } else if (length(anno)==nrow(PeaksdataOut)) { #"All peaks are annotated"
+    peaksTable_Anno=PeaksdataOut[(PeaksdataOut$ID%in%anno),,drop=F]
+    peaksTable_noAnno=as.data.frame(matrix(nrow=1,ncol=ncol(PeaksdataOut)))
+    colnames(peaksTable_noAnno)=colnames(PeaksdataOut)
+  }
+  
+  if(length(anno)>0) { 
+    
+    u=unique(peaksTable_Anno$ID)
+    peaksTable_colapsed=as.data.frame(matrix(nrow=length(u),ncol=ncol(peaksTable_Anno)));
+    colnames(peaksTable_colapsed)=colnames(peaksTable_Anno)
+    
+    ## Checking for conflicting annotations from gencode and additional supplied annotations
+    ## If conflict prioritize Supplied annotations 
+    ## Additionally Peak may overlap multiple features and so I am setting hierarchy
+    for(x in 1:length(u)){
+      PeaksdataOutU=u[x]
+      pam=peaksTable_Anno[peaksTable_Anno$ID%in%PeaksdataOutU,]
+      
+      #Comb Annotation
+      pam_1=pam$gene_type_ALL ### type from Gencode 
+      pam_1=as.data.frame(strsplit(pam_1,','));colnames(pam_1)='a';pam_1$a=as.character(pam_1$a)
+      
+      pam_2=pam$type ### type from Annotation
+      pam_2=as.data.frame(strsplit(pam_2,','));colnames(pam_2)='a';pam_2$a=as.character(pam_2$a)
+      
+      type_list = c("miRNA","piRNA","rRNA","siRNA","snRNA","snoRNA",
+                    "ribozyme","scRNA", "sRNA","scaRNA", "yRNA", "srpRNA", "7SKRNA",
+                    "sncRNA","vaultRNA", "tRNA")
+      #remove misc_RNA catagory : these are covered by additional annotations (mostly yRNA)
+      ## We should set this up to only display misc_RNA if no additional annotations
+      if (nrow(pam_1)>1&grepl('misc_RNA',pam_1)&grepl(paste(type_list,collapse = "|"),pam_1)){
+        pam_1[pam_1$a%in%'misc_RNA','a']=NA
+      }
+      if (grepl('misc_RNA',pam_1)&'FALSE'%in%is.na(pam_2)){
+        pam_1[pam_1$a%in%'misc_RNA','a']=NA
+      }
+      
+      #lincRNA are from an older Gencode version (VM18 or older) so don't use    
+      if (grepl('lncRNA',pam_1)&grepl('lincRNA',pam_2)) {
+        pam_1[pam_2$a%in%'lincRNA',]='lncRNA'
+      }
+      
+      #change ribozyme (gencode) to RNA type from additional anno
+      if (grepl('ribozyme',pam_1)) {
+        pam_1[pam_1$a%in%'ribozyme',]=unique(pam_2$a)
+      }
+      
+      #combine all rna types subtypes into ncRNA
+      pam_c=rbind(pam_1,pam_2)
+      pam_c=pam_c[!is.na(pam_c$a),,drop=F]
+      
+      #### Annotation from Gencode : unique(sort(mm10$gene_type_ALL))
+      ReplaceType <-function(df_in,col_in,list_in,replace_id){
+        for (id in list_in){
+          df_in[,col_in]=gsub(paste0("\\<",id,"\\>"),replace_id,df_in[,col_in])
+        } 
+        return(df_in)
+      }
+      
+      type_list = c("miRNA","miscRNA","misc_RNA","piRNA","rRNA","siRNA","snRNA","snoRNA",
+                    "ribozyme","scRNA", "sRNA","scaRNA", "yRNA", "srpRNA", "7SKRNA",
+                    "sncRNA",'vaultRNA', "tRNA")
+      pam_c2 = ReplaceType(pam_c,"a", type_list,"ncRNA")
+      
+      if (length(pam_c$a)>1) {pam_c=pam_c[order(pam_c$a),,drop=F]}
+      if (length(pam_c2$a)>1) {pam_c2=pam_c2[order(pam_c2$a),,drop=F]}
+      
+      pam_c=paste(unique(pam_c$a),collapse = ',')
+      pam_c2=paste(unique(pam_c2$a),collapse = ',')
+      
+      #Comb GeneName 
+      pam_G1=pam$external_gene_name ### gene name from gencode
+      pam_G1=as.data.frame(strsplit(pam_G1,','));colnames(pam_G1)='a';pam_G1$a=as.character(pam_G1$a)
+      
+      ### G1 is gencode annotation and G2 is additional annotation
+      pam_G2=pam$transcript_name ### gene name from annotation
+      pam_G2=as.data.frame(strsplit(pam_G2,','));colnames(pam_G2)='a';pam_G2$a=as.character(pam_G2$a)
+      
+      ## there are non uniform naming for 7SK rRNA so i am making a uniform naming by selecting only from gencode
+      if (grepl('sk',pam_G1)&grepl('7SK',pam_G2)) {
+        pam_G2[pam_G2$a%in%'7SK',]=NA
+      }
+      
+      #merge gene names from "gencode" and "annotation"
+      pam_gmerge=rbind(pam_G1,pam_G2)
+      pam_gmerge=pam_gmerge[!is.na(pam_gmerge$a),,drop=F]
+      pam_gmerge=paste(unique(pam_gmerge$a),collapse = ',')
+      
+      peaksTable_colapsed[x,colnames(peaksTable_Anno)]=(pam[1,colnames(peaksTable_Anno),drop=T])
+      peaksTable_colapsed[x,'type_simple_comb']=pam_c2
+      peaksTable_colapsed[x,'type_comb']=pam_c
+      peaksTable_colapsed[x,'gene_name_comb']=pam_gmerge
+    }
+    
+    rnatype=peaksTable_colapsed[,c('ID','ensembl_gene_id','external_gene_name','gene_type',"gene_type_ALL",
+                                   'type','transcript_name','type_simple_comb','type_comb','gene_name_comb')]
+    
+    peaksTable_noAnno[,c('type_simple_comb','type_comb','gene_name_comb')]=NA
+    
+    peaksTable_colapsed=rbind(peaksTable_colapsed,peaksTable_noAnno)
+    peaksTable_colapsed=peaksTable_colapsed[!is.na(peaksTable_colapsed$ID),]
+    
+    rnames=c("ensembl_gene_id","external_gene_name","gene_type","gene_type_ALL","type","transcript_name","type_simple_comb","type_comb","gene_name_comb")
+    
+    colnames(peaksTable_colapsed)[colnames(peaksTable_colapsed)%in%rnames]=paste0(nmeprfix,rnames)
+    
+    type_start = c('lincRNA-exon,lncRNA','lincRNA-intron,lncRNA')
+    type_end = c('lincRNA-exon','lincRNA-intron')
+    col_list= c('type_comb','type_simple_comb','gene_type_ALL')
+    
+    #change the type (type_list) to new id (change_list)
+    for (cols_to_change in col_list){
+      
+      #change the type (type_list) to new id (change_list)
+      for (i in range(1:length(type_start))){
+        peaksTable_colapsed[,paste0(nmeprfix,cols_to_change)] = gsub(type_start[i],
+                                                                     type_end[i],
+                                                                     peaksTable_colapsed[,paste0(nmeprfix,cols_to_change)] )
+      }
+    }
+    
+  } else { 
+    print("No Peaks Annotated")
+    peaksTable_colapsed=PeaksdataOut
+    rnames=c("ensembl_gene_id","external_gene_name","gene_type","gene_type_ALL","type","transcript_name","type_simple_comb","type_comb","gene_name_comb")
+    peaksTable_colapsed[,rnames]=NA
+    colnames(peaksTable_colapsed)[colnames(peaksTable_colapsed)%in%rnames]=paste0(nmeprfix,rnames)
+  }  
+  
+  return(peaksTable_colapsed)
+}
+
+#prep peaks
+peaks_Oppo=FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')] 
+peaks_Oppo$strand=gsub("\\+","pos",peaks_Oppo$strand) 
+peaks_Oppo$strand=gsub("\\-","+",peaks_Oppo$strand)
+peaks_Oppo$strand=gsub("pos","-",peaks_Oppo$strand)
+
+#run functions
+peaks_SameAnno = peak_calling(FtrCount[,c('chr','start','end','ID','ID','strand')],"Same_")
+peaks_OppoAnno = peak_calling(peaks_Oppo,"Oppo_")
+
+##########################################################################################
+#clean
+#merge references depending on species, run annotation
+bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
+  
+  #set file prefix
+  file_prefix = paste0(file_id,pass_n,"_")
+  
+  ## the multiple chr is a space filler was to make a bed6 file for bedtools 
+  anno_output = Annotable[,c('chr','start','end','chr','chr','strand',ColumnName)] %>%
+    dplyr::rename(
+      chr_anno = chr,
+      start_anno = start,
+      end_anno = end,
+      strand_anno = strand
+    )
+  
+  #clear chr cols 4,5
+  anno_output[,4:5]="."
+  
+  #output bed files
+  write.table(anno_output,
+              file = paste0(out_dir,file_prefix,"annotable.bed"), 
+              sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
+  
+  #write out peakstable
+  peaksTable_output=subset(peaksTable,!is.na(peaksTable$start) & 
+                             chr %in% unique(anno_output$chr_anno))[,c('chr','start','end','ID','ID','strand')]
+  write.table(peaksTable_output,
+              file = paste0(out_dir,file_prefix,"peakstable.bed"), 
+              sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
+  
+  # merge bedfiles into output text
+  system(paste0('bedtools intersect -a ', 
+                out_dir, file_prefix,'peakstable.bed -b ', 
+                out_dir, file_prefix,'annotable.bed -wao -s > ',
+                out_dir, file_prefix,'peaks_OL.txt'))
+  
+  #read in merged file
+  ab_OL = read.table(paste0(out_dir,file_prefix,"peaks_OL.txt"), 
+                     header=F, sep="\t",stringsAsFactors = F)
+  colnames(ab_OL) = c(paste0(colnames(peaksTable_output)),
+                      paste0(colnames(anno_output)),'ntOL')
+  
+  #add width
+  ab_OL$width = ab_OL$end-ab_OL$start
+  ab_OL$width_anno = ab_OL$end_anno-ab_OL$start_anno
+  
+  #subset 
+  ab_OL=ab_OL[ab_OL$ntOL>0,]
+  if (nrow(ab_OL)>0){
+    #add nt / width in annotation and read
+    ab_OL$OLper_anno = ab_OL$ntOL/ab_OL$width_anno
+    ab_OL$OLper = ab_OL$ntOL/ab_OL$width
+    
+    #subset
+    ab_OL=ab_OL[(ab_OL$OLper_anno>.75 | ab_OL$OLper>.51), ]
+    
+    #ID duplicates and unique
+    dup=unique(ab_OL[duplicated(ab_OL$ID),'ID'])
+    ab_OL_single=ab_OL[!(ab_OL$ID%in%dup),]
+    ab_OL_double=ab_OL[(ab_OL$ID%in%dup),]
+    
+    unique_list=unique(ab_OL_double$ID)
+    ab_OL_colapsed=as.data.frame(matrix(nrow=length(unique_list),ncol=ncol(ab_OL_double)));
+    colnames(ab_OL_colapsed)=colnames(ab_OL_double)
+    
+    #for every unique id
+    for(x in 1:length(unique_list)){
+      peaksTableU = unique_list[x]
+      pam = ab_OL_double[ab_OL_double$ID%in%peaksTableU,]
+      ab_OL_colapsed[x,colnames(ab_OL_double)%in%c(ColumnName)==F]=(pam[1,colnames(ab_OL_double)%in%c(ColumnName)==F,drop=T])
+      
+      for (cx in 1:length(ColumnName)) {
+        ab_OL_colapsed[x,ColumnName[cx]]=paste(sort(unique((pam[,ColumnName[cx]]))), collapse =",")
+      }
+    }
+    
+    ab_OL_colapsed=rbind(ab_OL_colapsed,ab_OL_single)
+    ab_OL_colapsed=ab_OL_colapsed[!is.na(ab_OL_colapsed$ID),]
+    ab_OL_colapsed[(ab_OL_colapsed$ntOL<=0),ColumnName]=NA
+    
+    ###fix rename variable
+    ab_OL=ab_OL_colapsed
+  } else{
+    next
+  }
+  
+  #merge tables
+  ab_OL = merge(peaksTable,
+                ab_OL[,c('ID',ColumnName)],
+                by='ID',all.x=T)
+  
+  return(ab_OL) 
+}
+
+peak_calling<-function(peak_in,nmeprfix){
+  colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id',
+               'external_gene_name','gene_type','gene_type_ALL')
+  colSelect=c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
+  
+  PeaksdataOut=bam_anno2(peak_in,
+                         gencode_Anno_RNA_comb[,colMerge],
+                         colSelect,
+                         "pass1")
+  
+  PeaksdataOut=bam_anno2(PeaksdataOut,
+                         Anno_RNA_comb,
+                         c('type','transcript_name'),
+                         "pass2")
+  
+  ##########################################################################################
+  ############### Clean up
+  ##########################################################################################
+  # change lincRNA,rRNA to rRNA only
+  # do not change the name if there is actually a lincRNA name separate from the rRNA grepl(',',p$name)==F)
+  PeaksdataOut[(grepl(',',PeaksdataOut$name)==F)&(PeaksdataOut$type%in%'lincRNA-exon,rRNA'),'type']='rRNA'
+  PeaksdataOut[(grepl(',',PeaksdataOut$name)==F)&(PeaksdataOut$type%in%'lincRNA-intron,rRNA'),'type']='rRNA'
+  PeaksdataOut[(grepl(',',PeaksdataOut$name)==F)&(PeaksdataOut$type%in%'lncRNA,rRNA'),'type']='rRNA'
+  
+  # change all psueudogene classes to pseudogene
+  PeaksdataOut[grep('pseudogene',PeaksdataOut$gene_type_ALL),'gene_type_ALL']='pseudogene'
+  
+  # change all sc RNA to yRNA names
+  PeaksdataOut$type=gsub('scRNA,yRNA','yRNA',PeaksdataOut$type)
+  
+  ##########################################################################################
+  ############### Summarize Peak annotation
+  ##########################################################################################
+  #separate annotated and non annotated peaks 
+  anno=PeaksdataOut[(is.na(PeaksdataOut$gene_type_ALL)==F)|(is.na(PeaksdataOut$type)==F),'ID']
+  
+  #Only subset of peaks are annotated (most likely)
+  if (length(anno)<nrow(PeaksdataOut)&length(anno)>0) { 
+    peaksTable_Anno=PeaksdataOut[(PeaksdataOut$ID%in%anno),,drop=F]
+    peaksTable_noAnno=PeaksdataOut[!(PeaksdataOut$ID%in%anno),,drop=F]
+  } else if (length(anno)==nrow(PeaksdataOut)) { #"All peaks are annotated"
+    peaksTable_Anno=PeaksdataOut[(PeaksdataOut$ID%in%anno),,drop=F]
+    peaksTable_noAnno=as.data.frame(matrix(nrow=1,ncol=ncol(PeaksdataOut)))
+    colnames(peaksTable_noAnno)=colnames(PeaksdataOut)
+  }
+  
+  if(length(anno)>0) { 
+    
+    u=unique(peaksTable_Anno$ID)
+    peaksTable_colapsed=as.data.frame(matrix(nrow=length(u),ncol=ncol(peaksTable_Anno)));
+    colnames(peaksTable_colapsed)=colnames(peaksTable_Anno)
+    
+    ## Checking for conflicting annotations from gencode and additional supplied annotations
+    ## If conflict prioritize Supplied annotations 
+    ## Additionally Peak may overlap multiple features and so I am setting hierarchy
+    for(x in 1:length(u)){
+      PeaksdataOutU=u[x]
+      pam=peaksTable_Anno[peaksTable_Anno$ID%in%PeaksdataOutU,]
+      
+      #Comb Annotation
+      pam_1=pam$gene_type_ALL ### type from Gencode 
+      pam_1=as.data.frame(strsplit(pam_1,','));colnames(pam_1)='a';pam_1$a=as.character(pam_1$a)
+      
+      pam_2=pam$type ### type from Annotation
+      pam_2=as.data.frame(strsplit(pam_2,','));colnames(pam_2)='a';pam_2$a=as.character(pam_2$a)
+      
+      type_list = c("miRNA","piRNA","rRNA","siRNA","snRNA","snoRNA",
+                    "ribozyme","scRNA", "sRNA","scaRNA", "yRNA", "srpRNA", "7SKRNA",
+                    "sncRNA","vaultRNA", "tRNA")
+      #remove misc_RNA catagory : these are covered by additional annotations (mostly yRNA)
+      ## We should set this up to only display misc_RNA if no additional annotations
+      if (nrow(pam_1)>1&grepl('misc_RNA',pam_1)&grepl(paste(type_list,collapse = "|"),pam_1)){
+        pam_1[pam_1$a%in%'misc_RNA','a']=NA
+      }
+      if (grepl('misc_RNA',pam_1)&'FALSE'%in%is.na(pam_2)){
+        pam_1[pam_1$a%in%'misc_RNA','a']=NA
+      }
+      
+      #lincRNA are from an older Gencode version (VM18 or older) so don't use    
+      if (grepl('lncRNA',pam_1)&grepl('lincRNA',pam_2)) {
+        pam_1[pam_2$a%in%'lincRNA',]='lncRNA'
+      }
+      
+      #change ribozyme (gencode) to RNA type from additional anno
+      if (grepl('ribozyme',pam_1)) {
+        pam_1[pam_1$a%in%'ribozyme',]=unique(pam_2$a)
+      }
+      
+      #combine all rna types subtypes into ncRNA
+      pam_c=rbind(pam_1,pam_2)
+      pam_c=pam_c[!is.na(pam_c$a),,drop=F]
+      
+      #### Annotation from Gencode : unique(sort(mm10$gene_type_ALL))
+      ReplaceType <-function(df_in,col_in,list_in,replace_id){
+        for (id in list_in){
+          df_in[,col_in]=gsub(paste0("\\<",id,"\\>"),replace_id,df_in[,col_in])
+        } 
+        return(df_in)
+      }
+      
+      type_list = c("miRNA","miscRNA","misc_RNA","piRNA","rRNA","siRNA","snRNA","snoRNA",
+                    "ribozyme","scRNA", "sRNA","scaRNA", "yRNA", "srpRNA", "7SKRNA",
+                    "sncRNA",'vaultRNA', "tRNA")
+      pam_c2 = ReplaceType(pam_c,"a", type_list,"ncRNA")
+      
+      if (length(pam_c$a)>1) {pam_c=pam_c[order(pam_c$a),,drop=F]}
+      if (length(pam_c2$a)>1) {pam_c2=pam_c2[order(pam_c2$a),,drop=F]}
+      
+      pam_c=paste(unique(pam_c$a),collapse = ',')
+      pam_c2=paste(unique(pam_c2$a),collapse = ',')
+      
+      #Comb GeneName 
+      pam_G1=pam$external_gene_name ### gene name from gencode
+      pam_G1=as.data.frame(strsplit(pam_G1,','));colnames(pam_G1)='a';pam_G1$a=as.character(pam_G1$a)
+      
+      ### G1 is gencode annotation and G2 is additional annotation
+      pam_G2=pam$transcript_name ### gene name from annotation
+      pam_G2=as.data.frame(strsplit(pam_G2,','));colnames(pam_G2)='a';pam_G2$a=as.character(pam_G2$a)
+      
+      ## there are non uniform naming for 7SK rRNA so i am making a uniform naming by selecting only from gencode
+      if (grepl('sk',pam_G1)&grepl('7SK',pam_G2)) {
+        pam_G2[pam_G2$a%in%'7SK',]=NA
+      }
+      
+      #merge gene names from "gencode" and "annotation"
+      pam_gmerge=rbind(pam_G1,pam_G2)
+      pam_gmerge=pam_gmerge[!is.na(pam_gmerge$a),,drop=F]
+      pam_gmerge=paste(unique(pam_gmerge$a),collapse = ',')
+      
+      peaksTable_colapsed[x,colnames(peaksTable_Anno)]=(pam[1,colnames(peaksTable_Anno),drop=T])
+      peaksTable_colapsed[x,'type_simple_comb']=pam_c2
+      peaksTable_colapsed[x,'type_comb']=pam_c
+      peaksTable_colapsed[x,'gene_name_comb']=pam_gmerge
+    }
+    
+    rnatype=peaksTable_colapsed[,c('ID','ensembl_gene_id','external_gene_name','gene_type',"gene_type_ALL",
+                                   'type','transcript_name','type_simple_comb','type_comb','gene_name_comb')]
+    
+    peaksTable_noAnno[,c('type_simple_comb','type_comb','gene_name_comb')]=NA
+    
+    peaksTable_colapsed=rbind(peaksTable_colapsed,peaksTable_noAnno)
+    peaksTable_colapsed=peaksTable_colapsed[!is.na(peaksTable_colapsed$ID),]
+    
+    rnames=c("ensembl_gene_id","external_gene_name","gene_type","gene_type_ALL","type","transcript_name","type_simple_comb","type_comb","gene_name_comb")
+    
+    colnames(peaksTable_colapsed)[colnames(peaksTable_colapsed)%in%rnames]=paste0(nmeprfix,rnames)
+    
+    type_start = c('lincRNA-exon,lncRNA','lincRNA-intron,lncRNA')
+    type_end = c('lincRNA-exon','lincRNA-intron')
+    col_list= c('type_comb','type_simple_comb','gene_type_ALL')
+    
+    #change the type (type_list) to new id (change_list)
+    for (cols_to_change in col_list){
+      
+      #change the type (type_list) to new id (change_list)
+      for (i in range(1:length(type_start))){
+        peaksTable_colapsed[,paste0(nmeprfix,cols_to_change)] = gsub(type_start[i],
+                                                                     type_end[i],
+                                                                     peaksTable_colapsed[,paste0(nmeprfix,cols_to_change)] )
+      }
+    }
+    
+  } else { 
+    print("No Peaks Annotated")
+    peaksTable_colapsed=PeaksdataOut
+    rnames=c("ensembl_gene_id","external_gene_name","gene_type","gene_type_ALL","type","transcript_name","type_simple_comb","type_comb","gene_name_comb")
+    peaksTable_colapsed[,rnames]=NA
+    colnames(peaksTable_colapsed)[colnames(peaksTable_colapsed)%in%rnames]=paste0(nmeprfix,rnames)
+  }  
+  
+  return(peaksTable_colapsed)
+}
+
+#prep peaks
+peaks_Oppo=FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')] 
+peaks_Oppo$strand=gsub("\\+","pos",peaks_Oppo$strand) 
+peaks_Oppo$strand=gsub("\\-","+",peaks_Oppo$strand)
+peaks_Oppo$strand=gsub("pos","-",peaks_Oppo$strand)
+
+#run functions
+peaks_SameAnno = peak_calling(FtrCount[,c('chr','start','end','ID','ID','strand')],"Same_")
+peaks_OppoAnno = peak_calling(peaks_Oppo,"Oppo_")
+##########################################################################################
+############### INTRON EXON ANNOTATION
 ##########################################################################################
 ### Identify if CLIP peak overlaps with Intron or Exonic region   
 
@@ -521,6 +1278,7 @@ Anno_RNA_comb = rbind(
 # 
 # A second column was added to idenify if the peak also overlapped with the 5'UTR 3'UTR or CDS (Column: Featrue 2)
 #########################################################################################3
+print("Intron/exon annotation")
 #gencode
 ref_gencode = fread(gencode_path, header=T, sep="\t",stringsAsFactors = F,data.table=F) %>%
   subset(transcript_type != "TEC" & gene_type != "TEC") %>% 
@@ -573,6 +1331,7 @@ intron_exon$ID=paste0(intron_exon$chr,':',intron_exon$start,'-',intron_exon$end,
 ##########################################################################################
 ############### Intron Exon Function
 ##########################################################################################
+print("IE function")
 IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
   #xopp = 1 #Same; xopp = 2 #Oppo
   #create annotation table
@@ -699,7 +1458,7 @@ intronexon_Same = IE_calling(peaks_SameAnno,'Same',"Same_")
 intronexon_Opposite = IE_calling(peaks_OppoAnno,'Oppo',"Oppo_")
 
 ##########################################################################################
-##############################  IDENTIFY PEAKS IN REPEAT REGIONS   
+############### IDENTIFY PEAKS IN REPEAT REGIONS   
 ##########################################################################################
 # Annotate all repeat regions/Classes identified in Repeatmasker Annotation file (UCSC Table browser)  
 # Data was not filtered based on any of the identified Repeats.  
@@ -711,6 +1470,7 @@ intronexon_Opposite = IE_calling(peaks_OppoAnno,'Oppo',"Oppo_")
 #  6) Low Complexity   
 #  7) Other   
 #  8) Unknown 
+print("RMSK")
 #read in rmsk
 rmsk_GRCm38=fread(rmsk_path, header=T, sep="\t",stringsAsFactors = F,
                   data.table=F)
@@ -877,7 +1637,7 @@ rpmsk_Same = rpmsk_calling(intronexon_Same,"Same_")
 rpmsk_Opposite = rpmsk_calling(intronexon_Opposite,"Oppo_")
 
 ##########################################################################################
-##############################  Assigning Clip peak attributes by strand
+############### Assigning Clip peak attributes by strand
 ##########################################################################################
 # Not all Peaks overlap with a single feature so peak assignments were assigned by priority:
 # ncRNA > Protein coding : Exonic > repeats > Pseudogene > Antisense Feature > 
@@ -1044,17 +1804,14 @@ peak_attributes <- function(peaks_in,nmeprfix){
   return(PeaksdataOut)
 }
 
-peak_attrib_Same = peak_attributes(rpmsk_Same,"Same_")
-peak_attrib_Oppo = peak_attributes(rpmsk_Opposite,"Oppo_")
-
-###fix variable swap
 #merge attributes
-PeaksdataOut = merge(peak_attrib_Same,
+peak_attrib_Oppo = peak_attributes(rpmsk_Opposite,"Oppo_")
+PeaksdataOut = merge(peak_attributes(rpmsk_Same,"Same_"),
                      peak_attrib_Oppo[,colnames(peak_attrib_Oppo)[!colnames(peak_attrib_Oppo) %in% 
                                                                     c("chr","start","end","strand" )]],
                      by='ID')
 ##########################################################################################
-##############################  Assigning Clip peak attributes - merged strands
+############### Assigning Clip peak attributes - merged strands
 ##########################################################################################  
 #create column
 PeaksdataOut$Comb_type_exon_Oppo="no Feature"
@@ -1102,7 +1859,6 @@ PeaksdataOut = AddTypetoComb(PeaksdataOut,
                                (grepl('linLcRNA-exon',PeaksdataOut[,paste0('Same_','type_comb')]) | 
                                   grepl('lnLcRNA',PeaksdataOut[,paste0('Same_','type_comb')]) ),
                              'lnLcRNA-exon')
-#####
 # 7. Antisense - LncRNA - exon
 PeaksdataOut = AddTypetoComb(PeaksdataOut, 
                              PeaksdataOut[,'Comb_type_exon_Oppo'] == "no Feature" & 
@@ -1131,7 +1887,6 @@ PeaksdataOut = AddTypetoComb(PeaksdataOut,
                                grepl('linLcRNA-intron',PeaksdataOut[,paste0('Same_','type_comb')]),
                              'lnLcRNA-intron')
 
-
 PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')]= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')] )
 PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')]= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[,paste0(c('Oppo_'),'Comb_type_exon')] )
 PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')]= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,paste0(c('Same_'),'Comb_type_exon')] )
@@ -1140,28 +1895,23 @@ PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-exon','lncRNA',PeaksdataOut[
 PeaksdataOut[,'Comb_type_exon_Oppo']= gsub('lnLcRNA-intron','lncRNA',PeaksdataOut[,'Comb_type_exon_Oppo'] )
 PeaksdataOut[,'Comb_type_exon_Oppo']=factor(PeaksdataOut[,'Comb_type_exon_Oppo'], levels = c("ncRNA", "protein_coding: exon", "Repeat Element","pseudogene","lncRNA-exon","Antisense Feature","protein_coding: Intron","lncRNA-intron","lncRNA","no Feature"))
 
-# ##########################################################################################
-# ##############################  Merge peak annotations with peak junctions
-# ##########################################################################################
-# 
+##########################################################################################
+############### Merge peak annotations with peak junctions
+##########################################################################################
 Peaksdata2_anno = merge(FtrCount_trimmed,
                         PeaksdataOut[,!colnames(PeaksdataOut)%in%c('chr','start','end','strand')],
                         by='ID')
 ##########################################################################################
-##############################  Add annotations to junctions
+############### Add annotations to junctions
 ##########################################################################################  
-
 if (JoinJunc==T) {
   
   Peaksdata2_anno_trns_exon=( Peaksdata2_anno[Peaksdata2_anno$ID%in%Junc_peaks,])
-  
-  # CollapsedOut=as.data.frame(matrix(nrow = nrow(PGene_TBL2),ncol = ncol(Peaksdata2_anno_trns_exon)))
   CollapsedOut=as.data.frame(matrix(nrow = (1),ncol = ncol(Peaksdata2_anno_trns_exon)))
   colnames(CollapsedOut)=colnames(Peaksdata2_anno_trns_exon)
   CollapsedOut$IDmerge=NA
   
   for (x in 1:nrow(PGene_TBL2)) {
-    
     Trnsc=PGene_TBL2[x,]
     TrnscUL=unlist(unique(str_split(Trnsc$JoinID,pattern = ",")))
     
@@ -1179,27 +1929,19 @@ if (JoinJunc==T) {
       if (nrow(dmax)>1) {dmax=dmax[dmax$start%in%max(dmax$start),]}
     }
     
-    
-    
-    #############################################################
     ### collapse all columns 
     d3= ( apply(d2 ,2, function(x){paste(unique(x[!is.na(x)]),collapse = ',')}))
     d3[d3==""]<-NA
-    
-    # cols=c('Counts_All','Counts_Unique','Counts_fracMM','Counts_primary','Counts_Primary_fracMM','Counts_MM','Length')
     cols=c('Counts_Unique','Counts_fracMM','Length')
     d3=as.data.frame(t(d3))
-    d3[1,cols]=
-      t(as.data.frame(colSums(d2[,cols])))   
-    d3[,cols]=
-      as.numeric(d3[,cols])
-    
+    d3[1,cols]=t(as.data.frame(colSums(d2[,cols])))   
+    d3[,cols]=as.numeric(d3[,cols])
     d3$IDmerge=d3$ID
     
-    ########################   
     ## Select summary annotation based on Max(dmax) expression peak or 5'(d5) peak   
     danno=dmax # d5 dmax
-    cols_AnnotSelect=c('Same_Comb_type_exon','Same_Comb_type_ncRNA','Oppo_Comb_type_exon','Oppo_Comb_type_ncRNA','Comb_type_exon_Oppo')
+    cols_AnnotSelect=c('Same_Comb_type_exon','Same_Comb_type_ncRNA','Oppo_Comb_type_exon',
+                       'Oppo_Comb_type_ncRNA','Comb_type_exon_Oppo')
     d3[,cols_AnnotSelect]= (danno[,cols_AnnotSelect])
     
     # Select ID for 5' most read or max counts
@@ -1207,7 +1949,6 @@ if (JoinJunc==T) {
     d3$end=d5$end
     d3$ID=paste0(d5$chr,":",d5$start,"-",d5$end,"_",d5$strand)   
     
-    #############################################################
     ## if count < read_depth skip
     if (d3$Counts_fracMM<read_depth) {
       next
@@ -1224,15 +1965,9 @@ if (JoinJunc==T) {
   ######################################################################
   #### Re filter reads after combing counts of spliced reads
   Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$Counts_fracMM>=read_depth,]
-}
-
-
-if (JoinJunc==F) {
+}else{
   
-  ########################################################
   #### collapse exon
-  ########################################################
-  
   if (condense_exon==T) {
     Peaksdata2_anno_trns=Peaksdata2_anno[(Peaksdata2_anno$Same_feature)%in%""==F,]
     Peaksdata2_anno_trns_exon=Peaksdata2_anno_trns[Peaksdata2_anno_trns$Comb_type_exon_Oppo%in%'protein_coding: exon',]
@@ -1282,20 +2017,19 @@ if (JoinJunc==F) {
       Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$ID%in%CollapsedOutID==F,]
       Peaksdata2_anno=(rbind(Peaksdata2_anno,CollapsedOut))
       
-    } else { print("Multiple peaks not found in single Gene")}
+    } else { 
+      print("Multiple peaks not found in single Gene")
+    }
   }  
-}  
+} 
 
 ## correct lnLc annotation - keep lnLc annotation above to hepl track source of lnc annotation
-for (x in c('Same_gene_type','Same_gene_type_ALL','Same_type_simple_comb','Same_type_comb','Oppo_gene_type','Oppo_gene_type_ALL','Same_type_simple_comb','Oppo_type_simple_comb','Oppo_type_comb')) {
+for (x in c('Same_gene_type','Same_gene_type_ALL','Same_type_simple_comb','Same_type_comb',
+            'Oppo_gene_type','Oppo_gene_type_ALL','Same_type_simple_comb','Oppo_type_simple_comb','Oppo_type_comb')){
   
   Peaksdata2_anno[,x]=gsub("lnLcRNA","lncRNA",Peaksdata2_anno[,x])
   Peaksdata2_anno[,x]=gsub("linLcRNA","lincRNA",Peaksdata2_anno[,x])
-  
 }
-
-### Change start from 0 base to 1 base
-# Peaksdata2_anno$ID=paste0(Peaksdata2_anno$chr,':',Peaksdata2_anno$start+1,'-',Peaksdata2_anno$end,'_',Peaksdata2_anno$strand)
 
 #write out for junction annotation 
 write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_complete_Optimized.txt'),sep = "\t")
