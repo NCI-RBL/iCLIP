@@ -284,15 +284,8 @@ if (join_junction) {
     PGene_TBL2 = setNames(data.frame(matrix(ncol = 10, nrow = length(unique(Junc_PL$JoinID)))), 
                           c("PrimaryGene_Junction1", "JunctionID_Junction1", "JoinID","chr",
                             "start","end","strand_Peaks1","ID_Peaks1","ID_Peaks2","strand"))
-    end_time=Sys.time()
-    end_time-start_time
-    ##########################################################################################
-    #new v1 [rowid,col]
-    test_df=Junc_PL[1:1000,]
-    PGene_TBL2 = data.frame(matrix(ncol = 10, nrow = length(unique(Junc_PL$JoinID))))
-    start_time=Sys.time()
-    test_df$matchid=paste(test_df$ID_Peaks1,test_df$ID_Peaks2,sep="|")
-    test_df = test_df %>%
+    Junc_PL$matchid=paste(Junc_PL$ID_Peaks1,Junc_PL$ID_Peaks2,sep="|")
+    Junc_PL = Junc_PL %>%
       separate(ID_Peaks1,
                sep = "_",
                into = c('ID','strand')) %>%
@@ -301,14 +294,14 @@ if (join_junction) {
                into = c('chr','start','end'),
                remove = T)
     
-    test_df[c("start","end")] <- sapply(test_df[c("start","end")],as.numeric)
-
-    for (rowid in rownames(test_df)){
+    Junc_PL[c("start","end")] <- sapply(Junc_PL[c("start","end")],as.numeric)
+    
+    for (rowid in rownames(Junc_PL)){
       #generate search id
       #IE "chr1:100007068-100007156_\\+|chr1:100082000-100082149_\\+"
       #determine which rows in df partially match any part of search id
-      match_df=test_df[grepl(gsub("_","_\\\\",test_df[rowid,"matchid"]),
-                             test_df$matchid),]
+      match_df=Junc_PL[grepl(gsub("_","_\\\\",Junc_PL[rowid,"matchid"]),
+                             Junc_PL$matchid),]
       
       #until we find all rows matching all partial matches
       match_original=rowid
@@ -317,65 +310,8 @@ if (join_junction) {
       while(length(setdiff(match_current,match_original))>0){
         for (rowid2 in setdiff(match_current,match_original)){
           #determine which rows in df partially match any part of search id
-          match_df2=test_df[grepl(gsub("_","_\\\\",test_df[rowid2,"matchid"]),
-                                  test_df$matchid),]
-          
-          #original list is current, and current list is new matched df
-          match_original=match_current
-          match_current=unique(c(rownames(match_df2),match_current))
-          match_df=rbind(match_df,match_df2) %>%
-            distinct
-        }
-      }
-
-      #update df
-      PGene_TBL2[rowid,'PrimaryGene_Junction1']=paste(sort(unique(match_df$PrimaryGene_Junction1)),collapse = ',')
-      PGene_TBL2[rowid,'JunctionID_Junction1']=paste(sort(unique(match_df$JunctionID_Junction1)),collapse = ',')
-      PGene_TBL2[rowid,'JoinID']=paste(sort(unique(match_df$JoinID)),collapse = ',')
-      PGene_TBL2[rowid,'chr']=unique(match_df$chr)
-      PGene_TBL2[rowid,'start']=min((match_df[,c('start','end')]))
-      PGene_TBL2[rowid,'end']=max((match_df[,c('start','end')]))
-      PGene_TBL2[rowid,'strand_Peaks1']=unique(as.character(match_df$strand_Peaks1))
-      PGene_TBL2[rowid,'ID_Peaks1']=paste(sort(unique(match_df$ID_Peaks1)),collapse = ',')
-      PGene_TBL2[rowid,'ID_Peaks2']=paste(sort(unique(match_df$ID_Peaks2)),collapse = ',')
-    }
-    end_time=Sys.time()
-    end_time-start_time
-    ##########################################################################################
-    #newv2
-    test_df=Junc_PL[1:1000,]
-    PGene_TBL2 = setNames(data.frame(matrix(ncol = 10, nrow = length(unique(Junc_PL$JoinID)))), 
-                          c("PrimaryGene_Junction1", "JunctionID_Junction1", "JoinID","chr",
-                            "start","end","strand_Peaks1","ID_Peaks1","ID_Peaks2","strand"))
-    start_time=Sys.time()
-    test_df$matchid=paste(test_df$ID_Peaks1,test_df$ID_Peaks2,sep="|")
-    test_df = test_df %>%
-      separate(ID_Peaks1,
-               sep = "_",
-               into = c('ID','strand')) %>%
-      separate(ID, 
-               sep = ":|-",
-               into = c('chr','start','end'),
-               remove = T)
-    
-    test_df[c("start","end")] <- sapply(test_df[c("start","end")],as.numeric)
-    
-    for (rowid in rownames(test_df)){
-      #generate search id
-      #IE "chr1:100007068-100007156_\\+|chr1:100082000-100082149_\\+"
-      #determine which rows in df partially match any part of search id
-      match_df=test_df[grepl(gsub("_","_\\\\",test_df[rowid,"matchid"]),
-                             test_df$matchid),]
-      
-      #until we find all rows matching all partial matches
-      match_original=rowid
-      match_current=rownames(match_df)
-      
-      while(length(setdiff(match_current,match_original))>0){
-        for (rowid2 in setdiff(match_current,match_original)){
-          #determine which rows in df partially match any part of search id
-          match_df2=test_df[grepl(gsub("_","_\\\\",test_df[rowid2,"matchid"]),
-                                  test_df$matchid),]
+          match_df2=Junc_PL[grepl(gsub("_","_\\\\",Junc_PL[rowid2,"matchid"]),
+                                  Junc_PL$matchid),]
           
           #original list is current, and current list is new matched df
           match_original=match_current
@@ -396,145 +332,6 @@ if (join_junction) {
                                 paste(sort(unique(match_df$ID_Peaks1)),collapse = ','),
                                 paste(sort(unique(match_df$ID_Peaks2)),collapse = ','))
     }
-    end_time=Sys.time()
-    end_time-start_time
-    ##########################################################################################
-    #old
-    test_df=Junc_PL[1:1000,]
-    PGene_TBL2 = data.frame(matrix(ncol = 10, nrow = length(unique(Junc_PL$JoinID))))
-    start_time=Sys.time()
-    for (rowid in 1:length(unique(test_df$JoinID))) {
-      #determine chrom id ie "ML143376.1"
-      id_chr=unique(separate(test_df[rowid,c("ID_Peaks1","ID_Peaks2")],1,
-                             sep=":",
-                             into = c('chr','ID'))$chr)
-      #find rows that matches chromid in their junctionid
-      #aka any rows that are on the same location
-      Junc_PL_chr=test_df[grepl(paste0(id_chr,':'),
-                                test_df$JoinID,
-                                fixed = T),]
-      #find rows that matches id from peak 1 and 2
-      idcomb=Junc_PL_chr[grepl(gsub("_","_\\\\",
-                                    paste(test_df[rowid,c("ID_Peaks1","ID_Peaks2")], collapse = "|")),
-                               Junc_PL_chr$JoinID),]
-      if (nrow(idcomb)==0) {
-        next
-      } else{
-        
-        ## look again to see if more locations with found connected peaks
-        id2=sort(unique(c(idcomb$ID_Peaks1,idcomb$ID_Peaks2)))
-        
-        ## If new peaks come up check until no new peaks
-        id = c(test_df[rowid,c("ID_Peaks1")],test_df[rowid,c("ID_Peaks2")])
-        while (length(setdiff(id2,id))!=0) {
-          id=id2
-          
-          #Look Again
-          idcomb=Junc_PL_chr[grep(gsub("_","_\\\\",
-                                       paste(id2,collapse = "|")),
-                                  Junc_PL_chr$JoinID),]
-          
-          # Get Peak IDS to end while loop
-          id2=sort(unique(c(idcomb$ID_Peaks1,
-                            idcomb$ID_Peaks2)))
-        }
-        
-        #separate coordinates
-        id2_coord = as.data.frame(id2) %>%
-          separate(1,
-                   sep = "_",
-                   into = c('ID','strand')) %>%
-          separate(ID, 
-                   sep = ":|-",
-                   into = c('chr','start','end'),
-                   remove = T)
-        
-        #convert start/end to numeric
-        id2_coord[c("start","end")] <- sapply(id2_coord[c("start","end")],as.numeric)
-        
-        #update df
-        PGene_TBL2[rowid,'PrimaryGene_Junction1']=paste(sort(unique(match_df$PrimaryGene_Junction1)),collapse = ',')
-        PGene_TBL2[rowid,'JunctionID_Junction1']=paste(sort(unique(match_df$JunctionID_Junction1)),collapse = ',')
-        PGene_TBL2[rowid,'JoinID']=paste(sort(unique(match_df$JoinID)),collapse = ',')
-        PGene_TBL2[rowid,'chr']=unique(match_df$chr)
-        PGene_TBL2[rowid,'start']=min((match_df[,c('start','end')]))
-        PGene_TBL2[rowid,'end']=max((match_df[,c('start','end')]))
-        PGene_TBL2[rowid,'strand_Peaks1']=unique(as.character(match_df$strand_Peaks1))
-        PGene_TBL2[rowid,'ID_Peaks1']=paste(sort(unique(match_df$ID_Peaks1)),collapse = ',')
-        PGene_TBL2[rowid,'ID_Peaks2']=paste(sort(unique(match_df$ID_Peaks2)),collapse = ',')
-        
-        #phil - Unclear what this is doing? 
-        #if (length(unique(as.character(idcomb$strand_Peaks1)))>1) {Select_pos_and_Neg_strands}
-      }
-    }
-    end_time=Sys.time()
-    end_time-start_time
-    ##########################################################################################
-    
-    for (rowid in 1:length(unique(Junc_PL$JoinID))) {
-      #determine chrom id ie "ML143376.1"
-      id_chr=unique(separate(Junc_PL[rowid,c("ID_Peaks1","ID_Peaks2")],1,
-                             sep=":",
-                             into = c('chr','ID'))$chr)
-      #find rows that matches chromid in their junctionid
-      #aka any rows that are on the same location
-      Junc_PL_chr=Junc_PL[grepl(paste0(id_chr,':'),
-                                Junc_PL$JoinID,
-                                fixed = T),]
-      #find rows that matches id from peak 1 and 2
-      idcomb=Junc_PL_chr[grepl(gsub("_","_\\\\",
-                                    paste(Junc_PL[rowid,c("ID_Peaks1","ID_Peaks2")], collapse = "|")),
-                               Junc_PL_chr$JoinID),]
-      if (nrow(idcomb)==0) {
-        next
-      } else{
-        
-        ## look again to see if more locations with found connected peaks
-        id2=sort(unique(c(idcomb$ID_Peaks1,idcomb$ID_Peaks2)))
-        
-        ## If new peaks come up check until no new peaks
-        id = c(Junc_PL[rowid,c("ID_Peaks1")],Junc_PL[rowid,c("ID_Peaks2")])
-        while (length(setdiff(id2,id))!=0) {
-          id=id2
-          
-          #Look Again
-          idcomb=Junc_PL_chr[grep(gsub("_","_\\\\",
-                                       paste(id2,collapse = "|")),
-                                  Junc_PL_chr$JoinID),]
-          
-          # Get Peak IDS to end while loop
-          id2=sort(unique(c(idcomb$ID_Peaks1,
-                            idcomb$ID_Peaks2)))
-        }
-        
-        #separate coordinates
-        id2_coord = as.data.frame(id2) %>%
-          separate(1,
-                   sep = "_",
-                   into = c('ID','strand')) %>%
-          separate(ID, 
-                   sep = ":|-",
-                   into = c('chr','start','end'),
-                   remove = T)
-        
-        #convert start/end to numeric
-        id2_coord[c("start","end")] <- sapply(id2_coord[c("start","end")],as.numeric)
-        
-        #update df
-        PGene_TBL2[rowid,] = list(paste(sort(unique(idcomb$PrimaryGene_Junction1)),collapse = ','),
-                                  paste(sort(unique(idcomb$JunctionID_Junction1)),collapse = ','),
-                                  paste(sort(unique(idcomb$JoinID)),collapse = ','),
-                                  unique(id2_coord$chr),
-                                  min((id2_coord[,c('start','end')])),
-                                  max((id2_coord[,c('start','end')])),
-                                  unique(as.character(idcomb$strand_Peaks1)),
-                                  paste(sort(unique(idcomb$ID_Peaks1)),collapse = ','),
-                                  paste(sort(unique(idcomb$ID_Peaks2)),collapse = ','))
-        
-        #phil - Unclear what this is doing? 
-        #if (length(unique(as.character(idcomb$strand_Peaks1)))>1) {Select_pos_and_Neg_strands}
-      }
-    }
     
     #filter
     PGene_TBL2=PGene_TBL2 %>%
@@ -546,22 +343,6 @@ if (join_junction) {
                                PGene_TBL2$start,"-",
                                PGene_TBL2$end,"_",
                                PGene_TBL2$strand)
-    
-    ############### check no repeated peaks 
-    #phil - PGene_TBL3 is never used
-    #d3=unique(PGene_TBL2$PrimaryGene_Junction1)
-    #PGene_TBL3=(matrix(nrow=nrow(PGene_TBL2),ncol=ncol(PGene_TBL2)+1));colnames(PGene_TBL3)=c(colnames(PGene_TBL2),"nrows")
-    
-    #for (x in 1:length(d3)) {
-    #  a2=PGene_TBL2[x,]
-    #  id2=unlist(str_split (a2$JoinID,pattern = ","))
-    #  idcomb2=PGene_TBL2[grep(gsub("_","_\\\\",paste(id2,collapse = "|")),PGene_TBL2$JoinID),]
-    
-    #  PGene_TBL3[x,1:3]=as.matrix(a2[,1:3])
-    #  PGene_TBL3[x,'nrows']=nrow(idcomb2)
-    #}
-    #remove('d3','a2','id2','idcomb2','x')
-    #PGene_TBL3=as.data.frame(PGene_TBL3)
     
     ############### Get all peaks with junctions
     Junc_peaks=unique(c(Junc_PL$ID_Peaks1,Junc_PL$ID_Peaks2))
