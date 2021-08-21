@@ -21,7 +21,8 @@ output_dir = args$output_dir
 Seq_Processing <- function(txt_in,cat){
   
   #read in seq file
-  dat = data.frame(len=scan(txt_in))
+  dat = read.table(txt_in)
+  colnames(dat)=c("count","len")
   
   # set up cut-off values 
   breaks <- c(0,15,30,45,60,75,90,105,120,135,150,165)
@@ -31,27 +32,36 @@ Seq_Processing <- function(txt_in,cat){
             "[135-150)","[150-165)")
   
   # bucketing values into bins
-  group_tags <- cut(dat$len, 
+  dat$tags <- cut(dat$len, 
                     breaks=breaks, 
                     include.lowest=TRUE, 
                     right=FALSE, 
                     labels=tags)
   
-  #Create and save histogram of lengths
-  p = ggplot(data = as_tibble(group_tags), mapping = aes(x=value)) + 
-    geom_bar(fill="blue",color="white",alpha=0.7) + 
-    stat_count(geom="text", aes(label=..count..), vjust=-0.5) +
+  #merge counts
+  merged_df=data.frame()
+  for (tagid in sort(unique(dat$tags))){
+    merged_df[nrow(merged_df)+1,"tags"]=tagid
+    merged_df[nrow(merged_df),"counts"]=sum(subset(dat,tags==tagid)$count)
+    merged_df[nrow(merged_df),"percent"]=paste0(round(sum(subset(dat,
+                                                                 tags==tagid)$count)/sum(dat$count)*100,1),"%")}
+  
+  #Create and save histogram of counts
+  ggplot(data=merged_df, aes(x=tags, y=counts)) +
+    geom_bar(stat="identity") +
     xlab('Sequence Length') + ylab('Number of Reads') +
-    theme_minimal()
-  p_final = p #+ ggtitle(paste(cat,"sequence lengths:",sampleid))
+    geom_text(aes(label = percent, y = counts, group = tags), vjust=-.5) +
+    theme_minimal() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  
   file_save = paste(output_dir,sampleid,"_",cat,".png",sep="")
-  ggsave(file_save,p_final)
+  ggsave(file_save,p)
   
   #Create and save text file summary 
   file_save = paste(output_dir,sampleid,"_",cat,".txt",sep="")
   fileConn<-file(file_save)
   line1 = paste("\n* SampleID: ",sampleid,"\n\n")
-  line2 = paste("\t + Number of ",cat," reads: ",nrow(dat),"\n",sep="")
+  line2 = paste("\t + Number of ",cat," reads: ",sum(dat$count),"\n",sep="")
   line3 = paste("\t + Average read length (std): ", format(round(mean(dat$len),2),nsmall=2), 
                 " (", format(round(sd(dat$len),2),nsmall = 2),")\n",sep="")
   writeLines(paste(line1,line2,line3,sep=""), fileConn)
