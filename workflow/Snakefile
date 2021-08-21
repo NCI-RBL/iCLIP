@@ -1140,8 +1140,8 @@ rule qc_alignment:
         txt_unalign = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.txt')),
     shell:
         """
-        samtools view -F 4 {input.f1} | awk '{{print length($10)}}' > {output.bam_a}; \
-        samtools view -f 4 {input.f1} | awk '{{print length($10)}}' > {output.bam_u}; \
+        samtools view -F 4 /scratch/sevillas2/Control_Clip.unmasked.split.01.tmp.unmapped.sam | awk '{print length($10)}' | sort -n | uniq -c > {output.bam_a};
+        samtools view -f 4 /scratch/sevillas2/Control_Clip.unmasked.split.01.tmp.unmapped.sam | awk '{print length($10)}' | sort -n | uniq -c > {output.bam_u};
         Rscript {params.R} --sampleid {params.sampleid} --bam_aligned {output.bam_a} --bam_unaligned {output.bam_u} --output_dir {params.base}
         """
 
