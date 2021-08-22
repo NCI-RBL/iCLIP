@@ -440,18 +440,16 @@ rule all:
         #MultiQC Report
         join(out_dir,'qc/multiqc_report.html'),
 
-        # #Alignment stats
-        # #expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png'), sp=sp_list, al=align_list),
-        # #expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png'), sp=sp_list, al=align_list),
+        #Alignment stats
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png'), sp=sp_list, al=align_list),
+        expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png'), sp=sp_list, al=align_list),
 
-        # #QC Troubleshooting
-        # #join(out_dir,'qc','qc_report.html'),
+        #QC Troubleshooting
+        join(out_dir,'qc','qc_report.html'),
 
-        # #Deduplicate
-        # expand(join(out_dir,'03_bam','02_dedup','{sp}.{al}.dedup.bam'), sp=sp_list, al=align_list),
-        # expand(join(out_dir,'03_bam','02_dedup','{sp}.dedup.si.bam'),sp=sp_list),
-        # expand(join(out_dir,'03_bam','02_dedup','{sp}.dedup.header.txt'), sp=sp_list),
-        # expand(join(out_dir,'03_bam','03_unique','{sp}.dedup.unique.i.bam'), sp=sp_list),
+        #Deduplicate
+        expand(join(out_dir,'03_bam','02_dedup','{sp}.dedup.si.bam'),sp=sp_list),
+        expand(join(out_dir,'03_bam','02_dedup','{sp}.dedup.header.txt'), sp=sp_list),
 
         # #Bed files
         # expand(join(out_dir,'04_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
@@ -789,7 +787,7 @@ if (splice_aware == "Y"):
             config['samtools'],
             config['java']
         output:
-            sam = temp(join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam.gz')),
+            sam = join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam.gz'),
             bam = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
         shell:
             """
@@ -879,12 +877,14 @@ rule split_mm_unique:
         #output of genomic conversion, if splice aware, is a zipped file
         if [[ {splice_aware} == "N" ]]; then \
             samtools view {input.f1} | grep -v 'IH:i' > {output.unique};
+            samtools view {input.f1} | grep 'IH:i' > {output.mm};
+            samtools view -H {input.f1} > {output.h}
         else
-            gunzip -c {input.f1} | samtools view - | grep -v 'IH:i' > {output.unique};
+            gunzip -c {input.f1} | samtools view | grep -v 'IH:i' > {output.unique};
+            gunzip -c {input.f1} | samtools view | grep 'IH:i' > {output.mm};
+            gunzip -c {input.f1} | samtools view -H > {output.h}
         fi
 
-        samtools view {input.f1} | grep 'IH:i' > {output.mm};
-        samtools view -H {input.f1} > {output.h}
         exitcode=$?
         if [ $exitcode -eq 1 ]
         then
@@ -908,12 +908,10 @@ rule create_bam_mm_unique:
         mm = join(out_dir,'02_reads','{sp}.{al}.split.{n}.mm.txt'),
     params:
         rname='09_create_bam_mm_unique',
+        base = '{sp}.{al}.split.{n}.tmp',
     envmodules:
         config['samtools']        
     output:
-        tmp = temp(join(out_dir,'01_preprocess','{sp}.{al}.split.{n}.tmp.sam')),
-        bam_u = temp(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.bam')),
-        bam_m = temp(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.bam')),
         sort_u = temp(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.si.bam')),
         sort_m = temp(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.si.bam')),
     shell:
@@ -938,24 +936,27 @@ rule create_bam_mm_unique:
         ################################################
         #create unique bam, correcting NH header
         ################################################
-        #create the new file
-        touch {output.tmp}
+        #if the file exists, remove it
+        if [ -f ${{tmpdir_u}}.unique.sam ]; then rm ${{tmpdir_u}}.unique.sam; fi
+        
+        #create the new files
+        touch ${{tmpdir_u}}.unique.sam
 
         #read the sam file
         while read rd; do 
         
         #if the line doesn't have IH
-        if [[ ! $rd == *"IH:i"* ]]; then 
+        if [[ ! $rd == "IH:i" ]]; then 
 
             #if the line doesnt have NH then add NH:i:1
-            if [[ ! $rd == *"NH:i"* ]]; then 
-                echo $rd | awk '{{ $(NF+1) = "NH:i:1"; print }}' >> {output.tmp}
+            if [[ ! $rd == "NH:i" ]]; then 
+                echo "$rd" | awk '{{ $(NF+1) = "NH:i:1"; print }}' | echo "${{rd// /	}}" >> ${{tmpdir_u}}.unique.sam
             
             #if it does have NH then replace it with NH:i:1
             else 
                 replacement="NH:i:1"
                 fixed=${{rd/NH:i:[0-9]*/$replacement}}
-                echo $fixed >> {output.tmp}
+                echo "$fixed" >> ${{tmpdir_u}}.unique.sam
             fi
         
         #if does have IH (and will always have an NH)
@@ -969,33 +970,36 @@ rule create_bam_mm_unique:
 
             NH_complete=`echo ${{NH/$NH_num/$IH_num}}`
 
-            echo ${{rd/$NH/$NH_complete}} >> {output.tmp}
+            echo "${{rd/$NH/$NH_complete}}" >> ${{tmpdir_u}}.unique.sam
         fi
         done < {input.un}
         
-        cat {input.h} {output.tmp} | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_u};
+        cat {input.h} ${{tmpdir_u}}.unique.sam | samtools sort -T ${{tmpdir_u}} | samtools view -Sb > ${{tmpdir_u}}.unique.bam;
         
         ################################################
         #create mm bam, correcting NH header
         ################################################
-        #create the new file
-        touch {output.tmp}
+        #if the file exists, remove it
+        if [ -f ${{tmpdir_m}}.mm.sam ]; then rm ${{tmpdir_m}}.mm.sam; fi
+        
+        #create the new files
+        touch ${{tmpdir_m}}.mm.sam
 
         #read the sam file
         while read rd; do 
         
         #if the line doesn't have IH
-        if [[ ! $rd == *"IH:i"* ]]; then 
+        if [[ ! $rd == "IH:i" ]]; then 
 
             #if the line doesnt have NH then add NH:i:1
-            if [[ ! $rd == *"NH:i"* ]]; then 
-                echo $rd | awk '{{ $(NF+1) = "NH:i:1"; print }}' >> {output.tmp}
+            if [[ ! $rd == "NH:i" ]]; then 
+                echo "$rd" | awk '{{ $(NF+1) = "NH:i:1"; print }}' | echo "${{rd// /	}}">> ${{tmpdir_m}}.mm.sam
             
             #if it does have NH then replace it with NH:i:1
             else 
                 replacement="NH:i:1"
                 fixed=${{rd/NH:i:[0-9]*/$replacement}}
-                echo $fixed >> {output.tmp}
+                echo "$fixed" >> ${{tmpdir_m}}.mm.sam
             fi
         
         #if does have IH (and will always have an NH)
@@ -1009,16 +1013,16 @@ rule create_bam_mm_unique:
 
             NH_complete=`echo ${{NH/$NH_num/$IH_num}}`
 
-            echo ${{rd/$NH/$NH_complete}} >> {output.tmp}
+            echo "${{rd/$NH/$NH_complete}}" >> ${{tmpdir_m}}.mm.sam
         fi
         done < {input.un}
-        cat {input.h} {output.tmp} | samtools sort -T ${{tmpdir}} | samtools view -Sb > {output.bam_m};
+        cat {input.h} ${{tmpdir_m}}.mm.sam | samtools sort -T ${{tmpdir_m}} | samtools view -Sb > ${{tmpdir_u}}.mm.bam;
         
         ################################################
         #sort unique and mm bam
         ################################################
-        samtools sort -T ${{tmpdir_u}} {output.bam_u} -o {output.sort_u};
-        samtools sort -T ${{tmpdir_m}} {output.bam_m} -o {output.sort_m};
+        samtools sort -T ${{tmpdir_u}} ${{tmpdir_u}}.unique.bam -o {output.sort_u};
+        samtools sort -T ${{tmpdir_m}} ${{tmpdir_u}}.mm.bam -o {output.sort_m};
         samtools index {output.sort_u};
         samtools index {output.sort_m};
         """
@@ -1140,8 +1144,11 @@ rule qc_alignment:
         txt_unalign = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.txt')),
     shell:
         """
-        samtools view -F 4 /scratch/sevillas2/Control_Clip.unmasked.split.01.tmp.unmapped.sam | awk '{print length($10)}' | sort -n | uniq -c > {output.bam_a};
-        samtools view -f 4 /scratch/sevillas2/Control_Clip.unmasked.split.01.tmp.unmapped.sam | awk '{print length($10)}' | sort -n | uniq -c > {output.bam_u};
+        #gather stats for all reads
+        samtools view -F 4 {input.f1} | awk '{{ print length($10) }}' | sort -n | uniq -c > {output.bam_a};
+        samtools view -f 4 {input.f1} | awk '{{ print length($10) }}' | sort -n | uniq -c > {output.bam_u};
+
+        #run alignment stats code
         Rscript {params.R} --sampleid {params.sampleid} --bam_aligned {output.bam_a} --bam_unaligned {output.bam_u} --output_dir {params.base}
         """
 
@@ -1207,13 +1214,14 @@ rule dedup:
     get header of dedup file
     """
     input:
-        f1 = expand(join(out_dir,'03_bam','01_merged','{{sp}}.{al}.merged.si.bam'),al=align_list),
+        f1 = join(out_dir,'03_bam','01_merged','{sp}.unmasked.merged.si.bam'),
     params:
         rname='13_dedup',
         umi = umi_parameter,
-        base = '{sp}.{al}.dedup.'
+        base = '{sp}.unmasked'
     envmodules:
-        config['umitools']  
+        config['umitools'],
+        config['samtools']
     output:
         bam = join(out_dir,'03_bam','02_dedup','{sp}.dedup.si.bam'),
         head = temp(join(out_dir,'03_bam','02_dedup','{sp}.dedup.header.txt')),
@@ -1230,7 +1238,7 @@ rule dedup:
 
         umi_tools dedup \
         -I {input.f1} \
-        --method unique 
+        --method unique \
         --multimapping-detection-method=NH \
         --umi-separator={params.umi} \
         -S ${{tmpdir}}{params.base}.bam\
