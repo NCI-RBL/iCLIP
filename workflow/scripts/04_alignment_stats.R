@@ -20,52 +20,76 @@ output_dir = args$output_dir
 
 Seq_Processing <- function(txt_in,cat){
   
-  #read in seq file
-  dat = read.table(txt_in)
-  colnames(dat)=c("count","len")
-  
-  # set up cut-off values 
-  breaks <- c(0,15,30,45,60,75,90,105,120,135,150,165)
-  
-  # specify interval/bin labels
-  tags <- c("[0-15)","[15-30)", "[30-45)", "[45-60)", "[60-75)", "[75-90)","[90-105)", "[105-120)","[120-135)",
-            "[135-150)","[150-165)")
-  
-  # bucketing values into bins
-  dat$tags <- cut(dat$len, 
-                    breaks=breaks, 
-                    include.lowest=TRUE, 
-                    right=FALSE, 
-                    labels=tags)
-  
-  #merge counts
-  merged_df=data.frame()
-  for (tagid in sort(unique(dat$tags))){
-    merged_df[nrow(merged_df)+1,"tags"]=tagid
-    merged_df[nrow(merged_df),"counts"]=sum(subset(dat,tags==tagid)$count)
-    merged_df[nrow(merged_df),"percent"]=paste0(round(sum(subset(dat,
-                                                                 tags==tagid)$count)/sum(dat$count)*100,1),"%")}
-  
-  #Create and save histogram of counts
-  ggplot(data=merged_df, aes(x=tags, y=counts)) +
-    geom_bar(stat="identity") +
-    xlab('Sequence Length') + ylab('Number of Reads') +
-    geom_text(aes(label = percent, y = counts, group = tags), vjust=-.5) +
-    theme_minimal() + 
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-  
-  file_save = paste(output_dir,sampleid,"_",cat,".png",sep="")
-  ggsave(file_save,p)
-  
-  #Create and save text file summary 
-  file_save = paste(output_dir,sampleid,"_",cat,".txt",sep="")
-  fileConn<-file(file_save)
-  line1 = paste("\n* SampleID: ",sampleid,"\n\n")
-  line2 = paste("\t + Number of ",cat," reads: ",sum(dat$count),"\n",sep="")
-  line3 = paste("\t + Average read length (std): ", format(round(mean(dat$len),2),nsmall=2), 
-                " (", format(round(sd(dat$len),2),nsmall = 2),")\n",sep="")
-  writeLines(paste(line1,line2,line3,sep=""), fileConn)
-  close(fileConn)
+  #perform check on file - may be an empty file because there are no mapped reads
+  dat <- try(read.table(txt_in), silent = TRUE)
+
+  if (class(dat) != "try-error") {
+
+    #read in seq file
+    dat = read.table(txt_in)
+    colnames(dat)=c("count","len")
+    
+    # set up cut-off values 
+    breaks <- c(0,15,30,45,60,75,90,105,120,135,150,165)
+    
+    # specify interval/bin labels
+    tags <- c("[0-15)","[15-30)", "[30-45)", "[45-60)", "[60-75)", "[75-90)","[90-105)", "[105-120)","[120-135)",
+              "[135-150)","[150-165)")
+    
+    # bucketing values into bins
+    dat$tags <- cut(dat$len, 
+                      breaks=breaks, 
+                      include.lowest=TRUE, 
+                      right=FALSE, 
+                      labels=tags)
+    
+    #merge counts
+    merged_df=data.frame()
+    for (tagid in sort(unique(dat$tags))){
+      merged_df[nrow(merged_df)+1,"tags"]=tagid
+      merged_df[nrow(merged_df),"counts"]=sum(subset(dat,tags==tagid)$count)
+      merged_df[nrow(merged_df),"percent"]=paste0(round(sum(subset(dat,
+                                                                  tags==tagid)$count)/sum(dat$count)*100,1),"%")}
+    
+    #Create and save histogram of counts
+    p = ggplot(data=merged_df, aes(x=tags, y=counts)) +
+      geom_bar(stat="identity") +
+      xlab('Sequence Length') + ylab('Number of Reads') +
+      geom_text(aes(label = percent, y = counts, group = tags), vjust=-.5) +
+      theme_minimal() + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+    
+    file_save = paste(output_dir,sampleid,"_",cat,".png",sep="")
+    ggsave(file_save,p)
+    
+    #Create and save text file summary 
+    file_save = paste(output_dir,sampleid,"_",cat,".txt",sep="")
+    fileConn<-file(file_save)
+    line1 = paste("\n* SampleID: ",sampleid,"\n\n")
+    line2 = paste("\t + Number of ",cat," reads: ",sum(dat$count),"\n",sep="")
+    line3 = paste("\t + Average read length (std): ", format(round(mean(dat$len),2),nsmall=2), 
+                  " (", format(round(sd(dat$len),2),nsmall = 2),")\n",sep="")
+    writeLines(paste(line1,line2,line3,sep=""), fileConn)
+    close(fileConn)
+  } else {
+    
+    #Create an empty plot
+    file_save = paste(output_dir,sampleid,"_",cat,".png",sep="")
+    png(filename=file_save)
+    par(mar = c(0,0,0,0))
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, paste("No available reads"), cex = 1.6, col = "black")
+    dev.off()
+    
+    #Create an empty text file 
+    file_save = paste(output_dir,sampleid,"_",cat,".txt",sep="")
+    fileConn<-file(file_save)
+    line1 = paste0("\n* SampleID: ",sampleid,"\n\n")
+    line2 = paste0("\t + Number of ",cat," reads: 0","\n")
+    line3 = paste0("\t + Average read length (std): 0","\n")
+    writeLines(paste(line1,line2,line3,sep=""), fileConn)
+    close(fileConn)
+  }
 }
 
 # MAIN CODE
