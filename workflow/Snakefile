@@ -451,17 +451,17 @@ rule all:
         expand(join(out_dir,'03_bam','02_dedup','{sp}.dedup.si.bam'),sp=sp_list),
         expand(join(out_dir,'03_bam','02_dedup','{sp}.dedup.header.txt'), sp=sp_list),
 
-        # #Bed files
-        # expand(join(out_dir,'04_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
-        # expand(join(out_dir,'04_peaks','01_bed','{sp}_unique.bed'), sp=sp_list),
-        # expand(join(out_dir,'04_peaks','02_SAF','{sp}_all.SAF'), sp=sp_list),
-        # expand(join(out_dir,'04_peaks','02_SAF','{sp}_unique.SAF'), sp=sp_list),
+        #Bed files
+        expand(join(out_dir,'04_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
+        expand(join(out_dir,'04_peaks','01_bed','{sp}_unique.bed'), sp=sp_list),
+        expand(join(out_dir,'04_peaks','02_SAF','{sp}_all.SAF'), sp=sp_list),
+        expand(join(out_dir,'04_peaks','02_SAF','{sp}_unique.SAF'), sp=sp_list),
 
-        # #Count features
-        # expand(join(out_dir,'04_peaks','03_uniquereadpeaks','{sp}_uniqueCounts.txt'), sp=sp_list),
-        # expand(join(out_dir,'04_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt'), sp=sp_list),
-        # expand(join(out_dir,'04_peaks','03_allreadpeaks','{sp}_uniqueCounts.txt'), sp=sp_list),
-        # expand(join(out_dir,'04_peaks','03_allreadpeaks','{sp}_allFracMMCounts.txt'), sp=sp_list),
+        #Count features
+        expand(join(out_dir,'04_peaks','03_uniquereadpeaks','{sp}_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'04_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'04_peaks','03_allreadpeaks','{sp}_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'04_peaks','03_allreadpeaks','{sp}_allFracMMCounts.txt'), sp=sp_list),
 
         # #annotations
         # join(out_dir,'05_annotation', '01_project','annotations.txt'),
@@ -1231,7 +1231,7 @@ rule dedup:
         if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
         else
-            tmpdir="{out_dir}01_preprocess/dedup"
+            tmpdir="{out_dir}01_preprocess/dedup/"
 
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
