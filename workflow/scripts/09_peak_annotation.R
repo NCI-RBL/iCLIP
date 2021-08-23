@@ -51,7 +51,7 @@ end_time=Sys.time()
 end_time-start_time
 
 ##testing
-testing="SSC"
+testing="N"
 if(testing=="Y"){
   rm(list=setdiff(ls(), "params"))
   wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/"
@@ -159,11 +159,16 @@ FtrCount=FtrCount[duplicated(FtrCount)==F,]
 ############### run filter check
 ##########################################################################################
 if(nrow(FtrCount[FtrCount$Counts_fracMM>=read_depth,])==0){
+  file_save = paste(output_dir,sampleid,"_",cat,".txt",sep="")
+  fileConn<-file(file_save)
   text1 = "Based on the read_depth parameters give all peaks are being filtered. Please update read_depth in config file to continue processing"
-  writeLines(paste0(text1, "\n", 
+  text2=paste0(text1, "\n", 
                     "max read counts: ", max(FtrCount$Counts_fracMM), "\n",
                     "min read counts: ", min(FtrCount$Counts_fracMM), "\n",
-                    "current read count threshold: ", read_depth), output_file_error)
+                    "current read count threshold: ", read_depth)
+  writeLines(paste(text1,text2,sep=""), fileConn)
+  close(fileConn)
+
   print("Read depth params error")
   invokeRestart("abort")
 } else{
