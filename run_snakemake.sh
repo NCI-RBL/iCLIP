@@ -266,7 +266,7 @@ else
   check_initialization
   check_output_dir
   
-  snakemake -s workflow/Snakefile \
+  snakemake -s workflow/Snakefile\
   --configfile ${output_dir}/snakemake_config.yaml \
   --printshellcmds \
   --cluster-config ${output_dir}/cluster_config.yml \
