@@ -50,6 +50,8 @@ DE_method = config['DEmethod'].upper()
 sp_junc = config['splicejunction'].upper()
 condense_exon = config['condenseexon'].upper()
 
+#set split files value
+split_value = 500000
 
 #expand reference selection
 if (nova_ref == "mm10"):
@@ -146,20 +148,6 @@ def CreateProjLists(dict_m,dict_s):
 ###############################################################
 # snakemake functions
 ###############################################################
-#determines the number of files to split the input into
-def check_split(split_in):
-    if (type(split_in) == str):
-        split_replace = split_in.replace(',', '')
-        if (type(split_in) == str):
-            split_replace = 1000000
-    elif (split_in < 3000):
-        split_replace = 1000000
-    elif (type(split_in) == float):
-        split_replace = int(split_in)
-    else:
-        split_replace = split_in
-    return split_replace
-
 #get list of fq names based on multiplex name
 #{fastq_dir}/{filename}.fastq.gz
 def get_fq_names(wildcards):
@@ -342,9 +330,6 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 #mp1        sample1
 #mp1        sample2
 (mp_list,sp_list,file_list) = CreateProjLists(multiplex_dict,samp_dict)
-
-#get split files value
-split_value = check_split(split_value)
 
 #create manorm list
 if DE_method == "MANORM": 

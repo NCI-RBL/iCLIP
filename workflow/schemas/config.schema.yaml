@@ -32,9 +32,6 @@ properties:
     types: number
     enum: [1,2,3]
     description: number of bp mismatches allowed in demultiplexing
-  split:
-    type: number
-    description: number of sequences to split fastq file
   reference:
     type: string
     enum: ["hg38","mm10"]
@@ -82,7 +79,6 @@ required:
   - contrastManifest
   - fastqDir
   - mismatch
-  - split
   - reference
   - spliceaware
   - spliceBPlength
