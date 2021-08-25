@@ -2,7 +2,6 @@
 * Authors * 
 S. Sevilla
 P. Homan
-
 * Overview * 
 - Multiplexed samples are split based on provided barcodes and named using provide manifests, maximum 10 samples
 - Adaptors are stripped from samples
@@ -10,7 +9,6 @@ P. Homan
 - Samples are aligned using NovaAlign
 - SAM and BAM files are created
 - Samples are merged
-
 * Requirements *
 - Read specific input requirements, and execution information on the Wikipage
 located at: https://github.com/RBL-NCI/iCLIP.git
@@ -392,10 +390,10 @@ if DE_method == "MANORM":
     #MANORM_RMD
     input_manorm_reports = [expand(join(out_dir,'06_MAnorm','03_report','{group_id}_manorm_report.html'),group_id=manorm_list)]
 else:
-    input_manorm_input = [expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_mapq_IN.txt'),sp=sp_list)]
-    input_manorm_analysis = [expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_mapq_IN.txt'),sp=sp_list)]
-    input_manorm_post_proccessing = [expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_mapq_IN.txt'),sp=sp_list)]
-    input_manorm_reports = [expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_mapq_IN.txt'),sp=sp_list)]
+    input_manorm_input = [expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list)]
+    input_manorm_analysis = [expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list)]
+    input_manorm_post_proccessing = [expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list)]
+    input_manorm_reports = [expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list)]
 
 #local rules
 localrules: check_manifest, determine_splits, multiqc
@@ -406,50 +404,49 @@ rule all:
         join(out_dir,'qc','manifest_clean.txt'),
 
         #check input fastq files
-        expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
+        #expand(join(fastq_dir,'{fq_file}'), fq_file=file_list), #multiplexed sample fastq files exist
         
-        #different inputs for multiplexed or nonmultiplexed pipeline
-        input_multiplex,
+        # #different inputs for multiplexed or nonmultiplexed pipeline
+        # input_multiplex,
         
-        #Remove adaptors, rename samples
-        expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
+        # #Remove adaptors, rename samples
+        # expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
 
-        #FastQC
-        expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        # #FastQC
+        # expand(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
         
-        #FastQ Screen
-        expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
-        expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
+        # #FastQ Screen
+        # expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
+        # expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
         
         #Determine file split parameters
         join(out_dir,'qc','split_params.tsv'),
         
-        #Merge splits
-        expand(join(out_dir,'03_bam','02_merged','{sp}.{al}.merged.unique.bam'), sp=sp_list, al=align_list),
-        expand(join(out_dir,'03_bam','02_merged','{sp}.{al}.merged.mm.bam'),sp=sp_list, al=align_list),
+        # #Merge splits
+        # expand(join(out_dir,'03_bam','02_merged','{sp}.{al}.merged.unique.bam'), sp=sp_list, al=align_list),
+        # expand(join(out_dir,'03_bam','02_merged','{sp}.{al}.merged.mm.bam'),sp=sp_list, al=align_list),
 
-        #merge_mm_and_unique
-        expand(join(out_dir,'03_bam','02_merged','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
+        # #merge_mm_and_unique
+        # expand(join(out_dir,'03_bam','02_merged','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
         expand(join(out_dir,'03_bam','02_merged','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'), sp=sp_list, al=align_list),
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'), sp=sp_list, al=align_list),
 
-        #Unmapped read output
-        input_unmapped,
+        # #Unmapped read output
+        # input_unmapped,
         
         #MultiQC Report
-        join(out_dir,'qc/multiqc_report.html'),
+        join(out_dir,'qc','multiqc_report.html'),
 
-        #Alignment stats
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png'), sp=sp_list, al=align_list),
-        expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png'), sp=sp_list, al=align_list),
+        # #Alignment stats
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png'), sp=sp_list, al=align_list),
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png'), sp=sp_list, al=align_list),
 
         #QC Troubleshooting
         join(out_dir,'qc','qc_report.html'),
 
         #Deduplicate
         expand(join(out_dir,'03_bam','03_dedup','{sp}.dedup.si.bam'),sp=sp_list),
-        expand(join(out_dir,'03_bam','03_dedup','{sp}.dedup.header.txt'), sp=sp_list),
 
         #Bed files
         expand(join(out_dir,'04_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
@@ -457,23 +454,22 @@ rule all:
         expand(join(out_dir,'04_peaks','02_SAF','{sp}_all.SAF'), sp=sp_list),
         expand(join(out_dir,'04_peaks','02_SAF','{sp}_unique.SAF'), sp=sp_list),
 
-        #Count features
-        expand(join(out_dir,'04_peaks','03_uniquereadpeaks','{sp}_uniqueCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'04_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'04_peaks','03_allreadpeaks','{sp}_uniqueCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'04_peaks','03_allreadpeaks','{sp}_allFracMMCounts.txt'), sp=sp_list),
+        # #Count features
+        # expand(join(out_dir,'04_peaks','03_uniquereadpeaks','{sp}_uniqueCounts.txt'), sp=sp_list),
+        # expand(join(out_dir,'04_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt'), sp=sp_list),
+        # expand(join(out_dir,'04_peaks','03_allreadpeaks','{sp}_uniqueCounts.txt'), sp=sp_list),
+        # expand(join(out_dir,'04_peaks','03_allreadpeaks','{sp}_allFracMMCounts.txt'), sp=sp_list),
 
-        #annotations
-        join(out_dir,'05_annotation', '01_project','annotations.txt'),
-        expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_mapq_IN.txt'),sp=sp_list),
-        expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list),
+        # #annotations
+        # join(out_dir,'05_annotation', '01_project','annotations.txt'),
+        # expand(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list),
         expand(join(out_dir,'05_annotation', '{sp}_annotation_final_report.html'),sp=sp_list),
         expand(join(out_dir,'05_annotation', '{sp}_annotation_final_table.txt'),sp=sp_list),
 
         #MANORM
-        input_manorm_input,
-        input_manorm_analysis,
-        input_manorm_post_proccessing, 
+        # input_manorm_input,
+        # input_manorm_analysis,
+        # input_manorm_post_proccessing, 
         input_manorm_reports
 
 #common and other SMK 
@@ -572,7 +568,7 @@ if (multiplex_flag == 'Y'):
             rname = '01c_rename_demux',
             cmd = rename_cmd
         output:
-            o1 = join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz')
+            o1 = temp(join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz'))
         shell:
             """
             #move files
@@ -688,7 +684,6 @@ rule qc_screen:
                 mkdir "$tmpdir"
             fi
         fi
-
         #gunzip input files
         gunzip -c {input.f1} > ${{tmpdir}}/{params.tmp};
         
@@ -769,7 +764,6 @@ if (splice_aware == "Y"):
         
         converts transcriptome coordinates to genomic coordinates
         uses USeq version 8.9.6
-
         unmapped reads are removed during genomic coordinates conversion, need to include them in final file
         convert sam file to bam file
         
@@ -779,7 +773,7 @@ if (splice_aware == "Y"):
         input:
             f1 = join(out_dir,'01_preprocess','01_alignment','{sp}.{al}.split.{n}.sam'),
         params:
-            rname = '07a_sam_cleanup',
+            rname = '07a_cleanup_conversion',
             base = '{sp}.{al}.split.{n}',
             base_out = join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam'),
             doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
@@ -795,35 +789,32 @@ if (splice_aware == "Y"):
             if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
                 tmpdir="/lscratch/${{SLURM_JOB_ID}}"
             else
-                tmpdir="{out_dir}01_preprocess/03_tmp_genomic/"
-
+                tmpdir="{out_dir}01_preprocess/03_tmp_genomic"
                 if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
             fi
-
             #run cleanup
             set +e
-            samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${{tmpdir}}{params.base}.tmp.sam;
-            samtools view -H {input.f1} | cat - ${{tmpdir}}{params.base}.tmp.sam > ${{tmpdir}}{params.base}.tmp.mapped.sam; 
-            samtools view -f 4 {input.f1} > ${{tmpdir}}{params.base}.tmp.unmapped.sam;
-
+            samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${{tmpdir}}/{params.base}.tmp.sam;
+            samtools view -H {input.f1} | cat - ${{tmpdir}}/{params.base}.tmp.sam > ${{tmpdir}}/{params.base}.tmp.mapped.sam; 
+            samtools view -f 4 {input.f1} > ${{tmpdir}}/{params.base}.tmp.unmapped.sam;
+            
             #run genomic conversion
             java -Djava.io.tmpdir=${{tmpdir}} -jar -Xmx50G -jar {params.doc} \
-                -f ${{tmpdir}}{params.base}.tmp.mapped.sam \
+                -f ${{tmpdir}}/{params.base}.tmp.mapped.sam \
                 -a 50000 -n 25 -u -s {params.base_out};
 
             #convert input to bam
-            gunzip -c {output.sam} | samtools view -S -b  - > ${{tmpdir}}{params.base}.unmasked.bam;
-
+            gunzip -c {output.sam} | samtools view -S -b  - > ${{tmpdir}}/{params.base}.unmasked.bam;
+            
             #merge unmapped sam and unmasked bam into final output
-            samtools merge -f ${{tmpdir}}{params.base}.merged.bam ${{tmpdir}}{params.base}.tmp.unmapped.sam ${{tmpdir}}{params.base}.unmasked.bam;
-
+            samtools merge -f ${{tmpdir}}{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
+            
             #pull header from merged and add to final output
-            samtools view -h -o ${{tmpdir}}{params.base}.final.bam ${{tmpdir}}{params.base}.merged.bam;
+            samtools view -h -o ${{tmpdir}}/{params.base}.final.bam ${{tmpdir}}/{params.base}.merged.bam;
             
             #sort and index final outupt
-            samtools sort -T ${{tmpdir}} ${{tmpdir}}{params.base}.final.bam -o {output.bam};
+            samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
             samtools index {output.bam}; 
-
             exitcode=$?
             if [ $exitcode -eq 1 ]
             then
@@ -854,17 +845,13 @@ rule create_bam_mm_unique:
     """
     novoalign creates files where NH = the number of possible alignments and IH = the number of 
     acutal alignments in a file 
-
     creates two text files from sam file
     1. unique file without IH:i flag
     2. MM file with IH:i flag
-
     read sam file header, print to header txt
-
     umitools dedup can only reference NH flags since novoalign creates files where NH = the 
     number of possible alignments and IH = the number of acutal alignments in a file we must 
     replace the NH flags with the IH flags to deduplicate based off the correct value
-
     add nh:i:1 tag, cat header, create unique bam file
     """
     input:
@@ -895,46 +882,42 @@ rule create_bam_mm_unique:
             if [ ! -d $tmpdir_u ]; then mkdir $tmpdir_u; fi
             if [ ! -d $tmpdir_m ]; then mkdir $tmpdir_m; fi
         fi
-
         ################################################
         #create mm, unique, header files
         ################################################
         set +e
         #output of genomic conversion, if splice aware, is a zipped file
         if [[ {splice_aware} == "N" ]]; then \
-            samtools view {input.f1} | grep -v 'IH:i' > ${{tmpdir_u}}{params.base}.unique.txt;
-            samtools view {input.f1} | grep 'IH:i' > ${{tmpdir_m}}{params.base}.mm.txt;
-            samtools view -H {input.f1} > ${{tmpdir}}{params.base}.header.txt
+            samtools view {input.f1} | grep -v 'IH:i' > ${{tmpdir_u}}/{params.base}.unique.txt;
+            samtools view {input.f1} | grep 'IH:i' > ${{tmpdir_m}}/{params.base}.mm.txt;
+            samtools view -H {input.f1} > ${{tmpdir}}/{params.base}.header.txt
         else
-            gunzip -c {input.f1} | samtools view | grep -v 'IH:i' > ${{tmpdir_u}}{params.base}.unique.txt;
-            gunzip -c {input.f1} | samtools view | grep 'IH:i' > ${{tmpdir_m}}{params.base}.mm.txt;
-            gunzip -c {input.f1} | samtools view -H > ${{tmpdir}}{params.base}.header.txt
+            gunzip -c {input.f1} | samtools view | grep -v 'IH:i' > ${{tmpdir_u}}/{params.base}.unique.txt;
+            gunzip -c {input.f1} | samtools view | grep 'IH:i' > ${{tmpdir_m}}/{params.base}.mm.txt;
+            gunzip -c {input.f1} | samtools view -H > ${{tmpdir}}/{params.base}.header.txt
         fi
-
         ################################################
         #create unique bam, correcting NH header
         ################################################
         #if the file exists, remove it
-        if [ -f ${{tmpdir_u}}.unique.sam ]; then rm ${{tmpdir_u}}.unique.sam; fi
+        if [ -f ${{tmpdir_u}}/{params.base}.unique.sam ]; then rm ${{tmpdir_u}}/{params.base}.unique.sam; fi
         
         #create the new files
-        touch ${{tmpdir_u}}.unique.sam
-
+        touch ${{tmpdir_u}}/{params.base}.unique.sam
         #read the sam file
         while read rd; do 
         
         #if the line doesn't have IH
         if [[ ! $rd == "IH:i" ]]; then 
-
             #if the line doesnt have NH then add NH:i:1
             if [[ ! $rd == "NH:i" ]]; then 
-                echo "$rd" | awk '{{ $(NF+1) = "NH:i:1"; print }}' | echo "${{rd// /	}}" >> ${{tmpdir_u}}.unique.sam
+                echo "$rd" | awk '{{ $(NF+1) = "NH:i:1"; print }}' | echo "${{rd// /	}}" >> ${{tmpdir_u}}/{params.base}.unique.sam
             
             #if it does have NH then replace it with NH:i:1
             else 
                 replacement="NH:i:1"
                 fixed=${{rd/NH:i:[0-9]*/$replacement}}
-                echo "$fixed" >> ${{tmpdir_u}}.unique.sam
+                echo "$fixed" >> ${{tmpdir_u}}/{params.base}.unique.sam
             fi
         
         #if does have IH (and will always have an NH)
@@ -942,42 +925,37 @@ rule create_bam_mm_unique:
         else
             IH=`echo $rd | grep -o "IH:i:[0-9]*"`
             IH_num=`echo ${{IH/IH:i:/}}`
-
             NH=`echo $rd | grep -o "NH:i:.*\S"`
             NH_num=`echo ${{NH/NH:i:/}}`
-
             NH_complete=`echo ${{NH/$NH_num/$IH_num}}`
-
-            echo "${{rd/$NH/$NH_complete}}" >> ${{tmpdir_u}}.unique.sam
+            echo "${{rd/$NH/$NH_complete}}" >> ${{tmpdir_u}}/{params.base}.unique.sam
         fi
-        done < ${{tmpdir_u}}{params.base}.unique.txt
+        done < ${{tmpdir_u}}/{params.base}.unique.txt
         
-        cat ${{tmpdir}}{params.base}.header.txt ${{tmpdir_u}}.unique.sam | samtools sort -T ${{tmpdir_u}} | samtools view -Sb > ${{tmpdir_u}}.unique.bam;
+        cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_u}}/{params.base}.unique.sam | samtools sort -T ${{tmpdir_u}} | samtools view -Sb > ${{tmpdir_u}}/{params.base}.unique.bam;
         
         ################################################
         #create mm bam, correcting NH header
         ################################################
         #if the file exists, remove it
-        if [ -f ${{tmpdir_m}}.mm.sam ]; then rm ${{tmpdir_m}}.mm.sam; fi
+        if [ -f ${{tmpdir_m}}/{params.base}.mm.sam ]; then rm ${{tmpdir_m}}/{params.base}.mm.sam; fi
         
         #create the new files
-        touch ${{tmpdir_m}}.mm.sam
-
+        touch ${{tmpdir_m}}/{params.base}.mm.sam
         #read the sam file
         while read rd; do 
         
         #if the line doesn't have IH
         if [[ ! $rd == "IH:i" ]]; then 
-
             #if the line doesnt have NH then add NH:i:1
             if [[ ! $rd == "NH:i" ]]; then 
-                echo "$rd" | awk '{{ $(NF+1) = "NH:i:1"; print }}' | echo "${{rd// /	}}">> ${{tmpdir_m}}.mm.sam
+                echo "$rd" | awk '{{ $(NF+1) = "NH:i:1"; print }}' | echo "${{rd// /	}}">> ${{tmpdir_m}}/{params.base}.mm.sam
             
             #if it does have NH then replace it with NH:i:1
             else 
                 replacement="NH:i:1"
                 fixed=${{rd/NH:i:[0-9]*/$replacement}}
-                echo "$fixed" >> ${{tmpdir_m}}.mm.sam
+                echo "$fixed" >> ${{tmpdir_m}}/{params.base}.mm.sam
             fi
         
         #if does have IH (and will always have an NH)
@@ -985,26 +963,21 @@ rule create_bam_mm_unique:
         else
             IH=`echo $rd | grep -o "IH:i:[0-9]*"`
             IH_num=`echo ${{IH/IH:i:/}}`
-
             NH=`echo $rd | grep -o "NH:i:.*\S"`
             NH_num=`echo ${{NH/NH:i:/}}`
-
             NH_complete=`echo ${{NH/$NH_num/$IH_num}}`
-
-            echo "${{rd/$NH/$NH_complete}}" >> ${{tmpdir_m}}.mm.sam
+            echo "${{rd/$NH/$NH_complete}}" >> ${{tmpdir_m}}/{params.base}.mm.sam
         fi
         done < ${{tmpdir_m}}{params.base}.mm.txt
-
-        cat ${{tmpdir}}{params.base}.header.txt ${{tmpdir_m}}.mm.sam | samtools sort -T ${{tmpdir_m}} | samtools view -Sb > ${{tmpdir_m}}.mm.bam;
+        cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_m}}/{params.base}.mm.sam | samtools sort -T ${{tmpdir_m}} | samtools view -Sb > ${{tmpdir_m}}/{params.base}.mm.bam;
         
         ################################################
         #sort unique and mm bam
         ################################################
-        samtools sort -T ${{tmpdir_u}} ${{tmpdir_u}}.unique.bam -o {output.sort_u};
-        samtools sort -T ${{tmpdir_m}} ${{tmpdir_m}}.mm.bam -o {output.sort_m};
+        samtools sort -T ${{tmpdir_u}} ${{tmpdir_u}}/{params.base}.unique.bam -o {output.sort_u};
+        samtools sort -T ${{tmpdir_m}} ${{tmpdir_m}}/{params.base}.mm.bam -o {output.sort_m};
         samtools index {output.sort_u};
         samtools index {output.sort_m};
-
         exitcode=$?
         if [ $exitcode -eq 1 ]
         then
@@ -1050,28 +1023,24 @@ rule merge_mm_and_unique:
         config['samtools']  
     output:
         merged = temp(join(out_dir,'03_bam','02_merged','{sp}.{al}.merged.bam')),
+        samstat = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt')),
         sort = join(out_dir,'03_bam','02_merged','{sp}.{al}.merged.si.bam'),
-        samstat = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'))
     shell:
         """
         #set / create tmp dir
         if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
-            mkdir "${{tmpdir}}/u";
-            mkdir "${{tmpdir}}/m";
         else
-            tmpdir="{out_dir}01_preprocess/merge_mu"
-
+            tmpdir="{out_dir}01_preprocess/05_merge_mu"
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
-
         #merge uniuqe and mm
         samtools merge -f {output.merged} {input.un} {input.mm};
 
         #sort and index
         samtools sort -T ${{tmpdir}} {output.merged} -o {output.sort};
         samtools index {output.sort};
-
+        
         #run samstats
         samtools view -h {output.merged} | samtools stats - > {output.samstat}
         """
@@ -1134,7 +1103,6 @@ rule qc_alignment:
         #gather stats for all reads
         samtools view -F 4 {input.f1} | awk '{{ print length($10) }}' | sort -n | uniq -c > {output.bam_a};
         samtools view -f 4 {input.f1} | awk '{{ print length($10) }}' | sort -n | uniq -c > {output.bam_u};
-
         #run alignment stats code
         Rscript {params.R} --sampleid {params.sampleid} --bam_aligned {output.bam_a} --bam_unaligned {output.bam_u} --output_dir {params.base}
         """
@@ -1211,18 +1179,15 @@ rule dedup:
         config['samtools']
     output:
         bam = join(out_dir,'03_bam','03_dedup','{sp}.dedup.si.bam'),
-        head = temp(join(out_dir,'03_bam','03_dedup','{sp}.dedup.header.txt')),
     shell:
         """
         #set / create tmp dir
         if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
         else
-            tmpdir="{out_dir}01_preprocess/05_dedup/"
-
+            tmpdir="{out_dir}01_preprocess/06_dedup/"
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
-
         umi_tools dedup \
         -I {input.f1} \
         --method unique \
@@ -1233,13 +1198,11 @@ rule dedup:
 
         samtools sort -T ${{tmpdir}} ${{tmpdir}}{params.base}.bam -o {output.bam};
         samtools index {output.bam};
-        samtools view -H {output.bam} > {output.head}
         """
 
 rule create_beds_safs:
     """
     split dedup file into unique files
-
     create bed file from the deduped unique file and deduped all file
     create SAF files from the deduped unique bed and all bed files
     """
@@ -1263,28 +1226,27 @@ rule create_beds_safs:
         if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
             tmpdir_u="/lscratch/${{SLURM_JOB_ID}}"
         else
-            tmpdir="{out_dir}01_preprocess/dedup"
-            tmpdir_u="{out_dir}01_preprocess/05_dedup/u"
-
+            tmpdir="{out_dir}01_preprocess/07_bed"
+            tmpdir_u="{out_dir}01_preprocess/07_bed/u"
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
             if [ ! -d $tmpdir_u ]; then mkdir $tmpdir_u; fi
         fi
         
         #create header for unique
-        samtools view -H {input.bam} >  ${{tmpdir_u}}{params.base}.header.txt;
-
+        samtools view -H {input.bam} >  ${{tmpdir_u}}/{params.base}.header.txt;
+        
         #create unique bam
-        samtools view {input.bam} | grep -w 'NH:i:1' | cat ${{tmpdir_u}}{params.base}.header.txt - |  samtools sort -T ${{tmpdir_u}} | samtools view -Sb > ${{tmpdir_u}}{params.base}.unique.bam;
+        samtools view {input.bam} | grep -w 'NH:i:1' | cat ${{tmpdir_u}}/{params.base}.header.txt - |  samtools sort -T ${{tmpdir_u}} | samtools view -Sb > ${{tmpdir_u}}/{params.base}.unique.bam;
         
         #index
-        cp ${{tmpdir_u}}{params.base}.unique.bam ${{tmpdir_u}}{params.base}.unique.i.bam; 
-        samtools index ${{tmpdir_u}}{params.base}.unique.i.bam;
-
+        cp ${{tmpdir_u}}/{params.base}.unique.bam ${{tmpdir_u}}/{params.base}.unique.i.bam; 
+        samtools index ${{tmpdir_u}}/{params.base}.unique.i.bam;
+        
         #create SAFS
         bedtools bamtobed \
             -split -i {input.bam} | bedtools sort -i - > {output.bed_all}; 
         bedtools bamtobed \
-            -split -i ${{tmpdir_u}}{params.base}.unique.i.bam | bedtools sort -i - > {output.bed_unique};
+            -split -i ${{tmpdir_u}}/{params.base}.unique.i.bam | bedtools sort -i - > {output.bed_unique};
         bedtools merge \
             -c 6 -o count,distinct -bed -s -d 50 \
             -i {output.bed_all} | \
@@ -1295,7 +1257,7 @@ rule create_beds_safs:
             -i {output.bed_unique} | \
             awk '{{OFS="\t"; print $1":"$2"-"$3,$1,$2,$3,$5}}'| \
             awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > {output.saf_unique}
-
+        
         exitcode=0
         if [ $exitcode -eq 1 ]
         then
@@ -1309,7 +1271,6 @@ rule feature_counts:
     """
     Unique reads (fractional counts correctly count splice reads for each peak. 
     When peaks counts are combined for peaks connected by splicing in Rscript)
-
     Include Multimap reads - MM reads given fractional count based on # of mapping 
     locations. All spliced reads also get fractional count. So Unique reads can get 
     fractional count when spliced peaks combined in R script the summed counts give 
@@ -1352,7 +1313,6 @@ rule feature_counts:
             -T 8 \
             -o {output.all_mm} \
             {input.bam}
-
         #run for uniquereadpeaks
         featureCounts -F SAF \
             -a {input.saf_unique} \
@@ -1430,7 +1390,7 @@ if(DE_method=="MANORM"):
             all = join(out_dir,'04_peaks','03_allreadpeaks', '{sp}_allFracMMCounts.txt'),
             anno = join(out_dir,'05_annotation', '01_project','annotations.txt'),
         params:
-            rname = '16b_peak_annotations',
+            rname = '17_peak_annotations',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
             p_type = peak_id,
             junc = sp_junc,
@@ -1440,8 +1400,8 @@ if(DE_method=="MANORM"):
             sp = "{sp}",
             n_merge = nt_merge,
             ref_sp = nova_ref,
-            base1 = join(out_dir,'05_annotation','02_peaks/',),
-            base2 = join(out_dir,'06_MAnorm','01_input/',),
+            out = join(out_dir,'05_annotation','02_peaks/',),
+            out_m = join(out_dir,'06_MAnorm','01_input/',),
             anno_dir = join(out_dir,'05_annotation','01_project/'),
             a_config = annotation_config,
             g_path = gen_path,
@@ -1452,13 +1412,21 @@ if(DE_method=="MANORM"):
             config['R'],
             config['bedtools'],
         output:
-            o1 = temp(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_mapq_IN.txt')),
-            o2 = temp(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_complete.txt')),
-            o3 = temp(join(out_dir,'06_MAnorm', '01_input','{sp}_PeaksforMAnrom.bed')),
-            o4 = temp(join(out_dir,'06_MAnorm', '01_input','{sp}_PeaksforMAnrom_P.bed')),
-            o5 = temp(join(out_dir,'06_MAnorm', '01_input','{sp}_PeaksforMAnrom_N.bed')),
+            o1 = join(out_dir,'05_annotation', '02_peaks','{sp}_annotable.bed'),
+            o2 = join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),
+            m1 = temp(join(out_dir,'06_MAnorm', '01_input','{sp}_PeaksforMAnrom.bed')),
+            m2 = temp(join(out_dir,'06_MAnorm', '01_input','{sp}_PeaksforMAnrom_P.bed')),
+            m3 = temp(join(out_dir,'06_MAnorm', '01_input','{sp}_PeaksforMAnrom_N.bed')),
         shell:
             '''
+            #set / create tmp dir
+            if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
+                tmpdir_u="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir="{out_dir}01_preprocess/07_rscripts/"
+                if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+            fi
+            
             Rscript {params.script} \
                 --peak_type {params.p_type} \
                 --peak_unique {input.unique} \
@@ -1474,8 +1442,9 @@ if(DE_method=="MANORM"):
                 --gencode_path {params.g_path} \
                 --intron_path {params.i_path} \
                 --rmsk_path {params.r_path} \
-                --out_dir {params.base1} \
-                --out_dir_manorm {params.base2} \
+                --tmp_dir ${{tmpdir}} \
+                --out_dir {params.out} \
+                --out_dir_manorm {params.out_m} \
                 --output_file_error {params.error}
             '''
 else:
@@ -1488,7 +1457,7 @@ else:
             all = join(out_dir,'04_peaks','03_allreadpeaks', '{sp}_allFracMMCounts.txt'),
             anno = join(out_dir,'05_annotation', '01_project','annotations.txt'),
         params:
-            rname = '16b_peak_annotations',
+            rname = '17_peak_annotations',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
             p_type = peak_id,
             junc = sp_junc,
@@ -1496,22 +1465,32 @@ else:
             r_depth= min_count,
             d_method=DE_method,
             sp = "{sp}",
+            n_merge = nt_merge,
             ref_sp = nova_ref,
-            base = join(out_dir,'05_annotation','02_peaks/',),
+            out = join(out_dir,'05_annotation','02_peaks/',),
+            out_m = join(out_dir,'06_MAnorm','01_input/',),
             anno_dir = join(out_dir,'05_annotation','01_project/'),
-            ref_dir = add_anno_path,
             a_config = annotation_config,
             g_path = gen_path,
             i_path = intron_path,
             r_path = rmsk_path,
+            error = join(out_dir,'05_annotation','read_depth_error.txt')
         envmodules:
             config['R'],
             config['bedtools'],
         output:
-            o1 = temp(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_mapq_IN.txt')),
-            o2 = temp(join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_complete.txt')),
+            o1 = join(out_dir,'05_annotation', '02_peaks','{sp}_annotable.bed'),
+            o2 = join(out_dir,'05_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),
         shell:
             '''
+            #set / create tmp dir
+            if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
+                tmpdir_u="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir="{out_dir}01_preprocess/07_rscripts/"
+                if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+            fi
+            
             Rscript {params.script} \
                 --peak_type {params.p_type} \
                 --peak_unique {input.unique} \
@@ -1527,7 +1506,10 @@ else:
                 --gencode_path {params.g_path} \
                 --intron_path {params.i_path} \
                 --rmsk_path {params.r_path} \
-                --out_dir {params.base}
+                --tmp_dir ${{tmpdir}} \
+                --out_dir {params.out} \
+                --out_dir_manorm {params.out_m} \
+                --output_file_error {params.error}
             '''
 
 rule annotation_report:
@@ -1581,6 +1563,7 @@ if(DE_method=="MANORM"):
 
     rule MANORM_analysis:
         '''
+        input is Peaks.bed and Reads.P.bed + Reads.N.bed
         '''
         input:
             get_MANORM_analysis_input
@@ -1613,6 +1596,7 @@ if(DE_method=="MANORM"):
             
     rule MANORM_post_processing:
         '''
+        input is annotation_complete and MANORM.P.xls + MANORM.N.xls
         '''
         input:
             get_MANORM_post_processing
@@ -1625,7 +1609,7 @@ if(DE_method=="MANORM"):
         envmodules:
             config['R']
         output:
-            o1 = join(out_dir,'06_MAnorm','02_analysis', '{group_id}','{group_id}_post_processing.txt')
+            o1 = temp(join(out_dir,'06_MAnorm','02_analysis', '{group_id}','{group_id}_post_processing.txt'))
         shell:
             """
             Rscript {params.script} \
