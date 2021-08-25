@@ -37,6 +37,7 @@ multiplex_manifest = config['multiplexManifest']
 manorm_manifest = config['contrastManifest']
 
 nova_ref = config['reference']
+filter_length = config['filterlength']
 splice_aware = config['spliceaware'].capitalize()
 include_rRNA = config['includerRNA'].capitalize()
 splice_bp = config['spliceBPlength']
@@ -200,7 +201,7 @@ def adapt_cmd(wildcards):
         removed =  join(out_dir, '01_preprocess', sp + '_removed_seq.fastq.gz ')
         fastq = join(out_dir, df_sub.iloc[0]['multiplex'], '01_preprocess',sp + '.fastq.gz')
 
-        cmd = singularity_exec + ' ' + join(cont_dir,'icount.sif') + ' iCount cutadapt -ml 1 --untrimmed_output ' + filtered + ' --reads_trimmed ' + removed + ' ' + fastq + ' ' + df_sub.iloc[0]['adaptor'] + '; ' + cmd
+        cmd = singularity_exec + ' ' + join(cont_dir,'icount.sif') + ' iCount cutadapt -ml ' + filter_length + ' --untrimmed_output ' + filtered + ' --reads_trimmed ' + removed + ' ' + fastq + ' ' + df_sub.iloc[0]['adaptor'] + '; ' + cmd
     
     return(cmd)
     
@@ -529,7 +530,7 @@ if (multiplex_flag == 'Y'):
             s_exec = singularity_exec,
             doc = join(cont_dir,'icount.sif'),
             cmd = demux_cmd,
-            ml = 15,
+            ml = filter_length,
             mm = mismatch
         envmodules:
             config['singularity'],
@@ -721,12 +722,14 @@ rule split_files:
 rule novoalign:
     """
     alignment for non-splice aware pipeline and for splice aware pipeline MAPQ recalculation
+    http://www.novocraft.com/documentation/novoalign-2/novoalign-user-guide/novoalign-command-options/
     """
     input:
         f1 = join(out_dir,'01_preprocess','00_splits','{sp}.split.{n}.fastq.gz')
     params:
         rname='06_novoalign',
         n_index = get_index,
+        l = filter_length
     envmodules:
         config['novocraft']
     output:
@@ -735,9 +738,17 @@ rule novoalign:
         """
         zcat {input.f1} | \
         novoalign -d {params.n_index} -k \
-        -f - -F STDFQ -c 32 \
-        -t 15,3 -l 20 -x 4 -g 20 -s 1 -o SAM \
-        -R 0 -r EXHAUSTIVE 999 > {output.o1}
+        -f - \
+        -F STDFQ \
+        -c 32 \
+        -t 15,3 \
+        -l {params.l} \
+        -x 4 \
+        -g 20 \
+        -s 1 \
+        -o SAM \
+        -R 0 \
+        -r EXHAUSTIVE 999 > {output.o1}
         """
 
 #pipeline branches for splice_aware processing

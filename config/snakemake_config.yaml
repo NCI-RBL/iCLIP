@@ -15,6 +15,7 @@ fastqDir: "/path/to/fastq/files/"
 
 #user parameters
 reference: "hg38" #reference organism ["mm10", "hg38"]
+filterlength: 20 #minimum read length to include in analysis [any int >20]
 spliceaware: "Y" #whether to run splice_aware part of the pipeline ['y', 'n']
 includerRNA: "Y" #include refseq rRNA's in annotations ["Y", "N"]
 spliceBPlength: 75 #length of splice index to use [50, 75, 150]

@@ -28,6 +28,9 @@ properties:
     types: string
     enum: ["Y","N","y","n"]
     description: determine whether or not samples are multiplexed
+  filterlength: 
+    types: number
+    description: minimum read length to include in analysis, any int greater than 20
   mismatch:
     types: number
     enum: [1,2,3]
@@ -78,6 +81,7 @@ required:
   - multiplexManifest
   - contrastManifest
   - fastqDir
+  - filterlength
   - mismatch
   - reference
   - spliceaware
