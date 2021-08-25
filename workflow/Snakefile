@@ -42,7 +42,6 @@ include_rRNA = config['includerRNA'].capitalize()
 splice_bp = config['spliceBPlength']
 multiplex_flag = config['multiplexflag'].capitalize()
 mismatch = config['mismatch']
-split_value =  config['split']
 min_count = config['mincount']
 nt_merge = str(config['ntmerge']) + 'nt'
 peak_id = config['peakid'].upper()
