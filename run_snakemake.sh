@@ -206,6 +206,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     --rerun-incomplete \
     --stats ${output_dir}/log/${log_time}/snakemake.stats \
     --cluster \
+    --touch \
     "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
     --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} --error=${output_dir}/log/${log_time}/{params.rname}{cluster.error}" \
@@ -223,6 +224,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     --printshellcmds \
     --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yml \
     --cores 8 \
+    --touch \
     --stats ${output_dir}/log/${log_time}/snakemake.stats
   fi
 #Unlock pipeline
