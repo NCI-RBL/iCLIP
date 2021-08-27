@@ -50,6 +50,10 @@ DE_method = config['DEmethod'].upper()
 sp_junc = config['splicejunction'].upper()
 condense_exon = config['condenseexon'].upper()
 
+#define threads
+CLUSTER = yaml.load(join(source_dir,'config','cluster_config.yaml'), Loader=yaml.FullLoader)
+getthreads=lambda rname:int(CLUSTER[rname]["threads"]) if rname in CLUSTER and "threads" in CLUSTER[rname] else int(CLUSTER["__default__"]["threads"])
+
 #set split files value
 split_value = 500000
 
@@ -675,7 +679,7 @@ rule qc_screen_validator:
         base_rrna = join(out_dir, 'qc', '00_qc_screen_rrna'),
         conf_rrna = join(source_dir,'config','fqscreen_rrna_config.conf'),
         base_val = join(out_dir,'qc'),
-    threads: 24
+    threads: getthreads("qc_screen_validator")
     envmodules:
         config['bowtie2'],
         config['perl'],
@@ -1306,6 +1310,8 @@ rule feature_counts:
     locations. All spliced reads also get fractional count. So Unique reads can get 
     fractional count when spliced peaks combined in R script the summed counts give 
     whole count for the unique alignement in combined peak.
+
+    http://manpages.ubuntu.com/manpages/bionic/man1/featureCounts.1.html
     """
     input:
         bam = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
@@ -1313,6 +1319,7 @@ rule feature_counts:
         saf_unique = join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF'),
     params:
         rname='15_feature_counts',
+    threads: getthreads("qc_screen_validator")
     envmodules:
         config['subread']  
     output:
@@ -1330,7 +1337,7 @@ rule feature_counts:
             --fraction \
             --minOverlap 1 \
             -s 1 \
-            -T 8 \
+            -T {threads} \
             -o {output.all_unique} \
             {input.bam};
         featureCounts -F SAF \
@@ -1341,7 +1348,7 @@ rule feature_counts:
             --fraction \
             --minOverlap 1 \
             -s 1 \
-            -T 8 \
+            -T {threads} \
             -o {output.all_mm} \
             {input.bam}
         #run for uniquereadpeaks
@@ -1352,7 +1359,7 @@ rule feature_counts:
             --fraction \
             --minOverlap 1 \
             -s 1 \
-            -T 8 \
+            -T {threads} \
             -o {output.unique_unique} \
             {input.bam};
         featureCounts -F SAF \
@@ -1363,7 +1370,7 @@ rule feature_counts:
             --fraction \
             --minOverlap 1 \
             -s 1 \
-            -T 8 \
+            -T {threads} \
             -o {output.unique_mm} \
             {input.bam}
         """   
