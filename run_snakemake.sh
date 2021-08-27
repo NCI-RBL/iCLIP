@@ -122,7 +122,7 @@ if [[ $pipeline = "initialize" ]]; then
   fi
   
   # copy config inputs to edit
-  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yml' 'config/index_config.yaml' 'workflow/Snakefile')
+  files_save=('config/snakemake_config.yaml' 'config/cluster_config.yaml' 'config/index_config.yaml' 'workflow/Snakefile')
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
@@ -174,7 +174,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   mkdir "${output_dir}/log/${log_time}"
   
   # copy config inputs for ref
-  files_save=("${output_dir}/snakemake_config.yaml" "${output_dir}/cluster_config.yml" "${output_dir}/index_config.yaml" ${config_multiplexManifest} ${config_sampleManifest} 'workflow/Snakefile' 'workflow/scripts/create_error_report.sh')
+  files_save=("${output_dir}/snakemake_config.yaml" "${output_dir}/cluster_config.yaml" "${output_dir}/index_config.yaml" ${config_multiplexManifest} ${config_sampleManifest} 'workflow/Snakefile' 'workflow/scripts/create_error_report.sh')
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
@@ -199,14 +199,13 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     -s ${output_dir}/log/${log_time}/00_Snakefile \
     --configfile ${output_dir}/log/${log_time}/00_snakemake_config.yaml \
     --printshellcmds \
-    --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yml \
+    --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yaml \
     --keep-going \
     --restart-times 1 \
     -j 500 \
     --rerun-incomplete \
     --stats ${output_dir}/log/${log_time}/snakemake.stats \
     --cluster \
-    --touch \
     "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
     --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} --error=${output_dir}/log/${log_time}/{params.rname}{cluster.error}" \
@@ -222,9 +221,8 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     --use-envmodules \
     --configfile ${output_dir}/log/${log_time}/00_snakemake_config.yaml \
     --printshellcmds \
-    --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yml \
+    --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yaml \
     --cores 8 \
-    --touch \
     --stats ${output_dir}/log/${log_time}/snakemake.stats
   fi
 #Unlock pipeline
@@ -243,7 +241,7 @@ elif [[ $pipeline = "test" ]]; then
   -s workflow/Snakefile \
   --configfile .tests/snakemake_config.yaml \
   --printshellcmds \
-  --cluster-config ${output_dir}/cluster_config.yml \
+  --cluster-config ${output_dir}/cluster_config.yaml \
   -npr
 #Create DAG
 elif [[ $pipeline = "DAG" ]]; then
@@ -271,7 +269,7 @@ else
   snakemake -s workflow/Snakefile\
   --configfile ${output_dir}/snakemake_config.yaml \
   --printshellcmds \
-  --cluster-config ${output_dir}/cluster_config.yml \
+  --cluster-config ${output_dir}/cluster_config.yaml \
   -npr
 fi
 echo
