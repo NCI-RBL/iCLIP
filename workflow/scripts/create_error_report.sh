@@ -47,6 +47,7 @@ else
             grep "Failed to open file" *$result* | while read -r result2; do echo $result2 >> miss.txt; done
         else
             grep "Error" *$result* | while read -r result2; do echo $result2 >> other.txt; done
+            grep "error" *$result* | while read -r result2; do echo $result2 >> other.txt; done
         fi
 
         count=$(($count + 1))
