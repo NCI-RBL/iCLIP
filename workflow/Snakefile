@@ -192,7 +192,7 @@ def nondemux_cmd(wildcards):
 
 #command needed to cut adaptors from demux samples
 #example: 
-        #singularity exec -B /scratch /data/CCBR_Pipeliner/iCLIP/container/icount.sif iCount cutadapt -ml --untrimmed_output /path/_untrimmed.fastq.gz 
+        #singularity exec -B /scratch /data/CCBR_Pipeliner/iCLIP/container/icount.sif iCount cutadapt -ml 20 --untrimmed_output /path/_untrimmed.fastq.gz 
         # --reads_trimmed /path/sp_trimmed.fastq.gz /path/fastq.gz ABCDEDFGH
 def adapt_cmd(wildcards):
     cmd=''
@@ -336,6 +336,9 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 #mp1        sample2
 (mp_list,sp_list,file_list) = CreateProjLists(multiplex_dict,samp_dict)
 
+#determine barcode length
+barcode_length = int(len(df_samples.iloc[0,3].replace('N',''))) #length of barcode
+print(barcode_length)
 #create manorm list
 if DE_method == "MANORM": 
     manorm_list = get_manorm_list()
@@ -399,13 +402,13 @@ rule all:
         join(out_dir,'qc','manifest_clean.txt'),
         
         #different inputs for multiplexed or nonmultiplexed pipeline
-        #input_multiplex,
+        input_multiplex,
         
         #remove_adaptors
-        #expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
+        expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
         
         #determine_splits
-        #join(out_dir,'qc','split_params.tsv'),
+        join(out_dir,'qc','split_params.tsv'),
         
         #merge_mm_and_unique
         expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
@@ -514,20 +517,27 @@ rule check_manifest:
 if (multiplex_flag == 'Y'):
     rule qc_barcode:
         input:
-            f1 = join(out_dir,'qc', "manifest_clean.txt")
+            manifest = join(out_dir,'qc', "manifest_clean.txt"),
+            fq = get_fq_names,
         params:
-            rname="01a_qc_barcode",
+            rname = "01a_qc_barcode",
             py = join(source_dir,'workflow', 'scripts', '02_barcode_qc.py'),
             mm = mismatch,
+            bc_len = barcode_length,
+            start_pos = 6 if barcode_length==6 else 4
         envmodules:
             config['python'],
         output:
-            o1 = temp(expand(join(out_dir,'{mp}','00_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())),
-            o2 = temp(expand(join(out_dir,'{mp}','00_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys()))
+            counts = temp(join(out_dir,'{mp}','00_qc_post','{mp}_barcode_counts.txt')),
+            o1 = temp(join(out_dir,'{mp}','00_qc_post','{mp}_barcode.png')),
+            o2 = temp(join(out_dir,'{mp}','00_qc_post','{mp}_barcode.txt'))
         shell:
             """
+            gunzip -c  {input.fq} | \
+            sed -n '/@/{{n;p}}' | awk '{{print substr($0, {params.start_pos}, {params.bc_len});}}' | sort -n | uniq -c > {output.counts};
+            
             python {params.py} \
-                {sample_manifest} {multiplex_manifest} {fastq_dir} {out_dir} {params.mm}
+                {sample_manifest} {multiplex_manifest} {out_dir} {params.mm}
             """
 
     rule demultiplex:
@@ -545,6 +555,7 @@ if (multiplex_flag == 'Y'):
         """
         input:
             f1 = get_fq_names,
+            manifest = join(out_dir,'qc', "manifest_clean.txt"),
         params:
             rname='01b_demux',
             s_exec = singularity_exec,
@@ -585,7 +596,7 @@ else:
         copies fastq files from source location and moves into renamed file folder
         """
         input:
-            f1 = join(out_dir,'qc', "manifest_clean.txt")
+            manifest = join(out_dir,'qc', "manifest_clean.txt")
         params:
             rname = '01_copy_nondemux',
             cmd = nondemux_cmd

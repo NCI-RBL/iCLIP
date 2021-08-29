@@ -13,11 +13,11 @@ import json
 #NNNTGGCNN = total len 9, seq len 4, position [3:7]
 
 #args
-sample_manifest = sys.argv[1] #"samples_example.tsv"
-multiplex_manifest = sys.argv[2] #"multiplex_example.tsv"
-fastq_dir = sys.argv[3]
-output_dir = sys.argv[4]
-mismatch = sys.argv[5]
+sample_manifest = sys.argv[1] #"samples_corrected.tsv"
+multiplex_manifest = sys.argv[2] #"multiplex_corrected.tsv"
+barcode_input = sys.argv[3]
+output_dir = sys.argv[4] #location input barcode counts, output barcode plots and summary
+mismatch = sys.argv[5] #2
 
 def CreateSampleDicts(df_m,df_s):
     s_dict={}
@@ -34,34 +34,29 @@ def CreateSampleDicts(df_m,df_s):
             s_dict[multi_name][sample_name]=row['barcode']
 
     #creat dict that maps mulitplex: filename
-    m_dict = dict(zip(df_m.multiplex, df_m.file_name))
+    #remove .fastq.gz from filename
+    m_dict = dict(zip(df_m.multiplex, df_m.file_name.str.replace('.fastq.gz','')))
 
     return(m_dict,s_dict)
 
-#Read manifests, create dicts
+#Read sample/multiplex manifests, create dicts
 df_multiplex = pd.read_csv(multiplex_manifest,sep="\t")
 df_samples = pd.read_csv(sample_manifest,sep="\t")
 (multiplex_dict,samp_dict) = CreateSampleDicts(df_multiplex,df_samples)
 
+#for each multiplexed sample: fastq file
 for k,v in multiplex_dict.items():
-    bc_dict = {}
-    fastq_file = HTSeq.FastqReader(fastq_dir + v)
-  
     #create expected bc list
     bc_exp=[]
     for k2,v2 in samp_dict[k].items():
         bc_exp.append(v2.replace('N',''))
 
-    #generate list of possible barcodes with 1 bp variation
-    bc_mutants={}
-    nuc_list = ['A','T','C','G','N']
-
     #check the number of mismatches requested is possible given the expected barcodes
     for a, b in itertools.combinations(bc_exp, 2):
-        #zip two barcodes andn compare each letter
+      
+        #zip two barcodes and compare each letter
         compare=zip(a,b)
         diff_list=[]
-        #print (a,b)
         for i,j in compare:
             #if the letters are a mismatch, add to list
             if i!=j:
@@ -72,9 +67,14 @@ for k,v in multiplex_dict.items():
             
             sys.exit('Barcode strategy requires differences between barcodes is greater than mismatch allowance')
 
+    #generate list of possible barcodes variations
+    bc_mutants={}
+    nuc_list = ['A','T','C','G','N']
+
     # for each expected barcode
     for bc in bc_exp:
-        #vary the string by one bp, push str to dict with expected value as the dict key
+        #vary the string by 1bp, 
+        #push str to dict with expected value as the dict key
         for i in range(0,len(list(bc))):
             for nuc in nuc_list:
                 tmp = list(bc)
@@ -89,31 +89,30 @@ for k,v in multiplex_dict.items():
                             tmp2[j]=nuc
                             bc_mutants["".join(tmp2)]=bc
     
-    #determine bc length for one bc
-    bc_length = len(samp_dict[k][k2])
+    # read list of counts:barcodes
+    fastq_df = pd.read_csv(barcode_input,header=None)
+    fastq_df[0] = fastq_df[0].str.lstrip() #remove leading spaces
+    fastq_df[['counts','bc']] = fastq_df[0].str.split(expand=True)#split cols
+    fastq_df["counts"] = pd.to_numeric(fastq_df["counts"])
+    fastq_df=fastq_df.drop([0], axis=1) #remove merged col
 
-    #create counts of barcodes for each sample
-    for read in fastq_file:
-        
-        #change position of bc depending on length of barcode
-        if bc_length == 15:
-            #change seq from bit to str, remove extra ' added with bit
-            barcode = read.seq[5:11].decode("utf-8").replace('\'','') 
-        elif bc_length == 9:
-            #change seq from bit to str, remove extra ' added with bit
-            barcode = read.seq[3:7].decode("utf-8").replace('\'','')
-        else:
-            sys.exit('Barcode strategy only approved for length of 9 and 15 bp')
-        
+    #for each barcode counted
+    bc_dict = {}
+    for index, row in fastq_df.iterrows():
+        barcode=row['bc']
+
         #if barcode matches mutant, change barcode to expected value
         if barcode in bc_mutants:
-            barcode_update = barcode
-            barcode = bc_mutants[barcode_update]
-        
-        #create barcode:sample:count 
-        if k not in bc_dict:
+          barcode_update = barcode
+          barcode = bc_mutants[barcode_update]
+
+        #if barcode isn't in dict, add it
+        if k not in bc_dict: 
             bc_dict[k]={} 
-        bc_dict[k][barcode] = bc_dict[k].get(barcode, 0) + 1
+
+        #create barcode:sample:count 
+        #add barcode in dict count + row count from text file
+        bc_dict[k][barcode] = bc_dict[k].get(barcode, 0) + row['counts']
 
     #select top 10 barcodes for each sample
     top_dict = dict(Counter(bc_dict[k]).most_common(10))
@@ -122,7 +121,9 @@ for k,v in multiplex_dict.items():
     bc_obs=[]
     for k2,v2 in top_dict.items():
         bc_obs.append(k2)
-        
+
+    # if the expected list matches with top 10, print data
+    # otherwise print error messages    
     check =  all(item in bc_obs for item in bc_exp)
     if check is True:
         file_save = output_dir + k + '/00_qc_post/' + k + '_barcode.txt'
@@ -132,7 +133,6 @@ for k,v in multiplex_dict.items():
         f.write("\t + The top barcodes identified {} include the expected barcodes {}\n\n".format(bc_obs, bc_exp))
         f.write("\t + List of top barcodes:counts \n")
         f.write("\t\t + " + json.dumps(top_dict))
-
         f.close()    
     else :
         file_save = output_dir + k + '_barcode_errors.txt'
@@ -140,24 +140,12 @@ for k,v in multiplex_dict.items():
         f.write("The top barcodes identified {} were not congruent with expected barcode list {}. Review associated img for more information.".format(bc_obs, bc_exp)) 
         f.close()
 
-    #print barplot for top barcodes
+    # print barplot for top barcodes
     file_save = output_dir + k + '/00_qc_post/' + k + '_barcode.png'
     plt.bar(*zip(*top_dict.items()))
-    plt.suptitle('Top 5 Barcodes: ' + k + '\n Number of mismatches allowed: ' + mismatch)
+    plt.suptitle('Top Barcodes: ' + k + '\n Number of mismatches allowed: ' + str(mismatch))
     plt.xticks(rotation='45', fontsize=6)
     for k,v in top_dict.items():
         plt.text(x=k , y =v+1 , s=str(v), color = 'black', fontweight='bold')
     plt.tight_layout()
     plt.savefig(file_save)
-
-
-"""
-#Testing
-print(dict(sorted(bc_dict.items(), key=lambda item: item[1])))
-python workflow/scripts/02_barcode_qc.py /data/RBL_NCI/iCLIP/test/sample_mm10_one.tsv /data/RBL_NCI/iCLIP/test/multiplex_mm10_one.tsv /data/RBL_NCI/iCLIP/test/ /data/sevillas2/iCLIP/test/ 1
-
-python workflow/scripts/02_barcode_qc.py /data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/samples.tsv /data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/multiplex.tsv /data/RBL_NCI/Wolin/CLIP_Pipeline/iCLIP/fCLIP/sam_test/ /data/sevillas2/iCLIP/marco/ 1
-
-
-for read in itertools.islice(fastq_file, 2000):
-"""
