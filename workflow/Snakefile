@@ -702,6 +702,8 @@ rule qc_screen_validator:
         o3 = join(out_dir,'qc','{sp}.validated.fastq.log'),
     shell:
         """
+        set +e
+
         #set / create tmp dir
         if [ -w "/lscratch/${{SLURM_JOB_ID}}" ]; then
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
@@ -743,6 +745,14 @@ rule qc_screen_validator:
             --baseComposition \
             --avgQual \
             --file {input.f1} > {output.o3};
+        
+        exitcode=$?
+        if [ $exitcode -eq 1 ]
+        then
+            exit 0
+        else
+            exit 0
+        fi
         """
 
 rule determine_splits:
