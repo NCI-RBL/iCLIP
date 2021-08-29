@@ -126,7 +126,7 @@ for k,v in multiplex_dict.items():
     # otherwise print error messages    
     check =  all(item in bc_obs for item in bc_exp)
     if check is True:
-        file_save = output_dir + k + '/00_qc_post/' + k + '_barcode.txt'
+        file_save = output_dir + '/' + k + '_barcode.txt'
         f = open(file_save,"w+")
         f.write("\n* SampleID {}\n".format(k))
         f.write("\t + Number of mismatches allowed {}\n".format(mismatch))
@@ -141,7 +141,7 @@ for k,v in multiplex_dict.items():
         f.close()
 
     # print barplot for top barcodes
-    file_save = output_dir + k + '/00_qc_post/' + k + '_barcode.png'
+    file_save = output_dir + '/' + k + '_barcode.png'
     plt.bar(*zip(*top_dict.items()))
     plt.suptitle('Top Barcodes: ' + k + '\n Number of mismatches allowed: ' + str(mismatch))
     plt.xticks(rotation='45', fontsize=6)

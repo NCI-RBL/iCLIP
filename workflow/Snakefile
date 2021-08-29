@@ -516,12 +516,22 @@ rule check_manifest:
 #pipeline branches to demultiplex, if necessary
 if (multiplex_flag == 'Y'):
     rule qc_barcode:
+        """
+        generate counts of barcodes and output to text file
+        will run python script that determines barcode expected and generates mismatches based on input
+        output barplot with top barcode counts
+
+        example:
+        python 02_barcode_qc.py /path/to/sample_manifest.tsv /path/to/multiplex_manifest.tsv \
+        /output/path/[mp]/barcode_counts.txt /output/path/[mp]/00_qc_post 2
+        """
         input:
             manifest = join(out_dir,'qc', "manifest_clean.txt"),
             fq = get_fq_names,
         params:
             rname = "01a_qc_barcode",
             py = join(source_dir,'workflow', 'scripts', '02_barcode_qc.py'),
+            base = join(out_dir,'{mp}','00_qc_post'),
             mm = mismatch,
             bc_len = barcode_length,
             start_pos = 6 if barcode_length==6 else 4
@@ -537,7 +547,7 @@ if (multiplex_flag == 'Y'):
             sed -n '/@/{{n;p}}' | awk '{{print substr($0, {params.start_pos}, {params.bc_len});}}' | sort -n | uniq -c > {output.counts};
             
             python {params.py} \
-                {sample_manifest} {multiplex_manifest} {out_dir} {params.mm}
+                {sample_manifest} {multiplex_manifest} {output.counts} {params.base} {params.mm}
             """
 
     rule demultiplex:
