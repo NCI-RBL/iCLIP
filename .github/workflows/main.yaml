@@ -17,7 +17,7 @@ jobs:
     - uses: docker://snakemake/snakemake:v5.24.2
     - name: Dry-run pipeline
       run: |
-        docker run -v $PWD:/tmp/repo snakemake/snakemake:v5.24.2 bash /tmp/repo/run_snakemake.sh test        
+        docker run -v $PWD:/tmp/repo snakemake/snakemake:v5.24.2 bash /tmp/repo/run_snakemake.sh -p git -o /hg38_full/        
     - name: Lint workflow
       continue-on-error: true
       run: |
