@@ -1,10 +1,3 @@
----
-  title: "R Notebook"
-output: html_notebook
-editor_options: 
-  chunk_output_type: console
----
-
 # Purpose:
   # Current script is set up for two barcoding strategies; if additional are required they must be added below. 
   # Current accepted formats include:
@@ -33,11 +26,11 @@ sample_manifest = args$sample_manifest
 multiplex_manifest = args$multiplex_manifest
 barcode_input = args$barcode_input
 output_dir = args$output_dir
-mismatch = args$mismatch
+mismatch = as.integer(args$mismatch)
 mpid = args$mpid
 
 #test input
-testing="Y"
+testing="N"
 if(testing=="Y"){
   sample_manifest  = "~/../../Volumes/CCBR_Pipeliner/iCLIP/test/sample_manifests/sample_mm10_one.tsv"
   multiplex_manifest = "~/../../Volumes/CCBR_Pipeliner/iCLIP/test/multiplex_manifests/multiplex_mm10_one.tsv"
@@ -122,11 +115,16 @@ for (bc in bc_exp){
 #Read through input and assign barcodeID
 df_counts$barcode_id=df_counts$barcode
 for (rowid in 1:nrow(df_counts)){
+  #assign barcode observed
   bc_obs = df_counts[rowid,"barcode"]
   
+  #for each of the barcodes_expected
   for(bc in bc_exp){
+
+    #if the expected barcode is in that list, assign ID as expected
+    #otherwise leave as new barcode
     if(bc_obs %in% get(bc)){
-      df_counts[rowid,"barcode_id"]=bc
+      df_counts[rowid,"barcode_id"]=paste0("*",bc)
     } else{
       next
     }
@@ -140,11 +138,12 @@ df_counts_merged = aggregate(counts~barcode_id, df_counts, sum)
 df_counts_merged = df_counts_merged[order(df_counts_merged$counts,decreasing = TRUE),][1:10,]
 
 #compare observed bc list with expected bc list, write output to text
-diff_lis=setdiff(bc_exp,df_counts_merged$barcode_id)
+diff_lis=setdiff(paste0("*",bc_exp),df_counts_merged$barcode_id)
 
 # if the expected list matches with top 10, print text, otherwise print error messages
 # if the expected list matches with top 10, print plot
 if(length(diff_lis)==0){
+  print("Barcodes observed pass QC")
   #print text file
   file_save = paste0(output_dir,'/',mpid,'_barcode.txt')
   fileConn<-file(file_save)
@@ -166,9 +165,9 @@ if(length(diff_lis)==0){
   file_save = paste0(output_dir,'/',mpid,'_barcode.png')
   p = ggplot(df_counts_merged, aes(x = reorder(barcode_id,-counts),counts)) +
     geom_bar(stat ="identity") +
-    geom_text(aes(label = counts), vjust = -0.2)+
-    labs(title=paste0("Barcode Counts for ", mpid), 
-         x ="Barcode IDs", y = "Barcode Counts")
+    geom_text(aes(label = counts), vjust = -0.2, size=2)+
+    labs(title=paste0("Barcode Counts for ", mpid), x ="Barcode IDs", y = "Barcode Counts") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=5))
   ggsave(file_save,p)
   
 } else{
