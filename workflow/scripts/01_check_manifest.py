@@ -73,7 +73,23 @@ def check_samples(input_df,select_file,error_log):
 
     return(error_log)
 
-def check_both_files(input_df_m,input_df_s,error_log):
+def check_contrasts(input_df,select_file,error_log):
+    #check if there are any NA values, otherwsie check alpha/num
+    check_na = input_df.isnull().values.any()
+
+    if check_na == False:
+      for select_cols in input_df.columns.values:
+          tmp_list = input_df[select_cols].tolist()
+          #check values are alpha/numeric or _
+          regex = re.compile(r'[A-Z]_[a-z][0-9]')
+          for item in tmp_list:
+            if(regex.search(item) != None):
+              error_log.append("{} values can only contain alpha/numeric values or _ - please review: {}".format(select_cols,item))
+    else:
+      error_log.append("Contrast manifest can only contain two comparisons per line. Please review")
+    return(error_log)
+
+def check_multiplex_samples(input_df_m,input_df_s,error_log):
     l1 = list(input_df_m.multiplex.unique())
     l2 = list(input_df_s.multiplex.unique())
 
@@ -91,7 +107,24 @@ def check_both_files(input_df_m,input_df_s,error_log):
 
     return(error_log)
 
-error_log=[]
+def check_samples_contrast(input_df_s,input_df_c,error_log):
+    l1 = list(input_df_s["sample"].unique())
+    l2 = list(input_df_c.contrast_1.unique())
+    l3 = list(input_df_c.contrast_2.unique())
+
+    l_2to1 = list(set(l2)-set(l1))
+    l_3to1 = list(set(l3)-set(l1))
+
+    if len(l_2to1) !=0:
+        error_log.append("The following contrast_1 sample was not found in the sample_manifest tsv: {}. Please review manifests.".format(l_2to1))
+
+    if len(l_3to1) !=0:
+        error_log.append("The following contrast_2 sample was not found in the sample_manifest tsv {}. Please review manifests.".format(l_3to1))
+
+    return(error_log)
+
+#create log
+error_log = []
 
 #Check multiplex file
 check_file = sys.argv[2]
@@ -107,9 +140,22 @@ s_req = ['multiplex','barcode','sample','adaptor']
 error_log = check_header(s_df,s_req,check_file,error_log)
 error_log = check_samples(s_df,check_file,error_log)
 
-#Check concordance between two files
-error_log = check_both_files(m_df,s_df,error_log)
+#Check concordance between multiplex and sample files
+error_log = check_multiplex_samples(m_df,s_df,error_log)
 
+#check contrast file, if necessary
+DE_method = sys.argv[5]
+if DE_method == "MANORM":
+
+    #Check contrast file
+    check_file = sys.argv[4]
+    c_df = pd.read_csv(check_file,sep=",")
+    c_req = ['contrast_1','contrast_2']
+    error_log = check_header(c_df,c_req,check_file,error_log)
+    error_log = check_contrasts(c_df,check_file,error_log)
+    
+    #Check concordance between sample and contrast files
+    check_samples_contrast(s_df,c_df,error_log)
 
 #print out error_log
 if len(error_log)==0:
