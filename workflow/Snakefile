@@ -34,7 +34,7 @@ fastq_dir = config['fastqDir'].rstrip('/') + '/'
 
 sample_manifest = config['sampleManifest']
 multiplex_manifest = config['multiplexManifest']
-manorm_manifest = config['contrastManifest']
+contrast_manifest = config['contrastManifest']
 
 nova_ref = config['reference']
 filter_length = config['filterlength']
@@ -267,7 +267,7 @@ def get_align_input(wildcards):
 def get_manorm_list():
     
     #read file
-    with open(manorm_manifest) as f:
+    with open(contrast_manifest) as f:
         reader = csv.reader(f, delimiter="\t")
         manorm_file = list(reader)
 
@@ -493,13 +493,15 @@ else:
 ###############################################################
 rule check_manifest:
     """
-    Read in multiplex manifest and sample manifest.
+    Read in multiplex manifest, sample manifest, contrast manifest.
     Use python script to check file matching, sample matching, and invalid characters.
+    Will only check contrast manifest if "MANORM" is selected
     If files are correct, outputs a temp file. If not, outputs error file.
     """
     input:
-        f1 = multiplex_manifest,
-        f2 = sample_manifest
+        mm = multiplex_manifest,
+        sm = sample_manifest,
+        cm = contrast_manifest
     params:
         py = join(source_dir,'workflow','scripts','01_check_manifest.py'),
         base = join(out_dir,'qc','manifest_')
@@ -510,7 +512,7 @@ rule check_manifest:
     shell:
         """
         python {params.py} \
-            '{params.base}' {input.f1} {input.f2}
+            '{params.base}' {input.mm} {input.sm} {input.cm} {DE_method}
         """
 
 #pipeline branches to demultiplex, if necessary
@@ -526,7 +528,7 @@ if (multiplex_flag == 'Y'):
             fq = get_fq_names,
         params:
             rname = "01a_qc_barcode",
-            py = join(source_dir,'workflow', 'scripts', '02_barcode_qc.R'),
+            R = join(source_dir,'workflow', 'scripts', '02_barcode_qc.R'),
             base = join(out_dir,'{mp}','00_qc_post'),
             mm = mismatch,
             bc_len = barcode_length,
@@ -543,7 +545,7 @@ if (multiplex_flag == 'Y'):
             sed -n '/@/{{n;p}}' | awk '{{print substr($0, {params.start_pos}, {params.bc_len});}}' | sort -n | uniq -c > {output.counts};
             
             Rscript {params.R} --sample_manifest {sample_manifest} --multiplex_manifest {multiplex_manifest} --barcode_input {output.counts} \
-                --mismatch {params.mm} --mpid {mp} --output_dir {params.base}
+                --mismatch {params.mm} --mpid {wildcards.mp} --output_dir {params.base}
             """
 
     rule demultiplex:
