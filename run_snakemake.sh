@@ -1,14 +1,14 @@
 #!/bin/bash
 
 #########################################################
-# handle arguments
+# Arguments
 #########################################################
 
 helpFunction()
 {
    echo ""
    echo "Usage: $0 -p pipeline"
-   echo -e "\t-p options: initialize, cluster, local, dry-run, unlock, report"
+   echo -e "\t-p options: initialize, check, dry, cluster, local, git, unlock, DAG, report"
    echo "Usage: $1 -o output_dir"
    echo -e "\t-o path to output directory"
    exit 1 # Exit script after printing help
@@ -29,7 +29,10 @@ if [ -z "$pipeline" ] || [ -z "$output_dir" ]; then
    helpFunction
 fi
 
-#####
+#########################################################
+# functions
+#########################################################
+
 #handle yaml file
 parse_yaml() {
    local prefix=$2
@@ -47,18 +50,15 @@ parse_yaml() {
    }'
 }
 
-#########################################################
-# Check functions
-#########################################################
-
 check_initialization(){
   if [[ ! -d $output_dir ]] || [[ ! -d "${output_dir}/log" ]]; then 
     echo "ERROR: You must initalize the dir before beginning pipeline"
     exit 1
   fi
 }
+
 check_output_dir(){
-  eval $(parse_yaml ${output_dir}/snakemake_config.yaml "config_")
+  eval $(parse_yaml ${output_dir}/config/snakemake_config.yaml "config_")
   config_outputDir=$(echo $config_outputDir | sed 's:/*$::')
 
   if [[ ! ${config_outputDir} == $output_dir ]]; then 
@@ -91,7 +91,8 @@ check_writeaccess(){
 }
 
 #########################################################  
-# set timestamp
+# Formatting
+#########################################################
 log_time=`date +"%Y%m%d_%H%M"`
 s_time=`date +"%Y%m%d_%H%M%S"`
 
@@ -101,7 +102,7 @@ output_dir=$(echo $output_dir | sed 's:/*$::')
 #########################################################
 # Pipeline options
 #########################################################
-#Run initialization step
+####################### INITIALIZE #######################
 if [[ $pipeline = "initialize" ]]; then
   echo
   echo "Initializing pipeline"
@@ -116,6 +117,8 @@ if [[ $pipeline = "initialize" ]]; then
     fi
   else
     mkdir "${output_dir}"
+    mkdir "${output_dir}/config"
+    mkdir "${output_dir}/manifest"
     mkdir "${output_dir}/log"
     echo
     echo "Creating output dir with configs: ${output_dir}"
@@ -126,18 +129,30 @@ if [[ $pipeline = "initialize" ]]; then
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
-    cp $f "${output_dir}/${strarr[-1]}"
+    cp $f "${output_dir}/config/${strarr[-1]}"
   done
-#Run pipeline on cluster or locally
-elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
+
+  # copy example manifests
+  files_save=('manifest/contrasts_example.tsv' 'manifest/samples_example.tsv' 'manifest/mutliplex_example.tsv')
+
+  for f in ${files_save[@]}; do
+    IFS='/' read -r -a strarr <<< "$f"
+    cp $f "${output_dir}/manifest/${strarr[-1]}"
+  done
+####################### CHECK, CLUSTER, LOCAL #######################
+#Run check of pipeline OR run pipeline locally/cluster
+elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   echo
   echo "Running pipeline"
 
+  ####################### Preparation
   #parse config
-  eval $(parse_yaml ${output_dir}/snakemake_config.yaml "config_")
-  source_dir=$(echo $config_sourceDir | sed 's:/*$::')
-  eval $(parse_yaml ${output_dir}/index_config.yaml "yaml_")
+  eval $(parse_yaml ${output_dir}/config/snakemake_config.yaml "config_")  
+  eval $(parse_yaml ${output_dir}/config/index_config.yaml "yaml_")
   
+  #save source dir
+  source_dir=$(echo $config_sourceDir | sed 's:/*$::')
+
   #run checks
   check_initialization
   check_output_dir
@@ -174,15 +189,27 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   mkdir "${output_dir}/log/${log_time}"
   
   # copy config inputs for ref
-  files_save=("${output_dir}/snakemake_config.yaml" "${output_dir}/cluster_config.yaml" "${output_dir}/index_config.yaml" ${config_multiplexManifest} ${config_sampleManifest} 'workflow/Snakefile' 'workflow/scripts/create_error_report.sh')
+  files_save=("${output_dir}/config/snakemake_config.yaml" "${output_dir}/config/cluster_config.yaml" "${output_dir}/config/index_config.yaml" "${output_dir}/config//Snakefile" ${config_multiplexManifest} ${config_sampleManifest} 'workflow/scripts/create_error_report.sh')
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
     cp $f "${output_dir}/log/${log_time}/00_${strarr[-1]}"
   done
 
-  #submit jobs to cluster
-  if [[ $pipeline = "cluster" ]]; then
+  ####################### Selection
+  # run check - only includes check_manifest rule - run locally
+  if [[ $pipeline = "check" ]]; then
+    snakemake \
+    -s ${output_dir}/log/${log_time}/00_Snakefile \
+    --use-envmodules \
+    --configfile ${output_dir}/log/${log_time}/00_snakemake_config.yaml \
+    --printshellcmds \
+    --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yaml \
+    --cores 8 \
+    -R --until check_manfiest \ 
+    --stats ${output_dir}/log/${log_time}/snakemake.stats
+  # run cluster - includes all rules - run on cluster
+  elif [[ $pipeline = "cluster" ]]; then
     echo
     echo "Output dir: ${output_dir}"
     echo "Pipeline jobid:"
@@ -211,7 +238,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} --error=${output_dir}/log/${log_time}/{params.rname}{cluster.error}" \
     |tee ${output_dir}/log/${log_time}/snakemake.log
 
-  #submit jobs locally
+  # run local - includes all rules - run locally
   else
     #remove iCount dir if it already exist - will cause error in demux
     if [ -d "/tmp/iCount" ]; then rm -r "/tmp/iCount/"; fi
@@ -225,7 +252,8 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     --cores 8 \
     --stats ${output_dir}/log/${log_time}/snakemake.stats
   fi
-#Unlock pipeline
+
+####################### UNLOCK #######################
 elif [[ $pipeline = "unlock" ]]; then
   echo
   echo "Unlocking pipeline"
@@ -235,29 +263,33 @@ elif [[ $pipeline = "unlock" ]]; then
   --unlock \
   --cores 8 \
   --configfile ${output_dir}/snakemake_config.yaml
+######################## GIT #######################
 #Run github actions
-elif [[ $pipeline = "test" ]]; then
+elif [[ $pipeline = "git" ]]; then
+  echo
+  echo "Starting Git Tests"
+  
   snakemake \
   -s workflow/Snakefile \
   --configfile .tests/snakemake_config.yaml \
   --printshellcmds \
-  --cluster-config ${output_dir}/cluster_config.yaml \
+  --cluster-config .tests/cluster_config.yaml \
   -npr
-#Create DAG
+######################## DAG #######################
 elif [[ $pipeline = "DAG" ]]; then
   snakemake \
-  -s workflow/Snakefile \
-  --configfile .tests/snakemake_config.yaml \
-  --rulegraph | dot -Tpdf > ${output_dir}/dag.pdf
-#Report
+  -s ${output_dir}/config/Snakefile \
+  --configfile ${output_dir}/config/snakemake_config.yaml \
+  --rulegraph | dot -Tpdf > ${output_dir}/log/dag.pdf
+######################## Report #######################
 elif [[ $pipeline = "report" ]]; then
   echo
   echo "Creating Snakemake Report"
   snakemake \
-  -s ${output_dir}/Snakefile \
-  --configfile ${output_dir}/snakemake_config.yaml \
+  -s ${output_dir}/config/Snakefile \
+  --configfile ${output_dir}/config/snakemake_config.yaml \
   --report ${output_dir}/log/runlocal_snakemake_report.html 
-#Dry-run pipeline
+######################## Dry #######################
 else
   echo
   echo "Starting dry-run"
@@ -266,10 +298,10 @@ else
   check_initialization
   check_output_dir
   
-  snakemake -s workflow/Snakefile\
-  --configfile ${output_dir}/snakemake_config.yaml \
+  snakemake -s ${output_dir}/config/Snakefile \
+  --configfile ${output_dir}/config/snakemake_config.yaml \
   --printshellcmds \
-  --cluster-config ${output_dir}/cluster_config.yaml \
+  --cluster-config ${output_dir}/config/cluster_config.yaml \
   -npr
 fi
 echo
