@@ -10,7 +10,11 @@ __default__:
 
 novoalign:
     time: 10-00:00:00
-    mem: 96g
+    mem: 50g
+
+create_bam_mm_unique:
+    threads: 6
+    mem: 3g
 
 mapq_recalc:
     mem: 1TB
