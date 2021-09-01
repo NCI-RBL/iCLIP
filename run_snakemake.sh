@@ -133,7 +133,7 @@ if [[ $pipeline = "initialize" ]]; then
   done
 
   # copy example manifests
-  files_save=('manifest/contrasts_example.tsv' 'manifest/samples_example.tsv' 'manifest/mutliplex_example.tsv')
+  files_save=('manifests/contrasts_example.tsv' 'manifests/samples_example.tsv' 'manifests/multiplex_example.tsv')
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
@@ -268,7 +268,7 @@ elif [[ $pipeline = "unlock" ]]; then
 elif [[ $pipeline = "git" ]]; then
   echo
   echo "Starting Git Tests"
-  
+
   snakemake \
   -s workflow/Snakefile \
   --configfile .tests/snakemake_config.yaml \
