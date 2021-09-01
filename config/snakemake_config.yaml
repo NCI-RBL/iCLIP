@@ -1,6 +1,6 @@
 # Global configuration file for the pipeline
 #path to iCLIP directory
-sourceDir: "/path/to/iCLIP/"
+sourceDir: "/data/RBL_NCI/Pipelines/iCLIP/v2.0"
 
 #path to output directory
 outputDir: "/path/to/output/dir/"
