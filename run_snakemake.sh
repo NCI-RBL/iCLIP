@@ -206,8 +206,7 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
     --printshellcmds \
     --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yaml \
     --cores 8 \
-    -R --until check_manfiest \ 
-    --stats ${output_dir}/log/${log_time}/snakemake.stats
+    --until check_manifest
   # run cluster - includes all rules - run on cluster
   elif [[ $pipeline = "cluster" ]]; then
     echo
@@ -262,7 +261,7 @@ elif [[ $pipeline = "unlock" ]]; then
   --use-envmodules \
   --unlock \
   --cores 8 \
-  --configfile ${output_dir}/snakemake_config.yaml
+  --configfile ${output_dir}/config/snakemake_config.yaml
 ######################## GIT #######################
 #Run github actions
 elif [[ $pipeline = "git" ]]; then
