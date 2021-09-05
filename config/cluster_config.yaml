@@ -8,23 +8,103 @@ __default__:
     output: .%j.{wildcards}.out
     error: .%j.{wildcards}.err
 
+qc_barcode:
+    threads: 3
+    mem: 3g
+    time: 00-04:00:00
+
+demultiplex:
+    threads: 3
+    mem: 3g
+
+remove_adaptors:
+    threads: 3
+    mem: 3g
+
+qc_fastq_pre:
+    threads: 3
+    mem: 3g
+    time: 00-03:00:00
+
+qc_fastq_post:
+    threads: 3
+    mem: 3g
+    time: 00-03:00:00
+
+qc_screen_validator:
+    mem: 15g
+    time: 00-03:00:00
+
+split_files:
+    threads: 3
+    mem: 3g
+    time: 00-03:00:00
+
 novoalign:
-    time: 10-00:00:00
     mem: 50g
+    time: 10-00:00:00
+
+cleanup_conversion:
+    threads: 3
 
 create_bam_mm_unique:
     threads: 6
     mem: 3g
+    time: 00-04:00:00
 
-mapq_recalc:
-    mem: 1TB
-    partition: largemem
-    
+merge_splits_unique_mm:
+    threads: 2
+    mem: 3g
+    time: 00-02:00:00
+
+merge_mm_and_unique:
+    threads: 2
+    mem: 1g
+    time: 00-04:00:00
+
 qc_alignment:
     mem: 1TB
     partition: largemem
 
-create_beds:
+qc_troubleshoot:
+    threads: 3
+    mem: 3g
+    time: 00-02:00:00
+
+dedup:
+    threads: 2
+    mem: 10g
+    time: 00-02:00:00
+
+create_beds_safs:
+    threads: 3
+    mem: 30g
+    time: 00-02:00:00
+
+project_annotations:
+    threads: 2
+    mem: 10g
+    time: 00-01:00:00
+
+peak_annotations:
+    threads: 2
+    mem: 10g
+    time: 00-03:00:00
+
+annotation_report:
+    mem: 10g
+
+MANORM_analysis:
+    threads: 4
+    mem: 2g
+    time: 00-04:00:00
+
+MANORM_post_processing:
+    mem: 10g
+
+MANORM_RMD:
+    mem: 40g
+
+mapq_recalc:
     mem: 1TB
     partition: largemem
-    time: 2-00:00:00
