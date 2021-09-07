@@ -45,7 +45,9 @@ novoalign:
     time: 10-00:00:00
 
 cleanup_conversion:
-    threads: 3
+    threads: 5
+    mem: 30g
+    time: 00-3:00:00
 
 create_bam_mm_unique:
     threads: 6
@@ -87,9 +89,9 @@ project_annotations:
     time: 00-01:00:00
 
 peak_annotations:
-    threads: 2
-    mem: 10g
-    time: 00-03:00:00
+    threads: 3
+    mem: 5g
+    time: 00-12:00:00
 
 annotation_report:
     mem: 10g
