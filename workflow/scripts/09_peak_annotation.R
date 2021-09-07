@@ -14,7 +14,7 @@ parser$add_argument("-pa","--peak_all", dest="peak_all", required=TRUE, help="pa
 parser$add_argument("-jj","--join_junction", dest="join_junction", required=TRUE, help="include junctions (T or F)")
 parser$add_argument("-ce","--condense_exon", dest="condense_exon", required=TRUE, help="condense exons (T or F)")
 parser$add_argument("-rdepth","--read_depth", dest="read_depth", required=TRUE, help="read depth filtering parameter")
-parser$add_argument("-de","--demethod", dest="demethod", required=TRUE, help="DE method (MANORM or none)")
+parser$add_argument("-de","--demethod", dest="demethod", required=TRUE, help="DE method (MAnorm, DiffBind or none)")
 parser$add_argument("-s","--sample_id", dest="sample_id", required=TRUE, help="sample id")
 parser$add_argument("-sp","--ref_species", dest="ref_species", required=TRUE, help="reference species")
 parser$add_argument("-anno","--anno_dir", dest="anno_dir", required=TRUE, help="path for annotation dir")
@@ -24,7 +24,7 @@ parser$add_argument("-i","--intron_path", dest="intron_path", required=TRUE, hel
 parser$add_argument("-rmsk","--rmsk_path", dest="rmsk_path", required=TRUE, help="path for rmsk")
 parser$add_argument("-tmp","--tmp_dir", dest="tmp_dir", required=TRUE, help="path for tmp dir")
 parser$add_argument("-od","--out_dir", dest="out_dir", required=TRUE, help="path for output dir")
-parser$add_argument("-odm","--out_dir_manorm", dest="out_dir_manorm", required=FALSE, help="path for manorm output dir")
+parser$add_argument("-odm","--out_dir_DEP", dest="out_dir_DEP", required=FALSE, help="path for manorm output dir")
 parser$add_argument("-o","--output_file_error", dest="output_file_error", required=FALSE, help="path for output error file")
 
 args <- parser$parse_args()
@@ -44,41 +44,41 @@ intron_path = args$intron_path
 rmsk_path = args$rmsk_path
 tmp_dir = args$out_dir
 out_dir = args$out_dir
-out_dir_manorm = args$out_dir_manorm
+out_dir_DEP = args$out_dir_DEP
 output_file_error = args$output_file_error
 
 ##testing
-testing="N"
+testing="Y"
 if(testing=="Y"){
   rm(list=setdiff(ls(), "params"))
-  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/soyeong_08062021/"
+  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mESC_clip_2/"
   setwd(wd)
   wd="."
   
   peak_type= "ALL"
-  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/soyeong_08062021/04_peaks/03_allreadpeaks/Ro_Clip_uniqueCounts.txt"
-  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/soyeong_08062021/04_peaks/03_allreadpeaks/Ro_Clip_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
+  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mESC_clip_2/03_peaks/03_allreadpeaks/Control_Clip_1_uniqueCounts.txt"
+  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mESC_clip_2/03_peaks/03_allreadpeaks/Control_Clip_1_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
   reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
   
   #output
-  out_dir = paste0(wd,"/05_annotation/02_peaks/")
-  out_dir_manorm =paste0(wd,"/14_MAnorm/")
+  out_dir = paste0(wd,"/04_annotation/02_peaks/")
+  out_dir_DEP =paste0(wd,"/14_MAnorm/")
   
   #project annotation files
-  anno_dir = paste0(wd,"/05_annotation/01_project/")
+  anno_dir = paste0(wd,"/04_annotation/01_project/")
   ref_path = "/Users/homanpj/Documents/Resources/ref/"
-  tmp_dir= paste0(wd,"/05_annotation/02_peaks/")
-                 
+  tmp_dir= paste0(wd,"/04_annotation/02_peaks/")
+  
   #feature information
   join_junction = "TRUE"
   condense_exon="TRUE"
-  read_depth = 5
+  read_depth = 3
   DEmethod = "None"
   ref_species="mm10"
-  sample_id = "Ro_Clip"
-  output_file_error= paste0(wd,"/05_annotation/02_peaks/")
-                 
-                 
+  sample_id = "Control_Clip_1"
+  output_file_error= paste0(wd,"/04_annotation/02_peaks/")
+  
+  
   if(ref_species == "mm10"){
     gencode_path = paste0(ref_path, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
     intron_path = paste0(ref_path, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
@@ -96,13 +96,13 @@ if(testing=="Y"){
   rbl_base="~/../../Volumes/RBL_NCI-1/"
   
   peak_type= "ALL"
-  peak_unique = paste0(rbl_base,"Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT_fCLIP_uniqueCounts.txt")
-  peak_all = paste0(rbl_base,"Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/WT_fCLIP_allFracMMCounts.txt")
+  peak_unique = paste0(rbl_base,"Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/KO_fCLIP_uniqueCounts.txt")
+  peak_all = paste0(rbl_base,"Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/KO_fCLIP_allFracMMCounts.txt")
   join_junction = "TRUE"
   condense_exon="TRUE"
   read_depth = 5
   DEmethod = "MANORM"
-  sample_id = "WT-NOPFA"
+  sample_id = "KO-NOPFA"
   ref_species="hg38"
   anno_dir =paste0(out_base, "annotations_test/05_annotation/01_project/")
   reftable_path = paste0(git_base,"config/annotation_config.txt")
@@ -111,7 +111,7 @@ if(testing=="Y"){
   rmsk_path = paste0(pipe_base,"annotations/hg38/repeatmasker/rmsk_GRCh38.txt")
   tmp_dir = paste0(out_base, "annotations_test/05_annotation/02_peaks/")
   out_dir = paste0(out_base, "annotations_test/05_annotation/02_peaks/")
-  out_dir_manorm = paste0(out_base, "annotations_test/06_MAnorm/01_input/")
+  out_dir_DEP = paste0(out_base, "annotations_test/06_MAnorm/01_input/")
   output_file_error = paste0(out_base, "annotations_test/05_annotation/read_depth_error.txt")
 }
 
@@ -151,7 +151,7 @@ FtrCount=merge(subset(FtrCount_input(peak_unique),select=-c(Geneid)),
                by='ID',suffixes=c("_Unique","_fracMM"),
                all.x=T)
 FtrCount = FtrCount %>%
-  rename(
+  dplyr::rename(
     chr = Chr,
     start = Start,
     end = End,
@@ -391,28 +391,29 @@ system.time(
 FtrCount_trimmed=FtrCount_trimmed[duplicated(FtrCount_trimmed)==F & !FtrCount_trimmed$chr%in%c('chrM'),]
 
 ##########################################################################################
-############### MANORM
+############### DEP
 ##########################################################################################
-if (DEmethod=='MANORM') {
-  print("Running MANORM")
+if (DEmethod!='none') {
+  print(paste0("Running ",DEmethod," Peaks file prep"))
   
   manorm_bed=FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')]
+  manorm_bed[,5]=1
   
   #write peaks bed file
   write.table(manorm_bed,
-              file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom.bed"), 
+              file=paste0(out_dir_DEP, sample_id, "_", "Peaksfor",DEmethod,".bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
   #write peaks + bed file
   write.table(manorm_bed[manorm_bed$strand%in%"+",],
-              file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom_P.bed"), 
+              file=paste0(out_dir_DEP, sample_id, "_", "Peaksfor",DEmethod,"_P.bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
   
   #write peaks - bed file
   write.table(manorm_bed[manorm_bed$strand%in%"-",],
-              file=paste0(out_dir_manorm, sample_id, "_", "PeaksforMAnrom_N.bed"), 
+              file=paste0(out_dir_DEP, sample_id, "_", "Peaksfor",DEmethod,"_N.bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
 } else{
-  print("MANORM skipped")
+  print("Differential Peaks skipped")
 } 
 
 ##########################################################################################
@@ -571,25 +572,29 @@ bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
     ab_OL_colapsed[(ab_OL_colapsed$ntOL<=0),ColumnName]=NA
     
     ###fix rename variable
-    ab_OL=ab_OL_colapsed
-    print(paste0('Overlaps with ',nrow(ab_OL),' Regions from '))[1]
+    print(paste0('Overlaps with ',nrow(ab_OL_colapsed),' Regions from '))[1]
+    
+    #merge tables
+    ab_OL_colapsed = merge(peaksTable,
+                           ab_OL_colapsed[,c('ID',ColumnName)],
+                           by='ID',all.x=T)
     
   } else{ 
     print("does not overlap with ")[1]
-    next
+    # next
+    ab_OL_colapsed=peaksTable
+    ab_OL_colapsed[,ColumnName]=NA
   }
   
   print((match.call())$Annotable)
   
-  #merge tables
-  ab_OL = merge(peaksTable,
-                ab_OL[,c('ID',ColumnName)],
-                by='ID',all.x=T)
-  
-  return(ab_OL) 
+  return(ab_OL_colapsed) 
 }
 
 peak_calling<-function(peak_in,nmeprfix){
+  # peak_in=peaks_Oppo
+  # nmeprfix="Oppo_"
+  
   colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id',
                'external_gene_name','gene_type','gene_type_ALL')
   colSelect=c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
@@ -649,10 +654,10 @@ peak_calling<-function(peak_in,nmeprfix){
       pam=peaksTable_Anno[peaksTable_Anno$ID%in%PeaksdataOutU,]
       
       #Comb Annotation
-      pam_1=pam$gene_type_ALL ### type from Gencode 
+      pam_1=as.character(pam$gene_type_ALL) ### type from Gencode 
       pam_1=as.data.frame(strsplit(pam_1,','));colnames(pam_1)='a';pam_1$a=as.character(pam_1$a)
       
-      pam_2=pam$type ### type from Annotation
+      pam_2=as.character(pam$type) ### type from Annotation
       pam_2=as.data.frame(strsplit(pam_2,','));colnames(pam_2)='a';pam_2$a=as.character(pam_2$a)
       
       type_list = c("miRNA","piRNA","rRNA","siRNA","snRNA","snoRNA",
@@ -701,11 +706,11 @@ peak_calling<-function(peak_in,nmeprfix){
       pam_c2=paste(unique(pam_c2$a),collapse = ',')
       
       #Comb GeneName 
-      pam_G1=pam$external_gene_name ### gene name from gencode
+      pam_G1=as.character(pam$external_gene_name) ### gene name from gencode
       pam_G1=as.data.frame(strsplit(pam_G1,','));colnames(pam_G1)='a';pam_G1$a=as.character(pam_G1$a)
       
       ### G1 is gencode annotation and G2 is additional annotation
-      pam_G2=pam$transcript_name ### gene name from annotation
+      pam_G2=as.character(pam$transcript_name) ### gene name from annotation
       pam_G2=as.data.frame(strsplit(pam_G2,','));colnames(pam_G2)='a';pam_G2$a=as.character(pam_G2$a)
       
       ## there are non uniform naming for 7SK rRNA so i am making a uniform naming by selecting only from gencode
@@ -723,6 +728,7 @@ peak_calling<-function(peak_in,nmeprfix){
       peaksTable_colapsed[x,'type_comb']=pam_c
       peaksTable_colapsed[x,'gene_name_comb']=pam_gmerge
     }
+    
     
     rnatype=peaksTable_colapsed[,c('ID','ensembl_gene_id','external_gene_name','gene_type',"gene_type_ALL",
                                    'type','transcript_name','type_simple_comb','type_comb','gene_name_comb')]
@@ -791,7 +797,7 @@ print("Intron/exon annotation")
 #gencode
 ref_gencode = fread(gencode_path, header=T, sep="\t",stringsAsFactors = F,data.table=F) %>%
   subset(transcript_type != "TEC" & gene_type != "TEC") %>% 
-  rename(
+  dplyr::rename(
     chr = seqname,
     ensembl_gene_id = gene_id,
     external_gene_name = gene_name
@@ -1154,8 +1160,8 @@ rpmsk_Opposite = rpmsk_calling(intronexon_Opposite,"Oppo_")
 print("Add peak attributes")
 peak_attributes <- function(peaks_in,nmeprfix){
   if(length(args)==0){
-    nmeprfix="Oppo_"
-    peaks_in=rpmsk_Opposite
+    nmeprfix="Same_"
+    peaks_in=rpmsk_Same
     # colnames(peaks_in)
   }  
   #convert lincRNA and lncRNA types
@@ -1264,42 +1270,68 @@ peak_attributes <- function(peaks_in,nmeprfix){
     p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub(type_id,"",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
   } 
   
-  ### any double annotations with yRNA become yRNA only
-  p_ncrna[grep('yRNA',p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]),paste0(nmeprfix,'Comb_type_ncRNA')]='yRNA'
   
-  ### tRNA takes priority over miRNA
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,tRNA',"miRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  #### This section will give priority to ncRNA assignment based on order listed in ncRNAPriority
+  #### This replaces previous approach to replace on a case by case baseis
+  ncRNAPriority=c(
+  'yRNA',
+  'snRNA',
+  'snoRNA',
+  'srpRNA',
+  'tRNA',
+  '7SKRNA',
+  'scRNA',
+  'sncRNA',
+  'scaRNA',
+  'miRNA',
+  'vaultRNA',
+  'miscRNA',
+  'misc_RNA',
+  'rRNA',
+  'linLcRNA-intron',
+  'linLcRNA-exon',
+  'lnLcRNA') 
   
-  ### miRNA takes priority over rRNA
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,rRNA',"miRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  for (x in 1:length(ncRNAPriority)) {
+    nc=paste0(",",ncRNAPriority[x],"|",ncRNAPriority[x],",")
+    p_ncrna[grep(nc,p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]),paste0(nmeprfix,'Comb_type_ncRNA')]=ncRNAPriority[x]
+  }
   
-  ### snRNA takes priority over 7SKRNA
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,snRNA',"snRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('snRNA,7SKRNA',"snRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  p_ncrna[grep('miscRNA',p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]),paste0(nmeprfix,'Comb_type_ncRNA')]='misc_RNA'
   
-  ### snRNA takes priority over 7SKRNA
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,snRNA',"snRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('snRNA,7SKRNA',"snRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
   
-  ### 7SKRNA takes priority over lncRNA
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,linLcRNA-intron',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub(',linLcRNA-intron,7SKRNA',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,linLcRNA-exon',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('linLcRNA-exon,7SKRNA',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,lnLcRNA',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('lnLcRNA,7SKRNA',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  
-  ### tRNA takes priority over rRNA
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('rRNA,tRNA',"tRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('tRNA,rRNA,',"tRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  
-  ### snoRNA takes priority over miRNA
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,snoRNA',"snoRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('snoRNA,miRNA,',"snoRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  
-  ### scaRNA takes priority over miRNA
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,scaRNA',"scaRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
-  p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('scaRNA,miRNA,',"scaRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # ### any double annotations with yRNA become yRNA only
+  # p_ncrna[grep('yRNA',p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]),paste0(nmeprfix,'Comb_type_ncRNA')]='yRNA'
+  # 
+  # ### tRNA takes priority over miRNA
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,tRNA',"miRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # 
+  # ### miRNA takes priority over rRNA
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,rRNA',"miRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # 
+  # ### snRNA takes priority over 7SKRNA
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,snRNA',"snRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('snRNA,7SKRNA',"snRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # 
+  # ### 7SKRNA takes priority over lncRNA
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,linLcRNA-intron',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub(',linLcRNA-intron,7SKRNA',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,linLcRNA-exon',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('linLcRNA-exon,7SKRNA',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('7SKRNA,lnLcRNA',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('lnLcRNA,7SKRNA',"7SKRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # 
+  # ### tRNA takes priority over rRNA
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('rRNA,tRNA',"tRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('tRNA,rRNA,',"tRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # 
+  # ### snoRNA takes priority over miRNA
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,snoRNA',"snoRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('snoRNA,miRNA,',"snoRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # 
+  # ### scaRNA takes priority over miRNA
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('miRNA,scaRNA',"scaRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
+  # p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')]=gsub('scaRNA,miRNA,',"scaRNA",p_ncrna[,paste0(nmeprfix,'Comb_type_ncRNA')])
   
   #select not ncRNA
   p2=peaks_in[!peaks_in[,paste0(nmeprfix,'Comb_type_exon')]%in%'ncRNA',]
