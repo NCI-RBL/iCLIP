@@ -51,7 +51,7 @@ sp_junc = config['splicejunction'].upper()
 condense_exon = config['condenseexon'].upper()
 
 #define threads
-with open(join(source_dir,'config','cluster_config.yaml')) as file:
+with open(join(out_dir,'config','cluster_config.yaml')) as file:
     CLUSTER = yaml.load(file, Loader=yaml.FullLoader)
 getthreads=lambda rname:int(CLUSTER[rname]["threads"]) if rname in CLUSTER and "threads" in CLUSTER[rname] else int(CLUSTER["__default__"]["threads"])
 
@@ -65,7 +65,7 @@ elif (nova_ref == "hg38"):
     genome_ref = "GENCODE hg38 v32"
 
 #read in index config file and assign paths
-index_manifest = join(source_dir, 'config', 'index_config.yaml')
+index_manifest = join(out_dir, 'config', 'index_config.yaml')
 
 with open(index_manifest) as file:
     index_list = yaml.load(file, Loader=yaml.FullLoader)
@@ -82,7 +82,7 @@ add_anno_path = index_list[nova_ref]['additionalannopath']
 singularity_exec = "singularity exec -B /data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir + ",/fdb,/scratch"
 
 #annotation config
-annotation_config = join(source_dir,'config','annotation_config.txt')
+annotation_config = join(out_dir,'config','annotation_config.txt')
 
 #convert splice junction selection
 if (sp_junc=="Y"):
