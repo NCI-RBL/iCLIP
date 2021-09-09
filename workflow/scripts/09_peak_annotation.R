@@ -48,7 +48,7 @@ out_dir_DEP = args$out_dir_DEP
 output_file_error = args$output_file_error
 
 ##testing
-testing="Y"
+testing="N"
 if(testing=="Y"){
   rm(list=setdiff(ls(), "params"))
   wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mESC_clip_2/"
