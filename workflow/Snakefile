@@ -314,8 +314,8 @@ def get_MANORM_post_processing(wildcards):
     gid_1 = wildcards.group_id.split("_vs_")[0]
     gid_2 = wildcards.group_id.split("_vs_")[1]
 
-    input_list = [join(out_dir,'05_manorm','02_analysis', wildcards.group_id + "_P", wildcards.group_id + '_all_MAvalues.xls'),
-                join(out_dir,'05_manorm','02_analysis', wildcards.group_id + "_N", wildcards.group_id + '_all_MAvalues.xls')]
+    input_list = [join(out_dir,'05_manorm','02_analysis', wildcards.group_id, wildcards.group_id + "_P", wildcards.group_id + '_all_MAvalues.xls'),
+                join(out_dir,'05_manorm','02_analysis', wildcards.group_id, wildcards.group_id + "_N", wildcards.group_id + '_all_MAvalues.xls')]
     return(input_list)
 
 ###############################################################
@@ -366,13 +366,13 @@ else:
 
 #if samples are running MANORM
 if DE_method == "MANORM":
-    input_manorm_reports = [expand(join(out_dir,'05_manorm','03_report','{group_id}_manorm_report.html'),group_id=manorm_list),
-    expand(join(out_dir,'05_manorm','03_report', '{group_id}_post_processing.txt'), group_id=manorm_list)]
+    input_manorm_reports = [expand(join(out_dir,'05_manorm','02_analysis','{group_id}', '{group_id}_manorm_report.html'),group_id=manorm_list),
+    expand(join(out_dir,'05_manorm','02_analysis', '{group_id}', '{group_id}_post_processing.txt'), group_id=manorm_list)]
 
     #testing
     #input_manorm_reports = expand(join(out_dir,'05_manorm', '01_input','{sp}_ReadsforMANORM_P.bed'), sp=sp_list)
-    #input_manorm_reports = expand(join(out_dir,'05_manorm','02_analysis', '{group_id}_{strand}','{group_id}_all_MAvalues.xls'),group_id=manorm_list,strand=strand_list)
-    #input_manorm_reports = expand(join(out_dir,'05_manorm','02_analysis', '{group_id}_post_processing.txt'), group_id=manorm_list)
+    #input_manorm_reports = expand(join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls'),group_id=manorm_list,strand=strand_list)
+    #input_manorm_reports = expand(join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_post_processing.txt'), group_id=manorm_list)
 else:
     input_manorm_reports = [expand(join(out_dir,'04_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list)]
 
@@ -1653,18 +1653,19 @@ if(DE_method=="MANORM"):
             rname = "17b_MANORM_analysis",
             gid_1 = get_MANORM_gid1,
             gid_2 = get_MANORM_gid2,
-            base = join(out_dir,'05_manorm','02_analysis', '{group_id}_{strand}/'),
+            ma_dir = join(out_dir,'05_manorm', '01_input'),
+            base = join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_{strand}/'),
         envmodules:
             config['manorm']
         output:
-            o1 = join(out_dir,'05_manorm','02_analysis', '{group_id}_{strand}','{group_id}_all_MAvalues.xls')
+            o1 = join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls')
         shell:
             """
             manorm \
-            --p1 "{out_dir}05_manorm/01_input/{params.gid_1}_PeaksforMANORM_{wildcards.strand}.bed" \
-            --p2 "{out_dir}05_manorm/01_input/{params.gid_2}_PeaksforMANORM_{wildcards.strand}.bed" \
-            --r1 "{out_dir}05_manorm/01_input/{params.gid_1}_ReadsforMANORM_{wildcards.strand}.bed" \
-            --r2 "{out_dir}05_manorm/01_input/{params.gid_2}_ReadsforMANORM_{wildcards.strand}.bed" \
+            --p1 "{params.ma_dir}/{params.gid_1}_PeaksforMANORM_{wildcards.strand}.bed" \
+            --p2 "{params.ma_dir}/{params.gid_2}_PeaksforMANORM_{wildcards.strand}.bed" \
+            --r1 "{params.ma_dir}/{params.gid_1}_ReadsforMANORM_{wildcards.strand}.bed" \
+            --r2 "{params.ma_dir}/{params.gid_2}_ReadsforMANORM_{wildcards.strand}.bed" \
             --s1 0 \
             --s2 0 \
             -p 1 \
@@ -1685,7 +1686,7 @@ if(DE_method=="MANORM"):
         - '05_manorm','02_analysis', sample1_vs_sample2 + "_N", sample1_vs_sample2 + '_all_MAvalues.xls')
 
         output:
-        '05_manorm','03_report', sample1_vs_sample2_post_processing.txt
+        '05_manorm','02_analysis', sample1_vs_sample2_post_processing.txt
         '''
         input:
             get_MANORM_post_processing,
@@ -1700,7 +1701,7 @@ if(DE_method=="MANORM"):
         envmodules:
             config['R']
         output:
-            o1 = join(out_dir,'05_manorm','03_report', '{group_id}_post_processing.txt')
+            o1 = join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_post_processing.txt')
         shell:
             """
             Rscript {params.script} \
@@ -1715,7 +1716,7 @@ if(DE_method=="MANORM"):
 
     rule MANORM_RMD:
         input:
-            f1 = join(out_dir,'05_manorm','03_report', '{group_id}_post_processing.txt')
+            f1 = join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_post_processing.txt')
         params:
             rname = "17d_MANORM_RMD",
             R = join(source_dir,'workflow','scripts','12_MAnormAnnotation.Rmd'),
@@ -1725,7 +1726,7 @@ if(DE_method=="MANORM"):
         envmodules:
             config['R']
         output:
-            o1 = join(out_dir,'05_manorm','03_report','{group_id}_manorm_report.html')
+            o1 = join(out_dir,'05_manorm','02_analysis','{group_id}','{group_id}_manorm_report.html')
         shell:
             """
             Rscript -e 'library(rmarkdown); \
