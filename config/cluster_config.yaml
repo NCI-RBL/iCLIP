@@ -52,7 +52,7 @@ cleanup_conversion:
 create_bam_mm_unique:
     threads: 6
     mem: 3g
-    time: 00-04:00:00
+    time: 00-12:00:00
 
 merge_splits_unique_mm:
     threads: 2
@@ -102,10 +102,14 @@ MANORM_analysis:
     time: 00-04:00:00
 
 MANORM_post_processing:
-    mem: 10g
+    threads: 2
+    mem: 2g
+    time: 00-01:00:00
 
 MANORM_RMD:
-    mem: 40g
+    threads: 2
+    mem: 3g
+    time: 00-01:00:00
 
 mapq_recalc:
     mem: 1TB
