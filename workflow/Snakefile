@@ -260,7 +260,7 @@ def get_align_input(wildcards):
     if (splice_aware == "N"):
         f1 = join(out_dir,'01_preprocess','01_alignment', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam'),
     else:
-        f1 = join(out_dir,'01_preprocess','03_genomic', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam.gz'),
+        f1 = join(out_dir,'01_preprocess','02_genomic', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam.gz'),
     return(f1)
 
 #read in contrast list for manorm
@@ -838,14 +838,14 @@ if (splice_aware == "Y"):
         params:
             rname = '07a_cleanup_conversion',
             base = '{sp}.{al}.split.{n}',
-            base_out = join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam'),
+            base_out = join(out_dir,'01_preprocess','02_genomic','{sp}.{al}.split.{n}.sam'),
             doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
         envmodules:
             config['samtools'],
             config['java']
         output:
-            sam = temp(join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam.gz')),
-            bam = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
+            sam = temp(join(out_dir,'01_preprocess','02_genomic','{sp}.{al}.split.{n}.sam.gz')),
+            bam = temp(join(out_dir,'01_preprocess','03_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
         shell:
             """
             #set / create tmp dir
@@ -892,7 +892,7 @@ if (splice_aware == "Y"):
         merge all sample unmapped reads into one file
         """
         input:
-            sorted_list = dynamic(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
+            sorted_list = dynamic(join(out_dir,'01_preprocess','03_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
         params:
             rname='07d_merge_unmapped_splits',
         envmodules:
@@ -925,8 +925,8 @@ rule create_bam_mm_unique:
     envmodules:
         config['samtools']
     output:
-        sort_u = temp(join(out_dir,'01_preprocess','05_unique','{sp}.{al}.split.{n}.unique.si.bam')),
-        sort_m = temp(join(out_dir,'01_preprocess','05_mm','{sp}.{al}.split.{n}.mm.si.bam')),
+        sort_u = temp(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.si.bam')),
+        sort_m = temp(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.si.bam')),
     shell:
         """
         ################################################
@@ -1063,8 +1063,8 @@ rule merge_splits_unique_mm:
     merge split multimapped bam files into one merged.mm bam file
     """
     input:
-        unique = dynamic(join(out_dir,'01_preprocess','05_unique','{sp}.{al}.split.{n}.unique.si.bam')),
-        mm = dynamic(join(out_dir,'01_preprocess','05_mm','{sp}.{al}.split.{n}.mm.si.bam'))
+        unique = dynamic(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.si.bam')),
+        mm = dynamic(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.si.bam'))
     params:
         rname='09a_merge_splits_unique_mm',
     envmodules:
