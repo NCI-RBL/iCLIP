@@ -55,9 +55,8 @@ create_bam_mm_unique:
     time: 00-12:00:00
 
 merge_splits_unique_mm:
-    threads: 2
-    mem: 3g
-    time: 00-02:00:00
+    mem: 30g
+    time: 00-06:00:00
 
 merge_mm_and_unique:
     threads: 2
