@@ -109,17 +109,17 @@ def check_multiplex_samples(input_df_m,input_df_s,error_log):
 
 def check_samples_contrast(input_df_s,input_df_c,error_log):
     l1 = list(input_df_s["sample"].unique())
-    l2 = list(input_df_c.contrast_1.unique())
-    l3 = list(input_df_c.contrast_2.unique())
+    l2 = list(input_df_c.contrast1.unique())
+    l3 = list(input_df_c.contrast2.unique())
 
     l_2to1 = list(set(l2)-set(l1))
     l_3to1 = list(set(l3)-set(l1))
 
     if len(l_2to1) !=0:
-        error_log.append("The following contrast_1 sample was not found in the sample_manifest tsv: {}. Please review manifests.".format(l_2to1))
+        error_log.append("The following contrast1 sample was not found in the sample_manifest tsv: {}. Please review manifests.".format(l_2to1))
 
     if len(l_3to1) !=0:
-        error_log.append("The following contrast_2 sample was not found in the sample_manifest tsv {}. Please review manifests.".format(l_3to1))
+        error_log.append("The following contrast2 sample was not found in the sample_manifest tsv {}. Please review manifests.".format(l_3to1))
 
     return(error_log)
 
@@ -150,7 +150,7 @@ if DE_method == "MANORM":
     #Check contrast file
     check_file = sys.argv[4]
     c_df = pd.read_csv(check_file,sep=",")
-    c_req = ['contrast_1','contrast_2']
+    c_req = ['contrast1','contrast2']
     error_log = check_header(c_df,c_req,check_file,error_log)
     error_log = check_contrasts(c_df,check_file,error_log)
     
