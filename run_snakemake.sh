@@ -199,6 +199,8 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
   ####################### Selection
   # run check - only includes check_manifest rule - run locally
   if [[ $pipeline = "check" ]]; then
+    module load snakemake
+
     snakemake \
     -s ${output_dir}/log/${log_time}/00_Snakefile \
     --use-envmodules \
@@ -212,7 +214,8 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
     echo
     echo "Output dir: ${output_dir}"
     echo "Pipeline jobid:"
-    
+    module load snakemake
+
     sbatch \
     --job-name="iCLIP" \
     --gres=lscratch:200 \
@@ -241,7 +244,8 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
   else
     #remove iCount dir if it already exist - will cause error in demux
     if [ -d "/tmp/iCount" ]; then rm -r "/tmp/iCount/"; fi
-    
+    module load snakemake
+
     snakemake \
     -s ${output_dir}/log/${log_time}/00_Snakefile \
     --use-envmodules \
@@ -256,6 +260,8 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
 elif [[ $pipeline = "unlock" ]]; then
   echo
   echo "Unlocking pipeline"
+  module load snakemake
+  
   snakemake \
   -s workflow/Snakefile \
   --use-envmodules \
@@ -276,6 +282,8 @@ elif [[ $pipeline = "git" ]]; then
   -npr
 ######################## DAG #######################
 elif [[ $pipeline = "DAG" ]]; then
+  module load snakemake
+  
   snakemake \
   -s ${output_dir}/config/Snakefile \
   --configfile ${output_dir}/config/snakemake_config.yaml \
@@ -284,6 +292,8 @@ elif [[ $pipeline = "DAG" ]]; then
 elif [[ $pipeline = "report" ]]; then
   echo
   echo "Creating Snakemake Report"
+  module load graphviz snakemake
+
   snakemake \
   -s ${output_dir}/config/Snakefile \
   --configfile ${output_dir}/config/snakemake_config.yaml \
@@ -293,7 +303,8 @@ elif [[ $pipeline = "cleanup" ]]; then
   echo
   echo "Starting cleanup"
   
-  #run check  
+  module load snakemake
+
   snakemake \
   --cleanup-metadata $2 \
   -s ${output_dir}/config/Snakefile \
@@ -310,6 +321,8 @@ else
   check_initialization
   check_output_dir
   
+  module load snakemake
+
   snakemake -s ${output_dir}/config/Snakefile \
   --configfile ${output_dir}/config/snakemake_config.yaml \
   --printshellcmds \
