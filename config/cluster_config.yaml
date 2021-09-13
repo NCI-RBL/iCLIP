@@ -16,6 +16,7 @@ qc_barcode:
 demultiplex:
     threads: 3
     mem: 3g
+    time: 04-00:00:00
 
 remove_adaptors:
     threads: 3
