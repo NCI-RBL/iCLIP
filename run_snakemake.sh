@@ -288,6 +288,19 @@ elif [[ $pipeline = "report" ]]; then
   -s ${output_dir}/config/Snakefile \
   --configfile ${output_dir}/config/snakemake_config.yaml \
   --report ${output_dir}/log/runlocal_snakemake_report.html 
+######################## cleanup #######################
+elif [[ $pipeline = "cleanup" ]]; then
+  echo
+  echo "Starting cleanup"
+  
+  #run check  
+  snakemake \
+  --cleanup-metadata $2 \
+  -s ${output_dir}/config/Snakefile \
+  --configfile ${output_dir}/config/snakemake_config.yaml \
+  --cores 1 \
+  --cleanup-shadow
+
 ######################## Dry #######################
 else
   echo
