@@ -73,7 +73,7 @@ if(testing=="Y"){
   join_junction = "TRUE"
   condense_exon="TRUE"
   read_depth = 3
-  DEmethod = "None"
+  DEmethod = "NONE"
   ref_species="mm10"
   sample_id = "Control_Clip_1"
   output_file_error= paste0(wd,"/04_annotation/02_peaks/")
@@ -393,7 +393,9 @@ FtrCount_trimmed=FtrCount_trimmed[duplicated(FtrCount_trimmed)==F & !FtrCount_tr
 ##########################################################################################
 ############### DEP
 ##########################################################################################
-if (DEmethod!='none') {
+if (toupper(DEmethod)=="NONE") {
+  print("Differential Peaks skipped")
+} else{
   print(paste0("Running ",DEmethod," Peaks file prep"))
   
   manorm_bed=FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')]
@@ -412,8 +414,6 @@ if (DEmethod!='none') {
   write.table(manorm_bed[manorm_bed$strand%in%"-",],
               file=paste0(out_dir_DEP, sample_id, "_", "Peaksfor",DEmethod,"_N.bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
-} else{
-  print("Differential Peaks skipped")
 } 
 
 ##########################################################################################
