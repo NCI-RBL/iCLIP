@@ -208,8 +208,10 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
   ####################### Selection
   # run check - only includes check_manifest rule - run locally
   if [[ $pipeline = "check" ]]; then
-    module load snakemake
+    echo
+    echo "Running manifest check"
 
+    module load snakemake
     snakemake \
     -s ${output_dir}/log/${log_time}/00_Snakefile \
     --use-envmodules \
@@ -218,6 +220,9 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
     --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yaml \
     --cores 8 \
     --until check_manifest
+
+    echo "If running differential expression, review the qc/manifest_clean.txt file to confirm your settings"
+    
   # run cluster - includes all rules - run on cluster
   elif [[ $pipeline = "cluster" ]]; then
     echo
