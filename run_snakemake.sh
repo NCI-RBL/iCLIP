@@ -115,6 +115,15 @@ if [[ $pipeline = "initialize" ]]; then
     if [ ! -d "${output_dir}/log" ]; then
       mkdir "${output_dir}/log/" 
     fi
+
+    if [ ! -d "${output_dir}/config" ]; then
+      mkdir "${output_dir}/config/" 
+    fi
+
+    if [ ! -d "${output_dir}/manifest" ]; then
+      mkdir "${output_dir}/manifest/" 
+    fi
+
   else
     mkdir "${output_dir}"
     mkdir "${output_dir}/config"
