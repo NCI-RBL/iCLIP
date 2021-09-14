@@ -207,8 +207,7 @@ if DE_method == "MANORM":
       
     #Check concordance between sample and contrast files
     error_log,de_log = check_MANORM_contrast(s_df,c_df,error_log,de_log)
-
-else if DE_method == "DIFFBIND":
+elif DE_method == "DIFFBIND":
     #Check contrast file
     check_file = sys.argv[4]
     c_df = pd.read_csv(check_file,sep=",")

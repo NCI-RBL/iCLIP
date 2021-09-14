@@ -221,8 +221,8 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
     --cores 8 \
     --until check_manifest
 
-    echo "If running differential expression, review the qc/manifest_clean.txt file to confirm your settings"
-    
+    echo "If running differential expression, review the qc/manifest_check.txt file to confirm your settings"
+
   # run cluster - includes all rules - run on cluster
   elif [[ $pipeline = "cluster" ]]; then
     echo
