@@ -388,7 +388,7 @@ rule all:
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list),
         
         #check manifest
-        join(out_dir,'qc','manifest_clean.txt'),
+        join(out_dir,'qc','manifest_check.txt'),
         
         #different inputs for multiplexed or nonmultiplexed pipeline
         input_multiplex,
@@ -497,7 +497,7 @@ rule check_manifest:
     envmodules:
         config['python']  
     output:
-        o1 = join(out_dir, 'qc', 'manifest_clean.txt'),
+        o1 = join(out_dir, 'qc', 'manifest_check.txt'),
     shell:
         """
         python {params.py} \
@@ -513,7 +513,7 @@ if (multiplex_flag == 'Y'):
         output barplot with top barcode counts
         """
         input:
-            manifest = join(out_dir,'qc', "manifest_clean.txt"),
+            manifest = join(out_dir,'qc', "manifest_check.txt"),
             fq = get_fq_names,
         params:
             rname = "01a_qc_barcode",
@@ -552,7 +552,7 @@ if (multiplex_flag == 'Y'):
         """
         input:
             f1 = get_fq_names,
-            #manifest = join(out_dir,'qc', "manifest_clean.txt"),
+            #manifest = join(out_dir,'qc', "manifest_check.txt"),
         params:
             rname='01b_demux',
             s_exec = singularity_exec,
@@ -593,7 +593,7 @@ else:
         copies fastq files from source location and moves into renamed file folder
         """
         input:
-            manifest = join(out_dir,'qc', "manifest_clean.txt")
+            manifest = join(out_dir,'qc', "manifest_check.txt")
         params:
             rname = '01_copy_nondemux',
             cmd = nondemux_cmd
