@@ -24,8 +24,8 @@ mismatch: 1 #number of bp mismatches allowed in demultiplexing [1,2,3]
 mincount: 3 #minimum number of matches to count as a peak [1,2,3]
 ntmerge: 50 #minimum distance of nucleotides to merge peaks [10,20,30,40,50,60]
 peakid: "ALL" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
-DEmethod: "MANORM" #choose DE method ["manorm","none"]
-splicejunction: "Y" #include splice junctions in peak calls: "manorm"
+DEmethod: "MANORM" #choose DE method ["none", "manorm", "diffbind"]
+splicejunction: "Y" #include splice junctions in peak calls for DE_METHOD manorm or diffbind
 condenseexon: "Y" #whether to collapse exons
 
 #modules, container parameters
