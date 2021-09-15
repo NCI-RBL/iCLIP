@@ -210,9 +210,7 @@ Join_Junction=function(FtrCount,FtrCount_fracJCount) {
 ##########################################################################################
 DEP_input=function(FtrCount_trimmed){
     print(paste0("Running ",DEmethod," Peaks file prep"))
-    
-    dir.create(out_dir_DEP,recursive = T,showWarnings = F)
-    
+        
     manorm_bed=FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')]
     manorm_bed[,5]=1
     
