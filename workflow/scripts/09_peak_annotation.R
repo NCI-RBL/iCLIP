@@ -110,15 +110,15 @@ if(testing=="Y"){
   DEmethod = "MANORM"
   sample_id = "KO-NOPFA"
   ref_species="hg38"
-  anno_dir =paste0(out_base, "annotations_test/05_annotation/01_project/")
+  anno_dir =paste0(out_base, "annotations_test/04_annotation/01_project/")
   reftable_path = paste0(git_base,"config/annotation_config.txt")
   gencode_path = paste0(pipe_base,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
   intron_path = paste0(pipe_base,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
   rmsk_path = paste0(pipe_base,"annotations/hg38/repeatmasker/rmsk_GRCh38.txt")
-  tmp_dir = paste0(out_base, "annotations_test/05_annotation/02_peaks/")
-  out_dir = paste0(out_base, "annotations_test/05_annotation/02_peaks/")
-  out_dir_DEP = paste0(out_base, "annotations_test/06_MAnorm/01_input/")
-  output_file_error = paste0(out_base, "annotations_test/05_annotation/read_depth_error.txt")
+  tmp_dir = paste0(out_base, "annotations_test/04_annotation/02_peaks/")
+  out_dir = paste0(out_base, "annotations_test/04_annotation/02_peaks/")
+  out_dir_DEP = paste0(out_base, "annotations_test/05_demethod/01_input/")
+  output_file_error = paste0(out_base, "annotations_test/04_annotation/read_depth_error.txt")
 }
 
 #annotation paths
