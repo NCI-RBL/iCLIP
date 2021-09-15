@@ -1464,7 +1464,7 @@ rule project_annotations:
             --reftable_path {params.a_config}
         """
 
-if DE_method=="MANORM" | DE_method=="DIFFBIND":
+if DE_method=="MANORM" or DE_method=="DIFFBIND":
     rule peak_annotations:
         '''
         find peak junctions, annotations peaks, merges junction and annotation information
@@ -1758,8 +1758,8 @@ elif (DE_method == "DIFFBIND"):
         input:
             f1 = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
         params:
-            rname = "16a_DIFFBIND_beds"
-            base = '{sp}.dedup'
+            rname = "16a_DIFFBIND_beds",
+            base = "{sp}.dedup"
         envmodules:
             config['samtools']
         output:
