@@ -36,19 +36,20 @@ sample_manifest = config['sampleManifest']
 multiplex_manifest = config['multiplexManifest']
 contrast_manifest = config['contrastManifest']
 
+multiplex_flag = config['multiplexflag'].capitalize()
+mismatch = config['mismatch']
 nova_ref = config['reference']
 filter_length = config['filterlength']
 splice_aware = config['spliceaware'].capitalize()
 include_rRNA = config['includerRNA'].capitalize()
 splice_bp = config['spliceBPlength']
-multiplex_flag = config['multiplexflag'].capitalize()
-mismatch = config['mismatch']
+sp_junc = config['splicejunction'].upper()
+condense_exon = config['condenseexon'].upper()
 min_count = config['mincount']
 nt_merge = str(config['ntmerge']) + 'nt'
 peak_id = config['peakid'].upper()
 DE_method = config['DEmethod'].upper()
-sp_junc = config['splicejunction'].upper()
-condense_exon = config['condenseexon'].upper()
+sample_overlap = int(config['sample_overlap'])
 
 #define threads
 with open(join(out_dir,'config','cluster_config.yaml')) as file:
@@ -264,7 +265,7 @@ def get_align_input(wildcards):
     return(f1)
 
 #read in contrast list for manorm
-def get_manorm_list():
+def get_de_list():
     
     #read file
     with open(contrast_manifest) as f:
@@ -291,31 +292,42 @@ def get_MANORM_analysis_input(wildcards):
     gid_1 = wildcards.group_id.split("_vs_")[0]
     gid_2 = wildcards.group_id.split("_vs_")[1]
 
-    input_list = [join(out_dir,'05_manorm', '01_input', gid_1 + '_PeaksforMANORM.bed'),
-                join(out_dir,'05_manorm', '01_input', gid_1 + '_ReadsforMANORM_' + wildcards.strand + '.bed'),
-                join(out_dir,'05_manorm', '01_input', gid_1 + '_PeaksforMANORM_' + wildcards.strand + '.bed'),
-                join(out_dir,'05_manorm', '01_input', gid_2 + '_PeaksforMANORM.bed'),
-                join(out_dir,'05_manorm', '01_input', gid_2 + '_ReadsforMANORM_' + wildcards.strand + '.bed'),
-                join(out_dir,'05_manorm', '01_input', gid_2 + '_PeaksforMANORM_' + wildcards.strand + '.bed')]
+    input_list = [join(out_dir,'05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '_bed'),
+                join(out_dir,'05_demethod', '01_input', gid_1 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
+                join(out_dir,'05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '_' +  + wildcards.strand + '.bed'),
+                join(out_dir,'05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '_bed'),
+                join(out_dir,'05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
+                join(out_dir,'05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '_' +  + wildcards.strand + '.bed')]
     return(input_list)
 
-#get sample name for manorm comparison - sample
-def get_MANORM_gid1(wildcards):
+def get_DIFFBIND_analysis_input(wildcards):
+    gid_1 = wildcards.group_id.split("_vs_")[0]
+    gid_2 = wildcards.group_id.split("_vs_")[1]
+
+    input_list = [join(out_dir,'05_demethod', '01_input', gid_1 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bam'),
+                join(out_dir,'05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '_' +  + wildcards.strand + '.bed'),
+                join(out_dir,'05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bam'),
+                join(out_dir,'05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '_' +  + wildcards.strand + '.bed')]
+    return(input_list)
+
+
+#get sample name for demethod comparison - sample
+def get_DEMETHOD_gid1(wildcards):
     gid = wildcards.group_id.split("_vs_")[0]
     return(gid)
 
-#get sample name for manorm comparison - background
-def get_MANORM_gid2(wildcards):
+#get sample name for demethod comparison - background
+def get_DEMETHOD_gid2(wildcards):
     gid = wildcards.group_id.split("_vs_")[1]
     return(gid)
 
-#get input files for post-processing
+#get input files for post-processing MANORM
 def get_MANORM_post_processing(wildcards):
     gid_1 = wildcards.group_id.split("_vs_")[0]
     gid_2 = wildcards.group_id.split("_vs_")[1]
 
-    input_list = [join(out_dir,'05_manorm','02_analysis', wildcards.group_id, wildcards.group_id + "_P", wildcards.group_id + '_all_MAvalues.xls'),
-                join(out_dir,'05_manorm','02_analysis', wildcards.group_id, wildcards.group_id + "_N", wildcards.group_id + '_all_MAvalues.xls')]
+    input_list = [join(out_dir,'05_demethod','02_analysis', wildcards.group_id, wildcards.group_id + "_P", wildcards.group_id + '_all_MAvalues.xls'),
+                join(out_dir,'05_demethod','02_analysis', wildcards.group_id, wildcards.group_id + "_N", wildcards.group_id + '_all_MAvalues.xls')]
     return(input_list)
 
 ###############################################################
@@ -339,7 +351,7 @@ barcode_length = int(len(df_samples.iloc[0,3].replace('N',''))) #length of barco
 
 #create manorm list
 if DE_method == "MANORM": 
-    manorm_list = get_manorm_list()
+    manorm_list = get_de_list()
 
 ###############################################################
 # rule all
@@ -366,13 +378,13 @@ else:
 
 #if samples are running MANORM
 if DE_method == "MANORM":
-    input_manorm_reports = [expand(join(out_dir,'05_manorm','02_analysis','{group_id}', '{group_id}_manorm_report.html'),group_id=manorm_list),
-    expand(join(out_dir,'05_manorm','02_analysis', '{group_id}', '{group_id}_post_processing.txt'), group_id=manorm_list)]
+    input_manorm_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}', '{group_id}_manorm_report.html'),group_id=manorm_list),
+    expand(join(out_dir,'05_demethod','02_analysis', '{group_id}', '{group_id}_post_processing.txt'), group_id=manorm_list)]
 
     #testing
-    #input_manorm_reports = expand(join(out_dir,'05_manorm', '01_input','{sp}_ReadsforMANORM_P.bed'), sp=sp_list)
-    #input_manorm_reports = expand(join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls'),group_id=manorm_list,strand=strand_list)
-    #input_manorm_reports = expand(join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_post_processing.txt'), group_id=manorm_list)
+    #input_manorm_reports = expand(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_P.bed'), sp=sp_list)
+    #input_manorm_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls'),group_id=manorm_list,strand=strand_list)
+    #input_manorm_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt'), group_id=manorm_list)
 else:
     input_manorm_reports = [expand(join(out_dir,'04_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list)]
 
@@ -1258,6 +1270,7 @@ rule dedup:
             tmpdir="{out_dir}01_preprocess/06_dedup/"
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
+
         umi_tools dedup \
         -I {input.f1} \
         --method unique \
@@ -1451,7 +1464,7 @@ rule project_annotations:
             --reftable_path {params.a_config}
         """
 
-if (DE_method=="MANORM"):
+if DE_method=="MANORM" | DE_method=="DIFFBIND":
     rule peak_annotations:
         '''
         find peak junctions, annotations peaks, merges junction and annotation information
@@ -1473,7 +1486,7 @@ if (DE_method=="MANORM"):
             n_merge = nt_merge,
             ref_sp = nova_ref,
             out = join(out_dir,'04_annotation','02_peaks/',),
-            out_m = join(out_dir,'05_manorm','01_input/',),
+            out_de = join(out_dir,'05_demethod','01_input/',),
             anno_dir = join(out_dir,'04_annotation','01_project/'),
             a_config = annotation_config,
             g_path = gen_path,
@@ -1486,9 +1499,9 @@ if (DE_method=="MANORM"):
         output:
             o1 = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
             o2 = join(out_dir,'04_annotation', '02_peaks', '{sp}_peakannotation_complete.txt'),
-            m1 = temp(join(out_dir,'05_manorm', '01_input', '{sp}_PeaksforMANORM.bed')),
-            m2 = temp(join(out_dir,'05_manorm', '01_input', '{sp}_PeaksforMANORM_P.bed')),
-            m3 = temp(join(out_dir,'05_manorm', '01_input', '{sp}_PeaksforMANORM_N.bed'))
+            m1 = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '.bed')),
+            m2 = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '_P.bed')),
+            m3 = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '_N.bed'))
         shell:
             '''
             #set / create tmp dir
@@ -1517,7 +1530,7 @@ if (DE_method=="MANORM"):
                 --rmsk_path {params.r_path} \
                 --tmp_dir ${{tmpdir}} \
                 --out_dir {params.out} \
-                --out_dir_DEP {params.out_m} \
+                --out_dir_DEP {params.out_de} \
                 --output_file_error {params.error}
                 '''
 else:
@@ -1542,7 +1555,7 @@ else:
             n_merge = nt_merge,
             ref_sp = nova_ref,
             out = join(out_dir,'04_annotation','02_peaks/',),
-            out_m = join(out_dir,'05_manorm','01_input/',),
+            out_m = join(out_dir,'05_demethod','01_input/',),
             anno_dir = join(out_dir,'04_annotation','01_project/'),
             a_config = annotation_config,
             g_path = gen_path,
@@ -1621,15 +1634,15 @@ rule annotation_report:
         """
 
 #pipeline will continue through manorm processing, if required
-if(DE_method=="MANORM"):
+if (DE_method=="MANORM"):
     rule MANORM_beds:
         input:
             f1 = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
         params:
             rname = "16a_MANORM_beds"
         output:
-            o1 = temp(join(out_dir,'05_manorm', '01_input','{sp}_ReadsforMANORM_P.bed')),
-            o2 = temp(join(out_dir,'05_manorm', '01_input','{sp}_ReadsforMANORM_N.bed')),
+            o1 = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_P.bed')),
+            o2 = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_N.bed')),
         shell:
             """
             awk '$6=="+"' {input.f1} > {output.o1}
@@ -1639,36 +1652,36 @@ if(DE_method=="MANORM"):
     rule MANORM_analysis:
         '''
         input requirements:
-        - '05_manorm', '01_input', sample1 + '_PeaksforMANORM.bed'),
-        - '05_manorm', '01_input', sample1 + '_ReadsforMANORM_' + P + '.bed'),
-        - '05_manorm', '01_input', sample1 + '_ReadsforMANORM_' + N + '.bed'),
-        - '05_manorm', '01_input', sample2 + '_PeaksforMANORM.bed'),
-        - '05_manorm', '01_input', sample2 + '_ReadsforMANORM_' + P + '.bed'),
-        - '05_manorm', '01_input', sample2 + '_ReadsforMANORM_' + N + '.bed'),
+        - '05_demethod', '01_input', sample1 + '_PeaksforMANORM.bed'),
+        - '05_demethod', '01_input', sample1 + '_ReadsforMANORM_' + P + '.bed'),
+        - '05_demethod', '01_input', sample1 + '_ReadsforMANORM_' + N + '.bed'),
+        - '05_demethod', '01_input', sample2 + '_PeaksforMANORM.bed'),
+        - '05_demethod', '01_input', sample2 + '_ReadsforMANORM_' + P + '.bed'),
+        - '05_demethod', '01_input', sample2 + '_ReadsforMANORM_' + N + '.bed'),
 
         output:
-        - '05_manorm','02_analysis', 'sample1_vs_sample2_P/
-        - '05_manorm','02_analysis', 'sample1_vs_sample2_N/
+        - '05_demethod','02_analysis', 'sample1_vs_sample2_P/
+        - '05_demethod','02_analysis', 'sample1_vs_sample2_N/
         '''
         input:
             get_MANORM_analysis_input
         params:
             rname = "16b_MANORM_analysis",
-            gid_1 = get_MANORM_gid1,
-            gid_2 = get_MANORM_gid2,
-            ma_dir = join(out_dir,'05_manorm', '01_input'),
-            base = join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_{strand}/'),
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
+            de_dir = join(out_dir,'05_demethod', '01_input'),
+            base = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}/'),
         envmodules:
             config['manorm']
         output:
-            o1 = join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls')
+            o1 = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls')
         shell:
             """
             manorm \
-            --p1 "{params.ma_dir}/{params.gid_1}_PeaksforMANORM_{wildcards.strand}.bed" \
-            --p2 "{params.ma_dir}/{params.gid_2}_PeaksforMANORM_{wildcards.strand}.bed" \
-            --r1 "{params.ma_dir}/{params.gid_1}_ReadsforMANORM_{wildcards.strand}.bed" \
-            --r2 "{params.ma_dir}/{params.gid_2}_ReadsforMANORM_{wildcards.strand}.bed" \
+            --p1 "{params.de_dir}/{params.gid_1}_PeaksforMANORM_{wildcards.strand}.bed" \
+            --p2 "{params.de_dir}/{params.gid_2}_PeaksforMANORM_{wildcards.strand}.bed" \
+            --r1 "{params.de_dir}/{params.gid_1}_ReadsforMANORM_{wildcards.strand}.bed" \
+            --r2 "{params.de_dir}/{params.gid_2}_ReadsforMANORM_{wildcards.strand}.bed" \
             --s1 0 \
             --s2 0 \
             -p 1 \
@@ -1685,11 +1698,11 @@ if(DE_method=="MANORM"):
         input requirements:
         - '04_annotation', sample1 + '_annotation_final_table.txt'
         - '04_annotation', sample2 + '_annotation_final_table.txt'
-        - '05_manorm','02_analysis', sample1_vs_sample2 + "_P", sample1_vs_sample2 + '_all_MAvalues.xls'),
-        - '05_manorm','02_analysis', sample1_vs_sample2 + "_N", sample1_vs_sample2 + '_all_MAvalues.xls')
+        - '05_demethod','02_analysis', sample1_vs_sample2 + "_P", sample1_vs_sample2 + '_all_MAvalues.xls'),
+        - '05_demethod','02_analysis', sample1_vs_sample2 + "_N", sample1_vs_sample2 + '_all_MAvalues.xls')
 
         output:
-        '05_manorm','02_analysis', sample1_vs_sample2_post_processing.txt
+        '05_demethod','02_analysis', sample1_vs_sample2_post_processing.txt
         '''
         input:
             get_MANORM_post_processing,
@@ -1698,13 +1711,13 @@ if(DE_method=="MANORM"):
             rname = "16c_MANORM_processing",
             script = join(source_dir,'workflow','scripts','11_MAnormProcess.R'),
             anno_dir = join(out_dir,'04_annotation'),
-            ma_dir = join(out_dir,'05_manorm', '02_analysis'),
-            gid_1 = get_MANORM_gid1,
-            gid_2 = get_MANORM_gid2,
+            de_dir = join(out_dir,'05_demethod', '02_analysis'),
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
         envmodules:
             config['R']
         output:
-            o1 = join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_post_processing.txt')
+            o1 = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt')
         shell:
             """
             Rscript {params.script} \
@@ -1712,24 +1725,24 @@ if(DE_method=="MANORM"):
                 --background {params.gid_2} \
                 --peak_anno_g1 {params.anno_dir}/{params.gid_1}_annotation_final_table.txt \
                 --peak_anno_g2 {params.anno_dir}/{params.gid_2}_annotation_final_table.txt \
-                --pos_manorm {params.ma_dir}/{wildcards.group_id}_P/{wildcards.group_id}_all_MAvalues.xls \
-                --neg_manorm {params.ma_dir}/{wildcards.group_id}_N/{wildcards.group_id}_all_MAvalues.xls \
+                --pos_manorm {params.de_dir}/{wildcards.group_id}_P/{wildcards.group_id}_all_MAvalues.xls \
+                --neg_manorm {params.de_dir}/{wildcards.group_id}_N/{wildcards.group_id}_all_MAvalues.xls \
                 --output_file {output.o1}
             """
 
     rule MANORM_RMD:
         input:
-            f1 = join(out_dir,'05_manorm','02_analysis', '{group_id}','{group_id}_post_processing.txt')
+            f1 = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt')
         params:
             rname = "16d_MANORM_RMD",
             R = join(source_dir,'workflow','scripts','12_MAnormAnnotation.Rmd'),
-            gid_1 = get_MANORM_gid1,
-            gid_2 = get_MANORM_gid2,
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
             p_id = peak_id
         envmodules:
             config['R']
         output:
-            o1 = join(out_dir,'05_manorm','02_analysis','{group_id}','{group_id}_manorm_report.html')
+            o1 = join(out_dir,'05_demethod','02_analysis','{group_id}','{group_id}_manorm_report.html')
         shell:
             """
             Rscript -e 'library(rmarkdown); \
@@ -1740,3 +1753,85 @@ if(DE_method=="MANORM"):
                     background="{params.gid_2}", \
                     PeakIdnt="{params.p_id}"))'
             """
+elif (DE_method == "DIFFBIND"):
+    rule DIFFBIND_beds:
+        input:
+            f1 = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
+        params:
+            rname = "16a_DIFFBIND_beds"
+            base = '{sp}.dedup'
+        envmodules:
+            config['samtools']
+        output:
+            o1 = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforDIFFBIND_P.bam')),
+            o2 = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforDIFFBIND_N.bam')),
+        shell:
+            """
+            ################################################
+            #set / create tmp dir
+            ################################################
+            if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir="{out_dir}01_preprocess/05_tmp_bam"
+                if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+            fi
+            
+            #create header
+            samtools view -H {input.f1} > ${{tmpdir}}/{params.base}.header.txt
+
+            #run 
+            samtools view -F 16 {input.f1} | \
+                cat ${{tmpdir}}/{params.base}.header.txt - | samtools view -Sb > {output.o1}
+            
+            samtools view -f 16 {input.f1} | \
+                cat ${{tmpdir}}/{params.base}.header.txt - | samtools view -Sb > {output.o2}
+            """
+
+    rule DIFFBIND_analysis:
+        """
+        input requirements:
+        - '05_demethod', '01_input', sample1 + '_ReadsforDIFFBIND_' + wildcards.strand + '.bam'
+        - '05_demethod', '01_input', sample2 + '_ReadsforDIFFBIND_' + wildcards.strand + '.bam'
+        - 'manifest', 'sample_manifest.tsv'
+
+        output:
+        - '05_demethod', '02_analysis', group_id, groupid + '_DIFFBIND_' + strand + '.txt'
+
+        example input
+            Rscript /home/sevillas2/git/iCLIP/workflow/scripts/11_DIFFBIND_PreProcess.R 
+            --samplename WT 
+            --background KO 
+            --sample_overlap 1 
+            --strand N 
+            --samplemanifest /data/sevillas2/diffbind/sample_manifest.tsv 
+            --input_dir /data/sevillas2/diffbind/05_demethod/01_input/ 
+            --output_file /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_N.txt
+        """
+        input:
+            get_DIFFBIND_analysis_input,
+            s_manifest = sample_manifest,
+        params:
+            rname = "16b_DIFFBIND_analysis",
+            script = join(source_dir,'workflow','scripts','11_DIFFBIND_PreProcess.R'),
+            gid_1 = get_DIFFBIND_gid1,
+            gid_2 = get_DIFFBIND_gid2,
+            st = '{strand}',
+            so = sample_overlap,
+            base = join(out_dir,'05_demethod', '01_input'),
+        envmodules:
+            config['R']
+        output:
+            o1 = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_{strand}.txt')
+        shell:
+            """
+            Rscript {params.script} \
+                --samplename {params.gid_1} \
+                --background {params.gid_2} \
+                --strand {params.st} \
+                --sample_overlap {params.so} \
+                --samplemanifest {input.s_manifest} \
+                --input_dir {params.base} \
+                --output_file {params.o1}
+            """
+
