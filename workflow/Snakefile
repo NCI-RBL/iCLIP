@@ -1463,6 +1463,7 @@ if (DE_method=="MANORM"):
         params:
             rname = '15b_peak_annotations',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
+            functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
             p_type = peak_id,
             junc = sp_junc,
             c_exon = cond_exon,
@@ -1499,6 +1500,7 @@ if (DE_method=="MANORM"):
             fi
                 
             Rscript {params.script} \
+                --rscript {params.functions} \
                 --peak_type {params.p_type} \
                 --peak_unique {input.unique} \
                 --peak_all {input.all} \
@@ -1530,6 +1532,7 @@ else:
         params:
             rname = '15b_peak_annotations',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
+            functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
             p_type = peak_id,
             junc = sp_junc,
             c_exon = cond_exon,
@@ -1563,6 +1566,7 @@ else:
             fi
                 
             Rscript {params.script} \
+                --rscript {params.functions} \
                 --peak_type {params.p_type} \
                 --peak_unique {input.unique} \
                 --peak_all {input.all} \
