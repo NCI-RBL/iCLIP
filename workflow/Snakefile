@@ -49,7 +49,7 @@ min_count = config['mincount']
 nt_merge = str(config['ntmerge']) + 'nt'
 peak_id = config['peakid'].upper()
 DE_method = config['DEmethod'].upper()
-sample_overlap = int(config['sample_overlap'])
+sample_overlap = int(config['sampleoverlap'])
 
 #define threads
 with open(join(out_dir,'config','cluster_config.yaml')) as file:

@@ -15,19 +15,19 @@ fastqDir: "/path/to/fastq/files/"
 
 #user parameters
 filterlength: 20 #minimum read length to include in analysis [any int >20]
-multiplexflag: "Y" #flag that samples are multiplexed ["Y","N"]
-mismatch: 1 #number of bp mismatches allowed in demultiplexing [1,2,3]
-reference: "hg38" #reference organism ["mm10", "hg38"]
-spliceaware: "Y" #whether to run splice_aware part of the pipeline ['y', 'n']
-includerRNA: "Y" #if spliceaware Y, include refseq rRNA's in annotations ["Y", "N"]
+multiplexflag: "Y" #whether samples are multiplexed ["Y","N"]
+mismatch: 1 #if multiplexed, number of bp mismatches allowed in demultiplexing [1,2,3]
+reference: "hg38" #reference organism ["hg38","mm10"]
+spliceaware: "Y" #whether to run include splice_aware feature for alignment ["Y","N"]
+includerRNA: "Y" #if spliceaware, include refseq rRNA's in annotations ["Y", "N"]
 spliceBPlength: 75 #if spliceaware Y, length of splice index to use [50, 75, 150]
-splicejunction: "Y" #if spliceaware Y, include splice junctions in peak calls for DE_METHOD manorm or diffbind
-condenseexon: "Y" #if spliceaware Y, whether to collapse exons
-mincount: 3 #if spliceaware Y, minimum number of matches to count as a peak [1,2,3]
-ntmerge: 50 #if spliceaware Y, minimum distance of nucleotides to merge peaks [10,20,30,40,50,60]
+splicejunction: "Y" #if spliceaware Y, include splice junctions in peak calls for DE_METHOD MANORM or DIFFBIND ["Y", "N"]
+condenseexon: "Y" #if spliceaware Y, if there are multiple peaks in the same transcript, whether to combine into one feature ["Y", "N"]
+mincount: 3 #minimum number of reads to count as a peak [1,2,3]
+ntmerge: 50 #minimum distance of nucleotides to merge peaks [10,20,30,40,50,60]
 peakid: "ALL" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
 DEmethod: "MANORM" #choose DE method ["none", "manorm", "diffbind"]
-sample_overlap: 1 #if DEmethod selected, minimum number of samples a peak must be found in to be counted
+sampleoverlap: 1 #if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted [>1]
 
 #modules, container parameters
 containerDir: "/data/CCBR_Pipeliner/iCLIP/container"
