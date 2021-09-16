@@ -57,12 +57,12 @@ create_bam_mm_unique:
 
 merge_splits_unique_mm:
     mem: 30g
-    time: 00-06:00:00
+    time: 02-00:00:00
 
 merge_mm_and_unique:
     threads: 2
-    mem: 1g
-    time: 00-04:00:00
+    mem: 5g
+    time: 00-12:00:00
 
 qc_alignment:
     mem: 1TB
