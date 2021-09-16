@@ -292,12 +292,12 @@ def get_MANORM_analysis_input(wildcards):
     gid_1 = wildcards.group_id.split("_vs_")[0]
     gid_2 = wildcards.group_id.split("_vs_")[1]
 
-    input_list = [join(out_dir,'05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '_bed'),
-                join(out_dir,'05_demethod', '01_input', gid_1 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
-                join(out_dir,'05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '_' +  + wildcards.strand + '.bed'),
-                join(out_dir,'05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '_bed'),
-                join(out_dir,'05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
-                join(out_dir,'05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '_' +  + wildcards.strand + '.bed')]
+    input_list = [join(out_dir, '05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_1 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '_' + wildcards.strand + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '_' + wildcards.strand + '.bed')]
     return(input_list)
 
 def get_DIFFBIND_analysis_input(wildcards):
@@ -305,9 +305,9 @@ def get_DIFFBIND_analysis_input(wildcards):
     gid_2 = wildcards.group_id.split("_vs_")[1]
 
     input_list = [join(out_dir,'05_demethod', '01_input', gid_1 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bam'),
-                join(out_dir,'05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '_' +  + wildcards.strand + '.bed'),
+                join(out_dir,'05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '_' + wildcards.strand + '.bed'),
                 join(out_dir,'05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bam'),
-                join(out_dir,'05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '_' +  + wildcards.strand + '.bed')]
+                join(out_dir,'05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '_' + wildcards.strand + '.bed')]
     return(input_list)
 
 
