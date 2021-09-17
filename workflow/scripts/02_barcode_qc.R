@@ -150,9 +150,8 @@ if(length(diff_lis)==0){
   line1 = paste0("\n* SampleID ",mpid, " \n")
   line2 = paste0("\t + Number of mismatches allowed ", mismatch, " \n")
   line3 = paste0("\t + The top barcodes identified (", paste(df_counts_merged$barcode_id,collapse = ' '),
-                 ") include the expected barcodes (", paste(bc_exp,collapse = ' '), ") \n")
+                 ") include the expected barcodes (", paste(bc_exp,collapse = ' '), ")")
   line4 = "\t + List of top barcodes:counts \n"
-  
   line5 = ""
   for(rowid in 1:nrow(df_counts_merged)){
     line5=paste0(line5,"\t\t + ", df_counts_merged[rowid,"barcode_id"],": ", df_counts_merged[rowid,"counts"], "\n")
