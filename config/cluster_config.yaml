@@ -62,11 +62,10 @@ merge_splits_unique_mm:
 merge_mm_and_unique:
     threads: 2
     mem: 5g
-    time: 00-12:00:00
+    time: 02-00:00:00
 
 qc_alignment:
-    mem: 1TB
-    partition: largemem
+    mem: 10g
 
 qc_troubleshoot:
     threads: 3
@@ -75,8 +74,7 @@ qc_troubleshoot:
 
 dedup:
     threads: 2
-    mem: 10g
-    time: 00-02:00:00
+    time: 00-08:00:00
 
 create_beds_safs:
     threads: 3
