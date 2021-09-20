@@ -8,7 +8,9 @@ parser$add_argument("-b","--background", dest="background", required=TRUE, help=
 parser$add_argument("-d","--input_dir", dest="input_dir", required=TRUE, help="Parent input_dir for CLIP data")
 parser$add_argument("-m","--samplemanifest", dest="samplemanifest", required=TRUE, help="path to sample_manifest.tsv")
 parser$add_argument("-st","--strand", dest="strand", required=TRUE, help="strand for contrast use either P or N")
-parser$add_argument("-o","--output_file", dest="output_file", required=TRUE, help="output text file name")
+parser$add_argument("-ot","--output_table", dest="output_table", required=TRUE, help="output table file name")
+parser$add_argument("-os","--output_summary", dest="output_summary", required=TRUE, help="output summary file name")
+parser$add_argument("-of","--output_figures", dest="output_figures", required=TRUE, help="output dir for figures with base name")
 parser$add_argument("-so","--sample_overlap", dest="sample_overlap", required=F, help="minimum number of sample_df a peak must be in to be included ")
 
 args <- parser$parse_args()
@@ -17,11 +19,13 @@ background = as.character(args$background)
 input_dir = as.character(args$input_dir)
 samplemanifest = as.character(args$samplemanifest)
 strand = as.character(args$strand)
-output_file = as.character(args$output_file)
+output_table = as.character(args$output_table)
+output_summary = as.character(args$output_summary)
+output_figures = as.character(args$output_figures)
 sample_overlap = as.integer(args$sample_overlap)
 
 #testing
-testing="N"
+testing="SSC"
 if(testing=="Y"){
   rm(list=setdiff(ls(), "params"))
   
@@ -30,7 +34,7 @@ if(testing=="Y"){
   background='KO'
   samplemanifest='sample_manifest.tsv'
   strand='N'
-  output_file=paste0(input_dir,'/06_DEP/02_analysis/',samplename,'vs',background,'_DiffBind/',samplename,'vs',background,'_DiffBind','_',strand,'.txt')
+  output_table=paste0(input_dir,'/06_DEP/02_analysis/',samplename,'vs',background,'_DiffBind/',samplename,'vs',background,'_DiffBind','_',strand,'.txt')
   sample_overlap=1
 } else if (testing=="SSC"){
   input_dir= "~/../../Volumes/data/diffbind/05_demethod/01_input/"
@@ -38,7 +42,9 @@ if(testing=="Y"){
   background='KO'
   samplemanifest="~/../../Volumes/data/diffbind/sample_manifest.tsv"
   strand='N'
-  output_file="~/../../Volumes/data/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_N.txt"
+  output_table="~/../../Volumes/data/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBINDTable_N.txt"
+  output_summary="~/../../Volumes/data/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBINDSummary_N.txt"
+  output_figures="~/../../Volumes/data/diffbind/05_demethod/02_analysis/WT_vs_KO/figures/WT_vs_KO_DIFFBIND"
   sample_overlap=1
 }
 
@@ -76,7 +82,7 @@ dba_out=dba(sampleSheet=contrast_df)
 
 ## will automatically detect fragment size
 dba_out$config$fragmentSize=0
-
+dba_out$config$minQCth=0
 ################################################################################################
 ## Counting Reads 
 ################################################################################################
@@ -86,8 +92,13 @@ dba_out_consensus <- dba.peakset(dba_out,
                                  minOverlap=sample_overlap,
                                  bRetrieve=F)
 
+#create sub dba for plotting downstream
+dba_sub = dba(dba_out_consensus, mask=dba_out_consensus$masks[[samplename]])
+dba_sub2 = dba(dba_out_consensus, mask=dba_out_consensus$masks$Consensus)
+
+#run again to retrieve report
 dba_out_consensus <- dba.peakset(dba_out_consensus,
-                                 dba_out_consensus$masks[samplename][[1]],
+                                 dba_out_consensus$masks[[samplename]],
                                  bRetrieve=T)
 
 ## Counts can identify all peaks from any sample. May consider modifying command
@@ -136,6 +147,7 @@ DBdatanormContrast$config$doGreylist=F
 #current thresholds are set to:
 #DBdatanormContrast$config$minQCth = 15
 #DBdatanormContrast$config$mapQCth = 15
+
 #want to include all peaks and reads regardless of quality
 DBdatanormContrast$config$minQCth=0
 DBdatanormContrast$config$mapQCth=0
@@ -161,7 +173,7 @@ DBAReport <-
              bCounts=T) %>% as.data.frame()
 
 ################################################################################################
-## Create output
+## Create output tables
 ################################################################################################
 #add sign and ID to Reportdf
 DBAReport$strand=strand_sign
@@ -186,6 +198,67 @@ dba_final=select(dba_final,
 dba_final=merge(DBAReport,dba_final,
                 by='ID',suffixes=c("","_Occupancy"))
 
-write.table(dba_final,file=output_file, sep = "\t", 
+#write stats table
+write.table(dba_final,file=output_table, sep = "\t", 
             row.names = FALSE, 
             col.names = T, append = F, quote= FALSE,na = "")
+
+#write summary table
+write.table(dba.show(DB),
+            file=output_summary, 
+            sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
+
+################################################################################################
+## Create output figures
+################################################################################################
+### VENN DIAGRAMS
+# max number of comparisons venn can perform is 4
+if(nrow(sample_df[sample_df$group%in%samplename,])<=4){
+
+  ## plot peak overlap
+  jpeg(paste0(output_figures,'VennALL_',strand,'.jpeg'))
+  dba.plotVenn(dba_sub,main='Sample Group Peak Overlap',
+               mask=dba_sub$masks[[samplename]],
+               bNotDB=T,bDB=F, bGain=F, bLoss=F, bAll=T)
+  dev.off()
+  
+  ## plot Consensus peak overlap
+  jpeg(paste0(output_figures,'VennConsensus_',strand,'.jpeg'))
+  dba.plotVenn(dba_sub2,main='Group Concensus Peak Overlap',
+               mask=dba_sub2$masks$Consensus,
+               bNotDB=T,bDB=F, bGain=F, bLoss=F, bAll=T)
+  dev.off()
+  
+} else{ print("max number of samples were reached, unable to perform Venn comparison")}
+
+### PCA
+jpeg(paste0(output_figures,'PCA_',strand,'.jpeg'))
+dba.plotPCA(DB,DBA_CONDITION,label=DBA_CONDITION)
+dev.off()
+
+### MAplot
+jpeg(paste0(output_figures,'MAplot_',strand,'.jpeg'))
+dba.plotMA(DB)
+dev.off()
+
+### Box Plot
+jpeg(paste0(output_figures,'Boxplot_',strand,'.jpeg'))
+dba.plotBox(DB)
+dev.off()
+
+### Corr Heatmap
+jpeg(paste0(output_figures,'Corrplot_',strand,'.jpeg'))
+dba.plotHeatmap(DB,bLog=T)
+dev.off() 
+
+## Peak Clusters
+hmap <- colorRampPalette(c("red", "black", "green"))(n = 13)
+jpeg(paste0(output_figures,'PeakHeatmap_',strand,'.jpeg'))
+dba.plotHeatmap(DB, correlations=FALSE,
+                scale="row", colScheme = hmap,maxSites=100000,th=1)
+dev.off()
+
+jpeg(paste0(output_figures,'PeakHeatmap_sig_',strand,'.jpeg'))
+dba.plotHeatmap(DB, correlations=FALSE,contrast = 1,
+                scale="row", colScheme = hmap,maxSites=100000,bUsePval = F,th=.01)
+dev.off()
