@@ -333,7 +333,7 @@ bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
     write.table(anno_output,
                 file = paste0(tmp_dir,file_prefix,"annotable.bed"), 
                 sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
-    
+   
     #write out peakstable
     peaksTable_output=subset(peaksTable,!is.na(peaksTable$start) & 
                                chr %in% unique(anno_output$chr_anno))[,c('chr','start','end','ID','ID','strand')]
@@ -341,15 +341,16 @@ bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
                 file = paste0(tmp_dir,file_prefix,"peakstable.bed"), 
                 sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE)
     
-    # merge bedfiles into output text
-    system(paste0('bedtools intersect -a ', 
-                  tmp_dir, file_prefix,'peakstable.bed -b ', 
+    #merge bedfiles into output text
+    system(paste0('bedtools intersect -a ',
+                  tmp_dir, file_prefix,'peakstable.bed -b ',
                   tmp_dir, file_prefix,'annotable.bed -wao -s > ',
                   tmp_dir, file_prefix,'peaks_OL.txt'))
-    
+
     #read in merged file
     ab_OL = read.table(paste0(tmp_dir,file_prefix,"peaks_OL.txt"), 
                        header=F, sep="\t",stringsAsFactors = F)
+
     colnames(ab_OL) = c(paste0(colnames(peaksTable_output)),
                         paste0(colnames(anno_output)),'ntOL')
     
@@ -423,12 +424,12 @@ peak_calling<-function(peak_in,nmeprfix){
                            gencode_Anno_RNA_comb[,colMerge],
                            colSelect,
                            "pass1")
-    
+    print("D1")
     PeaksdataOut=bam_anno2(PeaksdataOut,
                            Anno_RNA_comb,
                            c('type','transcript_name'),
                            "pass2")
-    
+    print("D2")
     ##########################################################################################
     ############### Clean up
     ##########################################################################################
@@ -680,8 +681,7 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
               row.names = FALSE, col.names = F, append = F, quote= FALSE)
   write.table(p,file=paste0(tmp_dir,file_id,"peakstable.bed"), sep = "\t", 
               row.names = FALSE, col.names = F, append = F, quote= FALSE)
-  
-  system(paste0('bedtools intersect -a ', tmp_dir, file_id, 'peakstable.bed -b ', 
+  system(paste0('bedtools intersect -a ', tmp_dir, file_id, 'peakstable.bed -b ',
                 out_dir, file_id, 'annotable.bed -wao -s  >', tmp_dir, file_id, 'peaks_OL.txt'))
   
   exoninof=fread(paste0(tmp_dir,file_id,"peaks_OL.txt"), 
