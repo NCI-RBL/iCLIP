@@ -551,7 +551,7 @@ if (exists('nccount')) {
 p=Peaksdata2_anno
 p$PlotColumn=p$`Both Strand: RNA_type_Classification`
 
-f (incd_rRNA==FALSE) {
+if (incd_rRNA==FALSE) {
   p=p[!p$`Same Strand: ncRNA_Classification`%in%'rRNA',]
 }
 

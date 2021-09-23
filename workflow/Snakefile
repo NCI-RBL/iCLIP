@@ -1735,8 +1735,8 @@ if (DE_method=="MANORM"):
                 --background {params.gid_2} \
                 --peak_anno_g1 {params.anno_dir}/{params.gid_1}_annotation_final_table.txt \
                 --peak_anno_g2 {params.anno_dir}/{params.gid_2}_annotation_final_table.txt \
-                --pos_manorm {params.de_dir}/{wildcards.group_id}_P/{wildcards.group_id}_all_MAvalues.xls \
-                --neg_manorm {params.de_dir}/{wildcards.group_id}_N/{wildcards.group_id}_all_MAvalues.xls \
+                --pos_manorm {params.de_dir}/{wildcards.group_id}/{wildcards.group_id}_P/{wildcards.group_id}_all_MAvalues.xls \
+                --neg_manorm {params.de_dir}/{wildcards.group_id}/{wildcards.group_id}_N/{wildcards.group_id}_all_MAvalues.xls \
                 --output_file {output.o1}
             """
 
@@ -1749,8 +1749,8 @@ if (DE_method=="MANORM"):
             gid_1 = get_DEMETHOD_gid1,
             gid_2 = get_DEMETHOD_gid2,
             p_id = peak_id,
-            pval = p_val,
-            fc = f_c,
+            pval = pval,
+            fc = fc,
             rrna = include_rRNA
         envmodules:
             config['R']
@@ -1766,7 +1766,7 @@ if (DE_method=="MANORM"):
                     samplename="{params.gid_1}", \
                     background="{params.gid_2}", \
                     pval="{params.pval}", \
-                    FC="{params.FC}", \
+                    FC="{params.fc}", \
                     incd_rRNA="{params.rrna}"\
                     ))'            
             """
