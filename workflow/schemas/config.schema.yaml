@@ -59,7 +59,7 @@ properties:
     description: report peaks for unique peaks only or unique and fractional mm
   DEmethod:
     type: string
-    enum: ["MANORM","manorm","none","NONE"]
+    enum: ["MANORM","manorm","none","NONE", "DIFFBIND","diffbind"]
     description: DE method option  
   containerDir:
     type: string
@@ -72,6 +72,12 @@ properties:
     type: string
     enum: ["Y","N","y","n"]
     description: whether to collapse exons during annotation
+  pval: 
+    type: number
+    description: if DEmethod, pval cutoff for significance
+  fc:
+    type: number
+    description: if DEmethod, fold change cut off for significance
 
 # entries that have to be in the config file for successful validation
 required:
@@ -91,4 +97,8 @@ required:
   - peakid
   - DEmethod
   - containerDir
+  - condenseexon
+  - includerRNA
+  - pval
+  - fc
   
