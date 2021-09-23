@@ -28,6 +28,8 @@ ntmerge: 50 #minimum distance of nucleotides to merge peaks [10,20,30,40,50,60]
 peakid: "ALL" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
 DEmethod: "MANORM" #choose DE method ["none", "manorm", "diffbind"]
 sampleoverlap: 1 #if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted [>1]
+pval: 0.005 #if DEmethod, pval cutoff for significance
+fc: 1 #if DEmethod, fold change cut off for significance
 
 #modules, container parameters
 containerDir: "/data/CCBR_Pipeliner/iCLIP/container"
