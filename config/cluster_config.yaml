@@ -52,7 +52,7 @@ cleanup_conversion:
 
 create_bam_mm_unique:
     threads: 6
-    mem: 3g
+    mem: 30g
     time: 00-12:00:00
 
 merge_splits_unique_mm:
@@ -77,8 +77,9 @@ dedup:
     time: 00-08:00:00
 
 create_beds_safs:
-    threads: 3
-    mem: 30g
+    mem: 200g
+    threads: 4
+    partition: largemem
     time: 00-02:00:00
 
 project_annotations:
@@ -88,7 +89,7 @@ project_annotations:
 
 peak_annotations:
     threads: 3
-    mem: 5g
+    mem: 30g
     time: 00-12:00:00
 
 annotation_report:
@@ -96,7 +97,7 @@ annotation_report:
 
 MANORM_analysis:
     threads: 4
-    mem: 2g
+    mem: 30g
     time: 00-04:00:00
 
 MANORM_post_processing:
