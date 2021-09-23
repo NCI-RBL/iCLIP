@@ -50,6 +50,8 @@ nt_merge = str(config['ntmerge']) + 'nt'
 peak_id = config['peakid'].upper()
 DE_method = config['DEmethod'].upper()
 sample_overlap = int(config['sampleoverlap'])
+pval = int(config['pval'])
+fc = int(config['fc'])
 
 #define threads
 with open(join(out_dir,'config','cluster_config.yaml')) as file:
@@ -273,7 +275,7 @@ def get_de_list():
         manorm_file = list(reader)
 
         #for each group in comparison list
-        manorm_list=[]
+        contrast_list=[]
         for group in manorm_file:
             
             #for each individual id
@@ -281,11 +283,11 @@ def get_de_list():
                 id = id.replace(",", "_vs_")
             
             #append final list
-            manorm_list.append(id)
+            contrast_list.append(id)
         
         #remove header
-        manorm_list.pop(0)
-    return(manorm_list)
+        contrast_list.pop(0)
+    return(contrast_list)
 
 #get the input files for analysis
 def get_MANORM_analysis_input(wildcards):
@@ -350,8 +352,8 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 barcode_length = int(len(df_samples.iloc[0,3].replace('N',''))) #length of barcode
 
 #create manorm list
-if DE_method == "MANORM": 
-    manorm_list = get_de_list()
+if DE_method == "MANORM" or DE_method == "DIFFBIND": 
+    contrast_list = get_de_list()
 
 ###############################################################
 # rule all
@@ -378,24 +380,34 @@ else:
 
 #if samples are running MANORM
 if DE_method == "MANORM":
-    input_manorm_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}', '{group_id}_manorm_report.html'),group_id=manorm_list),
-    expand(join(out_dir,'05_demethod','02_analysis', '{group_id}', '{group_id}_post_processing.txt'), group_id=manorm_list)]
+    input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}', '{group_id}_manorm_report.html'),group_id=contrast_list),
+    expand(join(out_dir,'05_demethod','02_analysis', '{group_id}', '{group_id}_post_processing.txt'), group_id=contrast_list)]
 
     #testing
-    #input_manorm_reports = expand(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_P.bed'), sp=sp_list)
-    #input_manorm_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls'),group_id=manorm_list,strand=strand_list)
-    #input_manorm_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt'), group_id=manorm_list)
+    #input_demethod_reports = expand(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_P.bed'), sp=sp_list)
+    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls'),group_id=contrast_list,strand=strand_list)
+    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt'), group_id=contrast_list)
+elif DE_method == "DIFFBIND":
+    #input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}', '{group_id}_manorm_report.html'),group_id=contrast_list),
+    #expand(join(out_dir,'05_demethod','02_analysis', '{group_id}', '{group_id}_post_processing.txt'), group_id=contrast_list)]
+
+    #testing
+    input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}','{group_id}_diffbind_report.html'),group_id=contrast_list)]
+
+    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls'),group_id=contrast_list,strand=strand_list)
+    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt'), group_id=contrast_list)
+    #input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + 'Table_{strand}.txt'), group_id=contrast_list, strand=strand_list),
+    # expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + 'Summary_{strand}.txt'), group_id=contrast_list, strand=strand_list)]
 else:
-    input_manorm_reports = [expand(join(out_dir,'04_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list)]
+    input_demethod_reports = [expand(join(out_dir,'04_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list)]
 
 #local rules
-localrules: check_manifest, copy_nondemux, rename_demux, determine_splits, multiqc, feature_counts, MANORM_beds
+localrules: check_manifest, copy_nondemux, rename_demux, determine_splits, multiqc, feature_counts, MANORM_beds, MANORM_post_processing
 
 rule all:
     input:
-        ################################################################################################
+        ################################################################################################        
         # required, non temp files
-        ################################################################################################
         # non-rule: check sample fastq files exist
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list),
         
@@ -433,8 +445,8 @@ rule all:
         expand(join(out_dir,'04_annotation', '{sp}_annotation_final_report.html'),sp=sp_list),
         expand(join(out_dir,'04_annotation', '{sp}_annotation_final_table.txt'),sp=sp_list),
 
-        # MANORM
-        input_manorm_reports
+        # MANORM or DIFFBIND
+        input_demethod_reports
 
         ################################################################################################
         #intermediate troubleshooting, temp files
@@ -1736,7 +1748,10 @@ if (DE_method=="MANORM"):
             R = join(source_dir,'workflow','scripts','12_MAnormAnnotation.Rmd'),
             gid_1 = get_DEMETHOD_gid1,
             gid_2 = get_DEMETHOD_gid2,
-            p_id = peak_id
+            p_id = peak_id,
+            pval = p_val,
+            fc = f_c,
+            rrna = include_rRNA
         envmodules:
             config['R']
         output:
@@ -1747,10 +1762,15 @@ if (DE_method=="MANORM"):
             rmarkdown::render("{params.R}",
                 output_file = "{output.o1}", \
                 params= list(peak_in="{input.f1}", \
+                    PeakIdnt="{params.p_id}",\
                     samplename="{params.gid_1}", \
                     background="{params.gid_2}", \
-                    PeakIdnt="{params.p_id}"))'
+                    pval="{params.pval}", \
+                    FC="{params.FC}", \
+                    incd_rRNA="{params.rrna}"\
+                    ))'            
             """
+
 elif (DE_method == "DIFFBIND"):
     rule DIFFBIND_beds:
         input:
@@ -1815,8 +1835,8 @@ elif (DE_method == "DIFFBIND"):
         params:
             rname = "16b_DIFFBIND_preprocess",
             script = join(source_dir,'workflow','scripts','11_DIFFBIND_PreProcess.R'),
-            gid_1 = get_DIFFBIND_gid1,
-            gid_2 = get_DIFFBIND_gid2,
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
             st = '{strand}',
             so = sample_overlap,
             base = join(out_dir,'05_demethod', '01_input'),
@@ -1824,8 +1844,8 @@ elif (DE_method == "DIFFBIND"):
         envmodules:
             config['R']
         output:
-            table = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + 'Table_{strand}.txt'),
-            summary = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + 'Summary_{strand}.txt'),
+            table = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_table_{strand}.txt'),
+            summary = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_summary_{strand}.txt'),
         shell:
             """
             Rscript {params.script} \
@@ -1838,4 +1858,114 @@ elif (DE_method == "DIFFBIND"):
                 --output_table {output.table} \
                 --output_summary {output.summary} \
                 --output_figures {params.figs}
+            """
+
+    rule DIFFBIND_analysis:
+        """
+        input
+            /home/sevillas/git/iCLIP/manifest/sample_manifest.tsv
+            /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_table_P.txt
+            /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_table_N.txt
+        
+        output
+            post = /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_post_processing.txt
+            final = /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_final_table.txt
+
+        example
+            Rscript /home/sevillas2/git/iCLIP/workflow/scripts/11_DIFFBIND_Process.R 
+            --samplename WT
+            --background KO
+            --peak_type ALL
+            --join_junction TRUE
+            --samplemanifest /data/sevillas2/diffbind/sample_manifest.tsv 
+            --pos_DB /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_table_P.txt
+            --neg_DB /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_table_N.txt
+            --anno_dir_sample /data/sevillas2/diffbind/04_annotation/
+            --reftable_path /data/sevillas2/diffbind/config/annotation_config.txt
+            --anno_dir_project /data/sevillas2/diffbind/04_annotation/01_project/
+            --ref_species hg38
+            --gencode_path /hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt
+            --intron_path /hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed
+            --rmsk_path /hg38/repeatmasker/rmsk_GRCh38.txt
+            --function_script /home/sevillas/git/iCLIP/workflow/scripts/11_DIFFBIND_Process.R
+            --out_dir /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/
+        """
+        input:
+            s_manifest = sample_manifest,
+            table_p = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_table_P.txt'),
+            table_n = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_table_N.txt'),
+        params:
+            rname = "16c_DIFFBIND_process",
+            script = join(source_dir,'workflow','scripts','11_DIFFBIND_Process.R'),
+            script_func = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
+            p_type = peak_id,
+            junc = sp_junc,
+            ref_sp = nova_ref,
+            g_path = gen_path,
+            i_path = intron_path,
+            r_path = rmsk_path,
+            anno_dir_s = join(out_dir,'04_annotation/'),
+            anno_dir_p = join(out_dir,'04_annotation','01_project/'),
+            ref_tab_config = annotation_config,
+            base = join(out_dir,'05_demethod','02_analysis', '{group_id}'),
+        envmodules:
+            config['R']
+        output:
+            post = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_post_processing.txt'),
+            final = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_final_table.txt'),
+        shell:
+            """
+            Rscript {params.script} \
+                --samplename {params.gid_1} \
+                --background {params.gid_2} \
+                --peak_type {params.p_type} \
+                --join_junction {params.junc} \
+                --samplemanifest {input.s_manifest} \
+                --pos_DB {input.table_p} \
+                --neg_DB {input.table_n} \
+                --anno_dir_sample {params.anno_dir_s} \
+                --reftable_path {params.ref_tab_config} \
+                --anno_dir_project {params.anno_dir_p} \
+                --ref_species {params.ref_sp} \
+                --gencode_path {params.g_path} \
+                --intron_path {params.i_path} \
+                --rmsk_path {params.r_path} \
+                --function_script {params.script_func} \
+                --out_dir {params.base}
+            """
+    
+    rule DIFFBIND_report:
+        input:
+            final = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_final_table.txt'),
+            s_manifest = sample_manifest,
+        params:
+            rname = "16d_DIFFBIND_RMD",
+            R = join(source_dir,'workflow','scripts','12_DIFFBINDAnnotation.Rmd'),
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
+            p_id = peak_id,
+            pval = p_val,
+            fc = f_c,
+            rrna = include_rRNA,
+            base = join(out_dir,'05_demethod','02_analysis','{group_id}')
+        envmodules:
+            config['R']
+        output:
+            o1 = join(out_dir,'05_demethod','02_analysis','{group_id}','{group_id}_diffbind_report.html')
+        shell:
+            """
+            Rscript -e 'library(rmarkdown); \
+            rmarkdown::render("{params.R}",
+                output_file = "{output.o1}", \
+                params= list(peak_in="{input.final}", \
+                    DEGfolder="{params.base}",\
+                    PeakIdnt="{params.p_id}",\
+                    samplename="{params.gid_1}", \
+                    background="{params.gid_2}", \
+                    pval="{params.pval}", \
+                    FC="{params.FC}", \
+                    incd_rRNA="{params.rrna}"\
+                    ))'            
             """
