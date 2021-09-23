@@ -42,8 +42,8 @@ if(testing=="Y"){
   background='KO'
   samplemanifest="~/../../Volumes/data/diffbind/sample_manifest.tsv"
   strand='N'
-  output_table="~/../../Volumes/data/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBINDTable_N.txt"
-  output_summary="~/../../Volumes/data/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBINDSummary_N.txt"
+  output_table="~/../../Volumes/data/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_table_N.txt"
+  output_summary="~/../../Volumes/data/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_summary_N.txt"
   output_figures="~/../../Volumes/data/diffbind/05_demethod/02_analysis/WT_vs_KO/figures/WT_vs_KO_DIFFBIND"
   sample_overlap=1
 }
