@@ -98,7 +98,6 @@ annotation_report:
 MANORM_analysis:
     threads: 4
     mem: 30g
-    time: 00-04:00:00
 
 MANORM_post_processing:
     threads: 2
