@@ -693,7 +693,6 @@ rule qc_screen_validator:
     - this will align first to human, mouse, bacteria then will align to rRNA
     must run fastq_screen as two separate commands - multiqc will merge values of rRNA with human/mouse
     http://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/_build/html/index.html
-
     - fastq validator
     Quality-control step to ensure the input FastQC files are not corrupted or
     incomplete prior to running the entire workflow.
@@ -724,7 +723,6 @@ rule qc_screen_validator:
     shell:
         """
         set +e
-
         #set / create tmp dir
         if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
@@ -755,7 +753,6 @@ rule qc_screen_validator:
         
         #remove gunzipped file
         rm ${{tmpdir}}/{params.tmp}
-
         #make fastq val dir
         mkdir -p {params.base_val}
         
@@ -889,7 +886,6 @@ if (splice_aware == "Y"):
             java -Djava.io.tmpdir=${{tmpdir}} -jar -Xmx100G {params.doc} \
                 -f ${{tmpdir}}/{params.base}.tmp.mapped.sam \
                 -a 50000 -n 25 -u -s {params.base_out};
-
             #convert input to bam
             gunzip -c {output.sam} | samtools view -S -b  - > ${{tmpdir}}/{params.base}.unmasked.bam;
             
@@ -960,7 +956,6 @@ rule create_bam_mm_unique:
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
             tmpdir_m="${{tmpdir}}/m"
             tmpdir_u="${{tmpdir}}/u"
-
             mkdir $tmpdir_m
             mkdir $tmpdir_u
         else
@@ -994,12 +989,10 @@ rule create_bam_mm_unique:
         
         #create the new files
         touch ${{tmpdir_u}}/{params.base}.unique.sam
-
         #read the sam file
         while read rd; do 
             #if the line doesn't have IH
             if [[ ! $rd == "IH:i" ]]; then
-
                 #if the line doesnt have NH then add NH:i:1
                 if [[ ! $rd == "NH:i" ]]; then
                     echo "$rd" | awk '{{ $(NF+1) = "NH:i:1"; print }}' | echo "${{rd// /	}}" >> ${{tmpdir_u}}/{params.base}.unique.sam
@@ -1033,7 +1026,6 @@ rule create_bam_mm_unique:
         
         #create the new files
         touch ${{tmpdir_m}}/{params.base}.mm.sam
-
         #read the sam file
         while read rd; do 
             #if the line doesn't have IH
@@ -1060,7 +1052,6 @@ rule create_bam_mm_unique:
                 echo "${{rd/$NH/$NH_complete}}" >> ${{tmpdir_m}}/{params.base}.mm.sam
             fi
         done < ${{tmpdir_m}}/{params.base}.mm.txt
-
         #place header back on file, sort, convert to bam
         cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_m}}/{params.base}.mm.sam | samtools sort -T ${{tmpdir_m}} | samtools view -Sb > ${{tmpdir_m}}/{params.base}.mm.bam;
         
@@ -1071,7 +1062,6 @@ rule create_bam_mm_unique:
         samtools sort -T ${{tmpdir_m}} ${{tmpdir_m}}/{params.base}.mm.bam -o {output.sort_m};
         samtools index {output.sort_u};
         samtools index {output.sort_m};
-
         exitcode=$?
         if [ $exitcode -eq 1 ]
         then
@@ -1130,7 +1120,6 @@ rule merge_mm_and_unique:
         fi
         #merge uniuqe and mm
         samtools merge -f {output.merged} {input.un} {input.mm};
-
         #sort and index
         samtools sort -T ${{tmpdir}} {output.merged} -o {output.sort};
         samtools index {output.sort};
@@ -1282,7 +1271,6 @@ rule dedup:
             tmpdir="{out_dir}01_preprocess/06_dedup/"
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
-
         umi_tools dedup \
         -I {input.f1} \
         --method unique \
@@ -1290,7 +1278,6 @@ rule dedup:
         --umi-separator={params.umi} \
         -S ${{tmpdir}}/{params.base}.bam\
         --log2stderr;
-
         samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.bam -o {output.bam};
         samtools index {output.bam};
         """
@@ -1367,7 +1354,6 @@ rule feature_counts:
     locations. All spliced reads also get fractional count. So Unique reads can get 
     fractional count when spliced peaks combined in R script the summed counts give 
     whole count for the unique alignement in combined peak.
-
     http://manpages.ubuntu.com/manpages/bionic/man1/featureCounts.1.html
     """
     input:
@@ -1668,7 +1654,6 @@ if (DE_method=="MANORM"):
         - '05_demethod', '01_input', sample2 + '_PeaksforMANORM.bed'),
         - '05_demethod', '01_input', sample2 + '_ReadsforMANORM_' + P + '.bed'),
         - '05_demethod', '01_input', sample2 + '_ReadsforMANORM_' + N + '.bed'),
-
         output:
         - '05_demethod','02_analysis', 'sample1_vs_sample2_P/
         - '05_demethod','02_analysis', 'sample1_vs_sample2_N/
@@ -1710,7 +1695,6 @@ if (DE_method=="MANORM"):
         - '04_annotation', sample2 + '_annotation_final_table.txt'
         - '05_demethod','02_analysis', sample1_vs_sample2 + "_P", sample1_vs_sample2 + '_all_MAvalues.xls'),
         - '05_demethod','02_analysis', sample1_vs_sample2 + "_N", sample1_vs_sample2 + '_all_MAvalues.xls')
-
         output:
         '05_demethod','02_analysis', sample1_vs_sample2_post_processing.txt
         '''
@@ -1797,7 +1781,6 @@ elif (DE_method == "DIFFBIND"):
             
             #create header
             samtools view -H {input.f1} > ${{tmpdir}}/{params.base}.header.txt
-
             #run 
             samtools view -F 16 {input.f1} | \
                 cat ${{tmpdir}}/{params.base}.header.txt - | samtools view -Sb > {output.o1}
@@ -1812,10 +1795,8 @@ elif (DE_method == "DIFFBIND"):
         - '05_demethod', '01_input', sample1 + '_ReadsforDIFFBIND_' + wildcards.strand + '.bam'
         - '05_demethod', '01_input', sample2 + '_ReadsforDIFFBIND_' + wildcards.strand + '.bam'
         - 'manifest', 'sample_manifest.tsv'
-
         output:
         - '05_demethod', '02_analysis', group_id, groupid + '_DIFFBIND_' + strand + '.txt'
-
         example input
             Rscript /home/sevillas2/git/iCLIP/workflow/scripts/11_DIFFBIND_PreProcess.R 
             --samplename WT 
@@ -1827,7 +1808,6 @@ elif (DE_method == "DIFFBIND"):
             --output_table /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBINDTable_N.txt
             --output_summary /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBINDSummary_N.txt
             --output_figures /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/figures/WT_vs_KO_DIFFBIND
-
         """
         input:
             get_DIFFBIND_analysis_input,
@@ -1870,7 +1850,6 @@ elif (DE_method == "DIFFBIND"):
         output
             post = /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_post_processing.txt
             final = /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_final_table.txt
-
         example
             Rscript /home/sevillas2/git/iCLIP/workflow/scripts/11_DIFFBIND_Process.R 
             --samplename WT
