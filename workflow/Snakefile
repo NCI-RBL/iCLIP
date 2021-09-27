@@ -82,7 +82,7 @@ alias_path = index_list[nova_ref]['aliaspath']
 add_anno_path = index_list[nova_ref]['additionalannopath']
 
 #singularity exec command
-singularity_exec = "singularity exec -B /data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir + ",/fdb,/scratch"
+singularity_exec = "singularity exec -B /data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir + ",/fdb"
 
 #annotation config
 annotation_config = join(out_dir,'config','annotation_config.txt')
