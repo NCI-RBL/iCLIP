@@ -50,8 +50,8 @@ nt_merge = str(config['ntmerge']) + 'nt'
 peak_id = config['peakid'].upper()
 DE_method = config['DEmethod'].upper()
 sample_overlap = int(config['sampleoverlap'])
-pval = int(config['pval'])
-fc = int(config['fc'])
+pval = config['pval']
+fc = config['fc']
 
 #define threads
 with open(join(out_dir,'config','cluster_config.yaml')) as file:
