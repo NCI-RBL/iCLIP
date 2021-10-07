@@ -82,7 +82,7 @@ alias_path = index_list[nova_ref]['aliaspath']
 add_anno_path = index_list[nova_ref]['additionalannopath']
 
 #singularity exec command
-singularity_exec = "singularity exec -B /data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir + ",/fdb"
+singularity_exec = "singularity exec -B /data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir
 
 #annotation config
 annotation_config = join(out_dir,'config','annotation_config.txt')
@@ -189,7 +189,7 @@ def nondemux_cmd(wildcards):
 
   for k,v in multiplex_dict.items():
     for k2,v2 in samp_dict[k].items():
-      cmd_line = fastq_dir + v + ' ' + out_dir + k + '/01_preprocess/' + k2 + '.fastq.gz; ' + cmd_line
+      cmd_line = 'cp ' + fastq_dir + v + ' ' + out_dir + k + '/01_preprocess/' + k2 + '.fastq.gz; ' + cmd_line
   
   return(cmd_line)
 
@@ -625,7 +625,7 @@ else:
             o1 = temp(expand(join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list))
         shell:
             """
-            cp {params.cmd}
+            {params.cmd}
             """
 
 rule remove_adaptors:
@@ -1355,6 +1355,12 @@ rule feature_counts:
     fractional count when spliced peaks combined in R script the summed counts give 
     whole count for the unique alignement in combined peak.
     http://manpages.ubuntu.com/manpages/bionic/man1/featureCounts.1.html
+
+    Output summary
+    - Differences within any folder (allreadpeaks or uniquereadpeaks) should ONLY be the counts column - 
+    as this represent the number of peaks that were uniquely identified (uniqueCounts) or the number of peaks MM (allFracMMCounts)
+    - Differences within folders (03_allreadpeaks, 03_uniquereadpeaks) will be the peaks identified, as the first takes 
+    all reads as input and the second takes only unique reads as input
     """
     input:
         bam = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
