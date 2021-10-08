@@ -103,7 +103,7 @@ else:
 if (splice_aware == 'N'):
     align_list = ["unaware"]
 else:
-    align_list = ["unmasked"]
+    align_list = ["unaware","masked","unmasked"]
 
 #convert rRNA selection
 if (include_rRNA=="Y"):
@@ -370,9 +370,9 @@ else:
 if splice_aware == 'Y':
     input_unmapped = expand(join(out_dir,'02_bam','01_unmapped','{sp}.{al}.complete.bam'),  sp=sp_list, al=align_list)
 
-    input_splice = [expand(join(out_dir,'10_mapq_score','{sp}.readids.txt'), sp=sp_list),
-                    expand(join(out_dir,'10_mapq_score','{sp}.unaware.subset.bam'),sp=sp_list),
-                    expand(join(out_dir,'10_mapq_score','{sp}.mapq_recalculated.bam'),sp=sp_list)]
+    input_splice = [expand(join(out_dir,'02_bam','04_mapq','{sp}.readids.txt'), sp=sp_list),
+                    expand(join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.bam'),sp=sp_list),
+                    expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),sp=sp_list)]
 else:
     input_unmapped = expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
 
@@ -1282,6 +1282,106 @@ rule dedup:
         samtools index {output.bam};
         """
 
+#pipeline splits for mapq score recalculation on splice_aware samples
+if (splice_aware == 'Y'):
+    rule generate_readids:
+        """
+        generate readids from unmasked files
+        """
+        input:
+            f1 = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
+        params:
+            rname='13a_readids',
+        envmodules:
+            config['samtools']  
+        output:
+            o1 = join(out_dir,'02_bam','04_mapq','{sp}.readids.txt'),
+        shell:
+            """
+            samtools view {input.f1}|cut -f1|sort|uniq > {output.o1}
+            """
+
+    rule subsample_reads:
+        """
+        subsample:
+        A) splice unaware BAM 
+        B) splice aware (masked exon) BAM 
+        
+        using the readids from splice aware (unmasked exon) in rule generate_readids
+        """
+        input:
+            id = join(out_dir,'02_bam','04_mapq','{sp}.readids.txt'),
+            unaware = join(out_dir,'02_bam','03_dedup','{sp}.unaware.merged.si.bam'),
+            masked = join(out_dir,'02_bam','03_dedup','{sp}.masked.merged.si.bam'),
+        params:
+            rname='13b_subsample',
+            script = join(source_dir,'workflow','scripts','06_filter_bam_by_readids.py'),
+        envmodules:
+            config['python']  
+        output:
+            unaware = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.bam'),
+            masked = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.bam'),
+        shell:
+            """
+            python {params.script} --inputBAM {input.unaware} --outputBAM {output.unaware} --readids {input.id};
+            python {params.script} --inputBAM {input.masked} --outputBAM {output.masked} --readids {input.id}
+            """
+
+    rule mapq_recalc:
+        """
+        using deduplicated reads (splie aware unmasked exon BAM), and subset reads (splice unaware and splice aware masked exon) BAMs, 
+        pysam script will adjust for MAPQ correction 
+        
+        outputs updated mapq score bam file and metadata file of changes
+        """
+        input:
+            unaware = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.bam'),
+            masked = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.bam'),
+            unmasked = join(out_dir,'02_bam','03_dedup','{sp}.unmasked.dedup.bam'),
+        params:
+            rname='24c_recalc',
+            script = join(source_dir,'workflow','scripts','07_correct_mapq.py'),
+            unaware = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.bam'),
+            masked = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.bam'),
+        envmodules:
+            config['python']  
+        output:
+            bam = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
+            tsv = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.tsv'),
+        shell:
+            """
+            python {params.script} \
+            --inputBAM1 {input.unaware} --inputBAM2 {input.masked} --inputBAM3 {input.unmasked} \
+            --outBAM {output.bam} --out {output.tsv}
+            """
+
+    rule mapq_stats:
+        """
+        TODO
+        **Use D) for visualization
+        """
+        input:
+            f1 = expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),sp=sp_list),
+        params:
+            rname='24c_mapq_stats',
+            script = join(source_dir,'workflow','scripts','.py'),
+        envmodules:
+            config['R']  
+        output:
+            o1 = join(out_dir,'02_bam','04_mapq','report.pdf'),
+        shell:
+            """
+            Rscript {params.script} {input.f1} {output.o1}
+            """
+
+#determine dedup input based on splcie_aware flag
+def input_mapq_corrected_bam(wildcards):
+    if (splice_aware=="N"):
+        f1 = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
+    else:
+        f1 = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
+    return(f1)
+
 rule create_beds_safs:
     """
     split dedup file into unique files
@@ -1289,7 +1389,7 @@ rule create_beds_safs:
     create SAF files from the deduped unique bed and all bed files
     """
     input:
-        bam = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
+        bam = input_mapq_corrected_bam
     params:
         rname='13_create_beds_safs',
         base = '{sp}.dedup'
