@@ -1,6 +1,6 @@
 #Create error report
 echo
-echo "Creating error log"
+echo -e "****Creating error log****\n"
 
 #create log file, intermed error files
 echo `date +"%Y%m%d_%H%M"` > error_log.txt
@@ -9,13 +9,13 @@ touch miss.txt
 touch other.txt
 
 #cehck if errros are in snakmemake config or in the rules
-error_snakefile="$(grep -i "error" *_iCLIP.out | wc -l)"
-error_rules="$(grep -i "error in" *_iCLIP.out | wc -l)"
+error_snakefile="$(echo *_iCLIP.out | grep -v "output_file_error" | grep -i "error" | wc -l)"
+error_rules="$(echo *_iCLIP.out | grep -v "output_file_error" | grep -i "error in" | wc -l)"
 
 #if there are no snakemake errors or rul errors
 if [ $error_snakefile == "0" ] && [ $error_rules == "0" ]; then
-  echo "Pipeline has successfully completed" >> error_log.txt
-  echo "Pipeline has successfully completed"
+  echo "-Pipeline has successfully completed" >> error_log.txt
+  echo -e "-Pipeline has successfully completed\n"
 #if there were only snakemake errors
 elif [ $error_snakefile != "0" ] && [ $error_rules == "0" ]; then
     echo "- Errors were found in snakemake"
