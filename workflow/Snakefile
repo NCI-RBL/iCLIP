@@ -100,10 +100,10 @@ else:
     cond_exon = "FALSE"
 
 #create list of alignment types based on splice_aware flag
-if (splice_aware == 'N'):
-    align_list = ["unaware"]
-else:
+if (splice_aware == "Y"):
     align_list = ["unaware","masked","unmasked"]
+else:
+    align_list = ["unaware"]
 
 #convert rRNA selection
 if (include_rRNA=="Y"):
@@ -260,10 +260,10 @@ def get_index(wildcards):
 
 #determine alignment input based on splice_aware flag
 def get_align_input(wildcards):
-    if (splice_aware == "N"):
-        f1 = join(out_dir,'01_preprocess','01_alignment', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam'),
-    else:
+    if (splice_aware == "Y"):
         f1 = join(out_dir,'01_preprocess','02_genomic', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam.gz'),
+    else:
+        f1 = join(out_dir,'01_preprocess','01_alignment', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam'),
     return(f1)
 
 #read in contrast list for manorm
@@ -993,6 +993,7 @@ rule create_bam_mm_unique:
         
         #create the new files
         touch ${{tmpdir_u}}/{params.base}.unique.sam
+        
         #read the sam file
         while read rd; do 
             #if the line doesn't have IH
@@ -1380,10 +1381,10 @@ if (splice_aware == 'Y'):
 
 #determine dedup input based on splcie_aware flag
 def input_mapq_corrected_bam(wildcards):
-    if (splice_aware=="N"):
-        f1 = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
-    else:
+    if (splice_aware=="Y"):
         f1 = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
+    else:
+        f1 = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
     return(f1)
 
 rule create_beds_safs:
