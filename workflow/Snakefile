@@ -105,6 +105,11 @@ if (splice_aware == "Y"):
 else:
     align_list = ["unaware"]
 
+if (splice_aware == "Y"):
+    align_sub = ["unmasked"]
+else:
+    align_sub = ["unaware"]
+
 #convert rRNA selection
 if (include_rRNA=="Y"):
     refseq_rrna = "TRUE"
@@ -261,9 +266,17 @@ def get_index(wildcards):
 #determine alignment input based on splice_aware flag
 def get_align_input(wildcards):
     if (splice_aware == "Y"):
-        f1 = join(out_dir,'01_preprocess','02_genomic', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam.gz'),
+        f1 = join(out_dir,'01_preprocess','02_genomic', wildcards.sp + '.' + wildcards.al_sub + '.split.' + wildcards.n + '.sam.gz'),
     else:
-        f1 = join(out_dir,'01_preprocess','01_alignment', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam'),
+        f1 = join(out_dir,'01_preprocess','01_alignment', wildcards.sp + '.' + wildcards.al_sub + '.split.' + wildcards.n + '.sam'),
+    return(f1)
+
+#determine dedup input based on splice_aware flag
+def get_dedup_input(wildcards):
+    if (splice_aware == "Y"):
+        f1 = join(out_dir,'02_bam','02_merged',wildcards.sp + '.unmasked.merged.si.bam'),
+    else:
+        f1 = join(out_dir,'02_bam','02_merged',wildcards.sp + '.unaware.merged.si.bam'),
     return(f1)
 
 #read in contrast list for manorm
@@ -368,15 +381,14 @@ else:
 
 ## if samples are spliced
 if splice_aware == 'Y':
-    input_unmapped = expand(join(out_dir,'02_bam','01_unmapped','{sp}.{al}.complete.bam'),  sp=sp_list, al=align_list)
+    input_unmapped = expand(join(out_dir,'02_bam','01_unmapped','{sp}.{al_sub}.complete.bam'),  sp=sp_list, al_sub=align_sub)
 
-    input_splice = [expand(join(out_dir,'02_bam','04_mapq','{sp}.readids.txt'), sp=sp_list),
-                    expand(join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.bam'),sp=sp_list),
-                    expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),sp=sp_list)]
+    input_recalc = [expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),sp=sp_list),
+                    expand(join(out_dir,'02_bam','04_mapq','report','{sp}.report.html'),sp=sp_list)]
 else:
-    input_unmapped = expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
+    input_unmapped = expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
 
-    input_splice = [expand(join(out_dir,'09_dedup','01_bam','{sp}.{al}.dedup.bam'),sp=sp_list, al=align_list)]
+    input_recalc = [expand(join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),sp=sp_list)]
 
 #if samples are running MANORM
 if DE_method == "MANORM":
@@ -417,12 +429,14 @@ rule all:
         # different inputs for multiplexed or nonmultiplexed pipeline
         input_multiplex,
         
-        
         # determine_splits
         join(out_dir,'qc','split_params.tsv'),
         
+        # #merge_unmapped_splits
+        input_unmapped,
+         
         # merge_mm_and_unique
-        expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
+        expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
 
         # multiqc
         join(out_dir,'qc','multiqc_report.html'),
@@ -432,6 +446,9 @@ rule all:
 
         # dedup
         expand(join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),sp=sp_list),
+
+        # recalc
+        input_recalc,
 
         # create_beds_safs
         expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
@@ -470,9 +487,6 @@ rule all:
         # expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
         # expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'), sp=sp_list, al=align_list),
 
-        # #merge_unmapped_splits
-        # input_unmapped,
-
         # # mapq recalulation
         # expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.tsv'),sp=sp_list)
 
@@ -505,6 +519,8 @@ else:
     include: join(source_dir,"workflow/rules/common.smk")
     include: join(source_dir,"workflow/rules/other.smk")
 
+print(align_list)
+print(splice_aware)
 ###############################################################
 # snakemake rules
 ###############################################################
@@ -859,18 +875,18 @@ if (splice_aware == "Y"):
         convert bam back to sam file
         """
         input:
-            f1 = join(out_dir,'01_preprocess','01_alignment','{sp}.{al}.split.{n}.sam'),
+            f1 = join(out_dir,'01_preprocess','01_alignment','{sp}.{al_sub}.split.{n}.sam'),
         params:
             rname = '07a_cleanup_conversion',
-            base = '{sp}.{al}.split.{n}',
-            base_out = join(out_dir,'01_preprocess','02_genomic','{sp}.{al}.split.{n}.sam'),
+            base = '{sp}.{al_sub}.split.{n}',
+            base_out = join(out_dir,'01_preprocess','02_genomic','{sp}.{al_sub}.split.{n}.sam'),
             doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
         envmodules:
             config['samtools'],
             config['java']
         output:
-            sam = temp(join(out_dir,'01_preprocess','02_genomic','{sp}.{al}.split.{n}.sam.gz')),
-            bam = temp(join(out_dir,'01_preprocess','03_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
+            sam = temp(join(out_dir,'01_preprocess','02_genomic','{sp}.{al_sub}.split.{n}.sam.gz')),
+            bam = temp(join(out_dir,'01_preprocess','03_unmapped','{sp}.{al_sub}.split.{n}.final.si.bam')),
         shell:
             """
             #set / create tmp dir
@@ -916,13 +932,13 @@ if (splice_aware == "Y"):
         merge all sample unmapped reads into one file
         """
         input:
-            sorted_list = dynamic(join(out_dir,'01_preprocess','03_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
+            sorted_list = dynamic(join(out_dir,'01_preprocess','03_unmapped','{sp}.{al_sub}.split.{n}.final.si.bam')),
         params:
             rname='07d_merge_unmapped_splits',
         envmodules:
             config['samtools']  
         output:
-            final = join(out_dir,'02_bam','01_unmapped','{sp}.{al}.complete.bam'),
+            final = join(out_dir,'02_bam','01_unmapped','{sp}.{al_sub}.complete.bam'),
         shell:
             """
             samtools merge -f {output.final} {input.sorted_list} 
@@ -945,12 +961,12 @@ rule create_bam_mm_unique:
         f1 = get_align_input,
     params:
         rname='08_create_bam_mm_unique',
-        base = '{sp}.{al}.split.{n}.tmp',
+        base = '{sp}.{al_sub}.split.{n}.tmp',
     envmodules:
         config['samtools']
     output:
-        sort_u = temp(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.si.bam')),
-        sort_m = temp(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.si.bam')),
+        sort_u = temp(join(out_dir,'01_preprocess','04_unique','{sp}.{al_sub}.split.{n}.unique.si.bam')),
+        sort_m = temp(join(out_dir,'01_preprocess','04_mm','{sp}.{al_sub}.split.{n}.mm.si.bam')),
     shell:
         """
         ################################################
@@ -1082,15 +1098,15 @@ rule merge_splits_unique_mm:
     merge split multimapped bam files into one merged.mm bam file
     """
     input:
-        unique = dynamic(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.si.bam')),
-        mm = dynamic(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.si.bam'))
+        unique = dynamic(join(out_dir,'01_preprocess','04_unique','{sp}.{al_sub}.split.{n}.unique.si.bam')),
+        mm = dynamic(join(out_dir,'01_preprocess','04_mm','{sp}.{al_sub}.split.{n}.mm.si.bam'))
     params:
         rname='09a_merge_splits_unique_mm',
     envmodules:
         config['samtools']  
     output:
-        unique = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam')),
-        mm = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam')),
+        unique = temp(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.unique.bam')),
+        mm = temp(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.mm.bam')),
     shell:
         """
         samtools merge -f {output.unique} {input.unique};
@@ -1104,16 +1120,16 @@ rule merge_mm_and_unique:
     run samtools
     """
     input:
-        un = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam'),
-        mm = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam'),
+        un = join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.unique.bam'),
+        mm = join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.mm.bam'),
     params:
         rname='09b_merge_mm_and_unique',
     envmodules:
         config['samtools']  
     output:
-        merged = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam')),
-        samstat = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt')),
-        sort = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'),
+        merged = temp(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.bam')),
+        samstat = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_samstats.txt')),
+        sort = join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'),
     shell:
         """
         #set / create tmp dir
@@ -1143,7 +1159,7 @@ rule multiqc:
         f2 = expand(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
         f3 = expand(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
         f4 = expand(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
-        f5 = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'),sp=sp_list, al=align_list)
+        f5 = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_samstats.txt'),sp=sp_list, al_sub=align_sub)
     params:
         out = join(out_dir,'qc'),
         qc_config = join(source_dir,'config','multiqc_config.yaml'),
@@ -1170,22 +1186,22 @@ rule qc_alignment:
     generates plots and summmary file for aligned vs unaligned statistics
     """
     input:
-        f1 = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'),
+        f1 = join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'),
     params:
         rname = "10_qc_alignment",
         R = join(source_dir,'workflow','scripts','04_alignment_stats.R'),
-        sampleid = '{sp}.{al}',
+        sampleid = '{sp}.{al_sub}',
         base = join(out_dir, 'qc', '00_qc_post/')
     envmodules:
         config['samtools'],
         config['R']
     output:
-        bam_a = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_align_len.txt')),
-        bam_u = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unalign_len.txt')),
-        png_align = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png')),
-        png_unalign = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png')),
-        txt_align = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.txt')),
-        txt_unalign = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.txt')),
+        bam_a = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_align_len.txt')),
+        bam_u = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_unalign_len.txt')),
+        png_align = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_aligned.png')),
+        png_unalign = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_unaligned.png')),
+        txt_align = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_aligned.txt')),
+        txt_unalign = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_unaligned.txt')),
     shell:
         """
         #gather stats for all reads
@@ -1202,10 +1218,10 @@ if (multiplex_flag == 'Y'):
         generates a PDF of barcode plots and alignment plots for qc troubleshooting
         """
         input:
-            png_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png'), sp=sp_list, al=align_list),
-            png_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png'), sp=sp_list, al=align_list),
-            txt_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.txt'), sp=sp_list, al=align_list),
-            txt_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.txt'), sp=sp_list, al=align_list),
+            png_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_aligned.png'), sp=sp_list, al_sub=align_sub),
+            png_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_unaligned.png'), sp=sp_list, al_sub=align_sub),
+            txt_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_aligned.txt'), sp=sp_list, al_sub=align_sub),
+            txt_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_unaligned.txt'), sp=sp_list, al_sub=align_sub),
             txt_bc = expand(join(out_dir,'{mp}', '00_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys()),
             png_bc = expand(join(out_dir,'{mp}', '00_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())
         params:
@@ -1230,10 +1246,10 @@ else:
         generates a PDF of barcode plots and alignment plots for qc troubleshooting
         """
         input:
-            png_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.png'), sp=sp_list, al=align_list),
-            png_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.png'), sp=sp_list, al=align_list),
-            txt_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_aligned.txt'), sp=sp_list, al=align_list),
-            txt_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_unaligned.txt'), sp=sp_list, al=align_list),
+            png_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_aligned.png'), sp=sp_list, al_sub=align_sub),
+            png_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_unaligned.png'), sp=sp_list, al_sub=align_sub),
+            txt_align = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_aligned.txt'), sp=sp_list, al_sub=align_sub),
+            txt_unalign = expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_unaligned.txt'), sp=sp_list, al_sub=align_sub),
         params:
             rname = "11_qc_troubleshoot",
             R = join(source_dir,'workflow','scripts','05_qc_report_nondemux.Rmd'),
@@ -1257,7 +1273,7 @@ rule dedup:
     get header of dedup file
     """
     input:
-        f1 = join(out_dir,'02_bam','02_merged','{sp}.unmasked.merged.si.bam'),
+        f1 = get_dedup_input
     params:
         rname='12_dedup',
         umi = umi_parameter,
@@ -1342,7 +1358,7 @@ if (splice_aware == 'Y'):
         input:
             unaware = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.bam'),
             masked = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.bam'),
-            unmasked = join(out_dir,'02_bam','03_dedup','{sp}.unmasked.dedup.bam'),
+            unmasked = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
         params:
             rname='24c_recalc',
             script = join(source_dir,'workflow','scripts','07_correct_mapq.py'),
@@ -1362,21 +1378,49 @@ if (splice_aware == 'Y'):
 
     rule mapq_stats:
         """
-        TODO
-        **Use D) for visualization
+        
         """
         input:
-            f1 = expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),sp=sp_list),
+            unmasked = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
+            recalc = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam')
         params:
             rname='24c_mapq_stats',
-            script = join(source_dir,'workflow','scripts','.py'),
+            R = join(source_dir,'workflow','scripts','tbd_mapq_stats.Rmd'),
+            base = join(out_dir,'02_bam','04_mapq/')
+            sid = '{sp}'
         envmodules:
+            config['samtools'],
             config['R']  
         output:
-            o1 = join(out_dir,'02_bam','04_mapq','report.pdf'),
+            seq_old = (join(out_dir,'02_bam','04_mapq','{sp}.old_counts.txt')),
+            seq_new = (join(out_dir,'02_bam','04_mapq','{sp}.new_counts.txt')),
+            seq_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff.txt')),
+            png_old = (join(out_dir,'02_bam','04_mapq','{sp}.old_counts.png')),
+            png_new = (join(out_dir,'02_bam','04_mapq','{sp}.new_counts.png')),
+            png_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff.png')),
+            txt_old = (join(out_dir,'02_bam','04_mapq','{sp}.old_counts.txt')),
+            txt_new = (join(out_dir,'02_bam','04_mapq','{sp}.new_counts.txt')),
+            txt_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff.txt')),
+            html = join(out_dir,'02_bam','04_mapq','report','{sp}.report.html'),
         shell:
             """
-            Rscript {params.script} {input.f1} {output.o1}
+            #create files with new and old files
+            samtools view {input.unmasked} | awk '{{print $5}}' | sort -n | uniq -c > {output.seq_old}
+            samtools view {input.recalc} | awk '{{print $5}}' | sort -n | uniq -c > {output.seq_new}
+
+            #run comparison of old vs new
+            awk -F"\t" 'FILENAME=="test.old.txt"{A[$1$2]=$1$2} FILENAME=="test.new.txt"{if(!A[$1$2]){print}}' test.old.txt test.new.txt awk '{print $2}' | sort -n | uniq -c > {output.seq_diff}
+
+            #R
+            Rscript -e 'library(rmarkdown); \
+            rmarkdown::render("{params.R}",
+                output_file = "{output.html}", \
+                params= list(counts_old="{output.seq_old}",
+                    counts_new="{output.seq_new}",
+                    counts_diff="{output.seq_diff}",
+                    samplename="{params.sid}",
+                    output_dir="{params.base}",
+                    ))'            
             """
 
 #determine dedup input based on splcie_aware flag
