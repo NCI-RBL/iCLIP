@@ -460,18 +460,18 @@ rule all:
         # recalc
         input_recalc,
 
-        # # create_beds_safs
-        # expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
-        # expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'), sp=sp_list),
-        # expand(join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'), sp=sp_list),
-        # expand(join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF'), sp=sp_list),
+        # create_beds_safs
+        expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
+        expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'), sp=sp_list),
+        expand(join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'), sp=sp_list),
+        expand(join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF'), sp=sp_list),
         
-        # # annotation_report
-        # expand(join(out_dir,'04_annotation', '{sp}_annotation_final_report.html'),sp=sp_list),
-        # expand(join(out_dir,'04_annotation', '{sp}_annotation_final_table.txt'),sp=sp_list),
+        # annotation_report
+        expand(join(out_dir,'04_annotation', '{sp}_annotation_final_report.html'),sp=sp_list),
+        expand(join(out_dir,'04_annotation', '{sp}_annotation_final_table.txt'),sp=sp_list),
 
-        # # MANORM or DIFFBIND
-        # input_demethod_reports
+        # MANORM or DIFFBIND
+        input_demethod_reports
 
         ################################################################################################
         #intermediate troubleshooting, temp files
