@@ -569,7 +569,7 @@ if (multiplex_flag == 'Y'):
         output barplot with top barcode counts
         """
         input:
-            manifest = rules.check_manifest.output.manifest
+            manifest = rules.check_manifest.output.manifest,
             fq = get_fq_names,
         params:
             rname = "01a_qc_barcode",
@@ -1129,7 +1129,7 @@ rule merge_mm_and_unique:
     run samtools
     """
     input:
-        un = rules.merge_splits_unique_mm.output.unique
+        un = rules.merge_splits_unique_mm.output.unique,
         mm = rules.merge_splits_unique_mm.output.mm
     params:
         rname='09_merge_mm_and_unique',
@@ -1341,7 +1341,7 @@ if (splice_aware == 'Y'):
         using the readids from splice aware (unmasked exon) in rule generate_readids
         """
         input:
-            id = rules.generate_readids.output.reads
+            id = rules.generate_readids.output.reads,
             unaware = join(out_dir,'02_bam','02_merged','{sp}.unaware.merged.si.bam'),
             masked = join(out_dir,'02_bam','02_merged','{sp}.masked.merged.si.bam'),
         params:
@@ -1391,7 +1391,7 @@ if (splice_aware == 'Y'):
         
         """
         input:
-            unmasked = rules.dedup.output.bam
+            unmasked = rules.dedup.output.bam,
             recalc = rules.mapq_recalc.output.bam
         params:
             rname='12e_mapq_stats',
@@ -1529,8 +1529,8 @@ rule feature_counts:
     all reads as input and the second takes only unique reads as input
     """
     input:
-        bam = rules.dedup.output.bam
-        saf_all = rules.create_beds_safs.output.saf_all
+        bam = rules.dedup.output.bam,
+        saf_all = rules.create_beds_safs.output.saf_all,
         saf_unique = rules.create_beds_safs.output.saf_unique
     params:
         rname='14_feature_counts',
@@ -2089,7 +2089,7 @@ elif (DE_method == "DIFFBIND"):
     
     rule DIFFBIND_report:
         input:
-            final = rules.DIFFBIND_analysis.output.final
+            final = rules.DIFFBIND_analysis.output.final,
             s_manifest = sample_manifest,
         params:
             rname = "18d_DIFFBIND_RMD",
@@ -2121,4 +2121,3 @@ elif (DE_method == "DIFFBIND"):
                     ))'            
             """
 
-            
