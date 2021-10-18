@@ -162,8 +162,8 @@ def CreateProjLists(dict_m,dict_s):
 # snakemake functions
 ###############################################################
 #get list of fq names based on multiplex name
-#{fastq_dir}/{filename}.fastq.gz
 def get_fq_names(wildcards):
+    #example: {fastq_dir}/{filename}.fastq.gz
     fq = join(fastq_dir,multiplex_dict[wildcards.mp])
     return(fq)
 
@@ -199,12 +199,11 @@ def nondemux_cmd(wildcards):
   return(cmd_line)
 
 #command needed to cut adaptors from demux samples
-#example: 
+def adapt_cmd(wildcards):
+    #example: 
         #singularity exec -B /scratch /data/CCBR_Pipeliner/iCLIP/container/icount.sif iCount cutadapt -ml 20 --untrimmed_output /path/_untrimmed.fastq.gz 
         # --reads_trimmed /path/sp_trimmed.fastq.gz /path/fastq.gz ABCDEDFGH
-def adapt_cmd(wildcards):
     cmd=''
-
     for sp in sp_list:
         #sub df
         df_sub = df_samples[(df_samples['sample']==sp)]
@@ -242,11 +241,12 @@ def get_filechunk_size(wildcards):
     return(chunk_size)
 
 #determine which umi separator to use
-#iCount addes rbc: to all demux files; external demux uses an _
 def umi_parameter(wildcards):
     if(multiplex_flag == 'Y'):
+        #iCount addes rbc: to all demux files;
         umi_sep="rbc:"
     else:
+        # external demux uses an _
         umi_sep="_"
     return(umi_sep)
 
@@ -266,9 +266,9 @@ def get_index(wildcards):
 #determine alignment input based on splice_aware flag
 def get_align_input(wildcards):
     if (splice_aware == "Y"):
-        f1 = join(out_dir,'01_preprocess','02_genomic', wildcards.sp + '.' + wildcards.al_sub + '.split.' + wildcards.n + '.sam.gz'),
+        f1 = join(out_dir,'01_preprocess','02_genomic', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam.gz'),
     else:
-        f1 = join(out_dir,'01_preprocess','01_alignment', wildcards.sp + '.' + wildcards.al_sub + '.split.' + wildcards.n + '.sam'),
+        f1 = join(out_dir,'01_preprocess','01_alignment', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam'),
     return(f1)
 
 #determine dedup input based on splice_aware flag
@@ -277,6 +277,14 @@ def get_dedup_input(wildcards):
         f1 = join(out_dir,'02_bam','02_merged',wildcards.sp + '.unmasked.merged.si.bam'),
     else:
         f1 = join(out_dir,'02_bam','02_merged',wildcards.sp + '.unaware.merged.si.bam'),
+    return(f1)
+
+#determine dedup input based on splcie_aware flag
+def input_mapq_corrected_bam(wildcards):
+    if (splice_aware=="Y"):
+        f1 = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
+    else:
+        f1 = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
     return(f1)
 
 #read in contrast list for manorm
@@ -302,7 +310,7 @@ def get_de_list():
         contrast_list.pop(0)
     return(contrast_list)
 
-#get the input files for analysis
+#get the input files for DE analysisanalysis
 def get_MANORM_analysis_input(wildcards):
     gid_1 = wildcards.group_id.split("_vs_")[0]
     gid_2 = wildcards.group_id.split("_vs_")[1]
@@ -324,7 +332,6 @@ def get_DIFFBIND_analysis_input(wildcards):
                 join(out_dir,'05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bam'),
                 join(out_dir,'05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '_' + wildcards.strand + '.bed')]
     return(input_list)
-
 
 #get sample name for demethod comparison - sample
 def get_DEMETHOD_gid1(wildcards):
@@ -444,24 +451,27 @@ rule all:
         # qc_troubleshoot
         join(out_dir,'qc','qc_report.html'),
 
+        #merge_mm_and_unique
+        expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
+        
         # dedup
         expand(join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),sp=sp_list),
-
+        
         # recalc
         input_recalc,
 
-        # create_beds_safs
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF'), sp=sp_list),
+        # # create_beds_safs
+        # expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
+        # expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'), sp=sp_list),
+        # expand(join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'), sp=sp_list),
+        # expand(join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF'), sp=sp_list),
         
-        # annotation_report
-        expand(join(out_dir,'04_annotation', '{sp}_annotation_final_report.html'),sp=sp_list),
-        expand(join(out_dir,'04_annotation', '{sp}_annotation_final_table.txt'),sp=sp_list),
+        # # annotation_report
+        # expand(join(out_dir,'04_annotation', '{sp}_annotation_final_report.html'),sp=sp_list),
+        # expand(join(out_dir,'04_annotation', '{sp}_annotation_final_table.txt'),sp=sp_list),
 
-        # MANORM or DIFFBIND
-        input_demethod_reports
+        # # MANORM or DIFFBIND
+        # input_demethod_reports
 
         ################################################################################################
         #intermediate troubleshooting, temp files
@@ -485,6 +495,9 @@ rule all:
 
         # #merge_mm_and_unique
         # expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
+        # expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'), sp=sp_list, al=align_list),
+
+        # #merge_mm_and_unique
         # expand(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt'), sp=sp_list, al=align_list),
 
         # # mapq recalulation
@@ -519,8 +532,6 @@ else:
     include: join(source_dir,"workflow/rules/common.smk")
     include: join(source_dir,"workflow/rules/other.smk")
 
-print(align_list)
-print(splice_aware)
 ###############################################################
 # snakemake rules
 ###############################################################
@@ -875,18 +886,18 @@ if (splice_aware == "Y"):
         convert bam back to sam file
         """
         input:
-            f1 = join(out_dir,'01_preprocess','01_alignment','{sp}.{al_sub}.split.{n}.sam'),
+            f1 = join(out_dir,'01_preprocess','01_alignment','{sp}.{al}.split.{n}.sam'),
         params:
             rname = '07a_cleanup_conversion',
-            base = '{sp}.{al_sub}.split.{n}',
-            base_out = join(out_dir,'01_preprocess','02_genomic','{sp}.{al_sub}.split.{n}.sam'),
+            base = '{sp}.{al}.split.{n}',
+            base_out = join(out_dir,'01_preprocess','02_genomic','{sp}.{al}.split.{n}.sam'),
             doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
         envmodules:
             config['samtools'],
             config['java']
         output:
-            sam = temp(join(out_dir,'01_preprocess','02_genomic','{sp}.{al_sub}.split.{n}.sam.gz')),
-            bam = temp(join(out_dir,'01_preprocess','03_unmapped','{sp}.{al_sub}.split.{n}.final.si.bam')),
+            sam = temp(join(out_dir,'01_preprocess','02_genomic','{sp}.{al}.split.{n}.sam.gz')),
+            bam = temp(join(out_dir,'01_preprocess','03_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
         shell:
             """
             #set / create tmp dir
@@ -961,12 +972,12 @@ rule create_bam_mm_unique:
         f1 = get_align_input,
     params:
         rname='08_create_bam_mm_unique',
-        base = '{sp}.{al_sub}.split.{n}.tmp',
+        base = '{sp}.{al}.split.{n}.tmp',
     envmodules:
         config['samtools']
     output:
-        sort_u = temp(join(out_dir,'01_preprocess','04_unique','{sp}.{al_sub}.split.{n}.unique.si.bam')),
-        sort_m = temp(join(out_dir,'01_preprocess','04_mm','{sp}.{al_sub}.split.{n}.mm.si.bam')),
+        sort_u = temp(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.si.bam')),
+        sort_m = temp(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.si.bam')),
     shell:
         """
         ################################################
@@ -1098,15 +1109,15 @@ rule merge_splits_unique_mm:
     merge split multimapped bam files into one merged.mm bam file
     """
     input:
-        unique = dynamic(join(out_dir,'01_preprocess','04_unique','{sp}.{al_sub}.split.{n}.unique.si.bam')),
-        mm = dynamic(join(out_dir,'01_preprocess','04_mm','{sp}.{al_sub}.split.{n}.mm.si.bam'))
+        unique = dynamic(join(out_dir,'01_preprocess','04_unique','{sp}.{al}.split.{n}.unique.si.bam')),
+        mm = dynamic(join(out_dir,'01_preprocess','04_mm','{sp}.{al}.split.{n}.mm.si.bam'))
     params:
         rname='09a_merge_splits_unique_mm',
     envmodules:
         config['samtools']  
     output:
-        unique = temp(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.unique.bam')),
-        mm = temp(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.mm.bam')),
+        unique = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam')),
+        mm = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam')),
     shell:
         """
         samtools merge -f {output.unique} {input.unique};
@@ -1120,16 +1131,16 @@ rule merge_mm_and_unique:
     run samtools
     """
     input:
-        un = join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.unique.bam'),
-        mm = join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.mm.bam'),
+        un = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam'),
+        mm = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam'),
     params:
         rname='09b_merge_mm_and_unique',
     envmodules:
         config['samtools']  
     output:
-        merged = temp(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.bam')),
-        samstat = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al_sub}_samstats.txt')),
-        sort = join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'),
+        merged = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam')),
+        samstat = temp(join(out_dir, 'qc', '00_qc_post','{sp}.{al}_samstats.txt')),
+        sort = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'),
     shell:
         """
         #set / create tmp dir
@@ -1386,30 +1397,36 @@ if (splice_aware == 'Y'):
         params:
             rname='24c_mapq_stats',
             R = join(source_dir,'workflow','scripts','tbd_mapq_stats.Rmd'),
-            base = join(out_dir,'02_bam','04_mapq/')
-            sid = '{sp}'
+            base = join(out_dir,'02_bam','04_mapq/'),
+            sid = "{sp}"
         envmodules:
             config['samtools'],
             config['R']  
         output:
             seq_old = (join(out_dir,'02_bam','04_mapq','{sp}.old_counts.txt')),
             seq_new = (join(out_dir,'02_bam','04_mapq','{sp}.new_counts.txt')),
-            seq_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff.txt')),
+            seq_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff_counts.txt')),
             png_old = (join(out_dir,'02_bam','04_mapq','{sp}.old_counts.png')),
             png_new = (join(out_dir,'02_bam','04_mapq','{sp}.new_counts.png')),
             png_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff.png')),
-            txt_old = (join(out_dir,'02_bam','04_mapq','{sp}.old_counts.txt')),
-            txt_new = (join(out_dir,'02_bam','04_mapq','{sp}.new_counts.txt')),
+            txt_old = (join(out_dir,'02_bam','04_mapq','{sp}.old.txt')),
+            txt_new = (join(out_dir,'02_bam','04_mapq','{sp}.new.txt')),
             txt_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff.txt')),
             html = join(out_dir,'02_bam','04_mapq','report','{sp}.report.html'),
         shell:
             """
             #create files with new and old files
-            samtools view {input.unmasked} | awk '{{print $5}}' | sort -n | uniq -c > {output.seq_old}
-            samtools view {input.recalc} | awk '{{print $5}}' | sort -n | uniq -c > {output.seq_new}
+            samtools view {input.unmasked} | awk '{{print $1,$5}}' > {output.seq_old}
+            samtools view {input.recalc} | awk '{{print $1,$5}}' > {output.seq_new}
 
             #run comparison of old vs new
-            awk -F"\t" 'FILENAME=="test.old.txt"{A[$1$2]=$1$2} FILENAME=="test.new.txt"{if(!A[$1$2]){print}}' test.old.txt test.new.txt awk '{print $2}' | sort -n | uniq -c > {output.seq_diff}
+            awk -F"\t" 'FILENAME=="{output.seq_old}"{{A[$1$2]=$1$2}} FILENAME=="{output.seq_new}"{{if(!A[$1$2]){{print}}}}' \
+                {output.seq_old} {output.seq_new} awk '{{print $2}}' | sort -n | uniq -c > {output.seq_diff}
+
+
+            #create files with new and old files
+            samtools view {input.unmasked} | awk '{{print $5}}' | sort -n | uniq -c > {output.seq_old}
+            samtools view {input.recalc} | awk '{{print $5}}' | sort -n | uniq -c > {output.seq_new}
 
             #R
             Rscript -e 'library(rmarkdown); \
@@ -1422,14 +1439,6 @@ if (splice_aware == 'Y'):
                     output_dir="{params.base}",
                     ))'            
             """
-
-#determine dedup input based on splcie_aware flag
-def input_mapq_corrected_bam(wildcards):
-    if (splice_aware=="Y"):
-        f1 = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
-    else:
-        f1 = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
-    return(f1)
 
 rule create_beds_safs:
     """
@@ -1615,6 +1624,7 @@ rule project_annotations:
             --reftable_path {params.a_config}
         """
 
+#Pipeline splits depending on DE_method or none
 if DE_method=="MANORM" or DE_method=="DIFFBIND":
     rule peak_annotations:
         '''
@@ -1909,7 +1919,6 @@ if (DE_method=="MANORM"):
                     incd_rRNA="{params.rrna}"\
                     ))'            
             """
-
 elif (DE_method == "DIFFBIND"):
     rule DIFFBIND_beds:
         input:
@@ -2103,3 +2112,5 @@ elif (DE_method == "DIFFBIND"):
                     incd_rRNA="{params.rrna}"\
                     ))'            
             """
+
+            
