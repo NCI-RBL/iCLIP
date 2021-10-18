@@ -31,6 +31,7 @@ source_dir = config['sourceDir']
 cont_dir = config['containerDir']
 out_dir = config['outputDir'].rstrip('/') + '/'
 fastq_dir = config['fastqDir'].rstrip('/') + '/'
+fastq_val = config['fastq_val']
 
 sample_manifest = config['sampleManifest']
 multiplex_manifest = config['multiplexManifest']
@@ -736,6 +737,7 @@ rule qc_screen_validator:
         filtered = rules.remove_adaptors.output.filtered
     params:
         rname='04_qc_screen_validator',
+        fastq_v = fastq_val,
         tmp = join('{sp}_filtered.fastq'),
         base_species = join(out_dir, 'qc', '00_qc_screen_species'),
         conf_species = join(source_dir,'config','fqscreen_species_config.conf'),
@@ -788,7 +790,7 @@ rule qc_screen_validator:
         mkdir -p {params.base_val}
         
         #run validator
-        /data/CCBR_Pipeliner/db/PipeDB/bin/fastQValidator \
+        {params.fastq_v} \
             --noeof \
             --printableErrors 100000000 \
             --baseComposition \
