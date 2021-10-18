@@ -268,7 +268,7 @@ def get_align_input(wildcards):
     if (splice_aware == "Y"):
         f1 = join(out_dir,'01_preprocess','02_genomic', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam.gz'),
     else:
-        f1 = join(out_dir,'01_preprocess','01_alignment', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam'),
+        f1 = join(out_dir,'01_preprocess','01_alignment', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam.gz'),
     return(f1)
 
 #determine dedup input based on splice_aware flag
@@ -552,7 +552,7 @@ rule check_manifest:
     envmodules:
         config['python']  
     output:
-        o1 = join(out_dir, 'qc', 'manifest_check.txt'),
+        manifest = join(out_dir, 'qc', 'manifest_check.txt'),
     shell:
         """
         python {params.py} \
@@ -568,7 +568,7 @@ if (multiplex_flag == 'Y'):
         output barplot with top barcode counts
         """
         input:
-            manifest = join(out_dir,'qc', "manifest_check.txt"),
+            manifest = rules.check_manifest.output.manifest
             fq = get_fq_names,
         params:
             rname = "01a_qc_barcode",
@@ -607,7 +607,7 @@ if (multiplex_flag == 'Y'):
         """
         input:
             f1 = get_fq_names,
-            manifest = join(out_dir,'qc', "manifest_check.txt"),
+            manifest = rules.check_manifest.output.manifest
         params:
             rname='01b_demux',
             s_exec = singularity_exec,
@@ -618,7 +618,7 @@ if (multiplex_flag == 'Y'):
         envmodules:
             config['singularity'],
         output:
-            o1 = temp(join(out_dir,'{mp}','01_preprocess','demux_nomatch5.fastq.gz')),
+            fastq = temp(join(out_dir,'{mp}','01_preprocess','demux_nomatch5.fastq.gz')),
         shell:
             """
             {params.s_exec} {params.doc} iCount demultiplex --minimum_length {params.ml} --mismatches {params.mm} {params.cmd}
@@ -631,7 +631,7 @@ if (multiplex_flag == 'Y'):
         to: {out_dir}/{multiplex_id}/01_renamed/demux_{sample_id}.fast.gz
         """
         input:
-            f1 = join(out_dir,'{mp}','01_preprocess','demux_nomatch5.fastq.gz')
+            fastq = rules.demultiplex.output.fastq
         params:
             rname = '01c_rename_demux',
             cmd = rename_cmd
@@ -648,12 +648,12 @@ else:
         copies fastq files from source location and moves into renamed file folder
         """
         input:
-            manifest = join(out_dir,'qc', "manifest_check.txt")
+            manifest = rules.check_manifest.output.manifest
         params:
             rname = '01_copy_nondemux',
             cmd = nondemux_cmd
         output:
-            o1 = temp(expand(join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list))
+            fastqs = temp(expand(join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list))
         shell:
             """
             {params.cmd}
@@ -666,15 +666,15 @@ rule remove_adaptors:
     2) trimmed.fastq.gz - the sequences that were trimmed from the input file --> removed_seq.fastq.gz
     """
     input:
-        f1 = expand(join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+        fastqs = expand(join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list),
     params:
         rname='02_remove_adaptors',
         cmd = adapt_cmd,
     envmodules:
         config['singularity'],    
     output:
-        o1 = temp(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')),
-        o2 = temp(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'))
+        filtered = temp(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')),
+        removed = temp(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'))
     shell:
         """
         if [ -d "/tmp/iCount/" ]; then rm -r "/tmp/iCount/"; fi
@@ -687,17 +687,17 @@ rule qc_fastq_pre:
     Runs FastQC report on each sample before adaptors have been removed
     """
     input:
-        f1 = expand(join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list)
+        fastqs = expand(join(out_dir,'{mp}','01_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list)
     params:
         rname='03a_qc_fastq_pre',
         base = join(out_dir,'{mp}','00_qc_pre/')
     envmodules:
         config['fastqc']
     output:
-        o1 = temp(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'))
+        html = temp(join(out_dir,'{mp}','00_qc_pre','{sp}_fastqc.html'))
     shell:
         """
-        fastqc {input.f1} -o {params.base}
+        fastqc {input.fastqs} -o {params.base}
         """
 
 rule qc_fastq_post:
@@ -705,17 +705,17 @@ rule qc_fastq_post:
     Runs FastQC report on each sample after adaptors have been removed
     """
     input:
-        f1 = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list)
+        fastqs = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list)
     params:
         rname='03b_qc_fastq_post',
         base = join(out_dir, 'qc', '00_qc_post'),
     envmodules:
         config['fastqc']
     output:
-        o1 = temp(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'))
+        html = temp(join(out_dir, 'qc', '00_qc_post','{sp}_filtered_fastqc.html'))
     shell:
         """
-        fastqc {input.f1} -o {params.base}
+        fastqc {input.fastqs} -o {params.base}
         """
 
 rule qc_screen_validator:
@@ -733,7 +733,7 @@ rule qc_screen_validator:
         Log file containing any warnings or errors on file
     """
     input:
-        f1 = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')
+        filtered = rules.remove_adaptors.output.filtered
     params:
         rname='04_qc_screen_validator',
         tmp = join('{sp}_filtered.fastq'),
@@ -748,9 +748,9 @@ rule qc_screen_validator:
         config['perl'],
         config['fastq_screen'],
     output:
-        o1 = temp(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt')),
-        o2 = temp(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt')),
-        o3 = join(out_dir,'qc','{sp}.validated.fastq.log'),
+        species = temp(join(out_dir, 'qc', '00_qc_screen_species','{sp}_filtered_screen.txt')),
+        screen = temp(join(out_dir, 'qc', '00_qc_screen_rrna','{sp}_filtered_screen.txt')),
+        log = join(out_dir,'qc','{sp}.validated.fastq.log'),
     shell:
         """
         set +e
@@ -764,7 +764,7 @@ rule qc_screen_validator:
             fi
         fi
         #gunzip input files
-        gunzip -c {input.f1} > ${{tmpdir}}/{params.tmp};
+        gunzip -c {input.filtered} > ${{tmpdir}}/{params.tmp};
         
         #run screen
         fastq_screen --conf {params.conf_species} \
@@ -793,7 +793,7 @@ rule qc_screen_validator:
             --printableErrors 100000000 \
             --baseComposition \
             --avgQual \
-            --file {input.f1} > {output.o3};
+            --file {input.filtered} > {output.log};
         
         exitcode=$?
         if [ $exitcode -eq 1 ]
@@ -853,7 +853,7 @@ rule novoalign:
     envmodules:
         config['novocraft']
     output:
-        o1 = temp(join(out_dir,'01_preprocess','01_alignment','{sp}.{al}.split.{n}.sam')),
+        sam = temp(join(out_dir,'01_preprocess','01_alignment','{sp}.{al}.split.{n}.sam.gz')),
     shell:
         """
         zcat {input.f1} | \
@@ -868,7 +868,9 @@ rule novoalign:
         -s 1 \
         -o SAM \
         -R 0 \
-        -r EXHAUSTIVE 999 > {output.o1}
+        -r EXHAUSTIVE 999 > {output.sam}
+
+        gzip {output.sam}
         """
 
 #pipeline branches for splice_aware processing
@@ -886,7 +888,7 @@ if (splice_aware == "Y"):
         convert bam back to sam file
         """
         input:
-            f1 = join(out_dir,'01_preprocess','01_alignment','{sp}.{al}.split.{n}.sam'),
+            sam = join(out_dir,'01_preprocess','01_alignment','{sp}.{al}.split.{n}.sam.gz'),
         params:
             rname = '07a_cleanup_conversion',
             base = '{sp}.{al}.split.{n}',
@@ -909,9 +911,9 @@ if (splice_aware == "Y"):
             fi
             #run cleanup
             set +e
-            samtools view {input.f1} | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${{tmpdir}}/{params.base}.tmp.sam;
-            samtools view -H {input.f1} | cat - ${{tmpdir}}/{params.base}.tmp.sam > ${{tmpdir}}/{params.base}.tmp.mapped.sam; 
-            samtools view -f 4 {input.f1} > ${{tmpdir}}/{params.base}.tmp.unmapped.sam;
+            zcat {input.sam} | samtools view | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${{tmpdir}}/{params.base}.tmp.sam;
+            zcat {input.sam} | samtools view -H | cat - ${{tmpdir}}/{params.base}.tmp.sam > ${{tmpdir}}/{params.base}.tmp.mapped.sam; 
+            zcat {input.sam} | samtools view -f 4 > ${{tmpdir}}/{params.base}.tmp.unmapped.sam;
             
             #run genomic conversion
             java -Djava.io.tmpdir=${{tmpdir}} -jar -Xmx100G {params.doc} \
@@ -1002,16 +1004,10 @@ rule create_bam_mm_unique:
         #create mm, unique, header files
         ################################################
         set +e
-        #output of genomic conversion, if splice aware, is a zipped file
-        if [[ {splice_aware} == "N" ]]; then
-            samtools view {input.f1} | grep -v 'IH:i' > ${{tmpdir_u}}/{params.base}.unique.txt;
-            samtools view {input.f1} | grep 'IH:i' > ${{tmpdir_m}}/{params.base}.mm.txt;
-            samtools view -H {input.f1} > ${{tmpdir}}/{params.base}.header.txt
-        else
-            gunzip -c {input.f1} | samtools view | grep -v 'IH:i' > ${{tmpdir_u}}/{params.base}.unique.txt;
-            gunzip -c {input.f1} | samtools view | grep 'IH:i' > ${{tmpdir_m}}/{params.base}.mm.txt;
-            gunzip -c {input.f1} | samtools view -H > ${{tmpdir}}/{params.base}.header.txt
-        fi
+        gunzip -c {input.f1} | samtools view | grep -v 'IH:i' > ${{tmpdir_u}}/{params.base}.unique.txt;
+        gunzip -c {input.f1} | samtools view | grep 'IH:i' > ${{tmpdir_m}}/{params.base}.mm.txt;
+        gunzip -c {input.f1} | samtools view -H > ${{tmpdir}}/{params.base}.header.txt
+
         ################################################
         #create unique bam, correcting NH header
         ################################################
