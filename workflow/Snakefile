@@ -813,14 +813,14 @@ rule determine_splits:
     split is done based off split_value input, maintaining every 4 lines = 1 seq
     """
     input:
-        f1 = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list)
+        filtered = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list)
     params:
         sh = join(source_dir, 'workflow', 'scripts', '03_find_split_parameters.sh'),
     output:
-        o1 = join(out_dir,'qc','split_params.tsv')
+        split_params = join(out_dir,'qc','split_params.tsv')
     shell:
         """
-        sh {params.sh} {output.o1} {split_value} {input.f1}
+        sh {params.sh} {output.split_params} {split_value} {input.filtered}
         """
 
 rule split_files:
@@ -828,17 +828,17 @@ rule split_files:
     performs split of fastq file into smaller files using parameters in split_params.tsv
     """
     input:
-        f1 = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),
-        sp = join(out_dir,'qc','split_params.tsv')
+        filtered = rules.remove_adaptors.output.filtered,
+        sp = rules.determine_splits.output.split_params
     params:
         rname='05_split_files',
         base = join(out_dir,'01_preprocess','00_splits','{sp}.split.'),
         cmd = get_filechunk_size
     output:
-        o1 = temp(dynamic(join(out_dir,'01_preprocess','00_splits','{sp}.split.{n}.fastq.gz')))
+        splits = temp(dynamic(join(out_dir,'01_preprocess','00_splits','{sp}.split.{n}.fastq.gz')))
     shell:
         """
-        zcat {input.f1} | split --additional-suffix .fastq -l {params.cmd} --numeric-suffixes=1 --filter='gzip > $FILE.gz' - {params.base}
+        zcat {input.filtered} | split --additional-suffix .fastq -l {params.cmd} --numeric-suffixes=1 --filter='gzip > $FILE.gz' - {params.base}
         """
 
 rule novoalign:
@@ -890,7 +890,7 @@ if (splice_aware == "Y"):
         convert bam back to sam file
         """
         input:
-            sam = join(out_dir,'01_preprocess','01_alignment','{sp}.{al}.split.{n}.sam.gz'),
+            sam = rules.novoalign.output.sam
         params:
             rname = '07a_cleanup_conversion',
             base = '{sp}.{al}.split.{n}',
@@ -1129,8 +1129,8 @@ rule merge_mm_and_unique:
     run samtools
     """
     input:
-        un = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam'),
-        mm = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam'),
+        un = rules.merge_splits_unique_mm.output.unique
+        mm = rules.merge_splits_unique_mm.output.mm
     params:
         rname='09b_merge_mm_and_unique',
     envmodules:
@@ -1195,7 +1195,7 @@ rule qc_alignment:
     generates plots and summmary file for aligned vs unaligned statistics
     """
     input:
-        f1 = join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'),
+        merged = join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'),
     params:
         rname = "10_qc_alignment",
         R = join(source_dir,'workflow','scripts','04_alignment_stats.R'),
@@ -1214,8 +1214,8 @@ rule qc_alignment:
     shell:
         """
         #gather stats for all reads
-        samtools view -F 4 {input.f1} | awk '{{ print length($10) }}' | sort -n | uniq -c > {output.bam_a};
-        samtools view -f 4 {input.f1} | awk '{{ print length($10) }}' | sort -n | uniq -c > {output.bam_u};
+        samtools view -F 4 {input.merged} | awk '{{ print length($10) }}' | sort -n | uniq -c > {output.bam_a};
+        samtools view -f 4 {input.merged} | awk '{{ print length($10) }}' | sort -n | uniq -c > {output.bam_u};
         #run alignment stats code
         Rscript {params.R} --sampleid {params.sampleid} --bam_aligned {output.bam_a} --bam_unaligned {output.bam_u} --output_dir {params.base}
         """
@@ -1319,16 +1319,16 @@ if (splice_aware == 'Y'):
         generate readids from unmasked files
         """
         input:
-            f1 = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
+            bam = rules.dedup.output.bam
         params:
             rname='13a_readids',
         envmodules:
             config['samtools']  
         output:
-            o1 = join(out_dir,'02_bam','04_mapq','{sp}.readids.txt'),
+            reads = join(out_dir,'02_bam','04_mapq','{sp}.readids.txt'),
         shell:
             """
-            samtools view {input.f1}|cut -f1|sort|uniq > {output.o1}
+            samtools view {input.bam} |cut -f1|sort|uniq > {output.reads}
             """
 
     rule subsample_reads:
@@ -1340,7 +1340,7 @@ if (splice_aware == 'Y'):
         using the readids from splice aware (unmasked exon) in rule generate_readids
         """
         input:
-            id = join(out_dir,'02_bam','04_mapq','{sp}.readids.txt'),
+            id = rules.generate_readids.output.reads
             unaware = join(out_dir,'02_bam','02_merged','{sp}.unaware.merged.si.bam'),
             masked = join(out_dir,'02_bam','02_merged','{sp}.masked.merged.si.bam'),
         params:
@@ -1367,7 +1367,7 @@ if (splice_aware == 'Y'):
         input:
             unaware = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.bam'),
             masked = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.bam'),
-            unmasked = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
+            unmasked = rules.dedup.output.bam
         params:
             rname='24c_recalc',
             script = join(source_dir,'workflow','scripts','07_correct_mapq.py'),
@@ -1390,8 +1390,8 @@ if (splice_aware == 'Y'):
         
         """
         input:
-            unmasked = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
-            recalc = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam')
+            unmasked = rules.dedup.output.bam
+            recalc = rules.mapq_recalc.output.bam
         params:
             rname='24c_mapq_stats',
             R = join(source_dir,'workflow','scripts','tbd_mapq_stats.Rmd'),
@@ -1519,9 +1519,9 @@ rule feature_counts:
     all reads as input and the second takes only unique reads as input
     """
     input:
-        bam = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
-        saf_all = join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'),
-        saf_unique = join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF'),
+        bam = rules.dedup.output.bam
+        saf_all = rules.create_beds_safs.output.saf_all
+        saf_unique = rules.create_beds_safs.output.saf_unique
     params:
         rname='14_feature_counts',
         threads = getthreads("feature_counts")
@@ -1585,7 +1585,7 @@ rule project_annotations:
     generate annotation table once per project
     """
     input:
-        join(out_dir, 'qc', 'split_params.tsv'),
+        split = rules.determine_splits.output.split_params
     params:
         rname='15a_project_annotations',
         script = join(source_dir,'workflow','scripts','08_annotation.R'),
@@ -1629,9 +1629,9 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
         find peak junctions, annotations peaks, merges junction and annotation information
         '''
         input:
-            unique = join(out_dir,'03_peaks','03_allreadpeaks', '{sp}_uniqueCounts.txt'),
-            all = join(out_dir,'03_peaks','03_allreadpeaks', '{sp}_allFracMMCounts.txt'),
-            anno = join(out_dir,'04_annotation', '01_project','annotations.txt'),
+            unique = rules.feature_counts.output.all_unique,
+            all = rules.feature_counts.output.all_mm,
+            anno = rules.project_annotations.output.anno
         params:
             rname = '15b_peak_annotations',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
@@ -1656,11 +1656,11 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
             config['R'],
             config['bedtools'],
         output:
-            o1 = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
-            o2 = join(out_dir,'04_annotation', '02_peaks', '{sp}_peakannotation_complete.txt'),
-            m1 = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '.bed')),
-            m2 = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '_P.bed')),
-            m3 = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '_N.bed'))
+            anno = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
+            text = join(out_dir,'04_annotation', '02_peaks', '{sp}_peakannotation_complete.txt'),
+            bed = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '.bed')),
+            p_bed = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '_P.bed')),
+            n_bed = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '_N.bed'))
         shell:
             '''
             #set / create tmp dir
@@ -1698,9 +1698,9 @@ else:
         find peak junctions, annotations peaks, merges junction and annotation information
         '''
         input:
-            unique = join(out_dir,'03_peaks','03_allreadpeaks', '{sp}_uniqueCounts.txt'),
-            all = join(out_dir,'03_peaks','03_allreadpeaks', '{sp}_allFracMMCounts.txt'),
-            anno = join(out_dir,'04_annotation', '01_project','annotations.txt'),
+            unique = rules.feature_counts.output.all_unique,
+            all = rules.feature_counts.output.all_mm,
+            anno = rules.project_annotations.output.anno
         params:
             rname = '15b_peak_annotations',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
@@ -1725,8 +1725,8 @@ else:
             config['R'],
             config['bedtools'],
         output:
-            o1 = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
-            o2 = join(out_dir,'04_annotation', '02_peaks', '{sp}_peakannotation_complete.txt')
+            anno = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
+            text = join(out_dir,'04_annotation', '02_peaks', '{sp}_peakannotation_complete.txt')
         shell:
             '''
             #set / create tmp dir
@@ -1796,16 +1796,16 @@ rule annotation_report:
 if (DE_method=="MANORM"):
     rule MANORM_beds:
         input:
-            f1 = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
+            bed_all = rules.create_beds_safs.output.bed_all
         params:
             rname = "16a_MANORM_beds"
         output:
-            o1 = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_P.bed')),
-            o2 = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_N.bed')),
+            p_bed = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_P.bed')),
+            n_bed = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_N.bed')),
         shell:
             """
-            awk '$6=="+"' {input.f1} > {output.o1}
-            awk '$6=="-"' {input.f1} > {output.o2}
+            awk '$6=="+"' {input.bed_all} > {output.p_bed}
+            awk '$6=="-"' {input.bed_all} > {output.n_bed}
             """
 
     rule MANORM_analysis:
@@ -1832,7 +1832,7 @@ if (DE_method=="MANORM"):
         envmodules:
             config['manorm']
         output:
-            o1 = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls')
+            mavals = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls')
         shell:
             """
             manorm \
@@ -1874,7 +1874,7 @@ if (DE_method=="MANORM"):
         envmodules:
             config['R']
         output:
-            o1 = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt')
+            post_proc = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt')
         shell:
             """
             Rscript {params.script} \
@@ -1884,12 +1884,12 @@ if (DE_method=="MANORM"):
                 --peak_anno_g2 {params.anno_dir}/{params.gid_2}_annotation_final_table.txt \
                 --pos_manorm {params.de_dir}/{wildcards.group_id}/{wildcards.group_id}_P/{wildcards.group_id}_all_MAvalues.xls \
                 --neg_manorm {params.de_dir}/{wildcards.group_id}/{wildcards.group_id}_N/{wildcards.group_id}_all_MAvalues.xls \
-                --output_file {output.o1}
+                --output_file {output.post_proc}
             """
 
     rule MANORM_RMD:
         input:
-            f1 = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt')
+            post_proc = rules.MANORM_post_processing.output.post_proc
         params:
             rname = "16d_MANORM_RMD",
             R = join(source_dir,'workflow','scripts','12_MAnormAnnotation.Rmd'),
@@ -1902,13 +1902,13 @@ if (DE_method=="MANORM"):
         envmodules:
             config['R']
         output:
-            o1 = join(out_dir,'05_demethod','02_analysis','{group_id}','{group_id}_manorm_report.html')
+            report = join(out_dir,'05_demethod','02_analysis','{group_id}','{group_id}_manorm_report.html')
         shell:
             """
             Rscript -e 'library(rmarkdown); \
             rmarkdown::render("{params.R}",
-                output_file = "{output.o1}", \
-                params= list(peak_in="{input.f1}", \
+                output_file = "{output.report}", \
+                params= list(peak_in="{input.post_proc}", \
                     PeakIdnt="{params.p_id}",\
                     samplename="{params.gid_1}", \
                     background="{params.gid_2}", \
@@ -1920,15 +1920,15 @@ if (DE_method=="MANORM"):
 elif (DE_method == "DIFFBIND"):
     rule DIFFBIND_beds:
         input:
-            f1 = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
+            f1 = rules.dedup.output.bam
         params:
             rname = "16a_DIFFBIND_beds",
             base = "{sp}.dedup"
         envmodules:
             config['samtools']
         output:
-            o1 = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforDIFFBIND_P.bam')),
-            o2 = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforDIFFBIND_N.bam')),
+            p_bam = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforDIFFBIND_P.bam')),
+            n_bam = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforDIFFBIND_N.bam')),
         shell:
             """
             ################################################
@@ -1945,10 +1945,10 @@ elif (DE_method == "DIFFBIND"):
             samtools view -H {input.f1} > ${{tmpdir}}/{params.base}.header.txt
             #run 
             samtools view -F 16 {input.f1} | \
-                cat ${{tmpdir}}/{params.base}.header.txt - | samtools view -Sb > {output.o1}
+                cat ${{tmpdir}}/{params.base}.header.txt - | samtools view -Sb > {output.p_bam}
             
             samtools view -f 16 {input.f1} | \
-                cat ${{tmpdir}}/{params.base}.header.txt - | samtools view -Sb > {output.o2}
+                cat ${{tmpdir}}/{params.base}.header.txt - | samtools view -Sb > {output.n_bam}
             """
 
     rule DIFFBIND_preprocess:
@@ -2079,7 +2079,7 @@ elif (DE_method == "DIFFBIND"):
     
     rule DIFFBIND_report:
         input:
-            final = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_final_table.txt'),
+            final = rules.DIFFBIND_analysis.output.final
             s_manifest = sample_manifest,
         params:
             rname = "16d_DIFFBIND_RMD",
