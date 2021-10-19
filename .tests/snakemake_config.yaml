@@ -14,22 +14,26 @@ contrastManifest: ".test/contrasts_example.tsv"
 fastqDir: ".tests/"
 
 #user parameters
-reference: "hg38" #reference organism ["mm10", "hg38"]
 filterlength: 20 #minimum read length to include in analysis [any int >20]
-spliceaware: "N" #whether to run splice_aware part of the pipeline ['y', 'n']
-includerRNA: "Y" #include refseq rRNA's in annotations ["Y", "N"]
-spliceBPlength: 75 #length of splice index to use [50, 75, 150]
 multiplexflag: "Y" #flag that samples are multiplexed ["Y","N"]
 mismatch: 1 #number of bp mismatches allowed in demultiplexing [1,2,3]
+reference: "hg38" #reference organism ["mm10", "hg38"]
+spliceaware: "N" #whether to run splice_aware part of the pipeline ['y', 'n']
+includerRNA: "N" #include refseq rRNA's in annotations ["Y", "N"]
+spliceBPlength: 75 #length of splice index to use [50, 75, 150]
+splicejunction: "N" #include splice junctions in peak calls: "manorm"
+condenseexon: "N" #whether to collapse exons
 mincount: 3 #minimum number of matches to count as a peak [1,2,3]
 ntmerge: 50 #minimum distance of nucleotides to merge peaks [10,20,30,40,50,60]
 peakid: "ALL" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
-DEmethod: "MANORM" #choose DE method ["manorm","none"]
-splicejunction: "Y" #include splice junctions in peak calls: "manorm"
-condenseexon: "Y" #whether to collapse exons
+DEmethod: "none" #choose DE method ["manorm","none"]
+sampleoverlap: 1 #if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted [>1]
+pval: 0.005 #if DEmethod, pval cutoff for significance
+fc: 1 #if DEmethod, fold change cut off for significance
 
 #modules, container parameters
 containerDir: "/data/CCBR_Pipeliner/iCLIP/container"
+fastq_val: "/data/CCBR_Pipeliner/db/PipeDB/bin/fastQValidator"
 bedtools: "bedtools/2.29.2"
 bowtie2: "bowtie/2-2.3.4"
 fastq_screen: "fastq_screen/0.14.0"
