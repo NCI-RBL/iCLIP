@@ -24,7 +24,7 @@ spliceBPlength: 75 #if spliceaware Y, length of splice index to use [50, 75, 150
 splicejunction: "Y" #if spliceaware Y, include splice junctions in peak calls for DE_METHOD MANORM or DIFFBIND ["Y", "N"]
 condenseexon: "Y" #if spliceaware Y, if there are multiple peaks in the same transcript, whether to combine into one feature ["Y", "N"]
 mincount: 3 #minimum number of reads to count as a peak [1,2,3]
-ntmerge: 50 #minimum distance of nucleotides to merge peaks [10,20,30,40,50,60]
+ntmerge: 10 #minimum distance of nucleotides to merge peaks [any integer >=1, default 10]
 peakid: "ALL" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
 DEmethod: "MANORM" #choose DE method ["none", "manorm", "diffbind"]
 sampleoverlap: 1 #if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted [>1]

@@ -21,16 +21,22 @@ properties:
   contrastManifest:
     type: string
     description: /path/to/contrast/manifest
+  containerDir:
+    type: string
+    description: /path/to/container/sif/files
+  fastq_val:
+    type: string
+    description: /path/to/fastQValidator
   fastqDir:
     type: string
     description: /path/to/fastq/files
+  filterlength: 
+    types: number
+    description: minimum read length to include in analysis, any int greater than 20
   multiplexflag:
     types: string
     enum: ["Y","N","y","n"]
     description: determine whether or not samples are multiplexed
-  filterlength: 
-    types: number
-    description: minimum read length to include in analysis, any int greater than 20
   mismatch:
     types: number
     enum: [1,2,3]
@@ -42,11 +48,23 @@ properties:
   spliceaware:
     type: string
     enum: ["Y","N","y","n"]
-    description: whether to include splice align parameters
+    description: whether to run include splice_aware feature for alignment
+  includerRNA:
+    type: string
+    enum: ["Y","N","y","n"]
+    description: if spliceaware, include refseq rRNA's in annotations
   spliceBPlength:
     type: number
     enum: [50,75]
     description: bp length of created index
+  splicejunction: 
+    type: string
+    enum: ["Y","N","y","n"]
+    description: if spliceaware Y, include splice junctions in peak calls for DE_METHOD MANORM or DIFFBIND
+  condenseexon:
+    type: string
+    enum: ["Y","N","y","n"]
+    description: if spliceaware Y, if there are multiple peaks in the same transcript, whether to combine into one feature
   mincount:
     type: number
     description: minimum number of values to count as a 'peak'
@@ -61,17 +79,9 @@ properties:
     type: string
     enum: ["MANORM","manorm","none","NONE", "DIFFBIND","diffbind"]
     description: DE method option  
-  containerDir:
-    type: string
-    description: /path/to/container/sif/files
-  includerRNA:
-    type: string
-    enum: ["Y","N","y","n"]
-    description: whether to include RefSeq rRNA's in annotations
-  condenseexon:
-    type: string
-    enum: ["Y","N","y","n"]
-    description: whether to collapse exons during annotation
+  sampleoverlap:
+    type: number
+    description: if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted 
   pval: 
     type: number
     description: if DEmethod, pval cutoff for significance
@@ -87,18 +97,21 @@ required:
   - multiplexManifest
   - contrastManifest
   - fastqDir
+  - containerDir
+  - fastq_val
   - filterlength
+  - multiplexflag
   - mismatch
   - reference
   - spliceaware
+  - includerRNA
   - spliceBPlength
+  - splicejunction
+  - condenseexon
   - mincount
   - ntmerge
   - peakid
   - DEmethod
-  - containerDir
-  - condenseexon
-  - includerRNA
+  - sampleoverlap
   - pval
   - fc
-  
