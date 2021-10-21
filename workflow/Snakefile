@@ -392,7 +392,7 @@ if splice_aware == 'Y':
     input_unmapped = expand(join(out_dir,'02_bam','01_unmapped','{sp}.{al_sub}.complete.bam'),  sp=sp_list, al_sub=align_sub)
 
     input_recalc = [expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),sp=sp_list),
-                    expand(join(out_dir,'02_bam','04_mapq','report','{sp}.report.html'),sp=sp_list)]
+                    expand(join(out_dir,'02_bam','04_mapq','{sp}.report.html'),sp=sp_list)]
 else:
     input_unmapped = expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
 
@@ -875,6 +875,8 @@ rule novoalign:
 
 #pipeline branches for splice_aware processing
 if (splice_aware == "Y"):
+    
+    #only masked and unmasked files go through clean-up and conversion since they were aligned to transcriptome
     rule cleanup_conversion:
         """
         performs cleanup for inserts
@@ -891,6 +893,7 @@ if (splice_aware == "Y"):
             sam = rules.novoalign.output.sam
         params:
             rname = '06b_cleanup_conversion',
+            al_type = '{al}',
             base = '{sp}.{al}.split.{n}',
             base_out = join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam'),
             doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
@@ -909,38 +912,36 @@ if (splice_aware == "Y"):
                 tmpdir="{out_dir}01_preprocess/03_tmp_genomic"
                 if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
             fi
-            #run cleanup
-            set +e
-            zcat {input.sam} | samtools view | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${{tmpdir}}/{params.base}.tmp.sam;
-            zcat {input.sam} | samtools view -H | cat - ${{tmpdir}}/{params.base}.tmp.sam > ${{tmpdir}}/{params.base}.tmp.mapped.sam; 
-            zcat {input.sam} | samtools view -f 4 > ${{tmpdir}}/{params.base}.tmp.unmapped.sam;
-            
-            #run genomic conversion
-            java -Djava.io.tmpdir=${{tmpdir}} -jar -Xmx100G {params.doc} \
-                -f ${{tmpdir}}/{params.base}.tmp.mapped.sam \
-                -a 50000 -n 25 -u -s {params.base_out};
-            #convert input to bam
-            gunzip -c {output.sam} | samtools view -S -b  - > ${{tmpdir}}/{params.base}.unmasked.bam;
-            
-            #merge unmapped sam and unmasked bam into final output
-            samtools merge -f ${{tmpdir}}/{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
-            
-            #pull header from merged and add to final output
-            samtools view -h -o ${{tmpdir}}/{params.base}.final.bam ${{tmpdir}}/{params.base}.merged.bam;
-            
-            #sort and index final outupt
-            samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
-            samtools index {output.bam}; 
 
-            exitcode=$?
-            if [ $exitcode -eq 1 ]
-            then
-                exit 1
+            if [ {params.al_type} == "unaware" ]; then
+                cp {input.sam} {output.sam};
+                gzip -c {output.sam}
             else
-                exit 0
-            fi                    
+                #run cleanup
+                zcat {input.sam} | samtools view | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${{tmpdir}}/{params.base}.tmp.sam;
+                zcat {input.sam} | samtools view -H | cat - ${{tmpdir}}/{params.base}.tmp.sam > ${{tmpdir}}/{params.base}.tmp.mapped.sam; 
+                zcat {input.sam} | samtools view -f 4 > ${{tmpdir}}/{params.base}.tmp.unmapped.sam;
+                
+                #run genomic conversion
+                java -Djava.io.tmpdir=${{tmpdir}} -jar -Xmx100G {params.doc} \
+                    -f ${{tmpdir}}/{params.base}.tmp.mapped.sam \
+                    -a 50000 -n 25 -u -s {params.base_out};
+                
+                #convert input to bam
+                gunzip -c {output.sam} | samtools view -S -b  - > ${{tmpdir}}/{params.base}.unmasked.bam;
+                
+                #merge unmapped sam and unmasked bam into final output
+                samtools merge -f ${{tmpdir}}/{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
+                
+                #pull header from merged and add to final output
+                samtools view -h -o ${{tmpdir}}/{params.base}.final.bam ${{tmpdir}}/{params.base}.merged.bam;
+                
+                #sort and index final outupt
+                samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
+                samtools index {output.bam}
+            fi
             """
-    
+
     rule merge_unmapped_splits:
         """
         merge all sample unmapped reads into one file
@@ -1351,10 +1352,16 @@ if (splice_aware == 'Y'):
         output:
             unaware = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.bam'),
             masked = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.bam'),
+            unaware_si = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.si.bam'),
+            masked_si = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.si.bam'),
         shell:
             """
             python {params.script} --inputBAM {input.unaware} --outputBAM {output.unaware} --readids {input.id};
             python {params.script} --inputBAM {input.masked} --outputBAM {output.masked} --readids {input.id}
+            
+            #sort and index
+            samtools sort {output.unaware} > {output.unaware_si}; samtools index {output.unaware_si};
+            samtools sort {output.masked} > {output.masked_si}; samtools index {output.masked_si};
             """
 
     rule mapq_recalc:
@@ -1365,24 +1372,24 @@ if (splice_aware == 'Y'):
         outputs updated mapq score bam file and metadata file of changes
         """
         input:
-            unaware = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.bam'),
-            masked = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.bam'),
+            unaware = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.si.bam'),
+            masked = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.si.bam'),
             unmasked = rules.dedup.output.bam
         params:
             rname='12d_recalc',
-            script = join(source_dir,'workflow','scripts','07_correct_mapq.py'),
-            unaware = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.bam'),
-            masked = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.bam'),
+            script = join(source_dir,'workflow','scripts','07_correct_mapq.py')
         envmodules:
-            config['python']  
+            config['python'],
+            config['samtools']
         output:
             bam = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
             tsv = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.tsv'),
+            log = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.log')
         shell:
             """
             python {params.script} \
             --inputBAM1 {input.unaware} --inputBAM2 {input.masked} --inputBAM3 {input.unmasked} \
-            --outBAM {output.bam} --out {output.tsv}
+            --outBAM {output.bam} --outTSV {output.tsv} --outLOG {output.log};
             """
 
     rule mapq_stats:
@@ -1391,7 +1398,8 @@ if (splice_aware == 'Y'):
         """
         input:
             unmasked = rules.dedup.output.bam,
-            recalc = rules.mapq_recalc.output.bam
+            recalc = rules.mapq_recalc.output.bam,
+            log = rules.mapq_recalc.output.log
         params:
             rname='12e_mapq_stats',
             R = join(source_dir,'workflow','scripts','tbd_mapq_stats.Rmd'),
@@ -1404,13 +1412,13 @@ if (splice_aware == 'Y'):
             seq_old = (join(out_dir,'02_bam','04_mapq','{sp}.old_counts.txt')),
             seq_new = (join(out_dir,'02_bam','04_mapq','{sp}.new_counts.txt')),
             seq_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff_counts.txt')),
-            png_old = (join(out_dir,'02_bam','04_mapq','{sp}.old_counts.png')),
-            png_new = (join(out_dir,'02_bam','04_mapq','{sp}.new_counts.png')),
+            png_old = (join(out_dir,'02_bam','04_mapq','{sp}.old.png')),
+            png_new = (join(out_dir,'02_bam','04_mapq','{sp}.new.png')),
             png_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff.png')),
             txt_old = (join(out_dir,'02_bam','04_mapq','{sp}.old.txt')),
             txt_new = (join(out_dir,'02_bam','04_mapq','{sp}.new.txt')),
             txt_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff.txt')),
-            html = join(out_dir,'02_bam','04_mapq','report','{sp}.report.html'),
+            html = join(out_dir,'02_bam','04_mapq','{sp}.report.html'),
         shell:
             """
             #set / create tmp dir
@@ -1423,17 +1431,11 @@ if (splice_aware == 'Y'):
             fi
         
             #create files with new and old files
-            samtools view {input.unmasked} | awk '{{print $1,$5}}' > {output.seq_old}
-            samtools view {input.recalc} | awk '{{print $1,$5}}' > {output.seq_new}
-
-            #run comparison of old vs new
-            awk -F"\t" 'FILENAME=="{output.seq_old}"{{A[$1$2]=$1$2}} FILENAME=="{output.seq_new}"{{if(!A[$1$2]){{print}}}}' \
-                {output.seq_old} {output.seq_new} awk '{{print $2}}' | sort -n | uniq -c > {output.seq_diff}
-
-
-            #create files with new and old files
             samtools view {input.unmasked} | awk '{{print $5}}' | sort -n | uniq -c > {output.seq_old}
             samtools view {input.recalc} | awk '{{print $5}}' | sort -n | uniq -c > {output.seq_new}
+
+            #grab changes
+            awk '{print($4,$6)}' {input.log} |  sort -n | uniq -c > {output.seq_diff}
 
             #R
             Rscript -e 'library(rmarkdown); \
@@ -1443,7 +1445,7 @@ if (splice_aware == 'Y'):
                     counts_new="{output.seq_new}",
                     counts_diff="{output.seq_diff}",
                     samplename="{params.sid}",
-                    output_dir="{params.base}",
+                    output_dir="{params.base}"
                     ))'            
             """
 
