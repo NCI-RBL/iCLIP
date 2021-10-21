@@ -53,7 +53,7 @@ cleanup_conversion:
 create_bam_mm_unique:
     threads: 6
     mem: 30g
-    time: 00-12:00:00
+    time: 00-15:00:00
 
 merge_splits_unique_mm:
     mem: 30g
