@@ -16,16 +16,15 @@ editor_options:
   chunk_output_type: console
 ---
 
-# Purpose:
-  # Create histograms comparing the old and new mapq scores
-# Input
-  # counts files for old mapq scores, new mapq scores and the difference between old and new scores
+## Purpose:
+- Create histograms comparing the original and corrected mapq scores
 
 ```{r, echo=FALSE,include=FALSE, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(argparse)
 library(DescTools)
 library(tidyverse)
+library(knitr)
 ```
 
 ```{r, echo=FALSE,include=FALSE, warning=FALSE, message=FALSE}
@@ -33,7 +32,7 @@ library(tidyverse)
 counts_old = params$counts_old
 counts_new = params$counts_new
 counts_diff = params$counts_diff
-sampleid = params$samplename
+samplename = params$samplename
 output_dir = params$output_dir
 
 #test input
@@ -43,7 +42,7 @@ if(testing=="Y"){
     counts_new = "~/../../Volumes/Wolin/Sam/testb/02_bam/04_mapq/KO.new_counts.txt"
     counts_diff = "~/../../Volumes/Wolin/Sam/testb/02_bam/04_mapq/KO.diff_counts.txt"
     output_dir = "~/../../Volumes/Wolin/Sam/testb/02_bam/04_mapq/"
-    sampleid = "KO"
+    samplename = "KO"
 }
 ```
 
@@ -86,27 +85,26 @@ MAP_Processing <- function(txt_in,cat){
     p = ggplot(data=merged_df, aes(x=tags, y=counts)) +
       geom_bar(stat="identity") +
       xlab('MAPQ Score') + ylab('Number of Reads') + ggtitle(paste0("MAPQ Scores: ",cat)) +
-      geom_text(aes(label = percent, y = counts, group = tags), vjust=-.5) +
+      geom_text(aes(label = percent, y = counts, group = tags), vjust=-.5, size=2.5) +
       theme_minimal() + 
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
     
-    file_save = paste(output_dir,sampleid,".",cat,".png",sep="")
+    file_save = paste(output_dir,samplename,".",cat,".png",sep="")
     ggsave(file_save,p)
     
     #Create and save text file summary 
-    file_save = paste(output_dir,sampleid,".",cat,".txt",sep="")
+    file_save = paste(output_dir,samplename,".",cat,".txt",sep="")
     fileConn<-file(file_save)
-    line1 = paste("\n* SampleID: ",sampleid,"\n\n")
-    line2 = paste("\t + Number of ",cat," reads: ",sum(dat$count),"\n",sep="")
-    line3 = paste("\t + Average MAPQ score (std): ", format(round(mean(dat$score),2),nsmall=2), 
-                  " (", format(round(sd(dat$len),2),nsmall = 2),")\n",sep="")
-    writeLines(paste(line1,line2,line3,sep=""), fileConn)
+    #line1 = paste("\n* samplename: ",samplename,"\n\n")
+    line1 = paste("\n* Number of ",cat," reads: ",sum(dat$count),"\n\n",sep="")
+    line2 = paste("\t + Average MAPQ score (std): ", format(round(mean(dat$score),2),nsmall=2), 
+                  " (", format(round(sd(dat$score),2),nsmall = 2),")\n",sep="")
+    writeLines(paste(line1,line2,sep=""), fileConn)
     close(fileConn)
   }
 }
 
 # MAIN CODE
-#process unaligned, aligned  
 MAP_Processing(counts_old,"old")
 MAP_Processing(counts_new,"new")
 ```
@@ -188,20 +186,21 @@ MAP_Processing_diff <- function(txt_in,cat){
     p = ggplot(data=merged_df, aes(x=tags, y=counts)) +
       geom_bar(stat="identity") +
       xlab('MAPQ Score') + ylab('Number of Reads') + ggtitle(paste0("Top MAPQ changes")) +
-      geom_text(aes(label = percent, y = counts, group = tags), vjust=-.5) +
+      geom_text(aes(label = percent, y = counts, group = tags), vjust=-.5, size=2.5) +
       theme_minimal() + 
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
     
-    file_save = paste(output_dir,sampleid,".",cat,".png",sep="")
+    file_save = paste(output_dir,samplename,".",cat,".png",sep="")
     ggsave(file_save,p)
     
     #Create and save text file summary 
     colnames(merged_df)=c("MAPQ Changes", "N Reads", "Percent of all changes")
-    file_save = paste(output_dir,sampleid,".",cat,".txt",sep="")
+    file_save = paste(output_dir,samplename,".",cat,".txt",sep="")
     write.csv(merged_df,file_save,row.names=FALSE)
   }
 }
 
+#MAIN CODE
 MAP_Processing_diff(counts_diff,"diff")
 ```
 
@@ -212,27 +211,40 @@ process_score <- function(count_file,png_file){
     cat(readLines(count_file), sep = '\n\n')
         
     #png files
-    cat("\t\t", paste0("![Image](", png_file,")"), "\n")
-    #cat("\t\t", "![Image](~/../../Volumes/Wolin/Sam/testb/02_bam/04_mapq/KO_old.png)","\n")
+    cat("\t\t", paste0("![](", png_file,")"), "\n")
 }
 ```
 
-# MAPQ Score Comparison
-## Old MAPQ Scores
+## MAPQ Score Comparison for `r params$samplename`
+#### Original MAPQ Scores
 ```{r, echo=FALSE, comment='', results="asis"}
-process_score(paste0(output_dir,sampleid,".old.txt"),
-              paste0(output_dir,sampleid,".old.png"))
+process_score(paste0(output_dir,samplename,".old.txt"),
+              paste0(output_dir,samplename,".old.png"))
 ```
 
-## Corrected MAPQ Scores
+#### Corrected MAPQ Scores
 ```{r, echo=FALSE, comment='', results="asis"}
-process_score(paste0(output_dir,sampleid,".new.txt"),
-              paste0(output_dir,sampleid,".new.png"))
+process_score(paste0(output_dir,samplename,".new.txt"),
+              paste0(output_dir,samplename,".new.png"))
 ```
 
-
-## Difference between old and corrected MAPQ Scores
 ```{r, echo=FALSE, comment='', results="asis"}
-process_score(paste0(output_dir,sampleid,".diff.txt"),
-              paste0(output_dir,sampleid,".diff.png"))
+#processing function to print text and png file
+process_img_diff <- function(png_file){
+  #png files
+  cat(paste0("![](", png_file,")"), "\n")
+}
+#processing function to print text and png file
+process_tab_diff <- function(count_file){
+  #text file - print table
+  tmp = read.csv(count_file,sep=",")
+  print(kable(tmp, "simple"))
+}
+```
+```
+
+#### Summary of corrected MAPQ Scores
+```{r, echo=FALSE, comment='', results="asis"}
+process_img_diff(paste0(output_dir,samplename,".diff.png"))
+process_tab_diff(paste0(output_dir,samplename,".diff.txt"))
 ```
