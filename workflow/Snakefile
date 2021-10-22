@@ -392,7 +392,7 @@ if splice_aware == 'Y':
     input_unmapped = expand(join(out_dir,'02_bam','01_unmapped','{sp}.{al_sub}.complete.bam'),  sp=sp_list, al_sub=align_sub)
 
     input_recalc = [expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),sp=sp_list),
-                    expand(join(out_dir,'02_bam','04_mapq','{sp}.report.html'),sp=sp_list)]
+                    expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recal_report.html'),sp=sp_list)]
 else:
     input_unmapped = expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
 
@@ -1315,80 +1315,59 @@ rule dedup:
 
 #pipeline splits for mapq score recalculation on splice_aware samples
 if (splice_aware == 'Y'):
-    rule generate_readids:
+    rule mapq_recalc:
         """
         generate readids from unmasked files
-        """
-        input:
-            bam = rules.dedup.output.bam
-        params:
-            rname='12b_readids',
-        envmodules:
-            config['samtools']  
-        output:
-            reads = join(out_dir,'02_bam','04_mapq','{sp}.readids.txt'),
-        shell:
-            """
-            samtools view {input.bam} |cut -f1|sort|uniq > {output.reads}
-            """
 
-    rule subsample_reads:
-        """
         subsample:
         A) splice unaware BAM 
         B) splice aware (masked exon) BAM 
-        
         using the readids from splice aware (unmasked exon) in rule generate_readids
-        """
-        input:
-            id = rules.generate_readids.output.reads,
-            unaware = join(out_dir,'02_bam','02_merged','{sp}.unaware.merged.si.bam'),
-            masked = join(out_dir,'02_bam','02_merged','{sp}.masked.merged.si.bam'),
-        params:
-            rname='12c_subsample',
-            script = join(source_dir,'workflow','scripts','06_filter_bam_by_readids.py'),
-        envmodules:
-            config['python']  
-        output:
-            unaware = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.bam'),
-            masked = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.bam'),
-            unaware_si = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.si.bam'),
-            masked_si = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.si.bam'),
-        shell:
-            """
-            python {params.script} --inputBAM {input.unaware} --outputBAM {output.unaware} --readids {input.id};
-            python {params.script} --inputBAM {input.masked} --outputBAM {output.masked} --readids {input.id}
-            
-            #sort and index
-            samtools sort {output.unaware} > {output.unaware_si}; samtools index {output.unaware_si};
-            samtools sort {output.masked} > {output.masked_si}; samtools index {output.masked_si};
-            """
 
-    rule mapq_recalc:
-        """
-        using deduplicated reads (splie aware unmasked exon BAM), and subset reads (splice unaware and splice aware masked exon) BAMs, 
-        pysam script will adjust for MAPQ correction 
+        using deduplicated reads (splie aware unmasked exon BAM), and subset reads (splice unaware and splice aware masked exon) BAMs, pysam script will adjust for MAPQ correction 
         
         outputs updated mapq score bam file and metadata file of changes
         """
         input:
-            unaware = join(out_dir,'02_bam','04_mapq','{sp}.unaware.subset.si.bam'),
-            masked = join(out_dir,'02_bam','04_mapq','{sp}.masked.subset.si.bam'),
-            unmasked = rules.dedup.output.bam
+            unmasked = rules.dedup.output.bam,
+            unaware = join(out_dir,'02_bam','02_merged','{sp}.unaware.merged.si.bam'),
+            masked = join(out_dir,'02_bam','02_merged','{sp}.masked.merged.si.bam'),
         params:
-            rname='12d_recalc',
-            script = join(source_dir,'workflow','scripts','07_correct_mapq.py')
+            rname='12b_mapq_recalc',
+            script_sub = join(source_dir,'workflow','scripts','06_filter_bam_by_readids.py'),
+            script_recal = join(source_dir,'workflow','scripts','07_correct_mapq.py')
         envmodules:
-            config['python'],
-            config['samtools']
+            config['samtools'],
+            config['python']
         output:
             bam = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
             tsv = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.tsv'),
             log = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.log')
         shell:
             """
-            python {params.script} \
-            --inputBAM1 {input.unaware} --inputBAM2 {input.masked} --inputBAM3 {input.unmasked} \
+            #set / create tmp dir
+            if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir="{out_dir}02_bam/04_mapq"
+            
+                if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+            fi
+            
+            #generate readids
+            samtools view {input.unmasked} |cut -f1|sort|uniq > ${{tmpdir}}/readids.txt
+
+            #subsample reads
+            python {params.script_sub} --inputBAM {input.unaware} --outputBAM ${{tmpdir}}/unaware.bam --readids ${{tmpdir}}/readids.txt
+            python {params.script_sub} --inputBAM {input.masked} --outputBAM ${{tmpdir}}/masked.bam --readids ${{tmpdir}}/readids.txt
+            
+            #sort and index
+            samtools sort ${{tmpdir}}/unaware.bam  > ${{tmpdir}}/unaware.si.bam; samtools index ${{tmpdir}}/unaware.si.bam;
+            samtools sort ${{tmpdir}}/masked.bam >  ${{tmpdir}}/masked.si.bam; samtools index ${{tmpdir}}/masked.si.bam;
+
+            #recalc
+            python {params.script_recal} \
+            --inputBAM1 ${{tmpdir}}/unaware.si.bam --inputBAM2 ${{tmpdir}}/masked.si.bam --inputBAM3 {input.unmasked} \
             --outBAM {output.bam} --outTSV {output.tsv} --outLOG {output.log};
             """
 
@@ -1401,52 +1380,39 @@ if (splice_aware == 'Y'):
             recalc = rules.mapq_recalc.output.bam,
             log = rules.mapq_recalc.output.log
         params:
-            rname='12e_mapq_stats',
+            rname='12c_mapq_stats',
             R = join(source_dir,'workflow','scripts','tbd_mapq_stats.Rmd'),
-            base = join(out_dir,'02_bam','04_mapq/'),
-            sid = "{sp}"
+            sid = "{sp}",
+            base = join(out_dir,'02_bam','04_mapq','tmp')
         envmodules:
             config['samtools'],
             config['R']  
         output:
-            seq_old = (join(out_dir,'02_bam','04_mapq','{sp}.old_counts.txt')),
-            seq_new = (join(out_dir,'02_bam','04_mapq','{sp}.new_counts.txt')),
-            seq_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff_counts.txt')),
-            png_old = (join(out_dir,'02_bam','04_mapq','{sp}.old.png')),
-            png_new = (join(out_dir,'02_bam','04_mapq','{sp}.new.png')),
-            png_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff.png')),
-            txt_old = (join(out_dir,'02_bam','04_mapq','{sp}.old.txt')),
-            txt_new = (join(out_dir,'02_bam','04_mapq','{sp}.new.txt')),
-            txt_diff = (join(out_dir,'02_bam','04_mapq','{sp}.diff.txt')),
-            html = join(out_dir,'02_bam','04_mapq','{sp}.report.html'),
+            html = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalc_report.html'),
         shell:
             """
-            #set / create tmp dir
-            if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
-                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
-            else
-                tmpdir="{out_dir}01_preprocess/04_mapq"
+            #create tmp
+            if [ ! -d {params.base} ]; then mkdir {params.base}; fi
             
-                if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
-            fi
-        
             #create files with new and old files
-            samtools view {input.unmasked} | awk '{{print $5}}' | sort -n | uniq -c > {output.seq_old}
-            samtools view {input.recalc} | awk '{{print $5}}' | sort -n | uniq -c > {output.seq_new}
+            samtools view {input.unmasked} | awk '{{print $5}}' | sort -n | uniq -c > {params.base}/{params.sid}.original_counts.txt
+            samtools view {input.recalc} | awk '{{print $5}}' | sort -n | uniq -c > {params.base}/{params.sid}.corrected_counts.txt
 
             #grab changes
-            awk '{print($4,$6)}' {input.log} |  sort -n | uniq -c > {output.seq_diff}
+            awk '{{print($4,$6)}}' {input.log} |  sort -n | uniq -c > {params.base}/{params.sid}.diff_counts.txt
 
             #R
             Rscript -e 'library(rmarkdown); \
             rmarkdown::render("{params.R}",
                 output_file = "{output.html}", \
-                params= list(counts_old="{output.seq_old}",
-                    counts_new="{output.seq_new}",
-                    counts_diff="{output.seq_diff}",
-                    samplename="{params.sid}",
-                    output_dir="{params.base}"
-                    ))'            
+                params= list(counts_old="{params.base}/{params.sid}.original_counts.txt", \
+                    counts_new="{params.base}/{params.sid}.corrected_counts.txt", \
+                    counts_diff="{params.base}/{params.sid}.diff_counts.txt", \
+                    samplename="{params.sid}", \
+                    output_dir="{params.base}"))'
+
+            #remove intermed files
+            rm -r {params.base}
             """
 
 rule create_beds_safs:
