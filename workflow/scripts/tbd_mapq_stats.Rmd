@@ -33,7 +33,7 @@ counts_old = params$counts_old
 counts_new = params$counts_new
 counts_diff = params$counts_diff
 samplename = params$samplename
-output_dir = params$output_dir
+output_dir = paste0(params$output_dir,"/")
 
 #test input
 testing="N"
@@ -105,24 +105,18 @@ MAP_Processing <- function(txt_in,cat){
 }
 
 # MAIN CODE
-MAP_Processing(counts_old,"old")
-MAP_Processing(counts_new,"new")
+MAP_Processing(counts_old,"original")
+MAP_Processing(counts_new,"corrected")
 ```
 
 ```{r, echo=FALSE,include=FALSE, warning=FALSE, message=FALSE}
 MAP_Processing_diff <- function(txt_in,cat){
   #perform check on file - may be an empty file because there are no mapped reads
   dat <- try(read.table(txt_in), silent = TRUE)
-
+  
   if (class(dat) != "try-error") {
     #read in seq file
-    colnames(dat)=c("count","change")
-    
-    #split cols
-    dat = dat %>%
-      separate(col=change,
-               into=c("old","new"),
-               sep="to")
+    colnames(dat)=c("count","old", "new")
     
     #make numeric
     dat$new = as.numeric(dat$new)
@@ -218,14 +212,14 @@ process_score <- function(count_file,png_file){
 ## MAPQ Score Comparison for `r params$samplename`
 #### Original MAPQ Scores
 ```{r, echo=FALSE, comment='', results="asis"}
-process_score(paste0(output_dir,samplename,".old.txt"),
-              paste0(output_dir,samplename,".old.png"))
+process_score(paste0(output_dir,samplename,".original.txt"),
+              paste0(output_dir,samplename,".original.png"))
 ```
 
 #### Corrected MAPQ Scores
 ```{r, echo=FALSE, comment='', results="asis"}
-process_score(paste0(output_dir,samplename,".new.txt"),
-              paste0(output_dir,samplename,".new.png"))
+process_score(paste0(output_dir,samplename,".corrected.txt"),
+              paste0(output_dir,samplename,".corrected.png"))
 ```
 
 ```{r, echo=FALSE, comment='', results="asis"}
@@ -240,7 +234,6 @@ process_tab_diff <- function(count_file){
   tmp = read.csv(count_file,sep=",")
   print(kable(tmp, "simple"))
 }
-```
 ```
 
 #### Summary of corrected MAPQ Scores
