@@ -50,3 +50,6 @@ samtools: "samtools/1.11"
 umitools: "umitools/1.1.1"
 subread: "subread/2.0.1"
 R: "R/4.0"
+
+#testing parameter
+testing_option: "N"
