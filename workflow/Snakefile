@@ -896,7 +896,7 @@ if (splice_aware == "Y"):
         - sort and index final bam file
         """
         input:
-            sam = rules.novoalign.output.sam
+            sam = join(out_dir,'01_preprocess','02_alignment','{sp}.{al}.split.{n}.sam.gz')
         params:
             rname = '06b_cleanup_conversion',
             al_type = '{al}',
