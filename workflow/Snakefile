@@ -882,15 +882,18 @@ if (splice_aware == "Y"):
     #only masked and unmasked files go through clean-up and conversion since they were aligned to transcriptome
     rule cleanup_conversion:
         """
-        performs cleanup for inserts
-        
-        converts transcriptome coordinates to genomic coordinates
-        uses USeq version 8.9.6
-        unmapped reads are removed during genomic coordinates conversion, need to include them in final file
-        convert sam file to bam file
-        
-        merge unmapped reads from cleanup to into final sam
-        convert bam back to sam file
+        if alignment file is unaware:
+        - copies file to output location
+        - creates empty bam file - this is not used anywhere in the pipeline and will be deleted upon cleanup
+
+        if alignment is unmasked or masked:
+        - performs cleanup for inserts
+        - converts transcriptome coordinates to genomic coordinates
+        --- uses USeq version 8.9.6
+        - converts sam to bam
+        - unmapped reads are removed during genomic coordinates conversion, need to include them in final file
+          so merging is performed        
+        - sort and index final bam file
         """
         input:
             sam = rules.novoalign.output.sam
@@ -918,6 +921,7 @@ if (splice_aware == "Y"):
             set +e
             if [ {params.al_type} == "unaware" ]; then
                 cp {input.sam} {output.sam};
+                touch {output.bam};
             else
                 #run cleanup
                 zcat {input.sam} | samtools view | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${{tmpdir}}/{params.base}.tmp.sam;
@@ -929,7 +933,7 @@ if (splice_aware == "Y"):
                     -f ${{tmpdir}}/{params.base}.tmp.mapped.sam \
                     -a 50000 -n 25 -u -s {params.base_out};
                 
-                #convert input to bam
+                #converts sam to bam
                 gunzip -c {output.sam} | samtools view -S -b  - > ${{tmpdir}}/{params.base}.unmasked.bam;
                 
                 #merge unmapped sam and unmasked bam into final output
