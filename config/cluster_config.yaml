@@ -56,7 +56,7 @@ create_bam_mm_unique:
     time: 00-15:00:00
 
 merge_splits_unique_mm:
-    mem: 30g
+    mem: 60g
     time: 02-00:00:00
 
 merge_mm_and_unique:
