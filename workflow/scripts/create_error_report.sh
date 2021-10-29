@@ -113,4 +113,3 @@ else
     echo "- Processing complete. View error log to determine which rules failed by running: cat error_log.txt"
     echo
 fi
-06_novoalign.25446437.al=unmasked,n=02,sp=Y5KO_fCLIP.err
