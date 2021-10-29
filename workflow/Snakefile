@@ -54,6 +54,8 @@ sample_overlap = int(config['sampleoverlap'])
 pval = config['pval']
 fc = config['fc']
 
+testing_option = config['testing_option']
+
 #define threads
 with open(join(out_dir,'config','cluster_config.yaml')) as file:
     CLUSTER = yaml.load(file, Loader=yaml.FullLoader)
@@ -88,6 +90,14 @@ singularity_exec = "singularity exec -B /data/$USER,/data/CCBR_Pipeliner," + out
 #annotation config
 annotation_config = join(out_dir,'config','annotation_config.txt')
 
+#determine which umi separator to use
+if(multiplex_flag == 'Y' or testing_option == "Y"):
+    #iCount addes rbc: to all demux files;
+    umi_sep="rbc:"
+else:
+    # external demux uses an _
+    umi_sep="_"
+
 #convert splice junction selection
 if (sp_junc=="Y"):
     sp_junc = "TRUE"
@@ -102,7 +112,7 @@ else:
 
 #create list of alignment types based on splice_aware flag
 if (splice_aware == "Y"):
-    align_list = ["unaware","masked","unmasked"]
+    align_list = ["unmasked"]
 else:
     align_list = ["unaware"]
 
@@ -185,7 +195,8 @@ def demux_cmd(wildcards):
 def rename_cmd(wildcards):
     bc = samp_dict[wildcards.mp][wildcards.sp]
 
-    cmd_line = out_dir + wildcards.mp + '/01_preprocess/demux_' + bc + '.fastq.gz' + ' ' + out_dir + wildcards.mp + '/02_preprocess/' + wildcards.sp + '.fastq.gz'
+    cmd_line = out_dir + wildcards.mp + '/02_preprocess/' + 'demux_' + bc + '.fastq.gz' + \
+    ' ' + out_dir + wildcards.mp + '/02_preprocess/' + wildcards.sp + '.fastq.gz'
 
     return(cmd_line)
     
@@ -240,16 +251,6 @@ def get_filechunk_size(wildcards):
     except:
         return(0)
     return(chunk_size)
-
-#determine which umi separator to use
-def umi_parameter(wildcards):
-    if(multiplex_flag == 'Y'):
-        #iCount addes rbc: to all demux files;
-        umi_sep="rbc:"
-    else:
-        # external demux uses an _
-        umi_sep="_"
-    return(umi_sep)
 
 #get index file depending on alignment type
 def get_index(wildcards):
@@ -610,7 +611,7 @@ if (multiplex_flag == 'Y'):
             f1 = get_fq_names,
             manifest = rules.check_manifest.output.manifest
         params:
-            rname='01b_demux',
+            rname='01b_demultiplex',
             s_exec = singularity_exec,
             doc = join(cont_dir,'icount.sif'),
             cmd = demux_cmd,
@@ -662,6 +663,8 @@ else:
 
 rule remove_adaptors:
     """
+    Input is all samples, output is all samples with adaptors removed with iCOUNT and renamed
+
     removes adaptors from files. software outputs:
     1) untrimmed.fastq.gz - the remaining sequences without the adaptor --> filtered.fastq.gz
     2) trimmed.fastq.gz - the sequences that were trimmed from the input file --> removed_seq.fastq.gz
@@ -674,8 +677,8 @@ rule remove_adaptors:
     envmodules:
         config['singularity'],    
     output:
-        filtered = temp(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')),
-        removed = temp(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'))
+        filtered = temp(expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list)),
+        removed = temp(expand(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'),sp=sp_list))
     shell:
         """
         if [ -d "/tmp/iCount/" ]; then rm -r "/tmp/iCount/"; fi
@@ -828,7 +831,7 @@ rule split_files:
     performs split of fastq file into smaller files using parameters in split_params.tsv
     """
     input:
-        filtered = rules.remove_adaptors.output.filtered,
+        filtered = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),
         sp = rules.determine_splits.output.split_params
     params:
         rname='05_split_files',
@@ -912,10 +915,9 @@ if (splice_aware == "Y"):
                 tmpdir="{out_dir}01_preprocess/03_tmp_genomic"
                 if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
             fi
-
+            set +e
             if [ {params.al_type} == "unaware" ]; then
                 cp {input.sam} {output.sam};
-                gzip -c {output.sam}
             else
                 #run cleanup
                 zcat {input.sam} | samtools view | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${{tmpdir}}/{params.base}.tmp.sam;
@@ -939,6 +941,13 @@ if (splice_aware == "Y"):
                 #sort and index final outupt
                 samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
                 samtools index {output.bam}
+            fi
+
+            exitcode=$?
+            if [ $exitcode -eq 1 ]; then
+                exit 0
+            else
+                exit 0
             fi
             """
 
@@ -1092,6 +1101,7 @@ rule create_bam_mm_unique:
         samtools sort -T ${{tmpdir_m}} ${{tmpdir_m}}/{params.base}.mm.bam -o {output.sort_m};
         samtools index {output.sort_u};
         samtools index {output.sort_m};
+        
         exitcode=$?
         if [ $exitcode -eq 1 ]
         then
@@ -1286,7 +1296,7 @@ rule dedup:
         f1 = get_dedup_input
     params:
         rname='12_dedup',
-        umi = umi_parameter,
+        umi = umi_sep,
         base = '{sp}.unmasked'
     envmodules:
         config['umitools'],
@@ -1302,6 +1312,7 @@ rule dedup:
             tmpdir="{out_dir}01_preprocess/06_dedup/"
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
+        #dedup
         umi_tools dedup \
         -I {input.f1} \
         --method unique \
@@ -1309,6 +1320,8 @@ rule dedup:
         --umi-separator={params.umi} \
         -S ${{tmpdir}}/{params.base}.bam\
         --log2stderr;
+
+        #sort and index
         samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.bam -o {output.bam};
         samtools index {output.bam};
         """
@@ -1373,7 +1386,7 @@ if (splice_aware == 'Y'):
 
     rule mapq_stats:
         """
-        
+
         """
         input:
             unmasked = rules.dedup.output.bam,
@@ -1388,7 +1401,7 @@ if (splice_aware == 'Y'):
             config['samtools'],
             config['R']  
         output:
-            html = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalc_report.html'),
+            html = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recal_report.html'),
         shell:
             """
             #create tmp
