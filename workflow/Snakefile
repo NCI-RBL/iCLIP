@@ -1032,32 +1032,23 @@ rule create_bam_mm_unique:
         #create the new files
         touch ${{tmpdir_u}}/{params.base}.unique.sam
         
-        #read the sam file
+        #read the sam file - not the unique.txt file is chosen for no IH flag
         while read rd; do 
-            #if the line doesn't have IH
-            if [[ ! $rd == "IH:i" ]]; then
-                #if the line doesnt have NH then add NH:i:1
-                if [[ ! $rd == "NH:i" ]]; then
-                    echo "$rd" | awk '{{ $(NF+1) = "NH:i:1"; print }}' | echo "${{rd// /	}}" >> ${{tmpdir_u}}/{params.base}.unique.sam
-                
-                #if it does have NH then replace it with NH:i:1
-                else 
-                    replacement="NH:i:1"
-                    fixed=${{rd/NH:i:[0-9]*/$replacement}}
-                    echo "$fixed" >> ${{tmpdir_u}}/{params.base}.unique.sam
-                fi
-            #if does have IH (and will always have an NH)
-            #replace the NH value with the IH value
-            else
-                IH=`echo $rd | grep -o "IH:i:[0-9]*"`
-                IH_num=`echo ${{IH/IH:i:/}}`
-                NH=`echo $rd | grep -o "NH:i:.*\S"`
-                NH_num=`echo ${{NH/NH:i:/}}`
-                NH_complete=`echo ${{NH/$NH_num/$IH_num}}`
-                echo "${{rd/$NH/$NH_complete}}" >> ${{tmpdir_u}}/{params.base}.unique.sam
+            #set tab variable
+            T=$(printf "\t");
+
+            #if the line doesnt have NH then add NH:i:1
+            if [[ ! $rd == "NH:i" ]]; then
+                echo "$rd" | awk '{{ $(NF+1) = "NH:i:1"; print }}' | sed "s/[[:blank:]]\+/$T/g" >> ${{tmpdir_u}}/{params.base}.unique.sam
+
+            #if it does have NH then replace it with NH:i:1
+            else 
+                replacement="NH:i:1"
+                fixed=${{rd/NH:i:[0-9]*/$replacement}}
+                echo "$fixed" >> ${{tmpdir_u}}/{params.base}.unique.sam
             fi
         done < ${{tmpdir_u}}/{params.base}.unique.txt
-        
+
         #place header back on file, sort, convert to bam
         cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_u}}/{params.base}.unique.sam | samtools sort -T ${{tmpdir_u}} | samtools view -Sb > ${{tmpdir_u}}/{params.base}.unique.bam;
         
@@ -1069,32 +1060,18 @@ rule create_bam_mm_unique:
         
         #create the new files
         touch ${{tmpdir_m}}/{params.base}.mm.sam
+        
         #read the sam file
         while read rd; do 
-            #if the line doesn't have IH
-            if [[ ! $rd == "IH:i" ]]; then 
-                #if the line doesnt have NH then add NH:i:1
-                if [[ ! $rd == "NH:i" ]]; then 
-                    echo "$rd" | awk '{{ $(NF+1) = "NH:i:1"; print }}' | echo "${{rd// /	}}">> ${{tmpdir_m}}/{params.base}.mm.sam
-                
-                #if it does have NH then replace it with NH:i:1
-                else 
-                    replacement="NH:i:1"
-                    fixed=${{rd/NH:i:[0-9]*/$replacement}}
-                    echo "$fixed" >> ${{tmpdir_m}}/{params.base}.mm.sam
-                fi
-            
-            #if does have IH (and will always have an NH)
             #replace the NH value with the IH value
-            else
-                IH=`echo $rd | grep -o "IH:i:[0-9]*"`
-                IH_num=`echo ${{IH/IH:i:/}}`
-                NH=`echo $rd | grep -o "NH:i:.*\S"`
-                NH_num=`echo ${{NH/NH:i:/}}`
-                NH_complete=`echo ${{NH/$NH_num/$IH_num}}`
-                echo "${{rd/$NH/$NH_complete}}" >> ${{tmpdir_m}}/{params.base}.mm.sam
-            fi
+            IH=`echo $rd | grep -o "IH:i:[0-9]*"`
+            IH_num=`echo ${{IH/IH:i:/}}`
+            NH=`echo $rd | grep -o "NH:i:.*\S"`
+            NH_num=`echo ${{NH/NH:i:/}}`
+            NH_complete=`echo ${{NH/$NH_num/$IH_num}}`
+            echo "${{rd/$NH/$NH_complete}}" >> ${{tmpdir_m}}/{params.base}.mm.sam
         done < ${{tmpdir_m}}/{params.base}.mm.txt
+    
         #place header back on file, sort, convert to bam
         cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_m}}/{params.base}.mm.sam | samtools sort -T ${{tmpdir_m}} | samtools view -Sb > ${{tmpdir_m}}/{params.base}.mm.bam;
         
