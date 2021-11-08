@@ -1330,7 +1330,7 @@ if (splice_aware == 'Y'):
         params:
             rname='12b_mapq_recalc',
             script_sub = join(source_dir,'workflow','scripts','06_filter_bam_by_readids.py'),
-            script_recal = join(source_dir,'workflow','scripts','07_correct_mapq.py')
+            script_recal = join(source_dir,'workflow','scripts','06_correct_mapq.py')
         envmodules:
             config['samtools'],
             config['python']
@@ -1376,7 +1376,7 @@ if (splice_aware == 'Y'):
             log = rules.mapq_recalc.output.log
         params:
             rname='12c_mapq_stats',
-            R = join(source_dir,'workflow','scripts','tbd_mapq_stats.Rmd'),
+            R = join(source_dir,'workflow','scripts','07_mapq_stats.Rmd'),
             sid = "{sp}",
             base = join(out_dir,'02_bam','04_mapq','tmp')
         envmodules:
