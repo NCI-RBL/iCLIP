@@ -212,12 +212,13 @@ FtrCount_trimmed=FtrCount_trimmed[duplicated(FtrCount_trimmed)==F & !FtrCount_tr
 ##########################################################################################
 ############### DEP
 ##########################################################################################
-if (DEmethod!='none') {
+if (DEmethod=='NONE') {
   
-  DEP_input(FtrCount_trimmed)
+  print("Differential Peaks skipped")
 
 } else{
-  print("Differential Peaks skipped")
+  
+  DEP_input(FtrCount_trimmed)
 } 
 
 ##########################################################################################
