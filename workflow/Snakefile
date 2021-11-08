@@ -1141,6 +1141,7 @@ rule merge_mm_and_unique:
         fi
         #merge uniuqe and mm
         samtools merge -f {output.merged} {input.un} {input.mm};
+        
         #sort and index
         samtools sort -T ${{tmpdir}} {output.merged} -o {output.sort};
         samtools index {output.sort};
