@@ -112,7 +112,7 @@ else:
 
 #create list of alignment types based on splice_aware flag
 if (splice_aware == "Y"):
-    align_list = ["unmasked"]
+    align_list = ["unmasked", "unaware", "masked"]
 else:
     align_list = ["unaware"]
 
@@ -924,10 +924,10 @@ if (splice_aware == "Y"):
                 touch {output.bam};
             else
                 #run cleanup
-                zcat {input.sam} | samtools view | awk '{{ if (($4 == 1 && $6!~/^[0-9]I/ && $1~/:/ )||($4 > 1 && $1~/:/ )) {{ print }} }}' > ${{tmpdir}}/{params.base}.tmp.sam;
+                zcat {input.sam} | samtools view | awk '{{ if (($4 == 1 && $6 ~/(^[0-9]+)H|S([0-9]+I)/ && $1~/:/ ) || ($4 == 1 && $6 ~/^[0-9]I/ && $1~/:/ )) {{}} else  print }}' > ${{tmpdir}}/{params.base}.tmp.sam;
                 zcat {input.sam} | samtools view -H | cat - ${{tmpdir}}/{params.base}.tmp.sam > ${{tmpdir}}/{params.base}.tmp.mapped.sam; 
                 zcat {input.sam} | samtools view -f 4 > ${{tmpdir}}/{params.base}.tmp.unmapped.sam;
-                
+
                 #run genomic conversion
                 java -Djava.io.tmpdir=${{tmpdir}} -jar -Xmx100G {params.doc} \
                     -f ${{tmpdir}}/{params.base}.tmp.mapped.sam \
