@@ -75,18 +75,29 @@ MAP_processing_scores <- function(txt_in,cat){
     
     #merge counts
     merged_df=data.frame()
+    
+    #add zero to count
+    `%notin%` <- Negate(`%in%`)
+    if("00" %notin% unique(dat$tags)){
+      merged_df[nrow(merged_df)+1,"tags"]="00"
+      merged_df[nrow(merged_df),"counts"]=0
+      merged_df[nrow(merged_df),"percent"]=0
+    }
+
+    #add all other values to counts
     for (tagid in sort(unique(dat$tags))){
       merged_df[nrow(merged_df)+1,"tags"]=tagid
       merged_df[nrow(merged_df),"counts"]=sum(subset(dat,tags==tagid)$count)
       merged_df[nrow(merged_df),"percent"]=paste0(round(sum(subset(dat,
                                                                   tags==tagid)$count)/sum(dat$count)*100,1),"%")
     }
-    
+  
+    #generate factor
     merged_df$tags <- factor(merged_df$tags, levels = merged_df$tags)
 
     #Create and save histogram of counts
     p = ggplot(data=merged_df, aes(x=tags, y=counts)) +
-      geom_bar(stat="identity") +
+      geom_bar(colour = "black", stat="identity") +
       xlab('MAPQ Score') + ylab('Number of Reads') + ggtitle(paste0("MAPQ Scores: ",cat)) +
       geom_text(aes(label = percent, y = counts, group = tags), vjust=-.5, size=2.5) +
       theme_minimal() + 
