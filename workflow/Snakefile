@@ -1412,7 +1412,7 @@ if (splice_aware == 'Y'):
                 params= list(counts_old="{params.base}/{params.sid}.original_counts.txt", \
                     counts_new="{params.base}/{params.sid}.corrected_counts.txt", \
                     counts_diff="{params.base}/{params.sid}.diff_counts.txt", \
-                    samplename="{params.sid}", \
+                    sampleid="{params.sid}", \
                     output_dir="{params.base}"))'
 
             #remove intermed files
