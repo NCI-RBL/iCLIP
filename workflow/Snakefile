@@ -1375,6 +1375,8 @@ if (splice_aware == 'Y'):
 
     rule mapq_stats:
         """
+        create diff files of old/new mapq scores to input into R script to create
+        plots and reports
 
         """
         input:
