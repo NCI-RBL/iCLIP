@@ -691,7 +691,7 @@ rule qc_fastq_pre:
     Runs FastQC report on each sample before adaptors have been removed
     """
     input:
-        fastqs = expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list)
+        fastq = join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz')
     params:
         rname='03a_qc_fastq_pre',
         base = join(out_dir,'{mp}','01_qc_pre/')
@@ -701,7 +701,7 @@ rule qc_fastq_pre:
         html = temp(join(out_dir,'{mp}','01_qc_pre','{sp}_fastqc.html'))
     shell:
         """
-        fastqc {input.fastqs} -o {params.base}
+        fastqc {input.fastq} -o {params.base}
         """
 
 rule qc_fastq_post:
@@ -709,7 +709,7 @@ rule qc_fastq_post:
     Runs FastQC report on each sample after adaptors have been removed
     """
     input:
-        fastqs = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list)
+        fastq = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')
     params:
         rname='03b_qc_fastq_post',
         base = join(out_dir, 'qc', '01_qc_post'),
@@ -719,7 +719,7 @@ rule qc_fastq_post:
         html = temp(join(out_dir, 'qc', '01_qc_post','{sp}_filtered_fastqc.html'))
     shell:
         """
-        fastqc {input.fastqs} -o {params.base}
+        fastqc {input.fastq} -o {params.base}
         """
 
 rule qc_screen_validator:
@@ -1004,8 +1004,9 @@ rule create_bam_mm_unique:
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
             tmpdir_m="${{tmpdir}}/m"
             tmpdir_u="${{tmpdir}}/u"
-            mkdir $tmpdir_m
-            mkdir $tmpdir_u
+
+            if [ ! -d $tmpdir_m ]; then mkdir $tmpdir_m; fi
+            if [ ! -d $tmpdir_u ]; then mkdir $tmpdir_u; fi
         else
             tmpdir="{out_dir}01_preprocess/05_tmp_bam"
             tmpdir_m="$tmpdir/m"
@@ -1706,7 +1707,7 @@ else:
                 tmpdir="/lscratch/${{SLURM_JOB_ID}}"
             else
                 tmpdir="{out_dir}01_preprocess/07_rscripts/"
-                if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+                if [[ ! -d $tmpdir ]]; then mkdir $tmpdir; fi
             fi
                 
             Rscript {params.script} \
