@@ -937,14 +937,20 @@ if (splice_aware == "Y"):
                 gunzip -c {output.sam} | samtools view -S -b  - > ${{tmpdir}}/{params.base}.unmasked.bam;
                 
                 #merge unmapped sam and unmasked bam into final output
-                samtools merge -f ${{tmpdir}}/{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
-                
-                #pull header from merged and add to final output
-                samtools view -h -o ${{tmpdir}}/{params.base}.final.bam ${{tmpdir}}/{params.base}.merged.bam;
-                
-                #sort and index final outupt
-                samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
-                samtools index {output.bam}
+                #if there are unmapped reads
+                FILESIZE=$(stat -c%s ${{tmpdir}}/{params.base}.tmp.unmapped.sam)
+                if [ "$FILESIZE" -lt 100 ]; then 
+                    samtools merge -f ${{tmpdir}}/{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
+                    
+                    #pull header from merged and add to final output
+                    samtools view -h -o ${{tmpdir}}/{params.base}.final.bam ${{tmpdir}}/{params.base}.merged.bam;
+                    
+                    #sort and index final outupt
+                    samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
+                    samtools index {output.bam}
+                else
+                    samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.unmasked.bam -o {output.bam};
+                    samtools index {output.bam}
             fi
 
             exitcode=$?
