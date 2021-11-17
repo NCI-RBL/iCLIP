@@ -48,16 +48,19 @@ http://www.novocraft.com/documentation/novoalign-2/novoalign-user-guide/novoalig
   - no k flag
 
 ## Testing details
-- input files are taken from the sample 
+- input files are taken from the sample /data/RBL_NCI/Wolin/10212021_mESC_clip_2/01_preprocess/
+- reads were subset for no yRNA 
+  - stored: /data/RBL_NCI/Wolin/Phil/novoalign/01_preprocess/01_NOyRNA
+- samples were split 98 ways 
+  - stored: /data/RBL_NCI/Wolin/Sam/novoalign_v2/splits/
 - the first 10 of the splits (out of 98) were used for the analysis
-  - taken from ls /data/RBL_NCI/Wolin/10212021_mESC_clip_2/01_preprocess/01_splits/
 - index file was the splice aware, bp = 75
   - /data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/ gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc_75.nix
 
 ## Directories
-input_dir="/data/RBL_NCI/Wolin/Sam/novoalign/splits"
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign/aligned"
-log_dir="/data/RBL_NCI/Wolin/Sam/novoalign/log"
+input_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/splits"
+output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/aligned"
+log_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/log"
 
 ####################################################################################
 # Workflow
@@ -71,28 +74,22 @@ merge_um
 dedup
 beds
 counts
-project_annotations (sh only)
-
-############## SH FILES
-### create individual sh files, one file for each test (N=9) and each split (N=10); total of 90 files
-sh /home/sevillas2/git/iCLIP/build/novoalign_testing/2021_10/alignment_params_sh.sh
-
-############## SBATCH FILES
-### create sbatch file which includes each test's sh files; total of 9 files
-sh /home/sevillas2/git/iCLIP/build/novoalign_testing/2021_10/alignment_params_sbatch.sh
-
-### delete if needed
-for i in {1..9}; do rm /data/RBL_NCI/Wolin/Sam/novoalign_v2/log/test${i}/align_sbatch.sh; done
-for i in {1..9}; do rm /data/RBL_NCI/Wolin/Sam/novoalign_v2/log/test${i}/cleanup_sbatch.sh; done
-for i in {1..9}; do rm /data/RBL_NCI/Wolin/Sam/novoalign_v2/log/test${i}/unique_mm_sbatch.sh; done
-for i in {1..9}; do rm /data/RBL_NCI/Wolin/Sam/novoalign_v2/log/test${i}/unique_mm_split_sbatch.sh; done
-for i in {1..9}; do rm /data/RBL_NCI/Wolin/Sam/novoalign_v2/log/test${i}/merge_splits_sbatch.sh; done
-for i in {1..9}; do rm /data/RBL_NCI/Wolin/Sam/novoalign_v2/log/test${i}/merge_um_sbatch.sh; done
+project_annotations (sh only, will submit one per project)
+peak_annotations
+annotation_report
 
 ############## FILE CHECK
 ### check previous files exist
-sh /home/sevillas2/git/iCLIP/build/novoalign_testing/2021_10/alignment_check.sh
+sh /home/sevillas2/git/iCLIP/build/novoalign_testing/alignment_check.sh v2 
+
+############## SH FILES
+### create individual sh files, one file for each test (N=9) and each split (N=10); total of 90 files
+sh /home/sevillas2/git/iCLIP/build/novoalign_testing/alignment_params_sh.sh v2
+
+############## SBATCH FILES
+### create sbatch file which includes each test's sh files; total of 9 files
+sh /home/sevillas2/git/iCLIP/build/novoalign_testing/alignment_params_sbatch.sh v2 
 
 ############## SUBMIT TO CLUSTER
 ### submit sbatch jobs to cluster
-sh /home/sevillas2/git/iCLIP/build/novoalign_testing/2021_10/alignment_params_submit.sh
+sh /home/sevillas2/git/iCLIP/build/novoalign_testing/alignment_params_submit.sh v2 

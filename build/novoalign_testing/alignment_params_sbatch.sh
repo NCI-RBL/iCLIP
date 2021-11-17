@@ -1,15 +1,25 @@
 #!/bin/sh
 #sh /home/sevillas2/git/iCLIP/build/novoalign_testing/2021_10_v2/alignment_params_sbatch.sh
 
-option=$1
+#set version
+version=$1
+if [[ $version == "v1" ]]; then 
+    log_dir="/data/RBL_NCI/Wolin/Sam/novoalign/log"
+    project_dir="/data/RBL_NCI/Wolin/Sam/novoalign"
+else
+    log_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/log"
+    project_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2"
+fi
 
-log_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/log"
+#set option
+option=$2
 
 ##############################################################################################################################
 #Run alignment
 if [ "$option" == "align" ]; then \
     for test_id in {1..9}; do \
         sbatch_job="$log_dir/test${test_id}/align_sbatch.sh"
+        if [ -f $sbatch_job ]; then rm $sbatch_job; fi
         touch $sbatch_job
 
         #create error dir
@@ -28,6 +38,7 @@ fi
 if [ "$option" == "cleanup" ]; then \
     for test_id in {1..9}; do \
         sbatch_job="$log_dir/test${test_id}/cleanup_sbatch.sh"
+        if [ -f $sbatch_job ]; then rm $sbatch_job; fi
         touch $sbatch_job
 
         #create error dir
@@ -43,13 +54,14 @@ fi
 
 ##############################################################################################################################
 #Run create Unique and MM
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/unique_mm"
+output_dir="$project_dir/unique_mm"
 job_id1="u"
 job_id2="m"
 
 if [ "$option" == "unique_mm" ]; then \
     for test_id in {1..9}; do \
         sbatch_job="$log_dir/test${test_id}/unique_mm_split_sbatch.sh"
+        if [ -f $sbatch_job ]; then rm $sbatch_job; fi
         touch $sbatch_job
 
         for split_id in {01..10}; do \
@@ -73,6 +85,7 @@ job_id="splits"
 if [ "$option" == "merge_splits" ]; then \
     for test_id in {1..9}; do \
         sbatch_job="$log_dir/test${test_id}/merge_splits_sbatch.sh"
+        if [ -f $sbatch_job ]; then rm $sbatch_job; fi
         touch $sbatch_job
         
         sh_job="$log_dir/test${test_id}/merge_splits_test${test_id}_sh.sh"
@@ -86,6 +99,7 @@ job_id="merge_um"
 if [ "$option" == "$job_id" ]; then \
     for test_id in {1..9}; do \
         sbatch_job="$log_dir/test${test_id}/${job_id}_sbatch.sh"
+        if [ -f $sbatch_job ]; then rm $sbatch_job; fi
         touch $sbatch_job
         
         sh_job="$log_dir/test${test_id}/${job_id}_test${test_id}_sh.sh"
@@ -99,6 +113,7 @@ job_id="dedup"
 if [ "$option" == "dedup" ]; then \
     for test_id in {1..9}; do \
         sbatch_job="$log_dir/test${test_id}/dedup_sbatch.sh"
+        if [ -f $sbatch_job ]; then rm $sbatch_job; fi
         touch $sbatch_job
         
         sh_job="$log_dir/test${test_id}/dedup_test${test_id}_sh.sh"
@@ -112,6 +127,7 @@ job_id="bed"
 if [ "$option" == "beds" ]; then \
     for test_id in {1..9}; do \
         sbatch_job="$log_dir/test${test_id}/beds_sbatch.sh"
+        if [ -f $sbatch_job ]; then rm $sbatch_job; fi
         touch $sbatch_job
         
         sh_job="$log_dir/test${test_id}/beds_test${test_id}_sh.sh"
@@ -125,9 +141,38 @@ job_id="c"
 if [ "$option" == "counts" ]; then \
     for test_id in {1..9}; do \
         sbatch_job="$log_dir/test${test_id}/counts_sbatch.sh"
+        if [ -f $sbatch_job ]; then rm $sbatch_job; fi
         touch $sbatch_job
         
         sh_job="$log_dir/test${test_id}/counts_test${test_id}_sh.sh"
+        echo "sbatch --job-name=${job_id}.${test_id} --cpus-per-task=32 --verbose --error=$log_dir/test${test_id}/err/${job_id}_test${test_id}.err --output=$log_dir/test${test_id}/err/${job_id}_test${test_id}.out --mem=50g --gres=lscratch:50 --time 01-00:00:00 $sh_job;" >> $sbatch_job
+    done
+fi
+
+##############################################################################################################################
+#Run peak_annotations
+job_id="pa"
+if [ "$option" == "peak_annotations" ]; then \
+    for test_id in {1..9}; do \
+        sbatch_job="$log_dir/test${test_id}/peak_annotations_sbatch.sh"
+        if [ -f $sbatch_job ]; then rm $sbatch_job; fi
+        touch $sbatch_job
+        
+        sh_job="$log_dir/test${test_id}/peak_annotations_test${test_id}_sh.sh"
+        echo "sbatch --job-name=${job_id}.${test_id} --cpus-per-task=32 --verbose --error=$log_dir/test${test_id}/err/${job_id}_test${test_id}.err --output=$log_dir/test${test_id}/err/${job_id}_test${test_id}.out --mem=50g --gres=lscratch:50 --time 01-00:00:00 $sh_job;" >> $sbatch_job
+    done
+fi
+
+##############################################################################################################################
+#Run annotation_report
+job_id="pr"
+if [ "$option" == "annotation_report" ]; then \
+    for test_id in {1..9}; do \
+        sbatch_job="$log_dir/test${test_id}/annotation_report_sbatch.sh"
+        if [ -f $sbatch_job ]; then rm $sbatch_job; fi
+        touch $sbatch_job
+        
+        sh_job="$log_dir/test${test_id}/annotation_report_test${test_id}_sh.sh"
         echo "sbatch --job-name=${job_id}.${test_id} --cpus-per-task=32 --verbose --error=$log_dir/test${test_id}/err/${job_id}_test${test_id}.err --output=$log_dir/test${test_id}/err/${job_id}_test${test_id}.out --mem=50g --gres=lscratch:50 --time 01-00:00:00 $sh_job;" >> $sbatch_job
     done
 fi

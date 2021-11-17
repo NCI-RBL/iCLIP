@@ -1,12 +1,22 @@
 #!/bin/sh
 
-#sh /home/sevillas2/git/iCLIP/build/novoalign_testing/2021_10_v2/alignment_check.sh
+#sh /home/sevillas2/git/iCLIP/build/novoalign_testing/2021_10_v2/alignment_check.sh v1 align
 
-option=$1
+#set version
+version=$1
+
+if [[ $version == "v1" ]]; then 
+    project_dir="/data/RBL_NCI/Wolin/Sam/novoalign"
+else
+    project_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2"
+fi
+
+#set option
+option=$2
 
 ##############################################################################################################################
 # Alignment
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/aligned"
+output_dir="${project_dir}/aligned"
 
 if [ "$option" == "align" ]; then
     echo
@@ -25,7 +35,7 @@ fi
 
 ##############################################################################################################################
 # cleanup
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/cleanup"
+output_dir="${project_dir}/cleanup"
 
 if [ "$option" == "cleanup" ]; then
     echo
@@ -44,7 +54,7 @@ fi
 
 ##############################################################################################################################
 # unique_mm
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/unique_mm"
+output_dir="${project_dir}/unique_mm"
 
 if [ "$option" == "unique_mm" ]; then
     echo
@@ -67,7 +77,7 @@ fi
 
 ##############################################################################################################################
 # merge_splits
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/merge_splits"
+output_dir="${project_dir}/merge_splits"
 
 if [ "$option" == "merge_splits" ]; then
     echo
@@ -90,7 +100,7 @@ fi
 
 ##############################################################################################################################
 # merged_mu
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/merged"
+output_dir="${project_dir}/merged"
 
 if [ "$option" == "merge_um" ]; then
     echo
@@ -109,7 +119,7 @@ fi
 
 ##############################################################################################################################
 # dedup
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/dedup"
+output_dir="${project_dir}/dedup"
 
 if [ "$option" == "dedup" ]; then
     echo
@@ -126,7 +136,7 @@ fi
 
 ##############################################################################################################################
 # beds
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/beds"
+output_dir="${project_dir}/beds"
 bed_dir="$output_dir/01_bed"
 saf_dir="$output_dir/02_SAF"
 
@@ -151,65 +161,71 @@ if [ "$option" == "beds" ]; then
         output_file="$saf_dir/test${test_id}_unique.SAF"
         if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
     done
-    echo "****** dedup Check Complete ******"
+    echo "****** beds Check Complete ******"
     echo
 fi
 
 ##############################################################################################################################
 # counts
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/counts"
+output_dir="${project_dir}/counts"
 all_dir="$output_dir/03_allreadpeaks"
-unique_dir="$output_dir/03_uniquereadpeaks/"
+unique_dir="$output_dir/03_uniquereadpeaks"
 
 if [ "$option" == "counts" ]; then
     echo
-    echo "****** beds Check Starting ******"
+    echo "****** counts Check Starting ******"
     for test_id in {1..9}; do
         echo "*** test_$test_id ***"
-        for split_id in {01..10}; do
-            #check file exists
-            output_file="$all_dir/test${test_id}_uniqueCounts.txt"
-            if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
+        
+        #check file exists
+        output_file="$all_dir/test${test_id}_uniqueCounts.txt"
+        if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
 
-            #check file exists
-            output_file="$all_dir/test${test_id}_allFracMMCounts.txt"
-            if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
+        #check file exists
+        output_file="$all_dir/test${test_id}_allFracMMCounts.txt"
+        if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
 
-            #check file exists
-            output_file="$unique_dir/test${test_id}_uniqueCounts.txt"
-            if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
+        #check file exists
+        output_file="$unique_dir/test${test_id}_uniqueCounts.txt"
+        if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
 
-            #check file exists
-            output_file="$unique_dir/test${test_id}_allFracMMCounts.txt"
-            if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
-        done
+        #check file exists
+        output_file="$unique_dir/test${test_id}_allFracMMCounts.txt"
+        if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
     done
-    echo "****** dedup Check Complete ******"
+    echo "****** counts Check Complete ******"
     echo
 fi
-
 
 ##############################################################################################################################
-# annotation
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/beds"
-bed_dir="$output_dir/01_bed"
-saf_dir="$output_dir/02_SAF"
-if [ "$option" == "annotation" ]; then
+# peak_annotations
+output_dir="${project_dir}/annotations/02_peaks"
+if [ "$option" == "peak_annotations" ]; then
     echo
-    echo "****** Beds Check Starting ******"
+    echo "****** peak_annotations Check Starting ******"
     for test_id in {1..9}; do
         echo "*** test_$test_id ***"
-        for split_id in {01..10}; do
-            #check file exists
-            output_file="$bed_dir/test${test_id}"
-            if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
-
-            #check file exists
-            output_file="$saf_dir/test${test_id}"
-            if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
-        done
+        #check file exists
+        output_file="$output_dir/test${test_id}_annotable.bed"
+        if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
     done
-    echo "****** Beds Check Complete ******"
+    echo "****** peak_annotations Check Complete ******"
     echo
 fi
 
+##############################################################################################################################
+### annotation_report
+output_dir="${project_dir}/annotations/03_reports"
+if [ "$option" == "annotation_report" ]; then
+    echo
+    echo "****** annotation_report Check Starting ******"
+    for test_id in {1..9}; do
+        echo "*** test_$test_id ***"
+        
+        #check file exists
+        output_file="$output_dir/test${test_id}_annotation_final_report.html"
+        if [[ ! -f $output_file ]]; then echo "MISSING: $output_file"; fi
+    done
+    echo "****** annotation_report Check Complete ******"
+    echo
+fi

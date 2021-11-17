@@ -2,9 +2,19 @@
 
 #sh /home/sevillas2/git/iCLIP/build/novoalign_testing/2021_10_v2/alignment_params_sh.sh
 
-option=$1
+#set version
+version=$1
+if [[ $version == "v1" ]]; then 
+    log_dir="/data/RBL_NCI/Wolin/Sam/novoalign/log"
+    project_dir="/data/RBL_NCI/Wolin/Sam/novoalign"
+else
+    log_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/log"
+    project_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2"
+fi
 
-log_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/log"
+#set option
+option=$2
+
 index_file="/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc_75.nix"
 doc="/data/CCBR_Pipeliner/iCLIP/container/USeq_8.9.6/Apps/SamTranscriptomeParser"
 
@@ -18,13 +28,13 @@ done
 #Run splits
 if [ "$option" == "splits" ]; then \
     zcat /data/RBL_NCI/Wolin/Phil/novoalign/01_preprocess/01_NOyRNA/Ro_Clip_2_filtered.NOyRNA.fastq.gz | \
-    split --additional-suffix .fastq -l 1906896 --numeric-suffixes=1 --filter='gzip > $FILE.gz' - /data/RBL_NCI/Wolin/Sam/novoalign_v2/splits/Ro_Clip_2.split.
+    split --additional-suffix .fastq -l 1906896 --numeric-suffixes=1 --filter='gzip > $FILE.gz' - ${project_dir}/splits/Ro_Clip_2.split.
 fi
 
 ##############################################################################################################################
 #Run alignment
-input_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/splits"
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/aligned"
+input_dir="${project_dir}/splits"
+output_dir="${project_dir}/aligned"
 if [[ ! -d "$output_dir" ]]; then mkdir $output_dir; fi
 for test_id in {1..9}; do \
     if [[ ! -d "$output_dir/test$test_id/" ]]; then mkdir "$output_dir/test$test_id/"; fi
@@ -35,7 +45,7 @@ if [ "$option" == "align" ]; then \
     test_id="test1"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        output_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -54,7 +64,7 @@ if [ "$option" == "align" ]; then \
             -s 1 \
             -o SAM \
             -R 0 \
-            -r EXHAUSTIVE 999 | gzip -c > "${output_base}.sam.gz"
+            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"
             " > $sh_file
     done
 
@@ -62,7 +72,7 @@ if [ "$option" == "align" ]; then \
     test_id="test2"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        output_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -81,14 +91,14 @@ if [ "$option" == "align" ]; then \
             -s 1 \
             -o SAM \
             -R 5 \
-            -r EXHAUSTIVE 999 | gzip -c > "${output_base}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
     done
 
     # test3: R flag
     test_id="test3"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        output_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -107,14 +117,14 @@ if [ "$option" == "align" ]; then \
             -s 1 \
             -o SAM \
             -R 20 \
-            -r EXHAUSTIVE 999 | gzip -c > "${output_base}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
     done
 
     # test4: STRICTER VALUES
     test_id="test4"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        output_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -133,14 +143,14 @@ if [ "$option" == "align" ]; then \
         -s 1 \
         -o SAM \
         -R 5 \
-        -r EXHAUSTIVE 999 | gzip -c > "${output_base}.sam.gz"" > $sh_file
+        -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
     done
 
     # test5: NOVOALIGN default
     test_id="test5"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        output_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -158,14 +168,14 @@ if [ "$option" == "align" ]; then \
         -s 2 \
         -o SAM \
         -R 5 \
-        -r EXHAUSTIVE 999 | gzip -c > "${output_base}.sam.gz"" > $sh_file
+        -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
     done
 
     # test 6 S FLAG
     test_id="test6"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        output_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -184,14 +194,14 @@ if [ "$option" == "align" ]; then \
             -s 0 \
             -o SAM \
             -R 0 \
-            -r EXHAUSTIVE 999 | gzip -c > "${output_base}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
     done
 
     # test 7 S FLAG
     test_id="test7"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        output_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -210,14 +220,14 @@ if [ "$option" == "align" ]; then \
             -s 2 \
             -o SAM \
             -R 0 \
-            -r EXHAUSTIVE 999 | gzip -c > "${output_base}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
     done
 
     # test 8 S FLAG
     test_id="test8"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        output_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -235,14 +245,14 @@ if [ "$option" == "align" ]; then \
             -g 20 \
             -o SAM \
             -R 0 \
-            -r EXHAUSTIVE 999 | gzip -c > "${output_base}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
     done
 
     # test 9 K FLAG
     test_id="test9"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        output_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -260,15 +270,15 @@ if [ "$option" == "align" ]; then \
             -s 1 \
             -o SAM \
             -R 0 \
-            -r EXHAUSTIVE 999 | gzip -c > "${output_base}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
     done
 
 fi
 
 ##############################################################################################################################
 #Run cleanup
-input_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/aligned"
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/cleanup"
+input_dir="${project_dir}/aligned"
+output_dir="${project_dir}/cleanup"
 if [[ ! -d "$output_dir" ]]; then mkdir $output_dir; fi
 for test_id in {1..9}; do \
     if [[ ! -d "$output_dir/test$test_id/" ]]; then mkdir "$output_dir/test$test_id/"; fi
@@ -306,8 +316,8 @@ fi
 
 ##############################################################################################################################
 #Run create Unique and MM
-input_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/cleanup"
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/unique_mm"
+input_dir="${project_dir}/cleanup"
+output_dir="${project_dir}/unique_mm"
 if [[ ! -d "$output_dir" ]]; then mkdir $output_dir; fi
 for test_id in {1..9}; do \
     if [[ ! -d "$output_dir/test$test_id/" ]]; then mkdir "$output_dir/test$test_id/"; fi
@@ -465,8 +475,8 @@ fi
 
 ##############################################################################################################################
 #Run merged splits
-input_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/unique_mm"
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/merge_splits"
+input_dir="${project_dir}/unique_mm"
+output_dir="${project_dir}/merge_splits"
 if [[ ! -d "$output_dir" ]]; then mkdir $output_dir; fi
 for test_id in {1..9}; do \
     if [[ ! -d "$output_dir/test$test_id/" ]]; then mkdir "$output_dir/test$test_id/"; fi
@@ -508,8 +518,8 @@ fi
 
 ##############################################################################################################################
 #Run merged unique and mm
-input_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/merge_splits"
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/merged"
+input_dir="${project_dir}/merge_splits"
+output_dir="${project_dir}/merged"
 if [[ ! -d "$output_dir" ]]; then mkdir $output_dir; fi
 
 if [ "$option" == "merge_um" ]; then \
@@ -540,8 +550,8 @@ fi
 
 ##############################################################################################################################
 #Run dedup
-input_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/merged"
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/dedup"
+input_dir="${project_dir}/merged"
+output_dir="${project_dir}/dedup"
 if [[ ! -d "$output_dir" ]]; then mkdir $output_dir; fi
 
 if [ "$option" == "dedup" ]; then \
@@ -576,8 +586,8 @@ fi
 
 # ##############################################################################################################################
 #Run create_beds_safs
-input_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/dedup"
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/beds"
+input_dir="${project_dir}/dedup"
+output_dir="${project_dir}/beds"
 bed_dir="$output_dir/01_bed"
 saf_dir="$output_dir/02_SAF"
 if [[ ! -d "$output_dir" ]]; then mkdir $output_dir; fi
@@ -629,11 +639,11 @@ fi
 
 # ##############################################################################################################################
 #Run counts
-input_dir_dedup="/data/RBL_NCI/Wolin/Sam/novoalign_v2/dedup"
-input_dir_saf="/data/RBL_NCI/Wolin/Sam/novoalign_v2/saf"
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/counts"
+input_dir_dedup="${project_dir}/dedup"
+input_dir_saf="${project_dir}/beds/02_SAF"
+output_dir="${project_dir}/counts"
 all_dir="$output_dir/03_allreadpeaks"
-unique_dir="$output_dir/03_uniquereadpeaks/"
+unique_dir="$output_dir/03_uniquereadpeaks"
 
 if [[ ! -d "$output_dir" ]]; then mkdir $output_dir; fi
 if [[ ! -d "$output_dir/03_uniquereadpeaks" ]]; then mkdir "$output_dir/03_uniquereadpeaks"; fi
@@ -648,8 +658,7 @@ if [ "$option" == "counts" ]; then
 
         input_file_dedup="$input_dir_dedup/test${test_id}.dedup.si.bam"
         input_file_all="$input_dir_saf/test${test_id}_all.SAF"
-        input_file_unique="$input_dir/test${test_id}_unique.SAF"
-        output_file="$output_dir/test${test_id}"
+        input_file_unique="$input_dir_saf/test${test_id}_unique.SAF"
 
         echo "#!/bin/bash
         module load subread
@@ -706,9 +715,9 @@ fi
 #Run project_annotations
 script="/home/sevillas2/git/iCLIP/workflow/scripts/08_annotation.R"
 config="/home/sevillas2/git/iCLIP/config/annotation_config.txt"
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/annotations"
+output_dir="${project_dir}/annotations"
 if [[ ! -d "$output_dir" ]]; then mkdir $output_dir; fi
-if [[ ! -d "$output_dir/01_project" ]]; then mkdir $output_dir; fi
+if [[ ! -d "$output_dir/01_project" ]]; then mkdir "$output_dir/01_project"; fi
 
 if [ "$option" == "project_annotations" ]; then
         module load R
@@ -723,19 +732,18 @@ if [ "$option" == "project_annotations" ]; then
         --intron_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed \
         --rmsk_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCh38.txt \
         --custom_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/additional_anno/ \
-        --out_dir "$output_dir/01_project" \
+        --out_dir "$output_dir/01_project/" \
         --reftable_path $config
 fi
 
-# # ##############################################################################################################################
+# ##############################################################################################################################
 #Run peak_annotations
-input_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/counts"
+input_dir="${project_dir}/counts"
 all_dir="$input_dir/03_allreadpeaks"
 unique_dir="$input_dir/03_uniquereadpeaks/"
 
-output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/annotations"
-if [[ ! -d "$output_dir" ]]; then mkdir $output_dir; fi
-if [[ ! -d "$output_dir/02_peaks" ]]; then mkdir $output_dir; fi
+output_dir="${project_dir}/annotations"
+if [[ ! -d "$output_dir/02_peaks" ]]; then mkdir "$output_dir/02_peaks"; fi
 
 
 if [ "$option" == "peak_annotations" ]; then
@@ -777,122 +785,29 @@ if [ "$option" == "peak_annotations" ]; then
     done
 fi
 
-# rule peak_annotations:
-#         '''
-#         find peak junctions, annotations peaks, merges junction and annotation information
-#         '''
-#         input:
-#             unique = rules.feature_counts.output.all_unique,
-#             all = rules.feature_counts.output.all_mm,
-#             anno = rules.project_annotations.output.anno
-#         params:
-#             rname = '16_peak_annotations',
-#             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
-#             functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
-#             p_type = peak_id,
-#             junc = sp_junc,
-#             c_exon = cond_exon,
-#             r_depth= min_count,
-#             d_method=DE_method,
-#             sp = "{sp}",
-#             n_merge = nt_merge,
-#             ref_sp = nova_ref,
-#             out = join(out_dir,'04_annotation','02_peaks/',),
-#             out_m = join(out_dir,'05_demethod','01_input/',),
-#             anno_dir = join(out_dir,'04_annotation','01_project/'),
-#             a_config = annotation_config,
-#             g_path = gen_path,
-#             i_path = intron_path,
-#             r_path = rmsk_path,
-#             error = join(out_dir,'04_annotation','read_depth_error.txt')
-#         envmodules:
-#             config['R'],
-#             config['bedtools'],
-#         output:
-#             anno = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
-#             text = join(out_dir,'04_annotation', '02_peaks', '{sp}_peakannotation_complete.txt')
-#         shell:
-#             '''
-#             #set / create tmp dir
-#             if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
-#                 tmpdir="/lscratch/${{SLURM_JOB_ID}}"
-#             else
-#                 tmpdir="{out_dir}01_preprocess/07_rscripts/"
-#                 if [[ ! -d $tmpdir ]]; then mkdir $tmpdir; fi
-#             fi
-                
-#             Rscript {params.script} \
-#                 --rscript {params.functions} \
-#                 --peak_type {params.p_type} \
-#                 --peak_unique {input.unique} \
-#                 --peak_all {input.all} \
-#                 --join_junction {params.junc} \
-#                 --condense_exon {params.c_exon} \
-#                 --read_depth {params.r_depth} \
-#                 --demethod {params.d_method} \
-#                 --sample_id {params.sp} \
-#                 --ref_species {params.ref_sp} \
-#                 --anno_dir {params.anno_dir} \
-#                 --reftable_path {params.a_config} \
-#                 --gencode_path {params.g_path} \
-#                 --intron_path {params.i_path} \
-#                 --rmsk_path {params.r_path} \
-#                 --tmp_dir ${{tmpdir}} \
-#                 --out_dir {params.out} \
-#                 --out_dir_DEP {params.out_m} \
-#                 --output_file_error {params.error}
-#                 '''
+##############################################################################################################################
+#Run annotation_report
+input_dir="${project_dir}/annotations/02_peaks"
+output_dir="${project_dir}/annotations"
+if [[ ! -d "$output_dir/03_reports" ]]; then mkdir "$output_dir/03_reports"; fi
 
+if [ "$option" == "annotation_report" ]; then
+    for test_id in {1..9}; do
 
-# # ##############################################################################################################################
-# #Run 
-# input_dir_dedup="/data/RBL_NCI/Wolin/Sam/novoalign_v2/dedup"
-# input_dir_saf="/data/RBL_NCI/Wolin/Sam/novoalign_v2/saf"
-# output_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/counts"
-# if [[ ! -d "$output_dir" ]]; then mkdir $output_dir; fi
+        sh_file="$log_dir/test${test_id}/annotation_report_test${test_id}_sh.sh"
+        if [ -f $sh_file ]; then rm $sh_file; fi
 
-# f [ "$option" == "counts" ]; then
-#     for test_id in {1..9}; do
-
-#         sh_file="$log_dir/test${test_id}/counts_test${test_id}_sh.sh"
-#         if [ -f $sh_file ]; then rm $sh_file; fi
-
-#         echo "#!/bin/bash
-#         module load subread
-#         " > $sh_file
-#     done
-# fi
-
-# # rule annotation_report:
-#     """
-#     generates an HTML report for peak annotations
-#     """
-#     input:
-#         peak_in = join(out_dir,'04_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),
-#     params:
-#         rname = "17_annotation_output",
-#         R = join(source_dir,'workflow','scripts','10_annotation.Rmd'),
-#         sp = "{sp}",
-#         ref_sp = nova_ref,
-#         r_depth= min_count,
-#         c_exon = cond_exon,
-#         junc = sp_junc,
-#         p_type = peak_id,
-#         rrna = refseq_rrna,
-#     envmodules:
-#         config['R']
-#     output:
-#         o1 = join(out_dir,'04_annotation', '{sp}_annotation_final_report.html'),
-#         o2 = join(out_dir,'04_annotation', '{sp}_annotation_final_table.txt'),
-#     shell:
-#         """
-#         Rscript -e 'library(rmarkdown); \
-#         rmarkdown::render("{params.R}",
-#             output_file = "{output.o1}", \
-#             params= list(samplename = "{params.sp}", \
-#                 peak_in = "{input.peak_in}", \
-#                 output_table = "{output.o2}", \
-#                 readdepth = "{params.r_depth}", \
-#                 PeakIdnt = "{params.p_type}"))'
-#         """
-
+        echo "#!/bin/bash
+        module load R
+        
+        Rscript -e 'library(rmarkdown); \
+        rmarkdown::render(\"/home/sevillas2/git/iCLIP/workflow/scripts/10_annotation.Rmd\",
+            output_file = \"$output_dir/03_reports/test${test_id}_annotation_final_report.html\",
+            params= list(samplename = \"test${test_id}\",
+            peak_in = \"$input_dir/test${test_id}_peakannotation_complete.txt\",
+            output_table = \"$output_dir/test${test_id}_annotation_final_table.txt\",
+            readdepth = \"0\",
+            PeakIdnt = \"ALL\"))'
+        " > $sh_file
+    done
+fi
