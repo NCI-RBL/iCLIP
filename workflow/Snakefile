@@ -934,7 +934,7 @@ if (splice_aware == "Y"):
                     -a 50000 -n 25 -u -s {params.base_out};
                 
                 #converts sam to bam
-                gunzip -c {output.sam} | samtools view -S -b  - > ${{tmpdir}}/{params.base}.unmasked.bam;
+                gunzip -c {output.sam} | samtools view -S -b - > ${{tmpdir}}/{params.base}.unmasked.bam;
                 
                 #merge unmapped sam and unmasked bam into final output
                 #if there are unmapped reads
