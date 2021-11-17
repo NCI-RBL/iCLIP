@@ -951,6 +951,7 @@ if (splice_aware == "Y"):
                 else
                     samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.unmasked.bam -o {output.bam};
                     samtools index {output.bam}
+                fi
             fi
 
             exitcode=$?
