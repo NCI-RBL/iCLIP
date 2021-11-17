@@ -80,7 +80,7 @@ dedup:
     time: 00-08:00:00
 
 create_beds_safs:
-    mem: 200g
+    mem: 350g
     threads: 4
     partition: largemem
     time: 00-02:00:00
