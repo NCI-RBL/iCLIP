@@ -50,13 +50,16 @@ cleanup_conversion:
     mem: 30g
     time: 00-3:00:00
 
+merge_unmapped_splits:
+    time: 01-00:00:00
+
 create_bam_mm_unique:
     threads: 6
     mem: 30g
     time: 00-15:00:00
 
 merge_splits_unique_mm:
-    mem: 120g
+    mem: 150g
     time: 02-00:00:00
 
 merge_mm_and_unique:
