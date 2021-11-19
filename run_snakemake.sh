@@ -305,13 +305,15 @@ elif [[ $pipeline = "DAG" ]]; then
 ######################## Report #######################
 elif [[ $pipeline = "report" ]]; then
   echo
-  echo "Creating Snakemake Report"
-  module load graphviz snakemake
+  echo "Generating Snakemake Report Command"
+  echo
 
-  snakemake \
-  -s ${output_dir}/config/Snakefile \
-  --configfile ${output_dir}/config/snakemake_config.yaml \
-  --report ${output_dir}/log/runlocal_snakemake_report.html 
+  report_cmd="module load R; Rscript -e 'library(rmarkdown);
+  rmarkdown::render(\"workflow/scripts/create_snakemake_report.RMD\",
+  output_file = \"${output_dir}/snakemake_report.html\", 
+  params= (log_dir=\"${output_dir}/\"))'"
+  echo $report_cmd
+
 ######################## cleanup #######################
 elif [[ $pipeline = "cleanup" ]]; then
   echo
