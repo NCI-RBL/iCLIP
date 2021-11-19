@@ -39,56 +39,56 @@ fi
 
 ### unique_mm (NEW)
 if [ "$option" == "unique_mm" ]; then
-    for testid in {1..1}; do \
+    for testid in {1..9}; do \
         sh $log_dir/test${testid}/unique_mm_split_sbatch.sh
     done
 fi
 
 ### merge splits
 if [ "$option" == "merge_splits" ]; then
-    for testid in {1..1}; do \
+    for testid in {1..9}; do \
         sh $log_dir/test${testid}/merge_splits_sbatch.sh
     done
 fi
 
 ### merge unique mm
 if [ "$option" == "merge_um" ]; then
-    for testid in {1..1}; do \
+    for testid in {1..9}; do \
         sh $log_dir/test${testid}/merge_um_sbatch.sh
     done
 fi
 
 ### dedup
 if [ "$option" == "dedup" ]; then \
-    for testid in {2..9}; do \
+    for testid in {1..9}; do \
         sh $log_dir/test${testid}/dedup_sbatch.sh
     done
 fi
 
 ### beds
 if [ "$option" == "beds" ]; then
-    for testid in {2..9}; do \
+    for testid in {1..9}; do \
         sh $log_dir/test${testid}/beds_sbatch.sh
     done
 fi
 
 ### counts
 if [ "$option" == "counts" ]; then
-    for testid in {2..9}; do \
+    for testid in {1..9}; do \
         sh $log_dir/test${testid}/counts_sbatch.sh
     done
 fi
 
 ### peak_annotations
 if [ "$option" == "peak_annotations" ]; then
-    for testid in {2..9}; do \
+    for testid in {1..9}; do \
         sh $log_dir/test${testid}/peak_annotations_sbatch.sh
     done
 fi
 
 ### annotation_report
 if [ "$option" == "annotation_report" ]; then
-    for testid in {2..9}; do \
+    for testid in {1..9}; do \
         sh $log_dir/test${testid}/annotation_report_sbatch.sh
     done
 fi

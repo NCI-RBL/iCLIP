@@ -15,8 +15,15 @@ fi
 #set option
 option=$2
 
-index_file="/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc_75.nix"
+index_file="/data/CCBR_Pipeliner/iCLIP/index/active/phil/mm10/mm10_splice75bp_unmasked.nix"
 doc="/data/CCBR_Pipeliner/iCLIP/container/USeq_8.9.6/Apps/SamTranscriptomeParser"
+alias_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/hg38.chromAlias.txt"
+gencode_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt"
+refseq_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt"
+canonical_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt"
+intron_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed"
+rmsk_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCh38.txt"
+custom_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/additional_anno/"
 
 #mkdirs if necessary
 if [[ ! -d "$log_dir" ]]; then mkdir $log_dir; fi
@@ -45,7 +52,7 @@ if [ "$option" == "align" ]; then \
     test_id="test1"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        split_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -64,7 +71,7 @@ if [ "$option" == "align" ]; then \
             -s 1 \
             -o SAM \
             -R 0 \
-            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"
+            -r EXHAUSTIVE 999 | gzip -c > "${split_base}.sam.gz"
             " > $sh_file
     done
 
@@ -72,7 +79,7 @@ if [ "$option" == "align" ]; then \
     test_id="test2"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        split_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -91,14 +98,14 @@ if [ "$option" == "align" ]; then \
             -s 1 \
             -o SAM \
             -R 5 \
-            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${split_base}.sam.gz"" > $sh_file
     done
 
     # test3: R flag
     test_id="test3"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        split_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -117,14 +124,14 @@ if [ "$option" == "align" ]; then \
             -s 1 \
             -o SAM \
             -R 20 \
-            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${split_base}.sam.gz"" > $sh_file
     done
 
     # test4: STRICTER VALUES
     test_id="test4"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        split_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -143,14 +150,14 @@ if [ "$option" == "align" ]; then \
         -s 1 \
         -o SAM \
         -R 5 \
-        -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
+        -r EXHAUSTIVE 999 | gzip -c > "${split_base}.sam.gz"" > $sh_file
     done
 
     # test5: NOVOALIGN default
     test_id="test5"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        split_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -168,14 +175,14 @@ if [ "$option" == "align" ]; then \
         -s 2 \
         -o SAM \
         -R 5 \
-        -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
+        -r EXHAUSTIVE 999 | gzip -c > "${split_base}.sam.gz"" > $sh_file
     done
 
     # test 6 S FLAG
     test_id="test6"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        split_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -194,14 +201,14 @@ if [ "$option" == "align" ]; then \
             -s 0 \
             -o SAM \
             -R 0 \
-            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${split_base}.sam.gz"" > $sh_file
     done
 
     # test 7 S FLAG
     test_id="test7"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        split_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -220,14 +227,14 @@ if [ "$option" == "align" ]; then \
             -s 2 \
             -o SAM \
             -R 0 \
-            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${split_base}.sam.gz"" > $sh_file
     done
 
     # test 8 S FLAG
     test_id="test8"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        split_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -245,14 +252,14 @@ if [ "$option" == "align" ]; then \
             -g 20 \
             -o SAM \
             -R 0 \
-            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${split_base}.sam.gz"" > $sh_file
     done
 
     # test 9 K FLAG
     test_id="test9"
     for i in {01..10}; do \
         input_file="$input_dir/Ro_Clip_2.split.$i.fastq.gz"
-        project_dir="$output_dir/$test_id/Ro_Clip_2.split.$i"
+        split_base="$output_dir/$test_id/Ro_Clip_2.split.$i"
         sh_file="$log_dir/${test_id}/align_${test_id}_${i}_sh.sh"
         
         echo "#!/bin/sh
@@ -270,7 +277,7 @@ if [ "$option" == "align" ]; then \
             -s 1 \
             -o SAM \
             -R 0 \
-            -r EXHAUSTIVE 999 | gzip -c > "${project_dir}.sam.gz"" > $sh_file
+            -r EXHAUSTIVE 999 | gzip -c > "${split_base}.sam.gz"" > $sh_file
     done
 
 fi
@@ -723,15 +730,15 @@ if [ "$option" == "project_annotations" ]; then
         module load R
 
         Rscript /home/sevillas2/git/iCLIP/workflow/scripts/08_annotation.R \
-        --ref_species hg38 \
+        --ref_species mm10 \
         --refseq_rRNA TRUE \
-        --alias_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/hg38.chromAlias.txt \
-        --gencode_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt \
-        --refseq_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt \
-        --canonical_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt \
-        --intron_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed \
-        --rmsk_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCh38.txt \
-        --custom_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/additional_anno/ \
+        --alias_path $alias_path \
+        --gencode_path $gencode_path \
+        --refseq_path $refseq_path \
+        --canonical_path $canonical_path \
+        --intron_path $intron_path \
+        --rmsk_path $rmsk_path \
+        --custom_path $custom_path \
         --out_dir "$output_dir/01_project/" \
         --reftable_path $config
 fi
@@ -771,12 +778,12 @@ if [ "$option" == "peak_annotations" ]; then
         --read_depth 3 \
         --demethod NONE \
         --sample_id "test${test_id}" \
-        --ref_species hg38 \
-        --anno_dir "$output_dir/01_project" \
+        --ref_species mm10 \
+        --anno_dir "$output_dir/01_project/" \
         --reftable_path /data/RBL_NCI/Wolin/Sam/mapq_recalc/config/annotation_config.txt \
-        --gencode_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt \
-        --intron_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed \
-        --rmsk_path /data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCh38.txt \
+        --gencode_path $gencode_path \
+        --intron_path $intron_path \
+        --rmsk_path $rmsk_path \
         --tmp_dir \${tmpdir} \
         --out_dir "$output_dir/02_peaks/" \
         --out_dir_DEP "$output_dir/02_peaks/" \
