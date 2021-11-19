@@ -3,7 +3,7 @@ __default__:
     gres: lscratch:96
     mem: 40g
     partition: norm
-    time: 12-00:00:00
+    time: 00-02:00:00
     threads: 32
     output: .%j.{wildcards}.out
     error: .%j.{wildcards}.err
@@ -20,6 +20,7 @@ demultiplex:
 
 remove_adaptors:
     threads: 3
+    time: 1-00:00:00
     mem: 3g
 
 qc_fastq_pre:
@@ -73,7 +74,6 @@ qc_alignment:
 qc_troubleshoot:
     threads: 3
     mem: 3g
-    time: 00-02:00:00
 
 dedup:
     threads: 2
@@ -83,7 +83,6 @@ create_beds_safs:
     mem: 350g
     threads: 4
     partition: largemem
-    time: 00-02:00:00
 
 project_annotations:
     threads: 2
