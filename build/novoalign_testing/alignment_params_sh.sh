@@ -17,13 +17,13 @@ option=$2
 
 index_file="/data/CCBR_Pipeliner/iCLIP/index/active/phil/mm10/mm10_splice75bp_unmasked.nix"
 doc="/data/CCBR_Pipeliner/iCLIP/container/USeq_8.9.6/Apps/SamTranscriptomeParser"
-alias_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/hg38.chromAlias.txt"
-gencode_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt"
-refseq_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt"
-canonical_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt"
-intron_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed"
-rmsk_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/repeatmasker/rmsk_GRCh38.txt"
-custom_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/additional_anno/"
+alias_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/mm10.chromAlias.txt"
+gencode_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt"
+refseq_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt"
+canonical_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt"
+intron_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed"
+rmsk_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/repeatmasker/rmsk_GRCm38.txt"
+custom_path="/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/additional_anno/"
 
 #mkdirs if necessary
 if [[ ! -d "$log_dir" ]]; then mkdir $log_dir; fi
