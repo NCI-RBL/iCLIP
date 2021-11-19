@@ -939,7 +939,8 @@ if (splice_aware == "Y"):
                 #merge unmapped sam and unmasked bam into final output
                 #if there are unmapped reads
                 FILESIZE=$(stat -c%s ${{tmpdir}}/{params.base}.tmp.unmapped.sam)
-                if [ "$FILESIZE" -lt 100 ]; then 
+                if [ "$FILESIZE" -gt 100 ]; then
+                    #merge unmasked reads with unmapped reads
                     samtools merge -f ${{tmpdir}}/{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
                     
                     #pull header from merged and add to final output
@@ -948,6 +949,7 @@ if (splice_aware == "Y"):
                     #sort and index final outupt
                     samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
                     samtools index {output.bam}
+                #if there are no unmapped reads then final file is unmasked bam
                 else
                     samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.unmasked.bam -o {output.bam};
                     samtools index {output.bam}
@@ -1372,6 +1374,9 @@ if (splice_aware == 'Y'):
             python {params.script_recal} \
             --inputBAM1 ${{tmpdir}}/unaware.si.bam --inputBAM2 ${{tmpdir}}/masked.si.bam --inputBAM3 {input.unmasked} \
             --outBAM {output.bam} --outTSV {output.tsv} --outLOG {output.log};
+
+            #index recalculated bam
+            samtoosl index {output.bam}
             """
 
     rule mapq_stats:
