@@ -114,3 +114,4 @@ MANORM_RMD:
 mapq_recalc:
     mem: 1TB
     partition: largemem
+    time: 00-06:00:00
