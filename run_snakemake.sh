@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #########################################################
 # Arguments
@@ -125,7 +125,8 @@ if [[ $pipeline = "initialize" ]]; then
     fi
 
   else
-    mkdir "${output_dir}"
+    # Create any initialized parent directories
+    mkdir -p "${output_dir}"
     mkdir "${output_dir}/config"
     mkdir "${output_dir}/manifest"
     mkdir "${output_dir}/log"
