@@ -1376,7 +1376,7 @@ if (splice_aware == 'Y'):
             --outBAM {output.bam} --outTSV {output.tsv} --outLOG {output.log};
 
             #index recalculated bam
-            samtoosl index {output.bam}
+            samtools index {output.bam}
             """
 
     rule mapq_stats:
