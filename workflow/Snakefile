@@ -1373,9 +1373,10 @@ if (splice_aware == 'Y'):
             #recalc
             python {params.script_recal} \
             --inputBAM1 ${{tmpdir}}/unaware.si.bam --inputBAM2 ${{tmpdir}}/masked.si.bam --inputBAM3 {input.unmasked} \
-            --outBAM {output.bam} --outTSV {output.tsv} --outLOG {output.log};
+            --outBAM ${{tmpdir}}/mapq_recalculated.bam --outTSV {output.tsv} --outLOG {output.log};
 
             #index recalculated bam
+            samtools sort ${{tmpdir}}/mapq_recalculated.bam -o {output.bam}
             samtools index {output.bam}
             """
 
