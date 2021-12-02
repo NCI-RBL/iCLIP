@@ -58,7 +58,7 @@ merge_unmapped_splits:
 create_bam_mm_unique:
     threads: 6
     mem: 30g
-    time: 00-15:00:00
+    time: 04-00:00:00
 
 merge_splits_unique_mm:
     mem: 270g
