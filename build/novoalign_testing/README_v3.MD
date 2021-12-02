@@ -61,10 +61,20 @@ log_dir="/data/RBL_NCI/Wolin/Sam/novoalign_v2/log"
 ####################################################################################
 Run complete iCLIP pipeline with adjustments for alignment params only
 
+## submitted
 sh run_snakemake.sh -p cluster -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/hg38/test1/ 27643847
-sh run_snakemake.sh -p cluster -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/hg38/test4/
-sh run_snakemake.sh -p cluster -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/hg38/test5/
-
 sh run_snakemake.sh -p cluster -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/mm10/test1/ 27643853
+
+## to be submitted - dry runs
+sh run_snakemake.sh -p dry -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/hg38/test4/
+sh run_snakemake.sh -p dry -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/mm10/test4/
+
+sh run_snakemake.sh -p dry -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/hg38/test5/
+sh run_snakemake.sh -p dry -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/mm10/test5/
+
+## to be submitted - cluster
+sh run_snakemake.sh -p cluster -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/hg38/test4/
 sh run_snakemake.sh -p cluster -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/mm10/test4/
+
+sh run_snakemake.sh -p cluster -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/hg38/test5/
 sh run_snakemake.sh -p cluster -o /data/RBL_NCI/Wolin/Sam/novoalign_v3/mm10/test5/
