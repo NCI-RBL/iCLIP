@@ -1,70 +1,62 @@
 library(data.table)
 library(dplyr)
 library(tidyr)
-#library(GenomicFeatures)
-#library(rtracklayer)
-# library(VariantAnnotation,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(GenomicRanges,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library("pheatmap")
-# library(ggplot2,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library("viridis",quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(edgeR,quietly = T,verbose = F)
-# library('GenomicFeatures',quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library('rtracklayer',quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(matrixStats,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(plyr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(tidyr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(fitdistrplus,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(stringr,quietly = T,verbose = F,warn.conflicts = F,logical.return = F)
-# library(reshape)
-# library(stringi)
-# library(plotly)
-# library(GenomicRanges)
-# library(RColorBrewer)
+library(argparse)
 
-args <- commandArgs(trailingOnly = TRUE)
-ref_species = args[1]
-soyeong_path = args[2]
-alias_path = args[3]
-gencode_path = args[4]
-refseq_path = args[5]
-canonical_path = args[6]
-intron_path = args[7]
-rmsk_path = args[8]
-out_dir = args[9]
-reftable_path = args[10]
-refseq_rRNA = args[11]
+#set args
+parser <- ArgumentParser()
+parser$add_argument("-ref","--ref_species", dest="ref_species", required=TRUE, help="reference species name")
+parser$add_argument("-rrna","--refseq_rRNA", dest="refseq_rRNA", required=TRUE, help="Whether to include rrna")
+parser$add_argument("-a","--alias_path", dest="alias_path", required=TRUE, help="path for alias")
+parser$add_argument("-g","--gencode_path", dest="gencode_path", required=TRUE, help="path for gencode")
+parser$add_argument("-rseq","--refseq_path", dest="refseq_path", required=TRUE, help="path for refseq")
+parser$add_argument("-c","--canonical_path", dest="canonical_path", required=TRUE, help="path for canonical")
+parser$add_argument("-i","--intron_path", dest="intron_path", required=TRUE, help="path for intron")
+parser$add_argument("-rmsk","--rmsk_path", dest="rmsk_path", required=TRUE, help="path for rmsk")
+parser$add_argument("-cust","--custom_path", dest="custom_path", required=TRUE, help="path for custom annotations")
+parser$add_argument("-o","--out_dir", dest="out_dir", required=TRUE, help="path for output dir")
+parser$add_argument("-reft","--reftable_path", dest="reftable_path", required=TRUE, help="path for reftable")
 
-setwd("../../../../../")
+args <- parser$parse_args()
+ref_species = args$ref_species
+refseq_rRNA = as.logical(args$refseq_rRNA)
+alias_path = args$alias_path
+gencode_path = args$gencode_path
+refseq_path = args$refseq_path
+canonical_path = args$canonical_path
+intron_path = args$intron_path
+rmsk_path = args$rmsk_path
+custom_path = args$custom_path
+out_dir = args$out_dir
+reftable_path = args$reftable_path
 
-#testing information
-if(length(args)==0){
-  ref_dir = "/Users/homanpj/Documents/Resources/ref/"
-  ref_species = "hg38" ### need better name, match to snakemake
-  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iClip_Git/config/annotation_config.txt"
-  refseq_rRNA=T
-  
-  ### fix need to figure out how to keep all this info - maybe a config? dict?
-  alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
-  if(ref_species == "mm10"){
-    out_dir = "Volumes/data/CCBR_Projects/iCLIP/testing/"
-    gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
-    refseq_path = paste0(ref_dir, "mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
-    canonical_path = paste0(ref_dir,"mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
-    intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
-    rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
-    custom_path= paste0(ref_dir,'mm10/AdditionalAnno/')
-    
-  } else if (ref_species == "hg38"){
-    out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/iClip_Git/workflow/scripts/AnnoTestPIPE/15_project_annotation/"
-    gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.txt")
-    refseq_path = paste0(ref_dir, "hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
-    canonical_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
-    intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
-    rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
-    custom_path= ""
-  } 
-}
+# ### testing information
+# rm(list=setdiff(ls(), "params"))
+# setwd("/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/")
+# ref_dir = "/Users/homanpj/Documents/Resources/ref/"
+# ref_species = "hg38" ### need better name, match to snakemake
+# reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
+# refseq_rRNA=T
+# out_dir = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/13_annotation/01_project/"
+# 
+# ### fix need to figure out how to keep all this info - maybe a config? dict?
+# alias_path = paste0(ref_dir,ref_species,"/",ref_species,".chromAlias.txt")
+# if(ref_species == "mm10"){
+#   gencode_path = paste0(ref_dir, "mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt")
+#   refseq_path = paste0(ref_dir, "mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt")
+#   canonical_path = paste0(ref_dir,"mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt")
+#   intron_path = paste0(ref_dir, "mm10/Gencode_VM23/fromUCSC/KnownGene/KnownGene_GRCm38_introns.bed")
+#   rmsk_path = paste0(ref_dir,"mm10/repeatmasker/rmsk_GRCm38.txt")
+#   custom_path= paste0(ref_dir,'mm10/AdditionalAnno/')
+# 
+# } else if (ref_species == "hg38"){
+#   gencode_path = paste0(ref_dir,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
+#   refseq_path = paste0(ref_dir, "hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt")
+#   canonical_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt")
+#   intron_path = paste0(ref_dir,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
+#   rmsk_path = paste0(ref_dir,"hg38/repeatmasker/rmsk_GRCh38.txt")
+#   custom_path= ""
+# }
 
 ##########################################################################################
 ############### GENCODE ANNOTATION
@@ -108,12 +100,13 @@ ref_gencode_sno$gene_type_ALL = ref_gencode_sno$gene_type
 # when we plot CLIP peaks we plot both ncRNA as a single group and ncRNA as subgroups
 ReplaceType <-function(df_in,col_in,list_in,replace_id){
   for (id in list_in){
-    df_in[,col_in]=gsub(id,replace_id,df_in[,col_in])
+    df_in[,col_in]=gsub(paste0("\\<",id,"\\>"),replace_id,df_in[,col_in])
   } 
   return(df_in)
 }
 
-type_list = c("miRNA","miscRNA","misc_RNA","piRNA","rRNA","siRNA","snRNA","snoRNA","tRNA","ribozyme")
+type_list = c("miRNA","miscRNA","misc_RNA","piRNA","rRNA","siRNA","snRNA","snoRNA","ribozyme","scRNA", "sRNA","scaRNA", "yRNA", "srpRNA", "7SKRNA","sncRNA",'vaultRNA',"tRNA")
+# type_list = c("miRNA","miscRNA","misc_RNA","piRNA","rRNA","siRNA","snRNA","snoRNA","tRNA","ribozyme")
 ref_gencode = ReplaceType(ref_gencode,"gene_type", type_list,"ncRNA")
 
 #create subsets used to annotate clip peaks separately 
@@ -126,6 +119,8 @@ write.table(ref_gencode_t,paste0(out_dir,"ref_gencode.txt"),col.names=T,sep = "\
 ############### canonical paths
 ##########################################################################################
 # canonical=fread(canonical_path, header=T, sep="\t",stringsAsFactors = F,data.table=F)
+# canonical$chr=(gsub('chr[0-9]+_|chr[X-Y]_|chrUn_|_alt|_random|_fix','',canonical$chr))
+# canonical$chr=(gsub('v','.',canonical$chr))
 # 
 # #remove version
 # canonical$transcript=removeVersion(canonical$transcript)
@@ -143,7 +138,9 @@ introns=fread(intron_path,
               col.names = c('chr','start','end','attribute','V5','strand'))
 
 #remove Non-Chromosome contigs
-introns=introns[grepl("_",introns$chr)==F,]
+# introns=introns[grepl("_",introns$chr)==F,]
+introns$chr=(gsub('chr[0-9]+_|chr[X-Y]_|chrUn_|_alt|_random|_fix','',introns$chr))
+introns$chr=(gsub('v','.',introns$chr))
 
 #split attribute col
 introns=separate(introns,
@@ -176,7 +173,7 @@ intron_exon$ID=paste0(intron_exon$chr,':',intron_exon$start,'-',intron_exon$end)
 # get repeat regions and extra small RNA locations
 rmsk_GRCm38=fread(rmsk_path, header=T, sep="\t",stringsAsFactors = F,
                   data.table=F)
-rmsk_GRCm38$genoName=gsub("chr[0-9]+_|chrUn_|_random|_alt|_fix|chr[A-Z]_","",rmsk_GRCm38$genoName)
+rmsk_GRCm38$genoName=gsub('chr[0-9]+_|chr[X-Y]_|chrUn_|_alt|_random|_fix',"",rmsk_GRCm38$genoName)
 rmsk_GRCm38$genoName=gsub("v",".",rmsk_GRCm38$genoName)
 
 ##########################################################################################
@@ -184,8 +181,7 @@ rmsk_GRCm38$genoName=gsub("v",".",rmsk_GRCm38$genoName)
 ##########################################################################################
 
 ############### hg38 refseq rRNA
-
-if (ref_species=='hg38'&refseq_rRNA==T) {
+if (ref_species=='hg38' && refseq_rRNA==TRUE) {
   ref_Refseq=fread(refseq_path, header=T, sep="\t",stringsAsFactors = F,data.table=F)
   ref_Refseq=ref_Refseq[,!colnames(ref_Refseq)%in%'source']
   ref_Refseq=dplyr::rename(ref_Refseq,
@@ -198,7 +194,7 @@ if (ref_species=='hg38'&refseq_rRNA==T) {
   ref_Refseq=ref_Refseq[(ref_Refseq$feature)%in%'gene',]
   
   ##################################################  ###################################################
-  alias=fread(paste0(ref_dir,"/hg38/hg38.chromAlias.txt"), header=T, sep="\t",stringsAsFactors = F,data.table=F,skip = "#",fill=TRUE)
+  alias=fread(alias_path, header=T, sep="\t",stringsAsFactors = F,data.table=F,skip = "#",fill=TRUE)
   colnames(alias)=c('chr','alias2','aliasNCBI',"Refseq")
   alias$aliasNCBI2=alias$aliasNCBI
   alias[-grep('_',alias$chr),'aliasNCBI2']=alias[-grep('_',alias$chr),'chr']
@@ -213,12 +209,12 @@ if (ref_species=='hg38'&refseq_rRNA==T) {
   Refseq_rRNA$gene_type='rRNA' #rRNA_RefSeq'
   Refseq_rRNA$gene_type_ALL=Refseq_rRNA$gene_type
   Refseq_rRNA=dplyr::rename(Refseq_rRNA, "name"=gene_synonym)
-  Refseq_rRNA$chr=gsub("chr[0-9]+_|chrUn_|_random|_fix","",Refseq_rRNA$chr)
+  Refseq_rRNA$chr=gsub('chr[0-9]+_|chr[X-Y]_|chrUn_|_alt|_random|_fix',"",Refseq_rRNA$chr)
   Refseq_rRNA$chr=gsub("v",".",Refseq_rRNA$chr)
   Refseq_rRNA=Refseq_rRNA[is.na(Refseq_rRNA$chr)==F,]
   
   write.table(Refseq_rRNA[,c("chr",'start','end','ensembl_gene_id','gene_type','strand','gene_type_ALL')],
-              paste0(out_dir,"rRNA_refSeq.bed"),col.names=T,sep = "\t",row.names = F)
+              paste0(out_dir,"rRNA_refseq.bed"),col.names=T,sep = "\t",row.names = F)
   
 } 
 
@@ -291,7 +287,8 @@ gencodeAnno<-function(rowid){
   return(list(df_sub,content))
 }
 
-rmskAnno<-function(rowid){
+rmskAnno<-function(rowid){ 
+  #rowid='7SK RNA'
   #define family and class lists
   if(ref_species=="hg38"){
     class_list =c("Satellite","Low_complexity","LTR",'Simple_repeat','DNA','Unknown')
@@ -300,7 +297,7 @@ rmskAnno<-function(rowid){
   }
   
   family_list=unique(rmsk_GRCm38$repFamily)
-  class_list=unique(rmsk_GRCm38$repClass)
+  class_list=c(unique(rmsk_GRCm38$repClass),"LINE SINE")
   
   # if annotation id (rowid) is in the defined annotation list, subset, and outuput bed
   annotation_list=unique(c(class_list,'7SK RNA','yRNA','rRNA'))
@@ -348,34 +345,38 @@ rmskAnno<-function(rowid){
   return(list(df_sub,content))
 }
 
+# Input should be bed6 format with 4th column being name featured in output
 SYAnno<-function(rowid,ref_species){
+  # rowid='sncRNA'
   # rowid='rRNA'
   # ref_species='mm10'
   #read bedfile
-  file_name = ref_table[rowid,paste0(ref_species,"_SY")]
+  file_name = ref_table[rowid,paste0(ref_species,"_Custom")]
   df_sub = read.table(paste0(custom_path,file_name))
+  df_sub[,5]=rowid
+  #   #if the file is a .gtf.1 then filter
+  # if (grepl(".gtf.1",file_name)){
+  #   df_sub = subset(df_sub, V3 == 'gene')
+  #   contents = ""
+  #   #if the file is a .gtf then filter
+  # } else if (grepl(".gtf",file_name)){
+  #   df_sub = separate(df_sub,col = "V9",into = c("gene","trans",'x'),sep = ";")
+  #   df_sub$gene = gsub("gene_id ","",df_sub$gene)
+  #   df_sub$trans = gsub("transcript_id ","",df_sub$trans)
+  #   df_sub = df_sub[,((colnames(df_sub)%in%'x')==F)]
+  #   contents = ""
+  #   
+  #   #all other files 
+  # } else{
   
-  #if the file is a .gtf.1 then filter
-  if (grepl(".gtf.1",file_name)){
-    df_sub = subset(df_sub, V3 == 'gene')
-    contents = ""
-    
-    #if the file is a .gtf then filter
-  } else if (grepl(".gtf",file_name)){
-    df_sub = separate(df_sub,col = "V9",into = c("gene","trans",'x'),sep = ";")
-    df_sub$gene = gsub("gene_id ","",df_sub$gene)
-    df_sub$trans = gsub("transcript_id ","",df_sub$trans)
-    df_sub = df_sub[,((colnames(df_sub)%in%'x')==F)]
-    contents = ""
-    
-    #all other files 
-  } else{
-    contents = paste0(unique(df_sub$V4),collapse = ', ')
-  }
+  colnames(df_sub)=c('chr','start','end','name','type','strand')
+  # contents = paste0(unique(df_sub$V4),collapse = ', ')
+  contents=""
+  # }
   
   write.table(df_sub,
               file=paste0(out_dir,rowid,"_Custom.bed"), 
-              sep = "\t", row.names = F, col.names = F, append = F, quote= FALSE)
+              sep = "\t", row.names = F, col.names = T, append = F, quote= FALSE)
   
   return(list(df_sub,content))
 }
@@ -389,8 +390,9 @@ annotation_output=data.frame()
 
 #input data from annotation df
 ref_table = read.table(reftable_path, header = TRUE, sep="\t", row.names = 1)
-#rowid="lincRNA"
+#rowid="sncRNA"
 for (rowid in rownames(ref_table)){
+  
   #determine source to use
   ref_selection =  ref_table[rowid,paste0(ref_species,"_selection")]
   ref_selection=unlist(strsplit(ref_selection,split ="," ))  
@@ -469,4 +471,3 @@ write.table(annotation_output,
 write.table(annotation_output[rnames_ncRNA,cnames_ncRNA],
             file=paste0(out_dir,"ncRNA_annotations.txt"), 
             sep = "\t", row.names = T, col.names = T, append = F, quote= FALSE)
-

@@ -1,0 +1,6 @@
+untagged_fclip  44
+YKO_noPFA   10
+FLAG_Ro_noPFA   79
+untagged_noPFA 98
+FLAG_Ro_fclip   98
+YKO_fclip   98

@@ -73,7 +73,23 @@ def check_samples(input_df,select_file,error_log):
 
     return(error_log)
 
-def check_both_files(input_df_m,input_df_s,error_log):
+def check_contrasts(input_df,select_file,error_log):
+    #check if there are any NA values, otherwsie check alpha/num
+    check_na = input_df.isnull().values.any()
+
+    if check_na == False:
+      for select_cols in input_df.columns.values:
+          tmp_list = input_df[select_cols].tolist()
+          #check values are alpha/numeric or _
+          regex = re.compile(r'[A-Z]_[a-z][0-9]')
+          for item in tmp_list:
+            if(regex.search(item) != None):
+              error_log.append("{} values can only contain alpha/numeric values or _ - please review: {}".format(select_cols,item))
+    else:
+      error_log.append("Contrast manifest can only contain two comparisons per line. Please review")
+    return(error_log)
+
+def check_multiplex_samples(input_df_m,input_df_s,error_log):
     l1 = list(input_df_m.multiplex.unique())
     l2 = list(input_df_s.multiplex.unique())
 
@@ -91,7 +107,76 @@ def check_both_files(input_df_m,input_df_s,error_log):
 
     return(error_log)
 
-error_log=[]
+def check_MANORM_contrast(input_df_s,input_df_c,error_log,de_log):
+      #create list of samples
+      l1 = list(input_df_s["sample"].unique())
+
+      #create list of requested sample contrasts
+      l2 = list(input_df_c["sample"].unique())
+
+      #create list of requested background contrasts      
+      l3 = list(input_df_c["background"].unique())
+
+      #make sure all samples/background are samples found in workflow
+      l_2to1 = list(set(l2)-set(l1))
+      l_3to1 = list(set(l3)-set(l1))
+
+      #if any samples are missing, print error
+      if len(l_2to1) !=0:
+        error_log.append("The following sample(s) was/were not found in the sample_manifest tsv: {}. Please review manifests.".format(l_2to1))
+      
+      #if any background samples are missing, print error
+      if len(l_3to1) !=0:
+        error_log.append("The following background sample(s) was/were not found in the sample_manifest tsv {}. Please review manifests.".format(l_3to1))
+      
+      #if all samples and background samples are present, print confirmation of MANORM
+      if len(l_2to1) ==0 & len(l_3to1) ==0:
+        de_log.append("The following sample to sample comparisons will be run with MANORM:\n{}.".format(input_df_c))
+
+      return(error_log, de_log)
+
+def check_DIFFBIND_contrast(input_df_s,input_df_c,error_log,de_log):
+      #create list of groups
+      l1 = list(input_df_s["group"].unique())
+
+      #create list of requested sample group contrasts
+      l2 = list(input_df_c["sample"].unique())
+
+      #create list of requested background group contrasts      
+      l3 = list(input_df_c["background"].unique())
+
+      #make sure all sample groups / background groups are groups found in workflow
+      l_2to1 = list(set(l2)-set(l1))
+      l_3to1 = list(set(l3)-set(l1))
+
+      #if any sample groups are missing, print error
+      if len(l_2to1) !=0:
+          error_log.append("The following sample group(s) was/were not found in the sample_manifest tsv: {}. Please review manifests.".format(l_2to1))
+
+      #if any background groups are missing, print error
+      if len(l_3to1) !=0:
+          error_log.append("The following background group(s) was/were not found in the sample_manifest tsv {}. Please review manifests.".format(l_3to1))
+
+      #if all samples and background samples are present, print confirmation of MANORM
+      if len(l_2to1) ==0 & len(l_3to1) ==0:
+        de_log.append("The following group to group comparisons will be run with DIFFBIND:")
+
+        #for each row in contrast manifest    
+        for index, row in input_df_c.iterrows():
+          #create list of samples and background in each group
+          l1 = list(input_df_s[(input_df_s['group']==row['sample'])]['sample'].unique())
+          l2 = list(input_df_s[(input_df_s['group']==row['background'])]['sample'].unique())
+          
+          #output info to de_log
+          de_log.append("- {} to {}".format(row['sample'],row['background']))
+          de_log.append("-- this includes samples: {}".format(l1))
+          de_log.append("-- this includes background samples: {}".format(l2))
+          
+      return(error_log,de_log)
+
+#create log
+error_log = []
+de_log = []
 
 #Check multiplex file
 check_file = sys.argv[2]
@@ -107,15 +192,36 @@ s_req = ['multiplex','barcode','sample','adaptor']
 error_log = check_header(s_df,s_req,check_file,error_log)
 error_log = check_samples(s_df,check_file,error_log)
 
-#Check concordance between two files
-error_log = check_both_files(m_df,s_df,error_log)
+#Check concordance between multiplex and sample files
+error_log = check_multiplex_samples(m_df,s_df,error_log)
 
+#check contrast file, if necessary
+DE_method = sys.argv[5]
+if DE_method == "MANORM":
+    #Check contrast file
+    check_file = sys.argv[4]
+    c_df = pd.read_csv(check_file,sep=",")
+    c_req = ['sample','background']
+    error_log = check_header(c_df,c_req,check_file,error_log)
+    error_log = check_contrasts(c_df,check_file,error_log)
+      
+    #Check concordance between sample and contrast files
+    error_log,de_log = check_MANORM_contrast(s_df,c_df,error_log,de_log)
+elif DE_method == "DIFFBIND":
+    #Check contrast file
+    check_file = sys.argv[4]
+    c_df = pd.read_csv(check_file,sep=",")
+    c_req = ['sample','background']
+    error_log = check_header(c_df,c_req,check_file,error_log)
+    error_log = check_contrasts(c_df,check_file,error_log)
+      
+    #Check concordance between sample and contrast files
+    error_log,de_log = check_DIFFBIND_contrast(s_df,c_df,error_log, de_log)
 
 #print out error_log
 if len(error_log)==0:
-    new_path = str(sys.argv[1]) + "clean.txt"
-    f = open(new_path,"w+")
-    f.close()
+    new_path = str(sys.argv[1]) + "check.txt"
+    open(new_path,"w+").write('\n'.join(de_log))
 else:
     date_str = '%s%s_%s' % (sys.argv[1],'errors',datetime.now().strftime('%Y%m%d%H'))
     new_path =  date_str + '.txt'

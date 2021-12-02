@@ -93,20 +93,20 @@ rule all:
         expand(join(out_dir, species, '05_transcript', '01_phred','{loc}.phred'),loc=location_list_clean),
 
         #create transcriptome
-        # expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
-        # expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '02_fasta','{loc}.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
         
-        # expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
-        # expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.splices.fasta'), loc=location_list_clean, splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '03_merged','merged.{splice}.transcripts.fasta'), loc=location_list_clean, splice=splice_list),
 
-        # #remove junctions
-        # expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.splices.fasta'), splice=splice_list),
-        # expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta'), splice=splice_list),
+        #remove junctions
+        expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.splices.fasta'), splice=splice_list),
+        expand(join(out_dir,species,'05_transcript', '03_merged','unique.{splice}.transcripts.fasta'), splice=splice_list),
 
-        # #final indices
-        # join(out_dir, species, '06_final', species + '_final_nosplicing.nix'),
-        # expand(join(out_dir,species,'06_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
-        # expand(join(out_dir,species,'06_final', species + '_final_unmaskedexon_{splice}.nix'), splice=splice_list),
+        #final indices
+        join(out_dir, species, '06_final', species + '_final_nosplicing.nix'),
+        expand(join(out_dir,species,'06_final', species + '_final_maskedexon_{splice}.nix'), splice=splice_list),
+        expand(join(out_dir,species,'06_final', species + '_final_unmaskedexon_{splice}.nix'), splice=splice_list),
 
 #download source reference files
 if species=='hg38':
@@ -327,7 +327,7 @@ rule masked_exon:
             """
             java -Xmx50G -jar {params.doc} \
             -f {params.in_base} \
-            -u  {input.phred} \
+            -u {input.phred} \
             -s {params.out_base}; \
             ls {params.out_base} > {output.o1}; \
             awk 'FNR==0{{print ""}}1' {params.out_base}/*.fasta > {output.o2}

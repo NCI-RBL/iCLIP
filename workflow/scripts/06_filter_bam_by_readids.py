@@ -29,6 +29,9 @@ for read in inBAM.fetch():
 inBAM.close()
 
 for r in rids:
-	for read in bigdict[r]:
-		outBAM.write(read)
+  try:
+    for read in bigdict[r]:
+      outBAM.write(read)
+  except KeyError:
+    continue
 outBAM.close()

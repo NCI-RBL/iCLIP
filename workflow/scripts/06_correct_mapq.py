@@ -85,6 +85,7 @@ Outputs:
 
 1. outBAM --> output BAM with corrected MAPQ scores. This uses inputBAM3 as a template for header etc.
 2. outTSV --> output with read-by-read mapping metadata eg.
+3. outLog --> 
 
 *******
 NS500326:331:H53GGBGX5:2:21207:8400:7107:rbc:AGTAT
@@ -97,7 +98,7 @@ File3:maxmapq:3
 *******
 
 The tab-delimited columns for each alignment reported are SAM bitflag, MAPQ, NH, CIGAR, chromosome, start position.
-In addition to the read-by-read metadata TSV, MAPQ corrected reads are also provided to stdout eg.
+In addition to the read-by-read metadata TSV, MAPQ corrected reads are also provided to outLOG
 
 *******
 MAPQ changed from 3 to 70:NS500326:331:H53GGBGX5:4:11410:3852:5796:rbc:CCCAA
@@ -120,8 +121,10 @@ Using --partition=largemem with 1TB of memory request to slurm is recommended.
 						help='input BAM file3 (C.bam)')
 	parser.add_argument('--outBAM', dest='outBAM', type=str, required=True,
 						help='output BAM file (out.bam)')
-	parser.add_argument('--out', dest='out', type=str, required=True,
+	parser.add_argument('--outTSV', dest='outTSV', type=str, required=True,
 						help='outTSV with read-by-read metadata')
+	parser.add_argument('--outLOG', dest='outLOG', type=str, required=True,
+						help='outLOG with mapq changes')
 	args = parser.parse_args()
 
 	bigdict1 = read_bam(args.inputBAM1,True)
@@ -136,7 +139,7 @@ Using --partition=largemem with 1TB of memory request to slurm is recommended.
 	keys.extend(bigdict3.keys())
 	keys=set(keys)
 	dummy="%d\t%d\t%d\t%d\t%d\t%d"%(-1,-1,-1,-1,-1,-1)
-	o=open(args.out,'w')
+	o=open(args.outTSV,'w')
 	for key in keys:
 		o.write("%s\n"%(key))
 		if key in bigdict1:
@@ -169,12 +172,13 @@ Using --partition=largemem with 1TB of memory request to slurm is recommended.
 		o.write("\n")
 	o.close()
 	
-	print("Done writing %s!"%(args.out))
+	print("Done writing %s!"%(args.outTSV))
 
 	inbam = pysam.AlignmentFile(args.inputBAM3, "rb" )
 	outbam = pysam.AlignmentFile(args.outBAM, "wb", template=inbam )
 	inbam.close()
 	
+	o=open(args.outLOG,'w')
 	for rid in bigdict3.keys():
 		if bigdict3[rid]['maxmapq']<=0 and bigdict1[rid]['maxmapq']<=0 and bigdict2[rid]['maxmapq']<=0: # read is multimapped and all MAPQs are zero OR maxmapq is -1 ... readid absent in other BAM file(s)
 			for r in bigdict3[rid]['reads']:
@@ -202,7 +206,7 @@ Using --partition=largemem with 1TB of memory request to slurm is recommended.
 						newmq=mq2
 					read.alignment.mapping_quality=newmq
 					if newmq!=mq3:
-						print("MAPQ changed from %d to %d:%s"%(mq3,newmq,read.alignment.query_name))
+						o.write("MAPQ changed from %d to %d :%s\n"%(mq3,newmq,read.alignment.query_name))
 					outbam.write(read.alignment)
 			else:
 				for r in bigdict3[rid]['reads']:
@@ -226,7 +230,7 @@ Using --partition=largemem with 1TB of memory request to slurm is recommended.
 						newmq=mq2
 					read.alignment.mapping_quality=newmq
 					if newmq!=mq3:
-						print("MAPQ changed from %d to %d:%s"%(mq3,newmq,read.alignment.query_name))
+						o.write("MAPQ changed from %d to %d :%s\n"%(mq3,newmq,read.alignment.query_name))
 					outbam.write(read.alignment)				
 			else:
 				for r in bigdict3[rid]['reads']:
@@ -250,7 +254,7 @@ Using --partition=largemem with 1TB of memory request to slurm is recommended.
 						newmq=mq1
 					read.alignment.mapping_quality=newmq
 					if newmq!=mq3:
-						print("MAPQ changed from %d to %d:%s"%(mq3,newmq,read.alignment.query_name))
+						o.write("MAPQ changed from %d to %d :%s\n"%(mq3,newmq,read.alignment.query_name))
 					outbam.write(read.alignment)				
 			else:
 				for r in bigdict3[rid]['reads']:
@@ -260,8 +264,7 @@ Using --partition=largemem with 1TB of memory request to slurm is recommended.
 				outbam.write(r.alignment)
 					
 	outbam.close()
-
-
+	o.close()
 
 if __name__ == "__main__":
     main()
