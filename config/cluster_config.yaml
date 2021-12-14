@@ -57,6 +57,7 @@ merge_unmapped_splits:
 
 create_bam_mm_unique:
     threads: 6
+    gres: lscratch:256
     mem: 30g
     time: 04-00:00:00
 
@@ -67,6 +68,7 @@ merge_splits_unique_mm:
 
 merge_mm_and_unique:
     threads: 2
+    gres: lscratch:256
     mem: 5g
     time: 02-00:00:00
 
@@ -79,10 +81,13 @@ qc_troubleshoot:
 
 dedup:
     threads: 2
-    time: 00-08:00:00
+    mem: 64g
+    gres: lscratch:256
+    time: 01-00:00:00
 
 create_beds_safs:
     mem: 350g
+    gres: lscratch:256
     threads: 4
     partition: largemem
 
@@ -93,6 +98,7 @@ project_annotations:
 
 peak_annotations:
     threads: 3
+    gres: lscratch:128
     mem: 30g
     time: 00-12:00:00
 
@@ -115,5 +121,6 @@ MANORM_RMD:
 
 mapq_recalc:
     mem: 1TB
+    gres: lscratch:256
     partition: largemem
     time: 00-06:00:00
