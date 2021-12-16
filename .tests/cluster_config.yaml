@@ -1,0 +1,126 @@
+# cluster configuration
+__default__:
+    gres: lscratch:96
+    mem: 40g
+    partition: norm
+    time: 00-02:00:00
+    threads: 32
+    output: .%j.{wildcards}.out
+    error: .%j.{wildcards}.err
+
+qc_barcode:
+    threads: 3
+    mem: 3g
+    time: 00-04:00:00
+
+demultiplex:
+    threads: 3
+    mem: 3g
+    time: 04-00:00:00
+
+remove_adaptors:
+    threads: 3
+    time: 1-00:00:00
+    mem: 3g
+
+qc_fastq_pre:
+    threads: 3
+    mem: 3g
+    time: 00-03:00:00
+
+qc_fastq_post:
+    threads: 3
+    mem: 3g
+    time: 00-03:00:00
+
+qc_screen_validator:
+    mem: 15g
+    time: 00-03:00:00
+
+split_files:
+    threads: 3
+    mem: 3g
+    time: 00-03:00:00
+
+novoalign:
+    mem: 50g
+    time: 10-00:00:00
+
+cleanup_conversion:
+    threads: 5
+    mem: 30g
+    time: 00-3:00:00
+
+merge_unmapped_splits:
+    time: 01-00:00:00
+    mem: 75g
+
+create_bam_mm_unique:
+    threads: 6
+    gres: lscratch:256
+    mem: 30g
+    time: 04-00:00:00
+
+merge_splits_unique_mm:
+    mem: 512g
+    time: 02-06:00:00
+    partition: largemem
+
+merge_mm_and_unique:
+    threads: 2
+    gres: lscratch:256
+    mem: 5g
+    time: 02-00:00:00
+
+qc_alignment:
+    mem: 10g
+
+qc_troubleshoot:
+    threads: 3
+    mem: 3g
+
+dedup:
+    threads: 2
+    mem: 64g
+    gres: lscratch:256
+    time: 01-00:00:00
+
+create_beds_safs:
+    mem: 350g
+    gres: lscratch:256
+    threads: 4
+    partition: largemem
+
+project_annotations:
+    threads: 2
+    mem: 10g
+    time: 00-01:00:00
+
+peak_annotations:
+    threads: 3
+    gres: lscratch:128
+    mem: 30g
+    time: 00-12:00:00
+
+annotation_report:
+    mem: 10g
+
+MANORM_analysis:
+    threads: 4
+    mem: 30g
+
+MANORM_post_processing:
+    threads: 2
+    mem: 2g
+    time: 00-01:00:00
+
+MANORM_RMD:
+    threads: 2
+    mem: 3g
+    time: 00-01:00:00
+
+mapq_recalc:
+    mem: 1TB
+    gres: lscratch:256
+    partition: largemem
+    time: 00-06:00:00
