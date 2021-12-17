@@ -943,13 +943,16 @@ if (splice_aware == "Y"):
                 fi
             fi
 
-            if [ {params.al_type} == "unaware" ]; then
+            if [ "{params.al_type}" == "unaware" ]; then
                 cp {input.sam} {output.sam};
                 touch {output.bam};
             else
                 # Run cleanup
                 zcat {input.sam} | samtools view | awk '{{ if (($4 == 1 && $6 ~/(^[0-9]+)H|S([0-9]+I)/ && $1~/:/ ) || ($4 == 1 && $6 ~/^[0-9]I/ && $1~/:/ )) {{}} else  print }}' > ${{tmpdir}}/{params.base}.tmp.sam;
-                zcat {input.sam} | samtools view -H | cat - ${{tmpdir}}/{params.base}.tmp.sam > ${{tmpdir}}/{params.base}.tmp.mapped.sam; 
+                # Alternative to samtool view -H to get the header,
+                # samtools view -H always fails with standard input
+                # when set -o pipefail is enabled, using grep instead.
+                zcat {input.sam} | grep --color=never '^@..\\b' | cat - ${{tmpdir}}/{params.base}.tmp.sam > ${{tmpdir}}/{params.base}.tmp.mapped.sam; 
                 zcat {input.sam} | samtools view -f 4 > ${{tmpdir}}/{params.base}.tmp.unmapped.sam;
 
                 # Run genomic conversion
@@ -1052,8 +1055,11 @@ rule create_bam_mm_unique:
         gunzip -c {input.f1} \\
             | samtools view \\
             | grep 'IH:i' > ${{tmpdir_m}}/{params.base}.mm.txt;
+        # Alternative to samtool view -H to get the header,
+        # samtools view -H always fails with standard input
+        # when set -o pipefail is enabled, using grep instead.
         gunzip -c {input.f1} \\
-            | samtools view -H > ${{tmpdir}}/{params.base}.header.txt
+            | grep --color=never '^@..\\b' > ${{tmpdir}}/{params.base}.header.txt
 
         ################################################
         # Create unique BAM, correcting NH header
