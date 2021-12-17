@@ -33,7 +33,7 @@ fc: 1 #if DEmethod, fold change cut off for significance
 
 #modules, container parameters
 containerDir: "/data/CCBR_Pipeliner/iCLIP/container"
-fastq_val: "/data/CCBR_Pipeliner/db/PipeDB/bin/fastQValidator"
+fastq_val: "/data/CCBR_Pipeliner/iCLIP/bin/fastQValidator"
 bedtools: "bedtools/2.29.2"
 bowtie2: "bowtie/2-2.3.4"
 fastq_screen: "fastq_screen/0.14.0"
