@@ -206,6 +206,11 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
     cp $f "${output_dir}/log/${log_time}/00_${strarr[-1]}"
   done
 
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
+
   ####################### Selection
   # run check - only includes check_manifest rule - run locally
   if [[ $pipeline = "check" ]]; then
@@ -276,7 +281,12 @@ elif [[ $pipeline = "unlock" ]]; then
   echo
   echo "Unlocking pipeline"
   module load snakemake
-  
+
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
+
   snakemake \
   -s workflow/Snakefile \
   --use-envmodules \
@@ -298,7 +308,12 @@ elif [[ $pipeline = "git" ]]; then
 ######################## DAG #######################
 elif [[ $pipeline = "DAG" ]]; then
   module load snakemake
-  
+
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
+
   snakemake \
   -s ${output_dir}/config/Snakefile \
   --configfile ${output_dir}/config/snakemake_config.yaml \
@@ -308,6 +323,11 @@ elif [[ $pipeline = "report" ]]; then
   echo
   echo "Generating Snakemake Report Command"
   echo
+
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
 
   report_cmd="module load R; Rscript -e 'library(rmarkdown);
   rmarkdown::render(\"workflow/scripts/create_snakemake_report.RMD\",
@@ -321,6 +341,11 @@ elif [[ $pipeline = "cleanup" ]]; then
   echo "Starting cleanup"
   
   module load snakemake
+
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
 
   snakemake \
   --cleanup-metadata $2 \
@@ -339,6 +364,11 @@ else
   check_output_dir
   
   module load snakemake
+
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
 
   snakemake -s ${output_dir}/config/Snakefile \
   --configfile ${output_dir}/config/snakemake_config.yaml \
