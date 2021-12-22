@@ -30,7 +30,7 @@ DEmethod: "MANORM" #choose DE method ["none", "manorm", "diffbind"]
 sampleoverlap: 1 #if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted [>1]
 pval: 0.005 #if DEmethod, pval cutoff for significance
 fc: 1 #if DEmethod, fold change cut off for significance
-splitSampleNChunks: 96 #split samples into N chunks to speed up compute heavy tasks like alignment
+splitSampleNChunks: 96 #split samples into N chunks to speed up compute heavy tasks like alignment [1 - 99]
 
 #modules, container parameters
 containerDir: "/data/CCBR_Pipeliner/iCLIP/container"
