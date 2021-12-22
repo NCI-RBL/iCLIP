@@ -1393,7 +1393,8 @@ rule dedup:
     params:
         rname='12_dedup',
         umi = umi_sep,
-        base = '{sp}.unmasked'
+        base = '{sp}.unmasked',
+        mflag=multiplex_flag,
     envmodules:
         config['umitools'],
         config['samtools']
@@ -1408,13 +1409,40 @@ rule dedup:
             tmpdir="{out_dir}01_preprocess/06_dedup/"
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
-        
-        # Dedup
+ 
+        # Resets the UMI separator to correct value
+        delimeter="{params.umi}"
+        if [ '{params.mflag}' == 'N' ]; then
+            set +o pipefail
+            # Prevents a premature SIGPIPE to samtools,
+            # head -1 will result in a 141 return code 
+            delimeter=$(samtools view {input.f1} \\
+                | head -1 \\
+                | cut -f1 \\
+                | awk -F ':' '{{print $NF}}' \\
+                | awk '$0 ~ /_/ {{print}}')
+            set -o pipefail
+            # Check for presence of underscore
+            if [[ -n "${{delimeter}}" ]]; then
+                # String contains an underscore,
+                # Split by underscore and grab 
+                # the last string as UMI
+                delimeter=$(echo "${{delimeter}}" \\
+                    | awk -F '_' '{{print $NF}}')
+            else 
+                # Does not contain an underscore,
+                # reset the delimeter to a colon.
+                delimeter=":"
+            fi 
+        fi
+
+        # Run UMI Tools Deduplication
+        echo "Using the following UMI seperator: ${{delimeter}}"
         umi_tools dedup \\
             -I {input.f1} \\
             --method unique \\
             --multimapping-detection-method=NH \\
-            --umi-separator={params.umi} \\
+            --umi-separator=${{delimeter}} \\
             -S ${{tmpdir}}/{params.base}.bam \\
             --log2stderr;
 
