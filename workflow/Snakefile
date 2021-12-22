@@ -373,7 +373,23 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 #mp1        sample1
 #mp1        sample2
 (mp_list,sp_list,file_list) = CreateProjLists(multiplex_dict,samp_dict)
-chunks_list = [str(n) for n in range(1, get_filechunk_size()+1)]
+
+# Creating list of N chunks, the numerical 
+# representation of the chunks corresponds 
+# to how split cmd generates a int for a
+# given chunk, chunks are prefixed with 
+# a zero offset, i.e 99 chunks have two
+# sig figures so numbers less than 10 need 
+# to be offset with a zero: 9 -> 09   
+chunks_list = []
+rangelen = len(str(get_filechunk_size()))
+for n in range(1, get_filechunk_size()+1):
+    chunklen = len(str(n))
+    if chunklen < rangelen:
+        offset = rangelen - chunklen
+        padding = offset * '0'
+        n = '{}{}'.format(padding, n)
+    chunks_list.append(str(n))
 
 #determine barcode length
 barcode_length = int(len(df_samples.iloc[0,3].replace('N',''))) #length of barcode
@@ -758,7 +774,7 @@ rule qc_screen_validator:
         Log file containing any warnings or errors on file
     """
     input:
-        filtered = rules.remove_adaptors.output.filtered
+        filtered = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')
     params:
         rname='04_qc_screen_validator',
         fastq_v = fastq_val,
@@ -816,6 +832,7 @@ rule qc_screen_validator:
         # Run FastQ Validator
         mkdir -p {params.base_val}
         {params.fastq_v} \\
+            --disableSeqIDCheck \\
             --noeof \\
             --printableErrors 100000000 \\
             --baseComposition \\
