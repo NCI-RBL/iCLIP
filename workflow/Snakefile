@@ -242,8 +242,8 @@ def get_filechunk_size(*args, **kwargs):
         chunk_size = int(chunk_size)
     except KeyError:
         # Attribute 'splitSampleNChunks' not in 
-        # snakemake_config.yaml, default to 99.
-        chunk_size = 99
+        # snakemake_config.yaml, default to 96.
+        chunk_size = 96
     except ValueError as e:
         # User provided a value that cannot be 
         # converted into an integer (maybe a string)
@@ -383,9 +383,22 @@ df_samples = pd.read_csv(sample_manifest,sep="\t")
 # to be offset with a zero: 9 -> 09   
 chunks_list = []
 rangelen = len(str(get_filechunk_size()))
+# Sanity check to ensure the user did not 
+# set splitSampleNChunks to a crazy high
+# number. This could put extra strain on 
+# the job scheduler as there is some over
+# head to scheduling each job.
+assert rangelen < 100, 'Fatal: splitSampleNChunks value cannot \
+exceed 99 due to limitations relating to job scheduling. \
+Please edit snakemake_config.yaml and try running again!'
 for n in range(1, get_filechunk_size()+1):
     chunklen = len(str(n))
-    if chunklen < rangelen:
+    if rangelen < 2:
+        # split -a option set to default '2',
+        # corrects for edge case where a user 
+        # sets splitSampleNChunks < 10
+        n = '{}{}'.format('0', n)
+    elif chunklen < rangelen:
         offset = rangelen - chunklen
         padding = offset * '0'
         n = '{}{}'.format(padding, n)
@@ -703,8 +716,8 @@ rule remove_adaptors:
     Custom iCount version: 
         https://github.com/skchronicles/iCount
     removes adaptors from files. software outputs:
-    1) untrimmed.fastq.gz - the remaining sequences without the adaptor --> filtered.fastq.gz
-    2) trimmed.fastq.gz - the sequences that were trimmed from the input file --> removed_seq.fastq.gz
+    1) untrimmed.fastq.gz - reads with no adaptor present --> filtered.fastq.gz
+    2) trimmed.fastq.gz - reads that contained an adapter and were trimmed --> removed_seq.fastq.gz
     """
     input:
         fastqs = expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list),
@@ -721,6 +734,19 @@ rule remove_adaptors:
         if [ -d "/tmp/iCount/" ]; then rm -r "/tmp/iCount/"; fi
         
         {params.cmd}
+
+        if [ -f {output.removed} ]; then 
+            # Merge filtered reads (no adapters were present)
+            # AND removed reads (adapter present and trimmed),
+            # to keep both untrimmed and trimmed reads. A read
+            # will not contain a 3' prime adapter sequence if 
+            # the sequenced fragment is longer than the sequencing 
+            # read length. Shorter sequenced fragements will have 
+            # 3' adapter contamination and represent trimmed reads
+            mv {output.filtered} {output.filtered}.tmp
+            cat {output.filtered}.tmp {output.removed} > {output.filtered}
+            rm {output.filtered}.tmp
+        fi
         """
 
 rule qc_fastq_pre:
