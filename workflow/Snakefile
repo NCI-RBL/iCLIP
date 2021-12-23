@@ -388,7 +388,7 @@ rangelen = len(str(get_filechunk_size()))
 # number. This could put extra strain on 
 # the job scheduler as there is some over
 # head to scheduling each job.
-assert rangelen < 100, 'Fatal: splitSampleNChunks value cannot \
+assert get_filechunk_size() < 100, 'Fatal: splitSampleNChunks value cannot \
 exceed 99 due to limitations relating to job scheduling. \
 Please edit snakemake_config.yaml and try running again!'
 for n in range(1, get_filechunk_size()+1):
