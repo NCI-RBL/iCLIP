@@ -211,7 +211,7 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
   mkdir "${output_dir}/log/${log_time}"
   
   # copy config inputs for ref
-  files_save=("${output_dir}/config/snakemake_config.yaml" "${output_dir}/config/cluster_config.yaml" "${output_dir}/config/index_config.yaml" "${output_dir}/config//Snakefile" ${config_multiplexManifest} ${config_sampleManifest} 'workflow/scripts/create_error_report.sh')
+  files_save=("${output_dir}/config/snakemake_config.yaml" "${output_dir}/config/cluster_config.yaml" "${output_dir}/config/index_config.yaml" "${output_dir}/config/Snakefile" ${config_multiplexManifest} ${config_sampleManifest} "${PIPELINE_HOME}/workflow/scripts/create_error_report.sh")
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
@@ -300,7 +300,7 @@ elif [[ $pipeline = "unlock" ]]; then
   cd "${output_dir}"
 
   snakemake \
-  -s workflow/Snakefile \
+  -s "${output_dir}/config/Snakefile" \
   --use-envmodules \
   --unlock \
   --cores 8 \
@@ -312,7 +312,7 @@ elif [[ $pipeline = "git" ]]; then
   echo "Starting Git Tests"
 
   snakemake \
-  -s workflow/Snakefile \
+  -s "${output_dir}/config/Snakefile" \
   --configfile .tests/snakemake_config.yaml \
   --printshellcmds \
   --cluster-config .tests/cluster_config.yaml \
@@ -327,7 +327,7 @@ elif [[ $pipeline = "DAG" ]]; then
   cd "${output_dir}"
 
   snakemake \
-  -s ${output_dir}/config/Snakefile \
+  -s "${output_dir}/config/Snakefile" \
   --configfile ${output_dir}/config/snakemake_config.yaml \
   --rulegraph | dot -Tpdf > ${output_dir}/log/dag.pdf
 ######################## Report #######################
@@ -342,7 +342,7 @@ elif [[ $pipeline = "report" ]]; then
   cd "${output_dir}"
 
   report_cmd="module load R; Rscript -e 'library(rmarkdown);
-  rmarkdown::render(\"workflow/scripts/create_snakemake_report.RMD\",
+  rmarkdown::render(\"${PIPELINE_HOME}/workflow/scripts/create_snakemake_report.RMD\",
   output_file = \"${output_dir}/snakemake_report.html\", 
   params= (log_dir=\"${output_dir}/\"))'"
   echo $report_cmd
