@@ -99,6 +99,10 @@ s_time=`date +"%Y%m%d_%H%M%S"`
 #remove trailing / on directories
 output_dir=$(echo $output_dir | sed 's:/*$::')
 
+# ## setting PIPELINE_HOME
+PIPELINE_HOME=$(readlink -f $(dirname "$0"))
+echo "Pipeline Dir: $PIPELINE_HOME"
+
 #########################################################
 # Pipeline options
 #########################################################
@@ -138,6 +142,10 @@ if [[ $pipeline = "initialize" ]]; then
   files_save=('config/snakemake_config.yaml' 'config/cluster_config.yaml' 'config/index_config.yaml' 'config/annotation_config.txt' 'workflow/Snakefile')
 
   for f in ${files_save[@]}; do
+  # converting $f path to absolute path so that
+  # run_snakemake.sh can be run from any location on the file system
+  # not just from the PIPELINE_HOME folder
+    f="${PIPELINE_HOME}/$f"
     IFS='/' read -r -a strarr <<< "$f"
     cp $f "${output_dir}/config/${strarr[-1]}"
   done
@@ -146,6 +154,10 @@ if [[ $pipeline = "initialize" ]]; then
   files_save=('manifests/contrasts_example.tsv' 'manifests/samples_example.tsv' 'manifests/multiplex_example.tsv')
 
   for f in ${files_save[@]}; do
+  # converting $f path to absolute path so that
+  # run_snakemake.sh can be run from any location on the file system
+  # not just from the PIPELINE_HOME folder
+    f="${PIPELINE_HOME}/$f"
     IFS='/' read -r -a strarr <<< "$f"
     cp $f "${output_dir}/manifest/${strarr[-1]}"
   done
