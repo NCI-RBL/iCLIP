@@ -1,14 +1,14 @@
 # Global configuration file for the pipeline
 #path to iCLIP directory
-sourceDir: "/data/RBL_NCI/Pipelines/iCLIP/v1.0"
+sourceDir: "PIPELINE_HOME"
 
 #path to output directory
-outputDir: "/path/to/output/dir/"
+outputDir: "OUTPUT_DIR"
 
 #path to manifest files
-sampleManifest: "/path/to/manifest/samples.tsv"
-multiplexManifest: "/path/to/manifest/multiplex.tsv"
-contrastManifest: "/path/to/manifest/contrasts.tsv"
+sampleManifest: "OUTPUT_DIR/manifest/samples.tsv"
+multiplexManifest: "OUTPUT_DIR/manifest/multiplex.tsv"
+contrastManifest: "OUTPUT_DIR/manifest/contrasts.tsv"
 
 #path to fastq files
 fastqDir: "/path/to/fastq/files/"
@@ -26,14 +26,15 @@ condenseexon: "Y" #if spliceaware Y, if there are multiple peaks in the same tra
 mincount: 3 #minimum number of reads to count as a peak [1,2,3]
 ntmerge: 10 #minimum distance of nucleotides to merge peaks [any integer >=1, default 10]
 peakid: "ALL" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
-DEmethod: "MANORM" #choose DE method ["none", "manorm", "diffbind"]
+DEmethod: "none" #choose DE method ["none", "manorm", "diffbind"]
 sampleoverlap: 1 #if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted [>1]
 pval: 0.005 #if DEmethod, pval cutoff for significance
 fc: 1 #if DEmethod, fold change cut off for significance
+splitSampleNChunks: 96 #split samples into N chunks to speed up compute heavy tasks like alignment [1 - 99]
 
 #modules, container parameters
 containerDir: "/data/CCBR_Pipeliner/iCLIP/container"
-fastq_val: "/data/CCBR_Pipeliner/db/PipeDB/bin/fastQValidator"
+fastq_val: "/data/CCBR_Pipeliner/iCLIP/bin/fastQValidator"
 bedtools: "bedtools/2.29.2"
 bowtie2: "bowtie/2-2.3.4"
 fastq_screen: "fastq_screen/0.14.0"

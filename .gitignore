@@ -144,18 +144,21 @@ scratch/
 # mkdocs documentation
 site/
 
-#snakemake log
+# Snakemake
 .snakemake/*
 
-#slurm
+# SLURM
 slurm*
 
-#container
+# Singularity
 *.sif
 
-#test files
+# Test files
 testing/
 workflow/tmp.py
 .Rproj.user
 .R*
 scripts.Rproj
+
+# User history
+.*bash_history

@@ -99,6 +99,10 @@ s_time=`date +"%Y%m%d_%H%M%S"`
 #remove trailing / on directories
 output_dir=$(echo $output_dir | sed 's:/*$::')
 
+# ## setting PIPELINE_HOME
+PIPELINE_HOME=$(readlink -f $(dirname "$0"))
+echo "Pipeline Dir: $PIPELINE_HOME"
+
 #########################################################
 # Pipeline options
 #########################################################
@@ -138,14 +142,22 @@ if [[ $pipeline = "initialize" ]]; then
   files_save=('config/snakemake_config.yaml' 'config/cluster_config.yaml' 'config/index_config.yaml' 'config/annotation_config.txt' 'workflow/Snakefile')
 
   for f in ${files_save[@]}; do
+  # converting $f path to absolute path so that
+  # run_snakemake.sh can be run from any location on the file system
+  # not just from the PIPELINE_HOME folder
+    f="${PIPELINE_HOME}/$f"
     IFS='/' read -r -a strarr <<< "$f"
-    cp $f "${output_dir}/config/${strarr[-1]}"
+    sed -e "s/PIPELINE_HOME/${PIPELINE_HOME//\//\\/}/g" -e "s/OUTPUT_DIR/${output_dir//\//\\/}/g" $f > "${output_dir}/config/${strarr[-1]}"
   done
 
   # copy example manifests
   files_save=('manifests/contrasts_example.tsv' 'manifests/samples_example.tsv' 'manifests/multiplex_example.tsv')
 
   for f in ${files_save[@]}; do
+  # converting $f path to absolute path so that
+  # run_snakemake.sh can be run from any location on the file system
+  # not just from the PIPELINE_HOME folder
+    f="${PIPELINE_HOME}/$f"
     IFS='/' read -r -a strarr <<< "$f"
     cp $f "${output_dir}/manifest/${strarr[-1]}"
   done
@@ -199,12 +211,17 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
   mkdir "${output_dir}/log/${log_time}"
   
   # copy config inputs for ref
-  files_save=("${output_dir}/config/snakemake_config.yaml" "${output_dir}/config/cluster_config.yaml" "${output_dir}/config/index_config.yaml" "${output_dir}/config//Snakefile" ${config_multiplexManifest} ${config_sampleManifest} 'workflow/scripts/create_error_report.sh')
+  files_save=("${output_dir}/config/snakemake_config.yaml" "${output_dir}/config/cluster_config.yaml" "${output_dir}/config/index_config.yaml" "${output_dir}/config/Snakefile" ${config_multiplexManifest} ${config_sampleManifest} "${PIPELINE_HOME}/workflow/scripts/create_error_report.sh")
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
     cp $f "${output_dir}/log/${log_time}/00_${strarr[-1]}"
   done
+
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
 
   ####################### Selection
   # run check - only includes check_manifest rule - run locally
@@ -276,9 +293,14 @@ elif [[ $pipeline = "unlock" ]]; then
   echo
   echo "Unlocking pipeline"
   module load snakemake
-  
+
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
+
   snakemake \
-  -s workflow/Snakefile \
+  -s "${output_dir}/config/Snakefile" \
   --use-envmodules \
   --unlock \
   --cores 8 \
@@ -290,7 +312,7 @@ elif [[ $pipeline = "git" ]]; then
   echo "Starting Git Tests"
 
   snakemake \
-  -s workflow/Snakefile \
+  -s "${output_dir}/config/Snakefile" \
   --configfile .tests/snakemake_config.yaml \
   --printshellcmds \
   --cluster-config .tests/cluster_config.yaml \
@@ -298,9 +320,14 @@ elif [[ $pipeline = "git" ]]; then
 ######################## DAG #######################
 elif [[ $pipeline = "DAG" ]]; then
   module load snakemake
-  
+
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
+
   snakemake \
-  -s ${output_dir}/config/Snakefile \
+  -s "${output_dir}/config/Snakefile" \
   --configfile ${output_dir}/config/snakemake_config.yaml \
   --rulegraph | dot -Tpdf > ${output_dir}/log/dag.pdf
 ######################## Report #######################
@@ -309,8 +336,13 @@ elif [[ $pipeline = "report" ]]; then
   echo "Generating Snakemake Report Command"
   echo
 
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
+
   report_cmd="module load R; Rscript -e 'library(rmarkdown);
-  rmarkdown::render(\"workflow/scripts/create_snakemake_report.RMD\",
+  rmarkdown::render(\"${PIPELINE_HOME}/workflow/scripts/create_snakemake_report.RMD\",
   output_file = \"${output_dir}/snakemake_report.html\", 
   params= (log_dir=\"${output_dir}/\"))'"
   echo $report_cmd
@@ -321,6 +353,11 @@ elif [[ $pipeline = "cleanup" ]]; then
   echo "Starting cleanup"
   
   module load snakemake
+
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
 
   snakemake \
   --cleanup-metadata $2 \
@@ -339,6 +376,11 @@ else
   check_output_dir
   
   module load snakemake
+
+  # Change directories before running any important
+  # snakemake commands, ensures the .snakemake 
+  # directory get created in the output directory
+  cd "${output_dir}"
 
   snakemake -s ${output_dir}/config/Snakefile \
   --configfile ${output_dir}/config/snakemake_config.yaml \
