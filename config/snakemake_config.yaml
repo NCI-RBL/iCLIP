@@ -1,14 +1,14 @@
 # Global configuration file for the pipeline
 #path to iCLIP directory
-sourceDir: "/data/RBL_NCI/Pipelines/iCLIP/v1.0"
+sourceDir: "PIPELINE_HOME"
 
 #path to output directory
-outputDir: "/path/to/output/dir/"
+outputDir: "OUTPUT_DIR"
 
 #path to manifest files
-sampleManifest: "/path/to/manifest/samples.tsv"
-multiplexManifest: "/path/to/manifest/multiplex.tsv"
-contrastManifest: "/path/to/manifest/contrasts.tsv"
+sampleManifest: "OUTPUT_DIR/manifest/samples.tsv"
+multiplexManifest: "OUTPUT_DIR/manifest/multiplex.tsv"
+contrastManifest: "OUTPUT_DIR/manifest/contrasts.tsv"
 
 #path to fastq files
 fastqDir: "/path/to/fastq/files/"

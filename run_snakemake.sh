@@ -147,7 +147,7 @@ if [[ $pipeline = "initialize" ]]; then
   # not just from the PIPELINE_HOME folder
     f="${PIPELINE_HOME}/$f"
     IFS='/' read -r -a strarr <<< "$f"
-    cp $f "${output_dir}/config/${strarr[-1]}"
+    sed -e "s/PIPELINE_HOME/${PIPELINE_HOME//\//\\/}/g" -e "s/OUTPUT_DIR/${output_dir//\//\\/}/g" $f > "${output_dir}/config/${strarr[-1]}"
   done
 
   # copy example manifests
