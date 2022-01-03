@@ -1075,6 +1075,7 @@ rule create_bam_mm_unique:
     params:
         rname='07_create_bam_mm_unique',
         base = '{sp}.{al}.split.{n}.tmp',
+        replace_tags = join(source_dir,'workflow','scripts','replace_tags.py '),
     envmodules:
         config['samtools']
     output:
@@ -1120,25 +1121,10 @@ rule create_bam_mm_unique:
         ################################################
         # If the file exists, remove it
         if [ -f ${{tmpdir_u}}/{params.base}.unique.sam ]; then rm ${{tmpdir_u}}/{params.base}.unique.sam; fi
-        
-        # Create the new files
-        touch ${{tmpdir_u}}/{params.base}.unique.sam
-        
-        # Read the SAM file - not the unique.txt file is chosen for no IH flag
-        while read rd; do 
-            # Set tab variable
-            T=$(printf "\t");
 
-            if [[ ! $rd == "NH:i" ]]; then
-                # If the line doesnt have NH then add NH:i:1
-                echo "$rd" | awk '{{ $(NF+1) = "NH:i:1"; print }}' | sed "s/[[:blank:]]\+/$T/g" >> ${{tmpdir_u}}/{params.base}.unique.sam
-            else 
-                # It does have NH, replace it with NH:i:1
-                replacement="NH:i:1"
-                fixed=${{rd/NH:i:[0-9]*/$replacement}}
-                echo "$fixed" >> ${{tmpdir_u}}/{params.base}.unique.sam
-            fi
-        done < ${{tmpdir_u}}/{params.base}.unique.txt
+        # Read the SAM file - not the unique.txt file is chosen for no IH flag
+        sed -E 's/[\\t]?NH:i[:0-9]*//g' ${{tmpdir_u}}/{params.base}.unique.txt \\
+            | awk -F '\\t' -v OFS='\\t' '{{print $0, "NH:i:1"}}' > ${{tmpdir_u}}/{params.base}.unique.sam
 
         # Place header back on file, sort, convert to BAM
         cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_u}}/{params.base}.unique.sam \\
@@ -1152,21 +1138,11 @@ rule create_bam_mm_unique:
         if [ -f ${{tmpdir_m}}/{params.base}.mm.sam ]; then 
             rm ${{tmpdir_m}}/{params.base}.mm.sam; 
         fi
-        
-        # Create the new files
-        touch ${{tmpdir_m}}/{params.base}.mm.sam
-        
-        # Read the sam file
-        while read rd; do 
-            # Replace the NH value with the IH value
-            IH=`echo $rd | grep -o "IH:i:[0-9]*"`
-            IH_num=`echo ${{IH/IH:i:/}}`
-            NH=`echo $rd | grep -o "NH:i:.*\S"`
-            NH_num=`echo ${{NH/NH:i:/}}`
-            NH_complete=`echo ${{NH/$NH_num/$IH_num}}`
-            echo "${{rd/$NH/$NH_complete}}" >> ${{tmpdir_m}}/{params.base}.mm.sam
-        done < ${{tmpdir_m}}/{params.base}.mm.txt
-    
+
+        # Replace value of the NH tag 
+        # to the value of the IH tag 
+        python {params.replace_tags} ${{tmpdir_m}}/{params.base}.mm.txt > ${{tmpdir_m}}/{params.base}.mm.sam
+
         # Place header back on file, sort, convert to BAM
         cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_m}}/{params.base}.mm.sam \\
             | samtools sort -T ${{tmpdir_m}} \\
