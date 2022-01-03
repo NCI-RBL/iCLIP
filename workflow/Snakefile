@@ -1046,6 +1046,7 @@ if (splice_aware == "Y"):
             sorted_list = expand(join(out_dir,'01_preprocess','04_unmapped','{{sp}}.{{al_sub}}.split.{n}.final.si.bam'), n=chunks_list),
         params:
             rname='06c_merge_unmapped_splits',
+            threads = getthreads('merge_unmapped_splits'),
         envmodules:
             config['samtools']  
         output:
@@ -1053,6 +1054,7 @@ if (splice_aware == "Y"):
         shell:
             """
             samtools merge \\
+                --threads {params.threads} \\
                 -f {output.final} \\
                 {input.sorted_list} 
             """
@@ -1171,6 +1173,7 @@ rule merge_splits_unique_mm:
         mm = expand(join(out_dir,'01_preprocess','05_mm','{{sp}}.{{al}}.split.{n}.mm.si.bam'), n=chunks_list)
     params:
         rname='08_merge_splits_unique_mm',
+        threads = getthreads('merge_splits_unique_mm'),
     envmodules:
         config['samtools']  
     output:
@@ -1178,8 +1181,8 @@ rule merge_splits_unique_mm:
         mm = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam')),
     shell:
         """
-        samtools merge -f {output.unique} {input.unique};
-        samtools merge -f {output.mm} {input.mm}
+        samtools merge --threads {params.threads} -f {output.unique} {input.unique};
+        samtools merge --threads {params.threads} -f {output.mm} {input.mm}
         """
 
 rule merge_mm_and_unique:
