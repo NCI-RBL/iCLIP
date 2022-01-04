@@ -6,11 +6,13 @@
 
 helpFunction()
 {
-   echo ""
-   echo "Usage: $0 -p pipeline"
-   echo -e "\t-p options: initialize, check, dry, cluster, local, git, unlock, DAG, report"
-   echo "Usage: $1 -o output_dir"
-   echo -e "\t-o path to output directory"
+   echo "#########################################################" 
+   echo "Usage: bash $0 -p <PIPELINEMODE> -o <OUTPUTDIR>"
+   echo "#########################################################" 
+   echo "Acceptable inputs:"
+   echo -e "\t<PIPELINEMODE> options: initialize, check, dry, cluster, local, git, unlock, DAG, report"
+   echo -e "\t<OUTPUTDIR> : absolute path to output folder required"
+   echo "#########################################################" 
    exit 1 # Exit script after printing help
 }
 
