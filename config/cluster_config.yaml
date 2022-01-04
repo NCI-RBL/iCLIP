@@ -53,8 +53,9 @@ cleanup_conversion:
     time: 00-3:00:00
 
 merge_unmapped_splits:
+    threads: 8
     time: 01-00:00:00
-    mem: 75g
+    mem: 120g
 
 create_bam_mm_unique:
     threads: 6
