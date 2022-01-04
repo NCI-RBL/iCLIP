@@ -1288,6 +1288,7 @@ rule qc_alignment:
     envmodules:
         config['samtools'],
         config['R']
+    threads: getthreads("qc_alignment")  
     output:
         bam_a = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_align_len.txt')),
         bam_u = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_unalign_len.txt')),

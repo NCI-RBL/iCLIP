@@ -76,7 +76,8 @@ merge_mm_and_unique:
     time: 02-00:00:00
 
 qc_alignment:
-    mem: 10g
+    threads: 4
+    mem: 120g
 
 qc_troubleshoot:
     threads: 3
