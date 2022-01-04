@@ -129,3 +129,8 @@ mapq_recalc:
     gres: lscratch:512
     partition: largemem
     time: 00-06:00:00
+
+mapq_stats:
+    threads: 4
+    mem: 120g
+    
