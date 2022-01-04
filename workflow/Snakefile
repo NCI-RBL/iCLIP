@@ -979,6 +979,7 @@ if (splice_aware == "Y"):
             base = '{sp}.{al}.split.{n}',
             base_out = join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam'),
             doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
+        threads: getthreads("cleanup_conversion")
         envmodules:
             config['samtools'],
             config['java']
@@ -1007,7 +1008,7 @@ if (splice_aware == "Y"):
                 # samtools view -H always fails with standard input
                 # when set -o pipefail is enabled, using grep instead.
                 zcat {input.sam} | grep --color=never '^@..\\b' | cat - ${{tmpdir}}/{params.base}.tmp.sam > ${{tmpdir}}/{params.base}.tmp.mapped.sam; 
-                zcat {input.sam} | samtools view -f 4 > ${{tmpdir}}/{params.base}.tmp.unmapped.sam;
+                zcat {input.sam} | samtools view --threads {threads} -f 4 > ${{tmpdir}}/{params.base}.tmp.unmapped.sam;
 
                 # Run genomic conversion
                 java -Djava.io.tmpdir=${{tmpdir}} -Xmx100G -jar {params.doc} \\
@@ -1015,24 +1016,24 @@ if (splice_aware == "Y"):
                     -a 50000 -n 25 -u -s {params.base_out};
                 
                 # Converts SAM to BAM
-                gunzip -c {output.sam} | samtools view -S -b - > ${{tmpdir}}/{params.base}.unmasked.bam;
+                gunzip -c {output.sam} | samtools view --threads {threads} -S -b - > ${{tmpdir}}/{params.base}.unmasked.bam;
                 
                 # Merge unmapped SAM and unmasked BAM into final output
                 # if there are unmapped reads
                 FILESIZE=$(stat -c%s ${{tmpdir}}/{params.base}.tmp.unmapped.sam)
                 if [ "$FILESIZE" -gt 100 ]; then
                     # Merge unmasked reads with unmapped reads
-                    samtools merge -f ${{tmpdir}}/{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
+                    samtools merge --threads {threads} -f ${{tmpdir}}/{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
                     
                     # Pull header from merged and add to final output
-                    samtools view -h -o ${{tmpdir}}/{params.base}.final.bam ${{tmpdir}}/{params.base}.merged.bam;
+                    samtools view --threads {threads} -h -o ${{tmpdir}}/{params.base}.final.bam ${{tmpdir}}/{params.base}.merged.bam;
                     
                     # Sort and index final outupt
-                    samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
+                    samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
                     samtools index {output.bam}
                 else
                     # There are no unmapped reads, final file is unmasked bam
-                    samtools sort -T ${{tmpdir}} ${{tmpdir}}/{params.base}.unmasked.bam -o {output.bam};
+                    samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} ${{tmpdir}}/{params.base}.unmasked.bam -o {output.bam};
                     samtools index {output.bam}
                 fi
             fi
