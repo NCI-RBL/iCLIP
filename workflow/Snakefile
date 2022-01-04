@@ -1236,7 +1236,7 @@ rule merge_mm_and_unique:
         samtools sort --threads {threads} -m 10G -T ${{tmpdir}} \\
             {output.merged} \\
             -o {output.sort};
-        samtools index --threads {threads} {output.sort};
+        samtools index -@ {threads} {output.sort};
         
         # Run samstats
         samtools stats --threads {threads} {output.sort} > {output.samstat}
@@ -1445,7 +1445,7 @@ rule dedup:
         samtools sort --threads {threads} -m 10G -T ${{tmpdir}} \\
             ${{tmpdir}}/{params.base}.bam \\
             -o {output.bam};
-        samtools index --threads {threads} {output.bam};
+        samtools index -@ {threads} {output.bam};
         """
 
 # Pipeline splits for mapq score recalculation on splice_aware samples
@@ -1507,9 +1507,9 @@ if (splice_aware == 'Y'):
             
             # Sort and Index
             samtools sort --threads {threads} -m 10G ${{tmpdir}}/unaware.bam  > ${{tmpdir}}/unaware.si.bam; 
-            samtools index --threads {threads} ${{tmpdir}}/unaware.si.bam;
+            samtools index -@ {threads} ${{tmpdir}}/unaware.si.bam;
             samtools sort --threads {threads} -m 10G ${{tmpdir}}/masked.bam >  ${{tmpdir}}/masked.si.bam; 
-            samtools index --threads {threads} ${{tmpdir}}/masked.si.bam;
+            samtools index -@ {threads} ${{tmpdir}}/masked.si.bam;
 
             # Recalc
             python {params.script_recal} \\
@@ -1522,7 +1522,7 @@ if (splice_aware == 'Y'):
 
             # Index recalculated bam
             samtools sort --threads {threads} -m 10G ${{tmpdir}}/mapq_recalculated.bam -o {output.bam}
-            samtools index --threads {threads} {output.bam}
+            samtools index -@ {threads} {output.bam}
             """
 
     rule mapq_stats:
