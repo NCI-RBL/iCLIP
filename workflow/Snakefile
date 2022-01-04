@@ -1079,7 +1079,8 @@ rule create_bam_mm_unique:
     params:
         rname='07_create_bam_mm_unique',
         base = '{sp}.{al}.split.{n}.tmp',
-        replace_tags = join(source_dir,'workflow','scripts','replace_tags.py '),
+        replace_tags = join(source_dir,'workflow','scripts','replace_tags.py'),
+        unique_tags = join(source_dir,'workflow','scripts','set_unique_tags.py'),
     threads: getthreads("create_bam_mm_unique")
     envmodules:
         config['samtools']
@@ -1110,8 +1111,8 @@ rule create_bam_mm_unique:
         # Create mm, unique, header files
         ################################################
         gunzip -c {input.f1} \\
-            | samtools view \\
-            | grep -v 'IH:i' > ${{tmpdir_u}}/{params.base}.unique.txt;
+            | samtools view -h \\
+            | grep -v 'IH:i' > ${{tmpdir_u}}/{params.base}.unique.tmp.sam;
         gunzip -c {input.f1} \\
             | samtools view \\
             | grep 'IH:i' > ${{tmpdir_m}}/{params.base}.mm.txt;
@@ -1127,15 +1128,19 @@ rule create_bam_mm_unique:
         # If the file exists, remove it
         if [ -f ${{tmpdir_u}}/{params.base}.unique.sam ]; then rm ${{tmpdir_u}}/{params.base}.unique.sam; fi
 
-        # Read the SAM file - not the unique.txt file is chosen for no IH flag
-        sed -E 's/[\\t]?NH:i[:0-9]*//g' ${{tmpdir_u}}/{params.base}.unique.txt \\
-            | awk -F '\\t' -v OFS='\\t' '{{print $0, "NH:i:1"}}' > ${{tmpdir_u}}/{params.base}.unique.sam
+        # Fixes NH tags in unique reads and 
+        # removes NH tags from unmapped reads
+        python {params.unique_tags} \\
+            --input ${{tmpdir_u}}/{params.base}.unique.tmp.sam \\
+            --output ${{tmpdir_u}}/{params.base}.unique.sam
+        rm ${{tmpdir_u}}/{params.base}.unique.tmp.sam
 
-        # Place header back on file, sort, convert to BAM
+        # Sort and convert to BAM
         mkdir -p ${{tmpdir_u}}/{params.base}_tmp
-        cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_u}}/{params.base}.unique.sam \\
-           | samtools sort --threads {threads} -m 10G -T ${{tmpdir_u}}/{params.base}_tmp \\
-        -O bam -o ${{tmpdir_u}}/{params.base}.unique.bam 
+        samtools sort --threads {threads} -m 10G \\
+            -T ${{tmpdir_u}}/{params.base}_tmp \\
+            -O bam -o ${{tmpdir_u}}/{params.base}.unique.bam \\
+            ${{tmpdir_u}}/{params.base}.unique.sam
         rm -rf ${{tmpdir_u}}/{params.base}.unique.sam ${{tmpdir_u}}/{params.base}_tmp
         
         ################################################
