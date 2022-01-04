@@ -1388,6 +1388,7 @@ rule dedup:
     envmodules:
         config['umitools'],
         config['samtools']
+    threads: getthreads("dedup")
     output:
         bam = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
     shell:
@@ -1437,10 +1438,10 @@ rule dedup:
             --log2stderr;
 
         # Sort and Index
-        samtools sort -T ${{tmpdir}} \\
+        samtools sort --threads {threads} -T ${{tmpdir}} \\
             ${{tmpdir}}/{params.base}.bam \\
             -o {output.bam};
-        samtools index {output.bam};
+        samtools index --threads {threads} {output.bam};
         """
 
 # Pipeline splits for mapq score recalculation on splice_aware samples
