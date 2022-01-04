@@ -107,20 +107,27 @@ peak_annotations:
     time: 00-12:00:00
 
 annotation_report:
-    mem: 10g
+    threads: 3
+    gres: lscratch:128
+    mem: 30g
+    time: 00-12:00:00
 
+MANORM_beds:
+    threads: 4
+    mem: 30g
+    
 MANORM_analysis:
     threads: 4
     mem: 30g
 
 MANORM_post_processing:
     threads: 2
-    mem: 2g
+    mem: 30g
     time: 00-01:00:00
 
 MANORM_RMD:
     threads: 2
-    mem: 3g
+    mem: 30g
     time: 00-01:00:00
 
 mapq_recalc:
@@ -132,5 +139,9 @@ mapq_recalc:
 
 mapq_stats:
     threads: 4
+    mem: 120g
+
+feature_counts:
+    threads: 8
     mem: 120g
     
