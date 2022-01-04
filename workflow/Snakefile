@@ -1131,13 +1131,11 @@ rule create_bam_mm_unique:
             | awk -F '\\t' -v OFS='\\t' '{{print $0, "NH:i:1"}}' > ${{tmpdir_u}}/{params.base}.unique.sam
 
         # Place header back on file, sort, convert to BAM
-        cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_u}}/{params.base}.unique.sam \\
-            | samtools view --threads 4 -Sb > ${{tmpdir_u}}/{params.base}.unique.tmp.bam;
-        
         mkdir -p ${{tmpdir_u}}/{params.base}_tmp
-        samtools sort --threads {threads} -m 10G -T ${{tmpdir_u}}/{params.base}_tmp \\
-        -o ${{tmpdir_u}}/{params.base}.unique.bam ${{tmpdir_u}}/{params.base}.unique.tmp.bam
-        rm -rf ${{tmpdir_u}}/{params.base}.unique.tmp.bam ${{tmpdir_u}}/{params.base}_tmp
+        cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_u}}/{params.base}.unique.sam \\
+           | samtools sort --threads {threads} -m 10G -T ${{tmpdir_u}}/{params.base}_tmp \\
+        -O bam -o ${{tmpdir_u}}/{params.base}.unique.bam 
+        rm -rf ${{tmpdir_u}}/{params.base}.unique.sam ${{tmpdir_u}}/{params.base}_tmp
         
         ################################################
         # Create mm BAM, correcting NH header
@@ -1152,13 +1150,11 @@ rule create_bam_mm_unique:
         python {params.replace_tags} ${{tmpdir_m}}/{params.base}.mm.txt > ${{tmpdir_m}}/{params.base}.mm.sam
 
         # Place header back on file, sort, convert to BAM
-        cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_m}}/{params.base}.mm.sam \\
-            | samtools view --threads 4 -Sb > ${{tmpdir_m}}/{params.base}.mm.bam;
-        
         mkdir -p ${{tmpdir_m}}/{params.base}_tmp
-        samtools sort --threads {threads} -m 10G -T ${{tmpdir_m}}/{params.base}_tmp\\
-        -o ${{tmpdir_m}}/{params.base}.mm.bam ${{tmpdir_m}}/{params.base}.mm.tmp.bam
-        rm -rf ${{tmpdir_m}}/{params.base}.mm.tmp.bam ${{tmpdir_m}}/{params.base}_tmp
+        cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_m}}/{params.base}.mm.sam \\
+            | samtools sort --threads {threads} -m 10G -T ${{tmpdir_m}}/{params.base}_tmp\\
+        -O bam -o ${{tmpdir_m}}/{params.base}.mm.bam 
+        rm -rf ${{tmpdir_m}}/{params.base}.mm.sam ${{tmpdir_m}}/{params.base}_tmp
         
         ################################################
         # Sort unique and mm BAM
@@ -1166,9 +1162,11 @@ rule create_bam_mm_unique:
         samtools sort --threads {threads} -m 10G -T ${{tmpdir_u}} \\
             ${{tmpdir_u}}/{params.base}.unique.bam \\
             -o {output.sort_u};
+        rm -rf ${{tmpdir_u}}
         samtools sort --threads {threads} -m 10G -T ${{tmpdir_m}} \\
             ${{tmpdir_m}}/{params.base}.mm.bam \\
             -o {output.sort_m};
+        rm -rf ${{tmpdir_u=m}}
         samtools index -@ {threads} {output.sort_u};
         samtools index -@ {threads} {output.sort_m};
         """
