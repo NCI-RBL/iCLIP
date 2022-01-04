@@ -64,14 +64,15 @@ create_bam_mm_unique:
     time: 09-00:00:00
 
 merge_splits_unique_mm:
+    threads: 32
     mem: 512g
     time: 03-00:00:00
     partition: largemem
 
 merge_mm_and_unique:
-    threads: 2
+    threads: 8
     gres: lscratch:256
-    mem: 5g
+    mem: 120g
     time: 02-00:00:00
 
 qc_alignment:
