@@ -90,8 +90,8 @@ dedup:
     time: 01-00:00:00
 
 create_beds_safs:
-    mem: 350g
-    gres: lscratch:256
+    mem: 500g
+    gres: lscratch:512
     threads: 4
     partition: largemem
 

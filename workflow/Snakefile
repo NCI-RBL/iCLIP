@@ -1585,10 +1585,12 @@ rule create_beds_safs:
         bam = input_mapq_corrected_bam
     params:
         rname='13_create_beds_safs',
-        base = '{sp}.dedup'
+        base = '{sp}.dedup',
+        pyscript = join(source_dir,'workflow','scripts','13_bam_to_unique_bam.py')
     envmodules:
         config['samtools'],
-        config['bedtools']  
+        config['bedtools'],
+        config['python']  
     output:
         bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
         bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'),
@@ -1604,26 +1606,16 @@ rule create_beds_safs:
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
         
-        # Create header for unique
-        samtools view -H {input.bam} >  ${{tmpdir}}/{params.base}.header.txt;
-        
-        # Create unique bam
-        samtools view {input.bam} \\
-            | grep -w 'NH:i:1' \\
-            | cat ${{tmpdir}}/{params.base}.header.txt - \\
-            | samtools sort -T ${{tmpdir}} \\
-            | samtools view -Sb > ${{tmpdir}}/{params.base}.unique.bam;
-        
-        # Index
-        cp ${{tmpdir}}/{params.base}.unique.bam ${{tmpdir}}/{params.base}.unique.i.bam; 
-        samtools index ${{tmpdir}}/{params.base}.unique.i.bam;
+        python {params.pyscript} --inputBAM {input.bam} --outputBAM ${{tmpdir}}/{params.base}.unique.bam
+
+        samtools index ${{tmpdir}}/{params.base}.unique.bam;
         
         # Create SAFs
         bedtools bamtobed \\
             -split -i {input.bam} \\
             | bedtools sort -i - > {output.bed_all}; 
         bedtools bamtobed \\
-            -split -i ${{tmpdir}}/{params.base}.unique.i.bam \\
+            -split -i ${{tmpdir}}/{params.base}.unique.bam \\
             | bedtools sort -i - > {output.bed_unique};
         bedtools merge \\
             -c 6 -o count,distinct \\
