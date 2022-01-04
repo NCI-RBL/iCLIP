@@ -58,9 +58,9 @@ merge_unmapped_splits:
     mem: 120g
 
 create_bam_mm_unique:
-    threads: 6
+    threads: 8
     gres: lscratch:256
-    mem: 30g
+    mem: 120g
     time: 09-00:00:00
 
 merge_splits_unique_mm:

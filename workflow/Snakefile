@@ -1079,6 +1079,7 @@ rule create_bam_mm_unique:
         rname='07_create_bam_mm_unique',
         base = '{sp}.{al}.split.{n}.tmp',
         replace_tags = join(source_dir,'workflow','scripts','replace_tags.py '),
+    threads: getthreads("create_bam_mm_unique")
     envmodules:
         config['samtools']
     output:
@@ -1131,8 +1132,12 @@ rule create_bam_mm_unique:
 
         # Place header back on file, sort, convert to BAM
         cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_u}}/{params.base}.unique.sam \\
-            | samtools sort -T ${{tmpdir_u}} \\
-            | samtools view -Sb > ${{tmpdir_u}}/{params.base}.unique.bam;
+            | samtools view --threads 4 -Sb > ${{tmpdir_u}}/{params.base}.unique.tmp.bam;
+        
+        mkdir -p ${{tmpdir_u}}/{params.base}_tmp
+        samtools sort --threads {threads} -m 10G -T ${{tmpdir_u}}/{params.base}_tmp \\
+        -o ${{tmpdir_u}}/{params.base}.unique.bam ${{tmpdir_u}}/{params.base}.unique.tmp.bam
+        rm -rf ${{tmpdir_u}}/{params.base}.unique.tmp.bam ${{tmpdir_u}}/{params.base}_tmp
         
         ################################################
         # Create mm BAM, correcting NH header
@@ -1148,20 +1153,24 @@ rule create_bam_mm_unique:
 
         # Place header back on file, sort, convert to BAM
         cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_m}}/{params.base}.mm.sam \\
-            | samtools sort -T ${{tmpdir_m}} \\
-            | samtools view -Sb > ${{tmpdir_m}}/{params.base}.mm.bam;
+            | samtools view --threads 4 -Sb > ${{tmpdir_m}}/{params.base}.mm.bam;
+        
+        mkdir -p ${{tmpdir_m}}/{params.base}_tmp
+        samtools sort --threads {threads} -m 10G -T ${{tmpdir_m}}/{params.base}_tmp\\
+        -o ${{tmpdir_m}}/{params.base}.mm.bam ${{tmpdir_m}}/{params.base}.mm.tmp.bam
+        rm -rf ${{tmpdir_m}}/{params.base}.mm.tmp.bam ${{tmpdir_m}}/{params.base}_tmp
         
         ################################################
         # Sort unique and mm BAM
         ################################################
-        samtools sort -T ${{tmpdir_u}} \\
+        samtools sort --threads {threads} -m 10G -T ${{tmpdir_u}} \\
             ${{tmpdir_u}}/{params.base}.unique.bam \\
             -o {output.sort_u};
-        samtools sort -T ${{tmpdir_m}} \\
+        samtools sort --threads {threads} -m 10G -T ${{tmpdir_m}} \\
             ${{tmpdir_m}}/{params.base}.mm.bam \\
             -o {output.sort_m};
-        samtools index {output.sort_u};
-        samtools index {output.sort_m};
+        samtools index -@ {threads} {output.sort_u};
+        samtools index -@ {threads} {output.sort_m};
         """
 
 rule merge_splits_unique_mm:
