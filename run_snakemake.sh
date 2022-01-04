@@ -386,6 +386,6 @@ else
   --configfile ${output_dir}/config/snakemake_config.yaml \
   --printshellcmds \
   --cluster-config ${output_dir}/config/cluster_config.yaml \
-  -npr
+  -npr | tee ${output_dir}/dryrun.${log_time}.log
 fi
 echo
