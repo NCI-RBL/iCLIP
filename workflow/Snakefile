@@ -3,6 +3,7 @@
 S. Sevilla
 P. Homan
 S. Kuhn
+V. Koparde
 * Overview * 
 - Multiplexed samples are split based on provided barcodes and named using provide manifests, maximum 10 samples
 - Adaptors are stripped from samples
