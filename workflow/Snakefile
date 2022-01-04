@@ -1438,7 +1438,7 @@ rule dedup:
             --log2stderr;
 
         # Sort and Index
-        samtools sort --threads {threads} -T ${{tmpdir}} \\
+        samtools sort --threads {threads} -m 10G -T ${{tmpdir}} \\
             ${{tmpdir}}/{params.base}.bam \\
             -o {output.bam};
         samtools index --threads {threads} {output.bam};
@@ -1470,6 +1470,7 @@ if (splice_aware == 'Y'):
         envmodules:
             config['samtools'],
             config['python']
+        threads: getthreads("mapq_recalc")
         output:
             bam = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
             tsv = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.tsv'),
@@ -1501,10 +1502,10 @@ if (splice_aware == 'Y'):
                 --readids ${{tmpdir}}/readids.txt
             
             # Sort and Index
-            samtools sort ${{tmpdir}}/unaware.bam  > ${{tmpdir}}/unaware.si.bam; 
-            samtools index ${{tmpdir}}/unaware.si.bam;
-            samtools sort ${{tmpdir}}/masked.bam >  ${{tmpdir}}/masked.si.bam; 
-            samtools index ${{tmpdir}}/masked.si.bam;
+            samtools sort --threads {threads} -m 10G ${{tmpdir}}/unaware.bam  > ${{tmpdir}}/unaware.si.bam; 
+            samtools index --threads {threads} ${{tmpdir}}/unaware.si.bam;
+            samtools sort --threads {threads} -m 10G ${{tmpdir}}/masked.bam >  ${{tmpdir}}/masked.si.bam; 
+            samtools index --threads {threads} ${{tmpdir}}/masked.si.bam;
 
             # Recalc
             python {params.script_recal} \\
@@ -1516,8 +1517,8 @@ if (splice_aware == 'Y'):
                 --outLOG {output.log};
 
             # Index recalculated bam
-            samtools sort ${{tmpdir}}/mapq_recalculated.bam -o {output.bam}
-            samtools index {output.bam}
+            samtools sort --threads {threads} -m 10G ${{tmpdir}}/mapq_recalculated.bam -o {output.bam}
+            samtools index --threads {threads} {output.bam}
             """
 
     rule mapq_stats:

@@ -124,7 +124,8 @@ MANORM_RMD:
     time: 00-01:00:00
 
 mapq_recalc:
+    threads: 8
     mem: 1TB
-    gres: lscratch:256
+    gres: lscratch:512
     partition: largemem
     time: 00-06:00:00
