@@ -248,14 +248,18 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
     echo
     echo "Output dir: ${output_dir}"
     echo "Pipeline jobid:"
-    module load snakemake
-
-    sbatch \
-    --job-name="iCLIP" \
-    --gres=lscratch:200 \
-    --time=10-00:00:00 \
-    --output=${output_dir}/log/${log_time}/00_%j_%x.out \
-    --mail-type=BEGIN,END,FAIL \
+    
+  cat > ${output_dir}/submit_script.sbatch << EOF
+#!/bin/bash
+#SBATCH --job-name="RBLiCLIP"
+#SBATCH --mem=40g
+#SBATCH --gres=lscratch:200
+#SBATCH --time=10-00:00:00
+#SBATCH --cpus-per-task=2
+#SBATCH --output=${output_dir}/log/${log_time}/00_%j_%x.out \
+#SBATCH --mail-type=BEGIN,END,FAIL
+module load snakemake
+cd \$SLURM_SUBMIT_DIR
     snakemake \
     --use-envmodules \
     --latency-wait 120 \
@@ -264,7 +268,7 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
     --printshellcmds \
     --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yaml \
     --keep-going \
-    --restart-times 1 \
+    --restart-times 2 \
     -j 500 \
     --rerun-incomplete \
     --stats ${output_dir}/log/${log_time}/snakemake.stats \
@@ -272,7 +276,19 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
     "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
     --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} --error=${output_dir}/log/${log_time}/{params.rname}{cluster.error}" \
-    |tee ${output_dir}/log/${log_time}/snakemake.log
+    2>&1|tee ${output_dir}/log/${log_time}/snakemake.log
+
+if [ "\$?" -eq "0" ];then
+  snakemake -s ${output_dir}/log/${log_time}/00_Snakefile \
+  --directory $output_dir \
+  --report ${output_dir}/log/${log_time}/runslurm_snakemake_report.html \
+  --configfile ${output_dir}/log/${log_time}/00_snakemake_config.yaml 
+fi
+
+bash <(curl https://raw.githubusercontent.com/CCBR/Tools/master/Biowulf/gather_cluster_stats_biowulf.sh 2>/dev/null) ${output_dir}/log/${log_time}/snakemake.log > ${output_dir}/log/${log_time}/snakemake.log.HPC_summary.txt
+EOF
+
+sbatch ${output_dir}/submit_script.sbatch
 
   # run local - includes all rules - run locally
   else
