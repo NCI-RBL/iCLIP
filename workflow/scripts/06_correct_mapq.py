@@ -1,51 +1,45 @@
 #!/usr/bin/env python
 
 """
-@USAGE: 
-python correct_mapq.py \\
-    --inputBAM1 unaware.bam \\
-    --inputBAM2 aware_exon_masked_genome+transcriptome.bam \\
-    --inputBAM3 aware_unmaked_genome+transcriptome.bam \\
-    --outBAM  corrected_aware_unmaked_genome+transcriptome.bam \\
-    --outLOG  out.log
+Usage: 
+ $ python correct_mapq.py \\
+     --inputBAM1 <unaware.bam> \\
+     --inputBAM2 <aware_masked_genome+transcriptome.bam> \\
+     --inputBAM3 <aware_unmaked_genome+transcriptome.bam> \\
+     --outBAM  <fixed_aware_unmaked_genome+transcriptome.bam> \\
+     --outLOG  <out_log.tsv>
 
-@INPUTS:
-1. inputBAM1 --> Novoalign bam file (splicing unaware) with genome as reference
-2. inputBAM2 --> Novoalign bam file (splicing aware) with exon-masked genome + transcriptome as reference
-3. inputBAM3 --> Novoalign bam file (splicing aware) with unmasked genome + transcriptome as reference
+About:
+  Corrects MAPQ scores in the splicing-aware, unmaked 
+genome + transcriptome (BAM3)  using information in the 
+splicing-unaware (BAM1)  AND  the splicing-aware (BAM2) 
+files.  In BAM3, each read is checked  to see if it  is 
+spliced  or  unspliced, if it is unspliced then it uses 
+the MAPQ scores in the (BAM1); else, it uses it uses the
+spliced MAPQ scores (BAM2). 
 
-For inputBAM2 and inputBAM3, transcriptome alignments have already been converted back to genomic coordinates
+Inputs:
+  --inputBAM1  Novoalign bam file (splicing unaware) with
+                 genome as reference.
 
-@OUTPUTS:
-1. outBAM --> output BAM with corrected MAPQ scores. This uses inputBAM3 as a template for header etc.
-2. outTSV --> dummy output with read-by-read mapping metadata eg.
-3. outLog --> output log file containing a description of MAPQ changes
+  --inputBAM2  Novoalign bam file (splicing aware) with 
+                 exon-masked genome + transcriptome as 
+                 reference.
 
-*******
-NS500326:331:H53GGBGX5:2:21207:8400:7107:rbc:AGTAT
-File1:maxmapq:3
-16      3       1       29H34M1I3M      chr1    171377340
-File2:maxmapq:3
-16      3       1       29H34M1I3M      chr1    171377340
-File3:maxmapq:3
-16      3       1       29H34M1I3M      chr1    171377340
-*******
+  --inputBAM3  Novoalign bam file (splicing aware) with 
+                 unmasked genome + transcriptome as 
+                 reference.
 
-The tab-delimited columns for each alignment reported are SAM bitflag, MAPQ, NH, CIGAR, chromosome, start position.
-In addition to the read-by-read metadata TSV, MAPQ corrected reads are also provided to outLOG
+*NOTE: For inputBAM2 and inputBAM3, transcriptome alignments 
+have already been converted back to genomic coordinates.
 
-*******
-MAPQ changed from 3 to 70:NS500326:331:H53GGBGX5:4:11410:3852:5796:rbc:CCCAA
-MAPQ changed from 46 to 53:NS500326:331:H53GGBGX5:1:22211:14869:11391:rbc:CGGCG
-MAPQ changed from 37 to 38:NS500326:331:H53GGBGX5:2:22103:10319:4954:rbc:AAACC
-*******
-
-The recommended way to run this script is something like this:
-
-% python correct_mapq.py --inputBAM1 A.bam --inputBAM2 B.bam --inputBAM3 C.bam --out out.tsv --outBAM C_mapq_updated.bam > out.log 2>&1
-
-If the input BAMs are large with multimappings, then this script does tend to use significantly large amount of memory.
-Using --partition=largemem with 1TB of memory request to slurm is recommended.
+Outputs:
+  --outBAM    Output BAM with corrected MAPQ scores. This 
+                uses inputBAM3 as a template for header etc.
+  --outLog    Output log file containing a description of 
+                MAPQ changes.
+Options:
+  -h, --help  Displays the help message and usage.
 """
 
 # Python Standard Library
@@ -134,20 +128,8 @@ def collect_args():
         help = 'Output Log file containing description of '
                'MAPQ changes with before and after values '
 	)
-    # TODO: Remove this option later,
-    # It was kept to ensure cross-
-    # compatibility between the 
-    # older script and this new 
-    # script, does not do anything!
-    parser.add_argument(
-		'--outTSV', 
-		dest = 'outTSV',
-		type = str, 
-		required = True,
-        help = 'Placeholder old output TSV file option'
-	)
-
     parsed_args = parser.parse_args()
+    
     return parsed_args 
 
 
@@ -281,7 +263,7 @@ def main():
     # Log file to capture
     # MAPQ score changes 
     logfh = open(outlog, 'w')
-    logfh.write('readID\tbeforeMAPQ\tafterMAPQ\n')
+    logfh.write('readID\tbeforeMAPQ\tafterMAPQ\tSpliced\n')
 
     for read in infh.fetch(until_eof=True):
         rid = read.query_name
@@ -292,22 +274,22 @@ def main():
             # to mapping quality to the mapq
             # value in the spliced genome 
             # (BAM2) lookup 
-            # print('Spliced... ', read)
             new_mapq = max_mapq(mapq, rid, spliced_mapqs)
+            splice_status = 'True'
         else:
             # Read is NOT spliced, compare the
             # current read mapping quality
             # to mapping quality to the mapq
             # value in the unspliced genome 
             # (BAM1) lookup
-            # print('Unspliced.... ', read)
             new_mapq = max_mapq(mapq, rid, unspliced_mapqs)
+            splice_status = 'False'
 
         # Logs all MAPQ score changes,
         # captures what the MAPQ value
         # was before and after for a 
         # given read ID
-        logfh.write('{}\t{}\t{}\n'.format(rid, mapq, new_mapq))
+        logfh.write('{}\t{}\t{}\t{}\n'.format(rid, mapq, new_mapq, splice_status))
         read.mapping_quality = new_mapq
     
         # Write read with fixed tags 
