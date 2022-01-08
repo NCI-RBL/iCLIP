@@ -432,7 +432,7 @@ if splice_aware == 'Y':
 else:
     input_unmapped = expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
 
-    input_recalc = [expand(join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),sp=sp_list)]
+    input_recalc = []
 
 #if samples are running MANORM
 if DE_method == "MANORM":
@@ -471,10 +471,10 @@ rule all:
         join(out_dir,'qc','manifest_check.txt'),
         
         # #merge_unmapped_splits
-        input_unmapped,
+        # input_unmapped,
          
         # merge_mm_and_unique
-        expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
+        # expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
 
         # multiqc
         join(out_dir,'qc','multiqc_report.html'),
@@ -483,7 +483,7 @@ rule all:
         join(out_dir,'qc','qc_report.html'),
 
         #merge_mm_and_unique
-        expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
+        expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
         
         # dedup
         expand(join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),sp=sp_list),
@@ -1000,7 +1000,7 @@ if (splice_aware == "Y"):
             fi
 
             if [ "{params.al_type}" == "unaware" ]; then
-                cp {input.sam} {output.sam};
+                ln {input.sam} {output.sam};
                 touch {output.bam};
             else
                 # Run cleanup
@@ -1016,27 +1016,35 @@ if (splice_aware == "Y"):
                     -f ${{tmpdir}}/{params.base}.tmp.mapped.sam \\
                     -a 50000 -n 25 -u -s {params.base_out};
                 
-                # Converts SAM to BAM
-                gunzip -c {output.sam} | samtools view --threads {threads} -S -b - > ${{tmpdir}}/{params.base}.unmasked.bam;
+                cat {params.base_out} ${{tmpdir}}/{params.base}.tmp.unmapped.sam | samtools view -bS - > {{tmpdir}}/{params.base}.merged.bam
+                samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} {{tmpdir}}/{params.base}.merged.bam -o {output.bam};
+                samtools index {output.bam}
+
+                # create output.sam
+                gzip {params.base_out} 
+
                 
-                # Merge unmapped SAM and unmasked BAM into final output
-                # if there are unmapped reads
-                FILESIZE=$(stat -c%s ${{tmpdir}}/{params.base}.tmp.unmapped.sam)
-                if [ "$FILESIZE" -gt 100 ]; then
-                    # Merge unmasked reads with unmapped reads
-                    samtools merge --threads {threads} -f ${{tmpdir}}/{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
+                # # Converts SAM to BAM
+                # gunzip -c {output.sam} | samtools view --threads {threads} -S -b - > ${{tmpdir}}/{params.base}.unmasked.bam;
+                
+                # # Merge unmapped SAM and unmasked BAM into final output
+                # # if there are unmapped reads
+                # FILESIZE=$(stat -c%s ${{tmpdir}}/{params.base}.tmp.unmapped.sam)
+                # if [ "$FILESIZE" -gt 100 ]; then
+                #     # Merge unmasked reads with unmapped reads
+                #     samtools merge --threads {threads} -f ${{tmpdir}}/{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
                     
-                    # Pull header from merged and add to final output
-                    samtools view --threads {threads} -h -o ${{tmpdir}}/{params.base}.final.bam ${{tmpdir}}/{params.base}.merged.bam;
+                #     # Pull header from merged and add to final output
+                #     samtools view --threads {threads} -h -o ${{tmpdir}}/{params.base}.final.bam ${{tmpdir}}/{params.base}.merged.bam;
                     
-                    # Sort and index final outupt
-                    samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
-                    samtools index {output.bam}
-                else
-                    # There are no unmapped reads, final file is unmasked bam
-                    samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} ${{tmpdir}}/{params.base}.unmasked.bam -o {output.bam};
-                    samtools index {output.bam}
-                fi
+                #     # Sort and index final outupt
+                #     samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
+                #     samtools index {output.bam}
+                # else
+                #     # There are no unmapped reads, final file is unmasked bam
+                #     samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} ${{tmpdir}}/{params.base}.unmasked.bam -o {output.bam};
+                #     samtools index {output.bam}
+                # fi
             fi
             """
 
@@ -1085,7 +1093,7 @@ rule create_bam_mm_unique:
     envmodules:
         config['samtools']
     output:
-        sort_u = temp(join(out_dir,'01_preprocess','05_unique','{sp}.{al}.split.{n}.unique.si.bam')),
+        sort_u = temp(join(out_dir,'01_preprocess','05_unique','{sp}.{al}.split.{n}.unique.si.bam')), # this file also contains unmapped reads
         sort_m = temp(join(out_dir,'01_preprocess','05_mm','{sp}.{al}.split.{n}.mm.si.bam')),
     shell:
         """
@@ -1110,9 +1118,11 @@ rule create_bam_mm_unique:
         ################################################
         # Create mm, unique, header files
         ################################################
+        # unique alignments (IH:i:1) and unaligned reads do not have IH tag ...extract them
         gunzip -c {input.f1} \\
             | samtools view -h \\
             | grep -v 'IH:i' > ${{tmpdir_u}}/{params.base}.unique.tmp.sam;
+        # if IH tag is present then the read is multimapped.
         gunzip -c {input.f1} \\
             | samtools view \\
             | grep 'IH:i' > ${{tmpdir_m}}/{params.base}.mm.txt;
@@ -1130,10 +1140,14 @@ rule create_bam_mm_unique:
 
         # Fixes NH tags in unique reads and 
         # removes NH tags from unmapped reads
+        # ${{tmpdir_u}}/{params.base}.unique.tmp.sam contains unique reads as well as unmapped reads
+        # this script added "IH:i:1" and "NH:i:1" tag to mapped reads in this file and
+        # remove any IH or NH tag from unmapped reads in this file
         python {params.unique_tags} \\
             --input ${{tmpdir_u}}/{params.base}.unique.tmp.sam \\
             --output ${{tmpdir_u}}/{params.base}.unique.sam
         rm ${{tmpdir_u}}/{params.base}.unique.tmp.sam
+        # again, ${{tmpdir_u}}/{params.base}.unique.sam contains unique and unmapped reads
 
         # Sort and convert to BAM
         mkdir -p ${{tmpdir_u}}/{params.base}_tmp
@@ -1172,19 +1186,17 @@ rule create_bam_mm_unique:
         samtools sort --threads {threads} -m 10G -T ${{tmpdir_m}} \\
             ${{tmpdir_m}}/{params.base}.mm.bam \\
             -o {output.sort_m};
-        rm -rf ${{tmpdir_u=m}}
-        samtools index -@ {threads} {output.sort_u};
-        samtools index -@ {threads} {output.sort_m};
+        rm -rf ${{tmpdir_m}}
         """
 
 rule merge_splits_unique_mm:
     """
-    merge split unique bam files into one merged.unique bam file
+    merge split unique bam files into one merged.unique bam file # this file also contains unmapped reads
     merge split multimapped bam files into one merged.mm bam file
     """
     input:
-        unique = expand(join(out_dir,'01_preprocess','05_unique','{{sp}}.{{al}}.split.{n}.unique.si.bam'), n=chunks_list),
-        mm = expand(join(out_dir,'01_preprocess','05_mm','{{sp}}.{{al}}.split.{n}.mm.si.bam'), n=chunks_list)
+        unique = expand(join(out_dir,'01_preprocess','05_unique','{{sp}}.{{al}}.split.{n}.unique.si.bam'), n=chunks_list), # this file also contains unmapped reads
+        mm = expand(join(out_dir,'01_preprocess','05_mm','{{sp}}.{{al}}.split.{n}.mm.si.bam'), n=chunks_list),
     params:
         rname='08_merge_splits_unique_mm',
         threads = getthreads('merge_splits_unique_mm'),
@@ -1206,7 +1218,7 @@ rule merge_mm_and_unique:
     run samtools
     """
     input:
-        un = rules.merge_splits_unique_mm.output.unique,
+        un = rules.merge_splits_unique_mm.output.unique, # this file also contains unmapped reads
         mm = rules.merge_splits_unique_mm.output.mm
     params:
         rname='09_merge_mm_and_unique',
@@ -1464,9 +1476,9 @@ if (splice_aware == 'Y'):
         outputs updated mapq score bam file and metadata file of changes
         """
         input:
-            unmasked = rules.dedup.output.bam,
             unaware = join(out_dir,'02_bam','02_merged','{sp}.unaware.merged.si.bam'),
             masked = join(out_dir,'02_bam','02_merged','{sp}.masked.merged.si.bam'),
+            unmasked = rules.dedup.output.bam,
         params:
             rname='12b_mapq_recalc',
             script_sub = join(source_dir,'workflow','scripts','06_filter_bam_by_readids.py'),
@@ -1477,7 +1489,6 @@ if (splice_aware == 'Y'):
         threads: getthreads("mapq_recalc")
         output:
             bam = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
-            tsv = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.tsv'),
             log = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.log')
         shell:
             """
@@ -1489,37 +1500,14 @@ if (splice_aware == 'Y'):
                 if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
             fi
             
-            # Generate readids
-            samtools view {input.unmasked} \\
-                | cut -f1 \\
-                | sort \\
-                | uniq > ${{tmpdir}}/readids.txt
-
-            # Subsample reads
-            python {params.script_sub} \\
-                --inputBAM {input.unaware} \\
-                --outputBAM ${{tmpdir}}/unaware.bam \\
-                --readids ${{tmpdir}}/readids.txt
-            python {params.script_sub} \\
-                --inputBAM {input.masked} \\
-                --outputBAM ${{tmpdir}}/masked.bam \\
-                --readids ${{tmpdir}}/readids.txt
-            
-            # Sort and Index
-            samtools sort --threads {threads} -m 10G ${{tmpdir}}/unaware.bam  > ${{tmpdir}}/unaware.si.bam; 
-            samtools index -@ {threads} ${{tmpdir}}/unaware.si.bam;
-            samtools sort --threads {threads} -m 10G ${{tmpdir}}/masked.bam >  ${{tmpdir}}/masked.si.bam; 
-            samtools index -@ {threads} ${{tmpdir}}/masked.si.bam;
-
             # Recalc
             python {params.script_recal} \\
-                --inputBAM1 ${{tmpdir}}/unaware.si.bam \\
-                --inputBAM2 ${{tmpdir}}/masked.si.bam \\
+                --inputBAM1 {input.unaware} \\
+                --inputBAM2 {input.masked} \\
                 --inputBAM3 {input.unmasked} \\
                 --outBAM ${{tmpdir}}/mapq_recalculated.bam \\
-                --outTSV {output.tsv} \\
                 --outLOG {output.log};
-
+        
             # Index recalculated bam
             samtools sort --threads {threads} -m 10G ${{tmpdir}}/mapq_recalculated.bam -o {output.bam}
             samtools index -@ {threads} {output.bam}
@@ -1588,7 +1576,7 @@ rule create_beds_safs:
     create SAF files from the deduped unique bed and all bed files
     """
     input:
-        bam = input_mapq_corrected_bam
+        bam = rules.dedup.output.bam
     params:
         rname='13_create_beds_safs',
         base = '{sp}.dedup',
@@ -1612,6 +1600,7 @@ rule create_beds_safs:
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
         
+        # if read alignment has tag "NH:i:1" then it is an unique alignment
         python {params.pyscript} --inputBAM {input.bam} --outputBAM ${{tmpdir}}/{params.base}.unique.bam
 
         samtools index ${{tmpdir}}/{params.base}.unique.bam;

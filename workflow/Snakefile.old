@@ -1,0 +1,2249 @@
+'''
+* Authors * 
+S. Sevilla
+P. Homan
+S. Kuhn
+V. Koparde
+* Overview * 
+- Multiplexed samples are split based on provided barcodes and named using provide manifests, maximum 10 samples
+- Adaptors are stripped from samples
+- Samples are unzipped and split into smaller fastq files to increase speed
+- Samples are aligned using NovaAlign
+- SAM and BAM files are created
+- Samples are merged
+* Requirements *
+- Read specific input requirements, and execution information on the Wikipage
+located at: https://github.com/RBL-NCI/iCLIP.git
+'''
+
+# Allow users to fix the underlying OS via singularity.
+container: "docker://continuumio/miniconda3"
+
+from os.path import join
+import pandas as pd
+from collections import defaultdict
+import yaml
+import csv
+
+###############################################################
+# config handling, set parameters
+###############################################################
+#snakemake config
+source_dir = config['sourceDir']
+cont_dir = config['containerDir']
+out_dir = config['outputDir'].rstrip('/') + '/'
+fastq_dir = config['fastqDir'].rstrip('/') + '/'
+fastq_val = config['fastq_val']
+
+sample_manifest = config['sampleManifest']
+multiplex_manifest = config['multiplexManifest']
+contrast_manifest = config['contrastManifest']
+
+multiplex_flag = config['multiplexflag'].capitalize()
+mismatch = config['mismatch']
+nova_ref = config['reference']
+filter_length = config['filterlength']
+splice_aware = config['spliceaware'].capitalize()
+include_rRNA = config['includerRNA'].capitalize()
+splice_bp = config['spliceBPlength']
+sp_junc = config['splicejunction'].upper()
+condense_exon = config['condenseexon'].upper()
+min_count = config['mincount']
+nt_merge = str(config['ntmerge']) + 'nt'
+peak_id = config['peakid'].upper()
+DE_method = config['DEmethod'].upper()
+sample_overlap = int(config['sampleoverlap'])
+pval = config['pval']
+fc = config['fc']
+
+testing_option = config['testing_option']
+
+#define threads
+with open(join(out_dir,'config','cluster_config.yaml')) as file:
+    CLUSTER = yaml.load(file, Loader=yaml.FullLoader)
+getthreads=lambda rname:int(CLUSTER[rname]["threads"]) if rname in CLUSTER and "threads" in CLUSTER[rname] else int(CLUSTER["__default__"]["threads"])
+
+#expand reference selection
+if (nova_ref == "mm10"):
+    genome_ref = "GENCODE mm10 v23"
+elif (nova_ref == "hg38"):
+    genome_ref = "GENCODE hg38 v32"
+
+#read in index config file and assign paths
+index_manifest = join(out_dir, 'config', 'index_config.yaml')
+
+with open(index_manifest) as file:
+    index_list = yaml.load(file, Loader=yaml.FullLoader)
+
+gen_path = index_list[nova_ref]['gencodepath']
+rseq_path = index_list[nova_ref]['refseqpath']
+can_path = index_list[nova_ref]['canonicalpath']
+intron_path = index_list[nova_ref]['intronpath']
+rmsk_path = index_list[nova_ref]['rmskpath']
+alias_path = index_list[nova_ref]['aliaspath']
+add_anno_path = index_list[nova_ref]['additionalannopath']
+
+#singularity exec command
+singularity_exec = "singularity exec -B /data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir
+
+#annotation config
+annotation_config = join(out_dir,'config','annotation_config.txt')
+
+#determine which umi separator to use
+if(multiplex_flag == 'Y' or testing_option == "Y"):
+    #iCount addes rbc: to all demux files;
+    umi_sep="rbc:"
+else:
+    # external demux uses an _
+    umi_sep="_"
+
+#convert splice junction selection
+if (sp_junc=="Y"):
+    sp_junc = "TRUE"
+else:
+    sp_junc = "FALSE"
+
+#convert condense junction selection
+if (condense_exon=="Y"):
+    cond_exon = "TRUE"
+else:
+    cond_exon = "FALSE"
+
+#create list of alignment types based on splice_aware flag
+if (splice_aware == "Y"):
+    align_list = ["unmasked", "unaware", "masked"]
+else:
+    align_list = ["unaware"]
+
+if (splice_aware == "Y"):
+    align_sub = ["unmasked"]
+else:
+    align_sub = ["unaware"]
+
+#convert rRNA selection
+if (include_rRNA=="Y"):
+    refseq_rrna = "TRUE"
+else:
+    refseq_rrna = "FALSE"
+
+#set strand ids
+strand_list=['P','N']
+
+###############################################################
+# create sample lists
+###############################################################
+#dict multiplex name (1): sample name (1): barcodes (>1, will vary)
+def CreateSampleDicts(df_m,df_s):
+    s_dict={}
+    m_dict={}
+
+    #create dict that maps multiplex: sampleid : barcode
+    for multi_name in df_s['multiplex'].unique():
+        sub_df = df_s[df_s['multiplex']==multi_name]
+        s_dict[multi_name]={}
+
+        #each row maps to a sample:barcode and sample:group
+        for index,row in sub_df.iterrows():
+            sample_name = row['sample']
+            s_dict[multi_name][sample_name]=row['barcode']
+
+    #creat dict that maps mulitplex: filename
+    m_dict = dict(zip(df_m.multiplex, df_m.file_name))
+
+    return(m_dict,s_dict)
+
+#create lists of multiplex ids, sample ids, filenames
+def CreateProjLists(dict_m,dict_s):
+    mp_list = []
+    sp_list = []
+    file_list = []
+
+    #multiplex,sample
+    for k,v in dict_s.items():
+        file_list.append(dict_m[k])
+
+        #barcode,sample
+        for v,v2 in dict_s[k].items():
+            mp_list.append(k)
+            sp_list.append(v)
+    return(mp_list,sp_list,file_list)
+
+###############################################################
+# snakemake functions
+###############################################################
+#get list of fq names based on multiplex name
+def get_fq_names(wildcards):
+    #example: {fastq_dir}/{filename}.fastq.gz
+    fq = join(fastq_dir,multiplex_dict[wildcards.mp])
+    return(fq)
+
+#create demux command line
+def demux_cmd(wildcards):
+    #subset dataframe by multiplex name that matches multiplex and barcode
+    sub_df = df_samples[(df_samples['multiplex']==wildcards.mp)]
+    sub_df.reset_index(inplace=True)
+
+    barcodes = ' '.join(sub_df['barcode'].tolist())
+
+    #create command
+    cmd_line = fastq_dir + multiplex_dict[wildcards.mp] + ' ' + sub_df.iloc[0]['adaptor'] + ' ' + barcodes + ' --out_dir ' + out_dir + wildcards.mp + '/02_preprocess/',
+
+    return(cmd_line)
+
+#command needed to move and rename demux files
+def rename_cmd(wildcards):
+    bc = samp_dict[wildcards.mp][wildcards.sp]
+
+    cmd_line = out_dir + wildcards.mp + '/02_preprocess/' + 'demux_' + bc + '.fastq.gz' + \
+    ' ' + out_dir + wildcards.mp + '/02_preprocess/' + wildcards.sp + '.fastq.gz'
+
+    return(cmd_line)
+    
+#create nondemux command line
+def nondemux_cmd(wildcards):
+  cmd_line = ''
+
+  for k,v in multiplex_dict.items():
+    for k2,v2 in samp_dict[k].items():
+      cmd_line = 'cp ' + fastq_dir + v + ' ' + out_dir + k + '/02_preprocess/' + k2 + '.fastq.gz; ' + cmd_line
+  
+  return(cmd_line)
+
+#command needed to cut adaptors from demux samples
+def adapt_cmd(wildcards):
+    #example: 
+        #singularity exec -B /scratch /data/CCBR_Pipeliner/iCLIP/container/ccbr_icount_v1.0.0.sif iCount cutadapt --threads 16 -ml 20 --untrimmed_output /path/_untrimmed.fastq.gz 
+        # --reads_trimmed /path/sp_trimmed.fastq.gz /path/fastq.gz ABCDEDFGH
+    cmd=''
+    for sp in sp_list:
+        #sub df
+        df_sub = df_samples[(df_samples['sample']==sp)]
+
+        #create cmd
+        filtered = join(out_dir, '01_preprocess', sp + '_filtered.fastq.gz')
+        removed =  join(out_dir, '01_preprocess', sp + '_removed_seq.fastq.gz ')
+        fastq = join(out_dir, df_sub.iloc[0]['multiplex'], '02_preprocess',sp + '.fastq.gz')
+
+        cmd = singularity_exec + ' ' + join(cont_dir,'ccbr_icount_v1.0.0.sif') + ' iCount cutadapt -ml ' + str(filter_length) + ' --threads ' + str(getthreads('remove_adaptors')) + ' --untrimmed_output ' + filtered + ' --reads_trimmed ' + removed + ' ' + fastq + ' ' + df_sub.iloc[0]['adaptor'] + '; ' + cmd
+    
+    return(cmd)
+    
+# Previous method of dynamically generating N
+# chunks is depreciated, in favor of splitting 
+# a given sample into N number of pre-defined 
+# N chunks. See 'splitSampleNChunks' in the 
+# snakemake_config.yaml file. Try/accept block 
+# added to ensure backwards compatibilty with 
+# the previous method, where default is set to
+# 99 chunks. 
+def get_filechunk_size(*args, **kwargs):
+    # Read in splitSampleNChunks key from config file
+    try:
+        chunk_size = config['splitSampleNChunks']
+        chunk_size = int(chunk_size)
+    except KeyError:
+        # Attribute 'splitSampleNChunks' not in 
+        # snakemake_config.yaml, default to 96.
+        chunk_size = 96
+    except ValueError as e:
+        # User provided a value that cannot be 
+        # converted into an integer (maybe a string)
+        print(e)
+        raise Exception(
+            'Fatal: Attribute "splitSampleNChunks" in \
+            snakemake_config.yaml is NOT an integer! \
+            Please edit you config file to resolve the \
+            issue and run again.'
+        )
+    return(chunk_size)
+
+#get index file depending on alignment type
+def get_index(wildcards):
+
+    #unaware index
+    if (wildcards.al == "unaware"):
+        nova_index = index_list[nova_ref]['std']
+    elif (wildcards.al == "masked"):
+        nova_index = index_list[nova_ref]['spliceawaremasked'][str(splice_bp)+'bp']
+    elif (wildcards.al == "unmasked"):
+        nova_index = index_list[nova_ref]['spliceawareunmasked'][str(splice_bp)+'bp']
+    
+    return(nova_index)
+
+#determine alignment input based on splice_aware flag
+def get_align_input(wildcards):
+    if (splice_aware == "Y"):
+        f1 = join(out_dir,'01_preprocess','03_genomic', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam.gz'),
+    else:
+        f1 = join(out_dir,'01_preprocess','02_alignment', wildcards.sp + '.' + wildcards.al + '.split.' + wildcards.n + '.sam.gz'),
+    return(f1)
+
+#determine dedup input based on splice_aware flag
+def get_dedup_input(wildcards):
+    if (splice_aware == "Y"):
+        f1 = join(out_dir,'02_bam','02_merged',wildcards.sp + '.unmasked.merged.si.bam'),
+    else:
+        f1 = join(out_dir,'02_bam','02_merged',wildcards.sp + '.unaware.merged.si.bam'),
+    return(f1)
+
+#determine dedup input based on splcie_aware flag
+def input_mapq_corrected_bam(wildcards):
+    if (splice_aware=="Y"):
+        f1 = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
+    else:
+        f1 = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
+    return(f1)
+
+#read in contrast list for manorm
+def get_de_list():
+    
+    #read file
+    with open(contrast_manifest) as f:
+        reader = csv.reader(f, delimiter="\t")
+        manorm_file = list(reader)
+
+        #for each group in comparison list
+        contrast_list=[]
+        for group in manorm_file:
+            
+            #for each individual id
+            for id in group:
+                id = id.replace(",", "_vs_")
+            
+            #append final list
+            contrast_list.append(id)
+        
+        #remove header
+        contrast_list.pop(0)
+    return(contrast_list)
+
+#get the input files for DE analysisanalysis
+def get_MANORM_analysis_input(wildcards):
+    gid_1 = wildcards.group_id.split("_vs_")[0]
+    gid_2 = wildcards.group_id.split("_vs_")[1]
+
+    input_list = [join(out_dir, '05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_1 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '_' + wildcards.strand + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '_' + wildcards.strand + '.bed')]
+    return(input_list)
+
+def get_DIFFBIND_analysis_input(wildcards):
+    gid_1 = wildcards.group_id.split("_vs_")[0]
+    gid_2 = wildcards.group_id.split("_vs_")[1]
+
+    input_list = [join(out_dir,'05_demethod', '01_input', gid_1 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bam'),
+                join(out_dir,'05_demethod', '01_input', gid_1 + '_Peaksfor' + DE_method + '_' + wildcards.strand + '.bed'),
+                join(out_dir,'05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bam'),
+                join(out_dir,'05_demethod', '01_input', gid_2 + '_Peaksfor' + DE_method + '_' + wildcards.strand + '.bed')]
+    return(input_list)
+
+#get sample name for demethod comparison - sample
+def get_DEMETHOD_gid1(wildcards):
+    gid = wildcards.group_id.split("_vs_")[0]
+    return(gid)
+
+#get sample name for demethod comparison - background
+def get_DEMETHOD_gid2(wildcards):
+    gid = wildcards.group_id.split("_vs_")[1]
+    return(gid)
+
+#get input files for post-processing MANORM
+def get_MANORM_post_processing(wildcards):
+    gid_1 = wildcards.group_id.split("_vs_")[0]
+    gid_2 = wildcards.group_id.split("_vs_")[1]
+
+    input_list = [join(out_dir,'05_demethod','02_analysis', wildcards.group_id, wildcards.group_id + "_P", wildcards.group_id + '_all_MAvalues.xls'),
+                join(out_dir,'05_demethod','02_analysis', wildcards.group_id, wildcards.group_id + "_N", wildcards.group_id + '_all_MAvalues.xls')]
+    return(input_list)
+
+###############################################################
+# main code
+###############################################################
+#read manifests
+df_multiplex = pd.read_csv(multiplex_manifest,sep="\t")
+df_samples = pd.read_csv(sample_manifest,sep="\t")
+
+#create dicts
+(multiplex_dict,samp_dict) = CreateSampleDicts(df_multiplex,df_samples)
+
+#create unique filename_list and paired lists, where length = N samples, all samples
+#mp_list    sp_list
+#mp1        sample1
+#mp1        sample2
+(mp_list,sp_list,file_list) = CreateProjLists(multiplex_dict,samp_dict)
+
+# Creating list of N chunks, the numerical 
+# representation of the chunks corresponds 
+# to how split cmd generates a int for a
+# given chunk, chunks are prefixed with 
+# a zero offset, i.e 99 chunks have two
+# sig figures so numbers less than 10 need 
+# to be offset with a zero: 9 -> 09   
+chunks_list = []
+rangelen = len(str(get_filechunk_size()))
+# Sanity check to ensure the user did not 
+# set splitSampleNChunks to a crazy high
+# number. This could put extra strain on 
+# the job scheduler as there is some over
+# head to scheduling each job.
+assert get_filechunk_size() < 100, 'Fatal: splitSampleNChunks value cannot \
+exceed 99 due to limitations relating to job scheduling. \
+Please edit snakemake_config.yaml and try running again!'
+for n in range(1, get_filechunk_size()+1):
+    chunklen = len(str(n))
+    if rangelen < 2:
+        # split -a option set to default '2',
+        # corrects for edge case where a user 
+        # sets splitSampleNChunks < 10
+        n = '{}{}'.format('0', n)
+    elif chunklen < rangelen:
+        offset = rangelen - chunklen
+        padding = offset * '0'
+        n = '{}{}'.format(padding, n)
+    chunks_list.append(str(n))
+
+#determine barcode length
+barcode_length = int(len(df_samples.iloc[0,3].replace('N',''))) #length of barcode
+
+#create manorm list
+if DE_method == "MANORM" or DE_method == "DIFFBIND": 
+    contrast_list = get_de_list()
+
+###############################################################
+# rule all
+###############################################################
+#set rule_all inputs depending on flags:
+## if samples have been multiplexed
+if multiplex_flag == 'Y':
+    input_multiplex = [expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list),
+                        expand(join(out_dir,'{mp}', '02_preprocess','demux_nomatch5.fastq.gz'), mp=samp_dict.keys())]
+else:
+    input_multiplex = [expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list)]
+
+## if samples are spliced
+if splice_aware == 'Y':
+    input_unmapped = expand(join(out_dir,'02_bam','01_unmapped','{sp}.{al_sub}.complete.bam'),  sp=sp_list, al_sub=align_sub)
+
+    input_recalc = [expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),sp=sp_list),
+                    expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recal_report.html'),sp=sp_list)]
+else:
+    input_unmapped = expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
+
+    input_recalc = [expand(join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),sp=sp_list)]
+
+#if samples are running MANORM
+if DE_method == "MANORM":
+    input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}', '{group_id}_manorm_report.html'),group_id=contrast_list),
+    expand(join(out_dir,'05_demethod','02_analysis', '{group_id}', '{group_id}_post_processing.txt'), group_id=contrast_list)]
+
+    #testing
+    #input_demethod_reports = expand(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_P.bed'), sp=sp_list)
+    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls'),group_id=contrast_list,strand=strand_list)
+    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt'), group_id=contrast_list)
+elif DE_method == "DIFFBIND":
+    #input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}', '{group_id}_manorm_report.html'),group_id=contrast_list),
+    #expand(join(out_dir,'05_demethod','02_analysis', '{group_id}', '{group_id}_post_processing.txt'), group_id=contrast_list)]
+
+    #testing
+    input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}','{group_id}_diffbind_report.html'),group_id=contrast_list)]
+
+    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls'),group_id=contrast_list,strand=strand_list)
+    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt'), group_id=contrast_list)
+    #input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + 'Table_{strand}.txt'), group_id=contrast_list, strand=strand_list),
+    # expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + 'Summary_{strand}.txt'), group_id=contrast_list, strand=strand_list)]
+else:
+    input_demethod_reports = [expand(join(out_dir,'04_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list)]
+
+#local rules
+localrules: check_manifest, copy_nondemux, rename_demux, multiqc, feature_counts, MANORM_beds, MANORM_post_processing
+
+rule all:
+    input:
+        ################################################################################################        
+        # required, non temp files
+        # non-rule: check sample fastq files exist
+        expand(join(fastq_dir,'{fq_file}'), fq_file=file_list),
+        
+        # check manifest
+        join(out_dir,'qc','manifest_check.txt'),
+        
+        # #merge_unmapped_splits
+        input_unmapped,
+         
+        # merge_mm_and_unique
+        expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
+
+        # multiqc
+        join(out_dir,'qc','multiqc_report.html'),
+
+        # qc_troubleshoot
+        join(out_dir,'qc','qc_report.html'),
+
+        #merge_mm_and_unique
+        expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
+        
+        # dedup
+        expand(join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),sp=sp_list),
+        
+        # recalc
+        input_recalc,
+
+        # create_beds_safs
+        expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
+        expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'), sp=sp_list),
+        expand(join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'), sp=sp_list),
+        expand(join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF'), sp=sp_list),
+        
+        # annotation_report
+        expand(join(out_dir,'04_annotation', '{sp}_annotation_final_report.html'),sp=sp_list),
+        expand(join(out_dir,'04_annotation', '{sp}_annotation_final_table.txt'),sp=sp_list),
+
+        # MANORM or DIFFBIND
+        input_demethod_reports
+
+        ################################################################################################
+        #intermediate troubleshooting, temp files
+        ################################################################################################
+        # # remove_adaptors
+        # expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
+        
+        # # different inputs for multiplexed or nonmultiplexed pipeline
+        # input_multiplex,
+
+        # #qc_fastq_pre
+        # expand(join(out_dir,'{mp}','01_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
+
+        # #qc_fastq_post
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        
+        # #qc_screen
+        # expand(join(out_dir, 'qc', '02_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
+        # expand(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
+        
+        # #merge_splits_unique_mm
+        # expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam'), sp=sp_list, al=align_list),
+        # expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam'),sp=sp_list, al=align_list),
+
+        # #merge_mm_and_unique
+        # expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam'), sp=sp_list, al=align_list),
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al}_samstats.txt'), sp=sp_list, al=align_list),
+
+        # #merge_mm_and_unique
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al}_samstats.txt'), sp=sp_list, al=align_list),
+
+        # # mapq recalulation
+        # expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.tsv'),sp=sp_list)
+
+        # #qc_alignment
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al}_aligned.png'), sp=sp_list, al=align_list),
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al}_unaligned.png'), sp=sp_list, al=align_list),
+
+        # #feature_counts
+        # expand(join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_uniqueCounts.txt'), sp=sp_list),
+        # expand(join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt'), sp=sp_list),
+        # expand(join(out_dir,'03_peaks','03_allreadpeaks','{sp}_uniqueCounts.txt'), sp=sp_list),
+        # expand(join(out_dir,'03_peaks','03_allreadpeaks','{sp}_allFracMMCounts.txt'), sp=sp_list),
+
+        # #project_annotations
+        # join(out_dir,'04_annotation', '01_project','annotations.txt'),
+
+        # #peak_annotations
+        # expand(join(out_dir,'04_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),sp=sp_list),
+
+        # #MANORM
+        # input_manorm_input,
+        # input_manorm_analysis,
+        # input_manorm_post_proccessing, 
+
+# common and other SMK 
+if source_dir == "":
+    include: "workflow/rules/common.smk"
+    include: "workflow/rules/other.smk"
+else:
+    include: join(source_dir,"workflow/rules/common.smk")
+    include: join(source_dir,"workflow/rules/other.smk")
+
+###############################################################
+# snakemake rules
+###############################################################
+rule check_manifest:
+    """
+    Read in multiplex manifest, sample manifest, contrast manifest.
+    Use python script to check file matching, sample matching, and invalid characters.
+    Will only check contrast manifest if "MANORM" is selected
+    If files are correct, outputs a temp file. If not, outputs error file.
+    """
+    input:
+        mm = multiplex_manifest,
+        sm = sample_manifest,
+        cm = contrast_manifest
+    params:
+        py = join(source_dir,'workflow','scripts','01_check_manifest.py'),
+        base = join(out_dir,'qc','manifest_')
+    envmodules:
+        config['python']  
+    output:
+        manifest = join(out_dir, 'qc', 'manifest_check.txt'),
+    shell:
+        """
+        python {params.py} \\
+            '{params.base}' \\
+            {input.mm} \\
+            {input.sm} \\
+            {input.cm} \\
+            {DE_method}
+        """
+
+#pipeline branches to demultiplex, if necessary
+if (multiplex_flag == 'Y'):
+    rule qc_barcode:
+        """
+        generate counts of barcodes and output to text file
+        will run python script that determines barcode expected and generates mismatches based on input
+        output barplot with top barcode counts
+        """
+        input:
+            manifest = rules.check_manifest.output.manifest,
+            fq = get_fq_names,
+        params:
+            rname = "01a_qc_barcode",
+            R = join(source_dir,'workflow', 'scripts', '02_barcode_qc.R'),
+            base = join(out_dir,'{mp}','01_qc_post'),
+            mm = mismatch,
+            bc_len = barcode_length,
+            start_pos = 6 if barcode_length==6 else 4
+        envmodules:
+            config['R'],
+        output:
+            counts = temp(join(out_dir,'{mp}','01_qc_post','{mp}_barcode_counts.txt')),
+            png = temp(join(out_dir,'{mp}','01_qc_post','{mp}_barcode.png')),
+            txt = temp(join(out_dir,'{mp}','01_qc_post','{mp}_barcode.txt'))
+        shell:
+            """
+            gunzip -c  {input.fq} \\
+                | sed -n '/@/{{n;p}}' \\
+                | awk '{{print substr($0, {params.start_pos}, {params.bc_len});}}' \\
+                | sort -n \\
+                | uniq -c > {output.counts};
+            
+            Rscript {params.R} --sample_manifest {sample_manifest} \\
+                --multiplex_manifest {multiplex_manifest} \\
+                --barcode_input {output.counts} \\
+                --mismatch {params.mm} \\
+                --mpid {wildcards.mp} \\
+                --output_dir {params.base}
+            """
+
+    rule demultiplex:
+        """
+        https://icount.readthedocs.io/en/latest/ref_CLI.html
+        Custom iCount version:
+            https://github.com/skchronicles/iCount
+        Reads in fastq files from multiplex_manifest.
+        Finds multiplex match between manifest files, splits files based on list of
+        barcodeIDs found in sample_manifest
+        For example: SIM_iCLIP_S1_R1_001.fastq would be split into barcodes NNNTGGCNN and NNNCGGANN
+        file_name                   multiplex
+        SIM_iCLIP_S1_R1_001.fastq   SIM_iCLIP_S1
+        multiplex       sample          group       barcode     adaptor
+        SIM_iCLIP_S1    Ro_Clip         CLIP        NNNTGGCNN   AGATCGGAAGAGCGGTTCAG
+        SIM_iCLIP_S1    Control_Clip    CNTRL       NNNCGGANN   AGATCGGAAGAGCGGTTCAG
+        """
+        input:
+            f1 = get_fq_names,
+            manifest = rules.check_manifest.output.manifest
+        params:
+            rname='01b_demultiplex',
+            s_exec = singularity_exec,
+            doc = join(cont_dir,'ccbr_icount_v1.0.0.sif'),
+            cmd = demux_cmd,
+            ml = filter_length,
+            mm = mismatch,
+            threads = getthreads('demultiplex')
+        envmodules:
+            config['singularity'],
+        output:
+            fastq = temp(join(out_dir,'{mp}', '02_preprocess','demux_nomatch5.fastq.gz')),
+        shell:
+            """
+            {params.s_exec} {params.doc} iCount demultiplex \\
+                --threads {params.threads} \\
+                --minimum_length {params.ml} \\
+                --mismatches {params.mm} \\
+                {params.cmd}
+            """
+
+    rule rename_demux:
+        """
+        renames demultiplexed files based on
+        from: {out_dir}/{multiplex_id}/demux_{barcode}.fastq.gz
+        to: {out_dir}/{multiplex_id}/01_renamed/demux_{sample_id}.fast.gz
+        """
+        input:
+            fastq = rules.demultiplex.output.fastq
+        params:
+            rname = '01c_rename_demux',
+            cmd = rename_cmd
+        output:
+            o1 = temp(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'))
+        shell:
+            """
+            # Rename files
+            mv {params.cmd}
+            """     
+else: 
+    rule copy_nondemux:
+        """
+        copies fastq files from source location and moves into renamed file folder
+        """
+        input:
+            manifest = rules.check_manifest.output.manifest
+        params:
+            rname = '01_copy_nondemux',
+            cmd = nondemux_cmd
+        output:
+            fastqs = temp(expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list))
+        shell:
+            """
+            {params.cmd}
+            """
+
+rule remove_adaptors:
+    """
+    Input is all samples, output is all samples with adaptors removed with iCOUNT and renamed
+    Custom iCount version: 
+        https://github.com/skchronicles/iCount
+    removes adaptors from files. software outputs:
+    1) untrimmed.fastq.gz - reads with no adaptor present --> filtered.fastq.gz
+    2) trimmed.fastq.gz - reads that contained an adapter and were trimmed --> removed_seq.fastq.gz
+    """
+    input:
+        fastqs = expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+    params:
+        rname='02_remove_adaptors',
+        cmd = adapt_cmd,
+    envmodules:
+        config['singularity'],    
+    output:
+        filtered = temp(expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list)),
+        removed = temp(expand(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'),sp=sp_list))
+    shell:
+        """
+        if [ -d "/tmp/iCount/" ]; then rm -r "/tmp/iCount/"; fi
+        
+        {params.cmd}
+
+        if [ -f {output.removed} ]; then 
+            # Merge filtered reads (no adapters were present)
+            # AND removed reads (adapter present and trimmed),
+            # to keep both untrimmed and trimmed reads. A read
+            # will not contain a 3' prime adapter sequence if 
+            # the sequenced fragment is longer than the sequencing 
+            # read length. Shorter sequenced fragements will have 
+            # 3' adapter contamination and represent trimmed reads
+            mv {output.filtered} {output.filtered}.tmp
+            cat {output.filtered}.tmp {output.removed} > {output.filtered}
+            rm {output.filtered}.tmp
+        fi
+        """
+
+rule qc_fastq_pre:
+    """
+    Runs FastQC report on each sample before adaptors have been removed
+    """
+    input:
+        fastq = join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz')
+    params:
+        rname='03a_qc_fastq_pre',
+        base = join(out_dir,'{mp}','01_qc_pre/')
+    envmodules:
+        config['fastqc']
+    output:
+        html = temp(join(out_dir,'{mp}','01_qc_pre','{sp}_fastqc.html'))
+    shell:
+        """
+        fastqc {input.fastq} -o {params.base}
+        """
+
+rule qc_fastq_post:
+    """
+    Runs FastQC report on each sample after adaptors have been removed
+    """
+    input:
+        fastq = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')
+    params:
+        rname='03b_qc_fastq_post',
+        base = join(out_dir, 'qc', '01_qc_post'),
+    envmodules:
+        config['fastqc']
+    output:
+        html = temp(join(out_dir, 'qc', '01_qc_post','{sp}_filtered_fastqc.html'))
+    shell:
+        """
+        fastqc {input.fastq} -o {params.base}
+        """
+
+rule qc_screen_validator:
+    """
+    #fastq screen
+    - this will align first to human, mouse, bacteria then will align to rRNA
+    must run fastq_screen as two separate commands - multiqc will merge values of rRNA with human/mouse
+    http://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/_build/html/index.html
+    - fastq validator
+    Quality-control step to ensure the input FastQC files are not corrupted or
+    incomplete prior to running the entire workflow.
+    @Input:
+        Raw FastQ file (scatter)
+    @Output:
+        Log file containing any warnings or errors on file
+    """
+    input:
+        filtered = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')
+    params:
+        rname='04_qc_screen_validator',
+        fastq_v = fastq_val,
+        tmp = join('{sp}_filtered.fastq'),
+        base_species = join(out_dir, 'qc', '02_qc_screen_species'),
+        conf_species = join(source_dir,'config','fqscreen_species_config.conf'),
+        base_rrna = join(out_dir, 'qc', '02_qc_screen_rrna'),
+        conf_rrna = join(source_dir,'config','fqscreen_rrna_config.conf'),
+        base_val = join(out_dir,'qc'),
+        threads = getthreads("qc_screen_validator")
+    envmodules:
+        config['bowtie2'],
+        config['perl'],
+        config['fastq_screen'],
+    output:
+        species = temp(join(out_dir, 'qc', '02_qc_screen_species','{sp}_filtered_screen.txt')),
+        screen = temp(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_filtered_screen.txt')),
+        log = join(out_dir,'qc','{sp}.validated.fastq.log'),
+    shell:
+        """
+        # Setup tmp directory
+        if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            # Use lscratch on Biowulf
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+        else
+            # Default to output directory
+            tmpdir="{out_dir}01_preprocess/qc_screen"
+            if [ ! -d "${{tmpdir}}" ]; then 
+                mkdir -p "$tmpdir"
+            fi
+        fi
+
+        # Gzip input files
+        gunzip -c {input.filtered} > ${{tmpdir}}/{params.tmp};
+        
+        # Run FastQ Screen
+        fastq_screen --conf {params.conf_species} \\
+            --outdir {params.base_species} \\
+            --threads {params.threads} \\
+            --subset 1000000 \\
+            --aligner bowtie2 \\
+            --force \\
+            ${{tmpdir}}/{params.tmp};
+        fastq_screen --conf {params.conf_rrna} \\
+            --outdir {params.base_rrna} \\
+            --threads {params.threads} \\
+            --subset 1000000 \\
+            --aligner bowtie2 \\
+            --force \\
+            ${{tmpdir}}/{params.tmp};
+        
+        # Remove tmp gzipped file
+        rm ${{tmpdir}}/{params.tmp}
+        
+        # Run FastQ Validator
+        mkdir -p {params.base_val}
+        {params.fastq_v} \\
+            --disableSeqIDCheck \\
+            --noeof \\
+            --printableErrors 100000000 \\
+            --baseComposition \\
+            --avgQual \\
+            --file {input.filtered} > {output.log};
+        """
+
+# TODO: This rule is depreicated . Delete this later after testing!
+# rule determine_splits:
+#     """
+#     determine the number of files, and chunk sizes, to split FASTQ file
+#     split is necessary to improve speed of alignment
+#     split is done based off split_value input, maintaining every 4 lines = 1 seq
+#     """
+#     input:
+#         filtered = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list)
+#     params:
+#         sh = join(source_dir, 'workflow', 'scripts', '03_find_split_parameters.sh'),
+#     output:
+#         split_params = join(out_dir,'qc','split_params.tsv')
+#     shell:
+#         """
+#         sh {params.sh} \\
+#             {output.split_params} \\
+#             {split_value} \\
+#             {input.filtered}
+#         """
+
+rule split_files:
+    """
+    Performs split of fastq file into smaller files using pre-defined config 'splitSampleNChunks' option
+    """
+    input:
+        filtered = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),
+    params:
+        rname='05_split_files',
+        base = join(out_dir,'01_preprocess','01_splits','{sp}.split.'),
+        nchunks = get_filechunk_size
+    output:
+        splits = temp(expand(join(out_dir,'01_preprocess','01_splits','{{sp}}.split.{n}.fastq.gz'), n=chunks_list))
+    shell:
+        """
+        # Determine the number of reads 
+        # required to create N file chunks 
+        nreads=$(($(zcat {input.filtered} | wc -l) / 4))
+        readsPerChunk=$(python3 -c "from math import ceil; print(ceil(${{nreads}}/{params.nchunks}))")
+        if [ $nreads -lt {params.nchunks} ]; then
+            exit 'Fatal: Unable to split {input.filtered} into {params.nchunks} chunks!';
+        fi
+        
+        # Split file into N file chunks 
+        zcat {input.filtered} \\
+            | paste - - - - \\
+            | split --additional-suffix .fastq \\
+                -l $readsPerChunk \\
+                --numeric-suffixes=1 \\
+                --filter='tr "\\t" "\\n" | gzip > $FILE.gz' \\
+                - {params.base}
+        """
+
+rule novoalign:
+    """
+    alignment for non-splice aware pipeline and for splice aware pipeline MAPQ recalculation
+    http://www.novocraft.com/documentation/novoalign-2/novoalign-user-guide/novoalign-command-options/
+    """
+    input:
+        f1 = join(out_dir,'01_preprocess','01_splits','{sp}.split.{n}.fastq.gz')
+    params:
+        rname='06_novoalign',
+        n_index = get_index,
+        l = filter_length
+    envmodules:
+        config['novocraft']
+    output:
+        sam = temp(join(out_dir,'01_preprocess','02_alignment','{sp}.{al}.split.{n}.sam.gz')),
+    shell:
+        """
+        zcat {input.f1} \\
+            | novoalign -d {params.n_index} -k \\
+                -f - \\
+                -F STDFQ \\
+                -c 32 \\
+                -t 15,3 \\
+                -l {params.l} \\
+                -x 4 \\
+                -g 20 \\
+                -s 1 \\
+                -o SAM \\
+                -R 0 \\
+                -r EXHAUSTIVE 999 \\
+            | gzip -c > {output.sam}
+        """
+
+#pipeline branches for splice_aware processing
+if (splice_aware == "Y"):
+    
+    #only masked and unmasked files go through clean-up and conversion since they were aligned to transcriptome
+    rule cleanup_conversion:
+        """
+        if alignment file is unaware:
+        - copies file to output location
+        - creates empty bam file - this is not used anywhere in the pipeline and will be deleted upon cleanup
+
+        if alignment is unmasked or masked:
+        - performs cleanup for inserts
+        - converts transcriptome coordinates to genomic coordinates
+        --- uses USeq version 8.9.6
+        - converts sam to bam
+        - unmapped reads are removed during genomic coordinates conversion, need to include them in final file
+          so merging is performed        
+        - sort and index final bam file
+        """
+        input:
+            sam = join(out_dir,'01_preprocess','02_alignment','{sp}.{al}.split.{n}.sam.gz')
+        params:
+            rname = '06b_cleanup_conversion',
+            al_type = '{al}',
+            base = '{sp}.{al}.split.{n}',
+            base_out = join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam'),
+            doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
+        threads: getthreads("cleanup_conversion")
+        envmodules:
+            config['samtools'],
+            config['java']
+        output:
+            sam = temp(join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam.gz')),
+            bam = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
+        shell:
+            """
+            # Setup tmp directory
+            if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir="{out_dir}01_preprocess/03_tmp_genomic"
+                if [ ! -d $tmpdir ]; then 
+                    mkdir -p $tmpdir; 
+                fi
+            fi
+
+            if [ "{params.al_type}" == "unaware" ]; then
+                cp {input.sam} {output.sam};
+                touch {output.bam};
+            else
+                # Run cleanup
+                zcat {input.sam} | samtools view | awk '{{ if (($4 == 1 && $6 ~/(^[0-9]+)H|S([0-9]+I)/ && $1~/:/ ) || ($4 == 1 && $6 ~/^[0-9]I/ && $1~/:/ )) {{}} else  print }}' > ${{tmpdir}}/{params.base}.tmp.sam;
+                # Alternative to samtool view -H to get the header,
+                # samtools view -H always fails with standard input
+                # when set -o pipefail is enabled, using grep instead.
+                zcat {input.sam} | grep --color=never '^@..\\b' | cat - ${{tmpdir}}/{params.base}.tmp.sam > ${{tmpdir}}/{params.base}.tmp.mapped.sam; 
+                zcat {input.sam} | samtools view --threads {threads} -f 4 > ${{tmpdir}}/{params.base}.tmp.unmapped.sam;
+
+                # Run genomic conversion
+                java -Djava.io.tmpdir=${{tmpdir}} -Xmx100G -jar {params.doc} \\
+                    -f ${{tmpdir}}/{params.base}.tmp.mapped.sam \\
+                    -a 50000 -n 25 -u -s {params.base_out};
+                
+                # Converts SAM to BAM
+                gunzip -c {output.sam} | samtools view --threads {threads} -S -b - > ${{tmpdir}}/{params.base}.unmasked.bam;
+                
+                # Merge unmapped SAM and unmasked BAM into final output
+                # if there are unmapped reads
+                FILESIZE=$(stat -c%s ${{tmpdir}}/{params.base}.tmp.unmapped.sam)
+                if [ "$FILESIZE" -gt 100 ]; then
+                    # Merge unmasked reads with unmapped reads
+                    samtools merge --threads {threads} -f ${{tmpdir}}/{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
+                    
+                    # Pull header from merged and add to final output
+                    samtools view --threads {threads} -h -o ${{tmpdir}}/{params.base}.final.bam ${{tmpdir}}/{params.base}.merged.bam;
+                    
+                    # Sort and index final outupt
+                    samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
+                    samtools index {output.bam}
+                else
+                    # There are no unmapped reads, final file is unmasked bam
+                    samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} ${{tmpdir}}/{params.base}.unmasked.bam -o {output.bam};
+                    samtools index {output.bam}
+                fi
+            fi
+            """
+
+    rule merge_unmapped_splits:
+        """
+        merge all sample unmapped reads into one file
+        """
+        input:
+            sorted_list = expand(join(out_dir,'01_preprocess','04_unmapped','{{sp}}.{{al_sub}}.split.{n}.final.si.bam'), n=chunks_list),
+        params:
+            rname='06c_merge_unmapped_splits',
+            threads = getthreads('merge_unmapped_splits'),
+        envmodules:
+            config['samtools']  
+        output:
+            final = join(out_dir,'02_bam','01_unmapped','{sp}.{al_sub}.complete.bam'),
+        shell:
+            """
+            samtools merge \\
+                --threads {params.threads} \\
+                -f {output.final} \\
+                {input.sorted_list} 
+            """
+
+rule create_bam_mm_unique:
+    """
+    novoalign creates files where NH = the number of possible alignments and IH = the number of 
+    acutal alignments in a file 
+    creates two text files from sam file
+    1. unique file without IH:i flag
+    2. MM file with IH:i flag
+    read sam file header, print to header txt
+    umitools dedup can only reference NH flags since novoalign creates files where NH = the 
+    number of possible alignments and IH = the number of acutal alignments in a file we must 
+    replace the NH flags with the IH flags to deduplicate based off the correct value
+    add nh:i:1 tag, cat header, create unique bam file
+    """
+    input:
+        f1 = get_align_input,
+    params:
+        rname='07_create_bam_mm_unique',
+        base = '{sp}.{al}.split.{n}.tmp',
+        replace_tags = join(source_dir,'workflow','scripts','replace_tags.py'),
+        unique_tags = join(source_dir,'workflow','scripts','set_unique_tags.py'),
+    threads: getthreads("create_bam_mm_unique")
+    envmodules:
+        config['samtools']
+    output:
+        sort_u = temp(join(out_dir,'01_preprocess','05_unique','{sp}.{al}.split.{n}.unique.si.bam')),
+        sort_m = temp(join(out_dir,'01_preprocess','05_mm','{sp}.{al}.split.{n}.mm.si.bam')),
+    shell:
+        """
+        ################################################
+        # Setup tmp directory
+        ################################################
+        if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            tmpdir_m="${{tmpdir}}/m"
+            tmpdir_u="${{tmpdir}}/u"
+            if [ ! -d $tmpdir_m ]; then mkdir -p $tmpdir_m; fi
+            if [ ! -d $tmpdir_u ]; then mkdir -p $tmpdir_u; fi
+        else
+            tmpdir="{out_dir}01_preprocess/05_tmp_bam"
+            tmpdir_m="$tmpdir/m"
+            tmpdir_u="$tmpdir/u"
+            if [ ! -d $tmpdir ]; then mkdir -p $tmpdir; fi
+            if [ ! -d $tmpdir_u ]; then mkdir -p $tmpdir_u; fi
+            if [ ! -d $tmpdir_m ]; then mkdir -p $tmpdir_m; fi
+        fi
+
+        ################################################
+        # Create mm, unique, header files
+        ################################################
+        gunzip -c {input.f1} \\
+            | samtools view -h \\
+            | grep -v 'IH:i' > ${{tmpdir_u}}/{params.base}.unique.tmp.sam;
+        gunzip -c {input.f1} \\
+            | samtools view \\
+            | grep 'IH:i' > ${{tmpdir_m}}/{params.base}.mm.txt;
+        # Alternative to samtool view -H to get the header,
+        # samtools view -H always fails with standard input
+        # when set -o pipefail is enabled, using grep instead.
+        gunzip -c {input.f1} \\
+            | grep --color=never '^@..\\b' > ${{tmpdir}}/{params.base}.header.txt
+
+        ################################################
+        # Create unique BAM, correcting NH header
+        ################################################
+        # If the file exists, remove it
+        if [ -f ${{tmpdir_u}}/{params.base}.unique.sam ]; then rm ${{tmpdir_u}}/{params.base}.unique.sam; fi
+
+        # Fixes NH tags in unique reads and 
+        # removes NH tags from unmapped reads
+        python {params.unique_tags} \\
+            --input ${{tmpdir_u}}/{params.base}.unique.tmp.sam \\
+            --output ${{tmpdir_u}}/{params.base}.unique.sam
+        rm ${{tmpdir_u}}/{params.base}.unique.tmp.sam
+
+        # Sort and convert to BAM
+        mkdir -p ${{tmpdir_u}}/{params.base}_tmp
+        samtools sort --threads {threads} -m 10G \\
+            -T ${{tmpdir_u}}/{params.base}_tmp \\
+            -O bam -o ${{tmpdir_u}}/{params.base}.unique.bam \\
+            ${{tmpdir_u}}/{params.base}.unique.sam
+        rm -rf ${{tmpdir_u}}/{params.base}.unique.sam ${{tmpdir_u}}/{params.base}_tmp
+        
+        ################################################
+        # Create mm BAM, correcting NH header
+        ################################################
+        # If the file exists, remove it
+        if [ -f ${{tmpdir_m}}/{params.base}.mm.sam ]; then 
+            rm ${{tmpdir_m}}/{params.base}.mm.sam; 
+        fi
+
+        # Replace value of the NH tag 
+        # to the value of the IH tag 
+        python {params.replace_tags} ${{tmpdir_m}}/{params.base}.mm.txt > ${{tmpdir_m}}/{params.base}.mm.sam
+
+        # Place header back on file, sort, convert to BAM
+        mkdir -p ${{tmpdir_m}}/{params.base}_tmp
+        cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_m}}/{params.base}.mm.sam \\
+            | samtools sort --threads {threads} -m 10G -T ${{tmpdir_m}}/{params.base}_tmp\\
+        -O bam -o ${{tmpdir_m}}/{params.base}.mm.bam 
+        rm -rf ${{tmpdir_m}}/{params.base}.mm.sam ${{tmpdir_m}}/{params.base}_tmp
+        
+        ################################################
+        # Sort unique and mm BAM
+        ################################################
+        samtools sort --threads {threads} -m 10G -T ${{tmpdir_u}} \\
+            ${{tmpdir_u}}/{params.base}.unique.bam \\
+            -o {output.sort_u};
+        rm -rf ${{tmpdir_u}}
+        samtools sort --threads {threads} -m 10G -T ${{tmpdir_m}} \\
+            ${{tmpdir_m}}/{params.base}.mm.bam \\
+            -o {output.sort_m};
+        rm -rf ${{tmpdir_u=m}}
+        samtools index -@ {threads} {output.sort_u};
+        samtools index -@ {threads} {output.sort_m};
+        """
+
+rule merge_splits_unique_mm:
+    """
+    merge split unique bam files into one merged.unique bam file
+    merge split multimapped bam files into one merged.mm bam file
+    """
+    input:
+        unique = expand(join(out_dir,'01_preprocess','05_unique','{{sp}}.{{al}}.split.{n}.unique.si.bam'), n=chunks_list),
+        mm = expand(join(out_dir,'01_preprocess','05_mm','{{sp}}.{{al}}.split.{n}.mm.si.bam'), n=chunks_list)
+    params:
+        rname='08_merge_splits_unique_mm',
+        threads = getthreads('merge_splits_unique_mm'),
+    envmodules:
+        config['samtools']  
+    output:
+        unique = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam')),
+        mm = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam')),
+    shell:
+        """
+        samtools merge --threads {params.threads} -f {output.unique} {input.unique};
+        samtools merge --threads {params.threads} -f {output.mm} {input.mm}
+        """
+
+rule merge_mm_and_unique:
+    """
+    merge merged.mm and merged.unique bam files by sample
+    sort and index output
+    run samtools
+    """
+    input:
+        un = rules.merge_splits_unique_mm.output.unique,
+        mm = rules.merge_splits_unique_mm.output.mm
+    params:
+        rname='09_merge_mm_and_unique',
+    envmodules:
+        config['samtools']
+    threads: getthreads("merge_mm_and_unique")  
+    output:
+        merged = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam')),
+        samstat = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al}_samstats.txt')),
+        sort = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'),
+    shell:
+        """
+        # Setup tmp directory
+        if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+        else
+            tmpdir="{out_dir}01_preprocess/05_merge_mu"
+            if [ ! -d $tmpdir ]; then mkdir -p $tmpdir; fi
+        fi
+
+        # Merge uniuqe and mm
+        samtools merge --threads {threads} -f {output.merged} \\
+            {input.un} \\
+            {input.mm};
+        
+        # Sort and Index
+        samtools sort --threads {threads} -m 10G -T ${{tmpdir}} \\
+            {output.merged} \\
+            -o {output.sort};
+        samtools index -@ {threads} {output.sort};
+        
+        # Run samstats
+        samtools stats --threads {threads} {output.sort} > {output.samstat}
+        """
+
+rule multiqc:
+    """
+    merges FastQC reports for pre/post trimmed fastq files into MultiQC report
+    https://multiqc.info/docs/#running-multiqc
+    """
+    input:
+        f1 = expand(join(out_dir,'{mp}', '01_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list, sp=sp_list),
+        f2 = expand(join(out_dir, 'qc', '01_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        f3 = expand(join(out_dir, 'qc', '02_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
+        f4 = expand(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
+        f5 = expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_samstats.txt'),sp=sp_list, al_sub=align_sub)
+    params:
+        out = join(out_dir,'qc'),
+        qc_config = join(source_dir,'config','multiqc_config.yaml'),
+        dir_pre = expand(join(out_dir,'{mp}','01_qc_pre'),mp = samp_dict.keys()),
+        dir_post = expand(join(out_dir, 'qc', '01_qc_post')),
+        dir_screen_species = expand(join(out_dir, 'qc', '02_qc_screen_species')),
+        dir_screen_rrna = expand(join(out_dir, 'qc', '02_qc_screen_rrna')),
+    envmodules:
+        config['multiqc']
+    output:
+        o1 = join(out_dir,'qc', 'multiqc_report.html')
+    shell:
+        """
+        multiqc -f -v \\
+            -c {params.qc_config} \\
+            -d -dd 1 \\
+            {params.dir_pre} \\
+            {params.dir_post} \\
+            {params.dir_screen_rrna} \\
+            {params.dir_screen_species} \\
+            -o {params.out}
+        """
+
+rule qc_alignment:
+    """
+    uses samtools to create a bams of unaligned reads and aligned reads
+    input; print qlength col to text file
+    generates plots and summmary file for aligned vs unaligned statistics
+    """
+    input:
+        merged = join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'),
+    params:
+        rname = "10_qc_alignment",
+        R = join(source_dir,'workflow','scripts','04_alignment_stats.R'),
+        sampleid = '{sp}.{al_sub}',
+        base = join(out_dir, 'qc', '01_qc_post/')
+    envmodules:
+        config['samtools'],
+        config['R']
+    threads: getthreads("qc_alignment")  
+    output:
+        bam_a = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_align_len.txt')),
+        bam_u = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_unalign_len.txt')),
+        png_align = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_aligned.png')),
+        png_unalign = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_unaligned.png')),
+        txt_align = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_aligned.txt')),
+        txt_unalign = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_unaligned.txt')),
+    shell:
+        """
+        # Gather stats for all reads
+        samtools view -F 4 {input.merged} \\
+            | awk '{{ print length($10) }}' \\
+            | sort -n \\
+            | uniq -c > {output.bam_a};
+
+        samtools view -f 4 {input.merged} \\
+            | awk '{{ print length($10) }}' \\
+            | sort -n \\
+            | uniq -c > {output.bam_u};
+        
+        # Run alignment stats code
+        Rscript {params.R} \\
+            --sampleid {params.sampleid} \\
+            --bam_aligned {output.bam_a} \\
+            --bam_unaligned {output.bam_u} \\
+            --output_dir {params.base}
+        """
+
+# Pipeline splits to handle multiplexed QC vs non-multiplexed QC
+if (multiplex_flag == 'Y'):
+    rule qc_troubleshoot:
+        """
+        generates a PDF of barcode plots and alignment plots for qc troubleshooting
+        """
+        input:
+            png_align = expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_aligned.png'), sp=sp_list, al_sub=align_sub),
+            png_unalign = expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_unaligned.png'), sp=sp_list, al_sub=align_sub),
+            txt_align = expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_aligned.txt'), sp=sp_list, al_sub=align_sub),
+            txt_unalign = expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_unaligned.txt'), sp=sp_list, al_sub=align_sub),
+            txt_bc = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys()),
+            png_bc = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())
+        params:
+            rname = "11_qc_troubleshoot",
+            R = join(source_dir,'workflow','scripts','05_qc_report.Rmd'),
+        envmodules:
+            config['R']
+        output:
+            o1 = join(out_dir,'qc','qc_report.html')
+        shell:
+            """
+            Rscript -e 'library(rmarkdown); \
+            rmarkdown::render("{params.R}",
+                output_file = "{output.o1}", \
+                params= list(a_txt = "{input.txt_align}", \
+                    u_txt = "{input.txt_unalign}", \
+                    b_txt = "{input.txt_bc}"))'
+            """
+else:
+    rule qc_troubleshoot:
+        """
+        generates a PDF of barcode plots and alignment plots for qc troubleshooting
+        """
+        input:
+            png_align = expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_aligned.png'), sp=sp_list, al_sub=align_sub),
+            png_unalign = expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_unaligned.png'), sp=sp_list, al_sub=align_sub),
+            txt_align = expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_aligned.txt'), sp=sp_list, al_sub=align_sub),
+            txt_unalign = expand(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_unaligned.txt'), sp=sp_list, al_sub=align_sub),
+        params:
+            rname = "11_qc_troubleshoot",
+            R = join(source_dir,'workflow','scripts','05_qc_report_nondemux.Rmd'),
+        envmodules:
+            config['R']
+        output:
+            o1 = join(out_dir,'qc','qc_report.html')
+        shell:
+            """
+            Rscript -e 'library(rmarkdown); \
+            rmarkdown::render("{params.R}",
+                output_file = "{output.o1}", \
+                params= list(a_txt = "{input.txt_align}", \
+                    u_txt = "{input.txt_unalign}"))'
+            """
+
+rule dedup:
+    """
+    deduplicate reads
+    sort,index dedup.bam file
+    get header of dedup file
+    """
+    input:
+        f1 = get_dedup_input
+    params:
+        rname='12_dedup',
+        umi = umi_sep,
+        base = '{sp}.unmasked',
+        mflag=multiplex_flag,
+    envmodules:
+        config['umitools'],
+        config['samtools']
+    threads: getthreads("dedup")
+    output:
+        bam = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
+    shell:
+        """
+        # Setup tmp directory
+        if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+        else
+            tmpdir="{out_dir}01_preprocess/06_dedup/"
+            if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+        fi
+ 
+        # Resets the UMI separator to correct value
+        delimeter="{params.umi}"
+        if [ '{params.mflag}' == 'N' ]; then
+            set +o pipefail
+            # Prevents a premature SIGPIPE to samtools,
+            # head -1 will result in a 141 return code 
+            delimeter=$(samtools view {input.f1} \\
+                | head -1 \\
+                | cut -f1 \\
+                | awk -F ':' '{{print $NF}}' \\
+                | awk '$0 ~ /_/ {{print}}')
+            set -o pipefail
+            # Check for presence of underscore
+            if [[ -n "${{delimeter}}" ]]; then
+                # String contains an underscore,
+                # Split by underscore and grab 
+                # the last string as UMI
+                delimeter=$(echo "${{delimeter}}" \\
+                    | awk -F '_' '{{print $NF}}')
+            else 
+                # Does not contain an underscore,
+                # reset the delimeter to a colon.
+                delimeter=":"
+            fi 
+        fi
+
+        # Run UMI Tools Deduplication
+        echo "Using the following UMI seperator: ${{delimeter}}"
+        umi_tools dedup \\
+            -I {input.f1} \\
+            --method unique \\
+            --multimapping-detection-method=NH \\
+            --umi-separator=${{delimeter}} \\
+            -S ${{tmpdir}}/{params.base}.bam \\
+            --log2stderr;
+
+        # Sort and Index
+        samtools sort --threads {threads} -m 10G -T ${{tmpdir}} \\
+            ${{tmpdir}}/{params.base}.bam \\
+            -o {output.bam};
+        samtools index -@ {threads} {output.bam};
+        """
+
+# Pipeline splits for mapq score recalculation on splice_aware samples
+if (splice_aware == 'Y'):
+    rule mapq_recalc:
+        """
+        generate readids from unmasked files
+
+        subsample:
+        A) splice unaware BAM 
+        B) splice aware (masked exon) BAM 
+        using the readids from splice aware (unmasked exon) in rule generate_readids
+
+        using deduplicated reads (splie aware unmasked exon BAM), and subset reads (splice unaware and splice aware masked exon) BAMs, pysam script will adjust for MAPQ correction 
+        
+        outputs updated mapq score bam file and metadata file of changes
+        """
+        input:
+            unmasked = rules.dedup.output.bam,
+            unaware = join(out_dir,'02_bam','02_merged','{sp}.unaware.merged.si.bam'),
+            masked = join(out_dir,'02_bam','02_merged','{sp}.masked.merged.si.bam'),
+        params:
+            rname='12b_mapq_recalc',
+            script_sub = join(source_dir,'workflow','scripts','06_filter_bam_by_readids.py'),
+            script_recal = join(source_dir,'workflow','scripts','06_correct_mapq.py')
+        envmodules:
+            config['samtools'],
+            config['python']
+        threads: getthreads("mapq_recalc")
+        output:
+            bam = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
+            tsv = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.tsv'),
+            log = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.log')
+        shell:
+            """
+            # Setup tmp directory
+            if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir="{out_dir}02_bam/04_mapq"
+                if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+            fi
+            
+            # Generate readids
+            samtools view {input.unmasked} \\
+                | cut -f1 \\
+                | sort \\
+                | uniq > ${{tmpdir}}/readids.txt
+
+            # Subsample reads
+            python {params.script_sub} \\
+                --inputBAM {input.unaware} \\
+                --outputBAM ${{tmpdir}}/unaware.bam \\
+                --readids ${{tmpdir}}/readids.txt
+            python {params.script_sub} \\
+                --inputBAM {input.masked} \\
+                --outputBAM ${{tmpdir}}/masked.bam \\
+                --readids ${{tmpdir}}/readids.txt
+            
+            # Sort and Index
+            samtools sort --threads {threads} -m 10G ${{tmpdir}}/unaware.bam  > ${{tmpdir}}/unaware.si.bam; 
+            samtools index -@ {threads} ${{tmpdir}}/unaware.si.bam;
+            samtools sort --threads {threads} -m 10G ${{tmpdir}}/masked.bam >  ${{tmpdir}}/masked.si.bam; 
+            samtools index -@ {threads} ${{tmpdir}}/masked.si.bam;
+
+            # Recalc
+            python {params.script_recal} \\
+                --inputBAM1 ${{tmpdir}}/unaware.si.bam \\
+                --inputBAM2 ${{tmpdir}}/masked.si.bam \\
+                --inputBAM3 {input.unmasked} \\
+                --outBAM ${{tmpdir}}/mapq_recalculated.bam \\
+                --outTSV {output.tsv} \\
+                --outLOG {output.log};
+
+            # Index recalculated bam
+            samtools sort --threads {threads} -m 10G ${{tmpdir}}/mapq_recalculated.bam -o {output.bam}
+            samtools index -@ {threads} {output.bam}
+            """
+
+    rule mapq_stats:
+        """
+        create diff files of old/new mapq scores to input into R script to create
+        plots and reports
+
+        """
+        input:
+            unmasked = rules.dedup.output.bam,
+            recalc = rules.mapq_recalc.output.bam,
+            log = rules.mapq_recalc.output.log
+        params:
+            rname='12c_mapq_stats',
+            R = join(source_dir,'workflow','scripts','07_mapq_stats.Rmd'),
+            sid = "{sp}",
+            base = join(out_dir,'02_bam','04_mapq','tmp')
+        envmodules:
+            config['samtools'],
+            config['R']  
+        output:
+            html = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recal_report.html'),
+        shell:
+            """
+            # Setup tmp directory
+            if [ ! -d {params.base} ]; then 
+                mkdir {params.base};
+            fi
+            
+            # Create files with new and old files
+            samtools view {input.unmasked} \\
+                | awk '{{print $5}}' \\
+                | sort -n \\
+                | uniq -c > {params.base}/{params.sid}.original_counts.txt
+            samtools view {input.recalc} \\
+                | awk '{{print $5}}' \\
+                | sort -n \\
+                | uniq -c > {params.base}/{params.sid}.corrected_counts.txt
+
+            # Grab changes
+            awk '{{print($4,$6)}}' {input.log} \\
+                | sort -n \\
+                | uniq -c > {params.base}/{params.sid}.diff_counts.txt
+
+            # Create report
+            Rscript -e 'library(rmarkdown); \
+            rmarkdown::render("{params.R}",
+                output_file = "{output.html}", \
+                params= list(counts_old="{params.base}/{params.sid}.original_counts.txt", \
+                    counts_new="{params.base}/{params.sid}.corrected_counts.txt", \
+                    counts_diff="{params.base}/{params.sid}.diff_counts.txt", \
+                    sampleid="{params.sid}", \
+                    output_dir="{params.base}"))'
+
+            # Remove intermediate files
+            rm -r {params.base}
+            """
+
+rule create_beds_safs:
+    """
+    split dedup file into unique files
+    create bed file from the deduped unique file and deduped all file
+    create SAF files from the deduped unique bed and all bed files
+    """
+    input:
+        bam = input_mapq_corrected_bam
+    params:
+        rname='13_create_beds_safs',
+        base = '{sp}.dedup',
+        pyscript = join(source_dir,'workflow','scripts','13_bam_to_unique_bam.py')
+    envmodules:
+        config['samtools'],
+        config['bedtools'],
+        config['python']  
+    output:
+        bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
+        bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'),
+        saf_all = join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'),
+        saf_unique = join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF')
+    shell:
+        """
+        # Setup tmp directory
+        if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+        else
+            tmpdir="{out_dir}01_preprocess/07_bed"
+            if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+        fi
+        
+        python {params.pyscript} --inputBAM {input.bam} --outputBAM ${{tmpdir}}/{params.base}.unique.bam
+
+        samtools index ${{tmpdir}}/{params.base}.unique.bam;
+        
+        # Create SAFs
+        bedtools bamtobed \\
+            -split -i {input.bam} \\
+            | bedtools sort -i - > {output.bed_all}; 
+        bedtools bamtobed \\
+            -split -i ${{tmpdir}}/{params.base}.unique.bam \\
+            | bedtools sort -i - > {output.bed_unique};
+        bedtools merge \\
+            -c 6 -o count,distinct \\
+            -bed -s -d 50 \\
+            -i {output.bed_all} \\
+            | awk '{{OFS="\t"; print $1":"$2"-"$3"_"$5,$1,$2,$3,$5}}' \\
+            | awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > {output.saf_all};
+        bedtools merge \\
+            -c 6 -o count,distinct \\
+            -bed -s -d 50 \\
+            -i {output.bed_unique} \\
+            | awk '{{OFS="\t"; print $1":"$2"-"$3"_"$5,$1,$2,$3,$5}}' \\
+            | awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > {output.saf_unique}
+        """
+
+rule feature_counts:
+    """
+    Unique reads (fractional counts correctly count splice reads for each peak. 
+    When peaks counts are combined for peaks connected by splicing in Rscript)
+    Include Multimap reads - MM reads given fractional count based on # of mapping 
+    locations. All spliced reads also get fractional count. So Unique reads can get 
+    fractional count when spliced peaks combined in R script the summed counts give 
+    whole count for the unique alignement in combined peak.
+    http://manpages.ubuntu.com/manpages/bionic/man1/featureCounts.1.html
+
+    Output summary
+    - Differences within any folder (allreadpeaks or uniquereadpeaks) should ONLY be the counts column - 
+    as this represent the number of peaks that were uniquely identified (uniqueCounts) or the number of peaks MM (allFracMMCounts)
+    - Differences within folders (03_allreadpeaks, 03_uniquereadpeaks) will be the peaks identified, as the first takes 
+    all reads as input and the second takes only unique reads as input
+    """
+    input:
+        bam = rules.dedup.output.bam,
+        saf_all = rules.create_beds_safs.output.saf_all,
+        saf_unique = rules.create_beds_safs.output.saf_unique
+    params:
+        rname='14_feature_counts',
+        threads = getthreads("feature_counts")
+    envmodules:
+        config['subread']  
+    output:
+        all_unique = join(out_dir,'03_peaks','03_allreadpeaks','{sp}_uniqueCounts.txt'),
+        all_mm = join(out_dir,'03_peaks','03_allreadpeaks','{sp}_allFracMMCounts.txt'),
+        unique_unique = join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_uniqueCounts.txt'),
+        unique_mm = join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt')
+    shell:
+        """
+        # Run for allreadpeaks
+        featureCounts -F SAF \\
+            -a {input.saf_all} \\
+            -O \\
+            -J \\
+            --fraction \\
+            --minOverlap 1 \\
+            -s 1 \\
+            -T {params.threads} \\
+            -o {output.all_unique} \\
+            {input.bam};
+        featureCounts -F SAF \\
+            -a {input.saf_all} \\
+            -M \\
+            -O \\
+            -J \\
+            --fraction \\
+            --minOverlap 1 \\
+            -s 1 \\
+            -T {params.threads} \\
+            -o {output.all_mm} \\
+            {input.bam};
+
+        # Run for uniquereadpeaks
+        featureCounts -F SAF \\
+            -a {input.saf_unique} \\
+            -O \\
+            -J \\
+            --fraction \\
+            --minOverlap 1 \\
+            -s 1 \\
+            -T {params.threads} \\
+            -o {output.unique_unique} \\
+            {input.bam};
+        featureCounts -F SAF \\
+            -a {input.saf_unique} \\
+            -M \\
+            -O \\
+            -J \\
+            --fraction \\
+            --minOverlap 1 \\
+            -s 1 \\
+            -T {params.threads} \\
+            -o {output.unique_mm} \\
+            {input.bam}
+        """
+
+rule project_annotations:
+    """
+    generate annotation table once per project
+    """
+    params:
+        rname='15_project_annotations',
+        script = join(source_dir,'workflow','scripts','08_annotation.R'),
+        ref_sp = nova_ref,
+        rrna_flag = refseq_rrna,
+        a_path = alias_path,
+        g_path = gen_path,
+        rs_path = rseq_path,
+        c_path = can_path,
+        i_path = intron_path,
+        r_path = rmsk_path,
+        custom_path = add_anno_path,
+        base = join(out_dir,'04_annotation', '01_project/',),
+        a_config = annotation_config,
+    envmodules:
+        config['R']
+    output:
+        anno = join(out_dir,'04_annotation', '01_project','annotations.txt'),
+        nc_anno = join(out_dir,'04_annotation', '01_project','ncRNA_annotations.txt'),
+        ref_gencode = join(out_dir,'04_annotation', '01_project','ref_gencode.txt'),
+    shell:
+        """
+        Rscript {params.script} \\
+            --ref_species {params.ref_sp} \\
+            --refseq_rRNA {params.rrna_flag} \\
+            --alias_path {params.a_path} \\
+            --gencode_path {params.g_path} \\
+            --refseq_path {params.rs_path} \\
+            --canonical_path {params.c_path} \\
+            --intron_path {params.i_path} \\
+            --rmsk_path {params.r_path} \\
+            --custom_path {params.custom_path} \\
+            --out_dir {params.base} \\
+            --reftable_path {params.a_config}
+        """
+
+# Pipeline splits depending on DE_method or none
+if DE_method=="MANORM" or DE_method=="DIFFBIND":
+    rule peak_annotations:
+        '''
+        find peak junctions, annotations peaks, merges junction and annotation information
+        '''
+        input:
+            unique = rules.feature_counts.output.all_unique,
+            all = rules.feature_counts.output.all_mm,
+            anno = rules.project_annotations.output.anno
+        params:
+            rname = '16_peak_annotations',
+            script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
+            functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+            p_type = peak_id,
+            junc = sp_junc,
+            c_exon = cond_exon,
+            r_depth= min_count,
+            d_method=DE_method,
+            sp = "{sp}",
+            n_merge = nt_merge,
+            ref_sp = nova_ref,
+            out = join(out_dir,'04_annotation','02_peaks/',),
+            out_de = join(out_dir,'05_demethod','01_input/',),
+            anno_dir = join(out_dir,'04_annotation','01_project/'),
+            a_config = annotation_config,
+            g_path = gen_path,
+            i_path = intron_path,
+            r_path = rmsk_path,
+            error = join(out_dir,'04_annotation','read_depth_error.txt')
+        envmodules:
+            config['R'],
+            config['bedtools'],
+        output:
+            anno = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
+            text = join(out_dir,'04_annotation', '02_peaks', '{sp}_peakannotation_complete.txt'),
+            bed = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '.bed')),
+            p_bed = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '_P.bed')),
+            n_bed = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '_N.bed'))
+        shell:
+            '''
+            # Setup tmp directory
+            if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir="{out_dir}01_preprocess/07_rscripts/"
+                if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+            fi
+                
+            Rscript {params.script} \\
+                --rscript {params.functions} \\
+                --peak_type {params.p_type} \\
+                --peak_unique {input.unique} \\
+                --peak_all {input.all} \\
+                --join_junction {params.junc} \\
+                --condense_exon {params.c_exon} \\
+                --read_depth {params.r_depth} \\
+                --demethod {params.d_method} \\
+                --sample_id {params.sp} \\
+                --ref_species {params.ref_sp} \\
+                --anno_dir {params.anno_dir} \\
+                --reftable_path {params.a_config} \\
+                --gencode_path {params.g_path} \\
+                --intron_path {params.i_path} \\
+                --rmsk_path {params.r_path} \\
+                --tmp_dir ${{tmpdir}} \\
+                --out_dir {params.out} \\
+                --out_dir_DEP {params.out_de} \\
+                --output_file_error {params.error}
+            '''
+else:
+    rule peak_annotations:
+        '''
+        find peak junctions, annotations peaks, merges junction and annotation information
+        '''
+        input:
+            unique = rules.feature_counts.output.all_unique,
+            all = rules.feature_counts.output.all_mm,
+            anno = rules.project_annotations.output.anno
+        params:
+            rname = '16_peak_annotations',
+            script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
+            functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+            p_type = peak_id,
+            junc = sp_junc,
+            c_exon = cond_exon,
+            r_depth= min_count,
+            d_method=DE_method,
+            sp = "{sp}",
+            n_merge = nt_merge,
+            ref_sp = nova_ref,
+            out = join(out_dir,'04_annotation','02_peaks/',),
+            out_m = join(out_dir,'05_demethod','01_input/',),
+            anno_dir = join(out_dir,'04_annotation','01_project/'),
+            a_config = annotation_config,
+            g_path = gen_path,
+            i_path = intron_path,
+            r_path = rmsk_path,
+            error = join(out_dir,'04_annotation','read_depth_error.txt')
+        envmodules:
+            config['R'],
+            config['bedtools'],
+        output:
+            anno = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
+            text = join(out_dir,'04_annotation', '02_peaks', '{sp}_peakannotation_complete.txt')
+        shell:
+            '''
+            # Setup tmp directory
+            if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir="{out_dir}01_preprocess/07_rscripts/"
+                if [[ ! -d $tmpdir ]]; then mkdir $tmpdir; fi
+            fi
+                
+            Rscript {params.script} \\
+                --rscript {params.functions} \\
+                --peak_type {params.p_type} \\
+                --peak_unique {input.unique} \\
+                --peak_all {input.all} \\
+                --join_junction {params.junc} \\
+                --condense_exon {params.c_exon} \\
+                --read_depth {params.r_depth} \\
+                --demethod {params.d_method} \\
+                --sample_id {params.sp} \\
+                --ref_species {params.ref_sp} \\
+                --anno_dir {params.anno_dir} \\
+                --reftable_path {params.a_config} \\
+                --gencode_path {params.g_path} \\
+                --intron_path {params.i_path} \\
+                --rmsk_path {params.r_path} \\
+                --tmp_dir ${{tmpdir}} \\
+                --out_dir {params.out} \\
+                --out_dir_DEP {params.out_m} \\
+                --output_file_error {params.error}
+            '''
+
+rule annotation_report:
+    """
+    generates an HTML report for peak annotations
+    """
+    input:
+        peak_in = join(out_dir,'04_annotation', '02_peaks','{sp}_peakannotation_complete.txt'),
+    params:
+        rname = "17_annotation_output",
+        R = join(source_dir,'workflow','scripts','10_annotation.Rmd'),
+        sp = "{sp}",
+        ref_sp = nova_ref,
+        r_depth= min_count,
+        c_exon = cond_exon,
+        junc = sp_junc,
+        p_type = peak_id,
+        rrna = refseq_rrna,
+    envmodules:
+        config['R']
+    output:
+        o1 = join(out_dir,'04_annotation', '{sp}_annotation_final_report.html'),
+        o2 = join(out_dir,'04_annotation', '{sp}_annotation_final_table.txt'),
+    shell:
+        """
+        Rscript -e 'library(rmarkdown); \
+        rmarkdown::render("{params.R}",
+            output_file = "{output.o1}", \
+            params= list(samplename = "{params.sp}", \
+                peak_in = "{input.peak_in}", \
+                output_table = "{output.o2}", \
+                readdepth = "{params.r_depth}", \
+                PeakIdnt = "{params.p_type}"))'
+        """
+
+#pipeline will continue through manorm processing, if required
+if (DE_method=="MANORM"):
+    rule MANORM_beds:
+        input:
+            bed_all = rules.create_beds_safs.output.bed_all
+        params:
+            rname = "18a_MANORM_beds"
+        output:
+            p_bed = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_P.bed')),
+            n_bed = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_N.bed')),
+        shell:
+            """
+            awk '$6=="+"' {input.bed_all} > {output.p_bed}
+            awk '$6=="-"' {input.bed_all} > {output.n_bed}
+            """
+
+    rule MANORM_analysis:
+        '''
+        input requirements:
+        - '05_demethod', '01_input', sample1 + '_PeaksforMANORM.bed'),
+        - '05_demethod', '01_input', sample1 + '_ReadsforMANORM_' + P + '.bed'),
+        - '05_demethod', '01_input', sample1 + '_ReadsforMANORM_' + N + '.bed'),
+        - '05_demethod', '01_input', sample2 + '_PeaksforMANORM.bed'),
+        - '05_demethod', '01_input', sample2 + '_ReadsforMANORM_' + P + '.bed'),
+        - '05_demethod', '01_input', sample2 + '_ReadsforMANORM_' + N + '.bed'),
+        output:
+        - '05_demethod','02_analysis', 'sample1_vs_sample2_P/
+        - '05_demethod','02_analysis', 'sample1_vs_sample2_N/
+        '''
+        input:
+            get_MANORM_analysis_input
+        params:
+            rname = "18b_MANORM_analysis",
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
+            de_dir = join(out_dir,'05_demethod', '01_input'),
+            base = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}/'),
+        envmodules:
+            config['manorm']
+        output:
+            mavals = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_all_MAvalues.xls')
+        shell:
+            """
+            manorm \\
+                --p1 "{params.de_dir}/{params.gid_1}_PeaksforMANORM_{wildcards.strand}.bed" \\
+                --p2 "{params.de_dir}/{params.gid_2}_PeaksforMANORM_{wildcards.strand}.bed" \\
+                --r1 "{params.de_dir}/{params.gid_1}_ReadsforMANORM_{wildcards.strand}.bed" \\
+                --r2 "{params.de_dir}/{params.gid_2}_ReadsforMANORM_{wildcards.strand}.bed" \\
+                --s1 0 \\
+                --s2 0 \\
+                -p 1 \\
+                -d 25 \\
+                -n 10000 \\
+                -s \\
+                -o {params.base} \\
+                --name1 {params.gid_1} \\
+                --name2 {params.gid_2}
+            """
+            
+    rule MANORM_post_processing:
+        '''
+        input requirements:
+        - '04_annotation', sample1 + '_annotation_final_table.txt'
+        - '04_annotation', sample2 + '_annotation_final_table.txt'
+        - '05_demethod','02_analysis', sample1_vs_sample2 + "_P", sample1_vs_sample2 + '_all_MAvalues.xls'),
+        - '05_demethod','02_analysis', sample1_vs_sample2 + "_N", sample1_vs_sample2 + '_all_MAvalues.xls')
+        output:
+        '05_demethod','02_analysis', sample1_vs_sample2_post_processing.txt
+        '''
+        input:
+            get_MANORM_post_processing,
+            expand(join(out_dir,'04_annotation', '{sp}_annotation_final_table.txt'),sp=sp_list)
+        params:
+            rname = "18c_MANORM_processing",
+            script = join(source_dir,'workflow','scripts','11_MAnorm_Process.R'),
+            anno_dir = join(out_dir,'04_annotation'),
+            de_dir = join(out_dir,'05_demethod', '02_analysis'),
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
+        envmodules:
+            config['R']
+        output:
+            post_proc = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt')
+        shell:
+            """
+            Rscript {params.script} \\
+                --samplename {params.gid_1} \\
+                --background {params.gid_2} \\
+                --peak_anno_g1 {params.anno_dir}/{params.gid_1}_annotation_final_table.txt \\
+                --peak_anno_g2 {params.anno_dir}/{params.gid_2}_annotation_final_table.txt \\
+                --pos_manorm {params.de_dir}/{wildcards.group_id}/{wildcards.group_id}_P/{wildcards.group_id}_all_MAvalues.xls \\
+                --neg_manorm {params.de_dir}/{wildcards.group_id}/{wildcards.group_id}_N/{wildcards.group_id}_all_MAvalues.xls \\
+                --output_file {output.post_proc}
+            """
+
+    rule MANORM_RMD:
+        input:
+            post_proc = rules.MANORM_post_processing.output.post_proc
+        params:
+            rname = "18d_MANORM_RMD",
+            R = join(source_dir,'workflow','scripts','12_MAnormAnnotation.Rmd'),
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
+            p_id = peak_id,
+            pval = pval,
+            fc = fc,
+            rrna = include_rRNA
+        envmodules:
+            config['R']
+        output:
+            report = join(out_dir,'05_demethod','02_analysis','{group_id}','{group_id}_manorm_report.html')
+        shell:
+            """
+            Rscript -e 'library(rmarkdown); \
+            rmarkdown::render("{params.R}",
+                output_file = "{output.report}", \
+                params= list(peak_in="{input.post_proc}", \
+                    PeakIdnt="{params.p_id}",\
+                    samplename="{params.gid_1}", \
+                    background="{params.gid_2}", \
+                    pval="{params.pval}", \
+                    FC="{params.fc}", \
+                    incd_rRNA="{params.rrna}"\
+                    ))'            
+            """
+elif (DE_method == "DIFFBIND"):
+    rule DIFFBIND_beds:
+        input:
+            f1 = rules.dedup.output.bam
+        params:
+            rname = "18a_DIFFBIND_beds",
+            base = "{sp}.dedup"
+        envmodules:
+            config['samtools']
+        output:
+            p_bam = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforDIFFBIND_P.bam')),
+            n_bam = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforDIFFBIND_N.bam')),
+        shell:
+            """
+            ################################################
+            # Setup tmp directory
+            ################################################
+            if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir="{out_dir}01_preprocess/05_tmp_bam"
+                if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+            fi
+            
+            # Create header
+            samtools view -H {input.f1} > ${{tmpdir}}/{params.base}.header.txt
+            
+            # Run 
+            samtools view -F 16 {input.f1} \\
+                | cat ${{tmpdir}}/{params.base}.header.txt - \\
+                | samtools view -Sb > {output.p_bam}
+            samtools view -f 16 {input.f1} \\
+                | cat ${{tmpdir}}/{params.base}.header.txt - \\
+                | samtools view -Sb > {output.n_bam}
+            """
+
+    rule DIFFBIND_preprocess:
+        """
+        input requirements:
+        - '05_demethod', '01_input', sample1 + '_ReadsforDIFFBIND_' + wildcards.strand + '.bam'
+        - '05_demethod', '01_input', sample2 + '_ReadsforDIFFBIND_' + wildcards.strand + '.bam'
+        - 'manifest', 'sample_manifest.tsv'
+        output:
+        - '05_demethod', '02_analysis', group_id, groupid + '_DIFFBIND_' + strand + '.txt'
+        example input
+            Rscript /home/sevillas2/git/iCLIP/workflow/scripts/11_DIFFBIND_PreProcess.R 
+            --samplename WT 
+            --background KO 
+            --sample_overlap 1 
+            --strand N 
+            --samplemanifest /data/sevillas2/diffbind/sample_manifest.tsv 
+            --input_dir /data/sevillas2/diffbind/05_demethod/01_input/ 
+            --output_table /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBINDTable_N.txt
+            --output_summary /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBINDSummary_N.txt
+            --output_figures /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/figures/WT_vs_KO_DIFFBIND
+        """
+        input:
+            get_DIFFBIND_analysis_input,
+            s_manifest = sample_manifest,
+        params:
+            rname = "18b_DIFFBIND_preprocess",
+            script = join(source_dir,'workflow','scripts','11_DIFFBIND_PreProcess.R'),
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
+            st = '{strand}',
+            so = sample_overlap,
+            base = join(out_dir,'05_demethod', '01_input'),
+            figs = join(out_dir,'05_demethod', '02_analysis','{group_id}','figures','{group_id}_' + DE_method),
+        envmodules:
+            config['R']
+        output:
+            table = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_table_{strand}.txt'),
+            summary = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_summary_{strand}.txt'),
+        shell:
+            """
+            Rscript {params.script} \\
+                --samplename {params.gid_1} \\
+                --background {params.gid_2} \\
+                --strand {params.st} \\
+                --sample_overlap {params.so} \\
+                --samplemanifest {input.s_manifest} \\
+                --input_dir {params.base} \\
+                --output_table {output.table} \\
+                --output_summary {output.summary} \\
+                --output_figures {params.figs}
+            """
+
+    rule DIFFBIND_analysis:
+        """
+        input
+            /home/sevillas/git/iCLIP/manifest/sample_manifest.tsv
+            /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_table_P.txt
+            /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_table_N.txt
+        
+        output
+            post = /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_post_processing.txt
+            final = /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_final_table.txt
+        example
+            Rscript /home/sevillas2/git/iCLIP/workflow/scripts/11_DIFFBIND_Process.R 
+            --samplename WT
+            --background KO
+            --peak_type ALL
+            --join_junction TRUE
+            --samplemanifest /data/sevillas2/diffbind/sample_manifest.tsv 
+            --pos_DB /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_table_P.txt
+            --neg_DB /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_table_N.txt
+            --anno_dir_sample /data/sevillas2/diffbind/04_annotation/
+            --reftable_path /data/sevillas2/diffbind/config/annotation_config.txt
+            --anno_dir_project /data/sevillas2/diffbind/04_annotation/01_project/
+            --ref_species hg38
+            --gencode_path /hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt
+            --intron_path /hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed
+            --rmsk_path /hg38/repeatmasker/rmsk_GRCh38.txt
+            --function_script /home/sevillas/git/iCLIP/workflow/scripts/11_DIFFBIND_Process.R
+            --out_dir /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/
+        """
+        input:
+            s_manifest = sample_manifest,
+            table_p = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_table_P.txt'),
+            table_n = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_table_N.txt'),
+        params:
+            rname = "18c_DIFFBIND_process",
+            script = join(source_dir,'workflow','scripts','11_DIFFBIND_Process.R'),
+            script_func = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
+            p_type = peak_id,
+            junc = sp_junc,
+            ref_sp = nova_ref,
+            g_path = gen_path,
+            i_path = intron_path,
+            r_path = rmsk_path,
+            anno_dir_s = join(out_dir,'04_annotation/'),
+            anno_dir_p = join(out_dir,'04_annotation','01_project/'),
+            ref_tab_config = annotation_config,
+            base = join(out_dir,'05_demethod','02_analysis', '{group_id}'),
+        envmodules:
+            config['R']
+        output:
+            post = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_post_processing.txt'),
+            final = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + '_final_table.txt'),
+        shell:
+            """
+            Rscript {params.script} \\
+                --samplename {params.gid_1} \\
+                --background {params.gid_2} \\
+                --peak_type {params.p_type} \\
+                --join_junction {params.junc} \\
+                --samplemanifest {input.s_manifest} \\
+                --pos_DB {input.table_p} \\
+                --neg_DB {input.table_n} \\
+                --anno_dir_sample {params.anno_dir_s} \\
+                --reftable_path {params.ref_tab_config} \\
+                --anno_dir_project {params.anno_dir_p} \\
+                --ref_species {params.ref_sp} \\
+                --gencode_path {params.g_path} \\
+                --intron_path {params.i_path} \\
+                --rmsk_path {params.r_path} \\
+                --function_script {params.script_func} \\
+                --out_dir {params.base}
+            """
+    
+    rule DIFFBIND_report:
+        input:
+            final = rules.DIFFBIND_analysis.output.final,
+            s_manifest = sample_manifest,
+        params:
+            rname = "18d_DIFFBIND_RMD",
+            R = join(source_dir,'workflow','scripts','12_DIFFBINDAnnotation.Rmd'),
+            gid_1 = get_DEMETHOD_gid1,
+            gid_2 = get_DEMETHOD_gid2,
+            p_id = peak_id,
+            pval = p_val,
+            fc = f_c,
+            rrna = include_rRNA,
+            base = join(out_dir,'05_demethod','02_analysis','{group_id}')
+        envmodules:
+            config['R']
+        output:
+            o1 = join(out_dir,'05_demethod','02_analysis','{group_id}','{group_id}_diffbind_report.html')
+        shell:
+            """
+            Rscript -e 'library(rmarkdown); \
+            rmarkdown::render("{params.R}",
+                output_file = "{output.o1}", \
+                params= list(peak_in="{input.final}", \
+                    DEGfolder="{params.base}",\
+                    PeakIdnt="{params.p_id}",\
+                    samplename="{params.gid_1}", \
+                    background="{params.gid_2}", \
+                    pval="{params.pval}", \
+                    FC="{params.FC}", \
+                    incd_rRNA="{params.rrna}"\
+                    ))'            
+            """
+
