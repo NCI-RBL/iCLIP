@@ -3,7 +3,7 @@
 import pysam
 import argparse
 
-parser = argparse.ArgumentParser(description='Filter BAM by readids')
+parser = argparse.ArgumentParser(description='Filter BAM to unique (NH:i:1) only BAM')
 parser.add_argument('--inputBAM', dest='inputBAM', type=str, required=True,
                     help='input BAM file')
 parser.add_argument('--outputBAM', dest='outputBAM', type=str, required=True,
@@ -11,7 +11,7 @@ parser.add_argument('--outputBAM', dest='outputBAM', type=str, required=True,
 args = parser.parse_args()
 inBAM = pysam.AlignmentFile(args.inputBAM, "rb")
 outBAM = pysam.AlignmentFile(args.outputBAM, "wb", template=inBAM)
-bigdict = dict()
+# bigdict = dict()
 
 count=0
 for read in inBAM.fetch():
@@ -22,19 +22,12 @@ for read in inBAM.fetch():
         print("%d reads read!"%(count))
     try:
         nh=read.get_tag("NH")
-    except KeyError:
+    except KeyError: # unmapped reads do not have NH tags ... since unmapped reads are already removed ... dont know what these will be!
+        print("Mapped read with no NH tag")
+        print(read)
         continue
     if nh==1:
-        qn=read.query_name
-        if not qn in bigdict:
-            bigdict[qn]=list()
-        bigdict[qn].append(read)
-inBAM.close()
+        outBAM.write(read)
 
-for r in bigdict.keys():
-  try:
-    for read in bigdict[r]:
-      outBAM.write(read)
-  except KeyError:
-    continue
+inBAM.close()
 outBAM.close()
