@@ -146,7 +146,7 @@ def file_mode(file):
     return m
 
 
-def get_mapq(file):
+def get_mapq(file,spliced_only):
     """Reads in a SAM/BAM file and stores the maximum MAPQ score
     of a given read ID. Returns a dictionary where each key is a 
     read ID and its value is set to its max MAPQ score, i.e.
@@ -166,17 +166,16 @@ def get_mapq(file):
     
     # Find max MAPQ of each read
     for read in infh.fetch(until_eof=True):
+        if spliced_only == 1:
+            if not is_spliced(read):
+                continue
         rid = read.query_name
-        if rid not in r2q:
-            # Read ID encountered for the
-            # first time, add it 
+        try:
+            maxx = r2q[rid]
+            r2q[rid] = max(int(read.mapping_quality),maxx)
+        except KeyError:
             r2q[rid] = int(read.mapping_quality)
-        else:
-            # Update the max quality score
-            # if another read with the same 
-            # read ID is encountered 
-            r2q[rid] = max(int(read.mapping_quality), r2q[rid])    
-    
+       
     infh.close()
 
     return r2q
@@ -246,8 +245,8 @@ def main():
     # Correct MAPQ
     # Get MAPQs of unspliced and 
     # spliced SAM/BAM files
-    unspliced_mapqs = get_mapq(bamf1)
-    spliced_mapqs   = get_mapq(bamf2)
+    unspliced_mapqs = get_mapq(bamf1,0)
+    spliced_mapqs   = get_mapq(bamf2,1)
     # Create input file handles for read
     # and writing of input and corrected 
     # MAPQ output 
