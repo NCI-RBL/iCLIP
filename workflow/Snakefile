@@ -227,17 +227,17 @@ def adapt_cmd(wildcards):
     #example: 
         #singularity exec -B /scratch /data/CCBR_Pipeliner/iCLIP/container/ccbr_icount_v1.0.0.sif iCount cutadapt --threads 16 -ml 20 --untrimmed_output /path/_untrimmed.fastq.gz 
         # --reads_trimmed /path/sp_trimmed.fastq.gz /path/fastq.gz ABCDEDFGH
-    cmd=''
-    for sp in sp_list:
+
+    sp=wildcards.sp
         #sub df
-        df_sub = df_samples[(df_samples['sample']==sp)]
+    df_sub = df_samples[(df_samples['sample']==sp)]
 
         #create cmd
-        filtered = join(out_dir, '01_preprocess', sp + '_filtered.fastq.gz')
-        removed =  join(out_dir, '01_preprocess', sp + '_removed_seq.fastq.gz ')
-        fastq = join(out_dir, df_sub.iloc[0]['multiplex'], '02_preprocess',sp + '.fastq.gz')
+    filtered = join(out_dir, '01_preprocess', sp + '_filtered.fastq.gz')
+    removed =  join(out_dir, '01_preprocess', sp + '_removed_seq.fastq.gz ')
+    fastq = join(out_dir, df_sub.iloc[0]['multiplex'], '02_preprocess',sp + '.fastq.gz')
 
-        cmd = singularity_exec + ' ' + join(cont_dir,'ccbr_icount_v1.0.0.sif') + ' iCount cutadapt -ml ' + str(filter_length) + ' --threads ' + str(getthreads('remove_adaptors')) + ' --untrimmed_output ' + filtered + ' --reads_trimmed ' + removed + ' ' + fastq + ' ' + df_sub.iloc[0]['adaptor'] + '; ' + cmd
+    cmd = singularity_exec + ' ' + join(cont_dir,'ccbr_icount_v1.0.0.sif') + ' iCount cutadapt -ml ' + str(filter_length) + ' --threads ' + str(getthreads('remove_adaptors')) + ' --untrimmed_output ' + filtered + ' --reads_trimmed ' + removed + ' ' + fastq + ' ' + df_sub.iloc[0]['adaptor']
     
     return(cmd)
     
@@ -740,7 +740,8 @@ rule remove_adaptors:
     2) trimmed.fastq.gz - reads that contained an adapter and were trimmed --> removed_seq.fastq.gz
     """
     input:
-        fastqs = expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+        fastq = expand(join(out_dir,'{mp}', '02_preprocess','{{sp}}.fastq.gz'),mp=set(mp_list)),
+        # fastq = join(out_dir,'{{mp}}', '02_preprocess','{{sp}}.fastq.gz'),
     params:
         rname='02_remove_adaptors',
         cmd = adapt_cmd,
@@ -749,8 +750,8 @@ rule remove_adaptors:
     output:
         # filtered = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
         # removed = expand(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'),sp=sp_list)
-        filtered = temp(expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list)),
-        removed = temp(expand(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'),sp=sp_list))
+        filtered = temp(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')),
+        removed = temp(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'))
     shell:
         """
         set -exo pipefail
