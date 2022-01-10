@@ -56,6 +56,19 @@ sample_overlap = int(config['sampleoverlap'])
 pval = config['pval']
 fc = config['fc']
 
+# novoalign parameters
+novoalign_x = config['novoalign_x']
+novoalign_g = config['novoalign_g']
+novoalign_s = config['novoalign_s']
+novoalign_R = config['novoalign_R']
+novoalign_r_mode = config['novoalign_r_mode']
+novoalign_r_int = config['novoalign_r_int']
+novoalign_t = config['novoalign_t']
+
+# useq parameters
+useq_a = config['useq_a']
+useq_n = config['useq_n']
+
 testing_option = config['testing_option']
 
 #define threads
@@ -589,6 +602,7 @@ rule check_manifest:
         manifest = join(out_dir, 'qc', 'manifest_check.txt'),
     shell:
         """
+        set -exo pipefail
         python {params.py} \\
             '{params.base}' \\
             {input.mm} \\
@@ -623,6 +637,7 @@ if (multiplex_flag == 'Y'):
             txt = temp(join(out_dir,'{mp}','01_qc_post','{mp}_barcode.txt'))
         shell:
             """
+            set -exo pipefail
             gunzip -c  {input.fq} \\
                 | sed -n '/@/{{n;p}}' \\
                 | awk '{{print substr($0, {params.start_pos}, {params.bc_len});}}' \\
@@ -669,6 +684,7 @@ if (multiplex_flag == 'Y'):
             fastq = temp(join(out_dir,'{mp}', '02_preprocess','demux_nomatch5.fastq.gz')),
         shell:
             """
+            set -exo pipefail
             {params.s_exec} {params.doc} iCount demultiplex \\
                 --threads {params.threads} \\
                 --minimum_length {params.ml} \\
@@ -688,9 +704,11 @@ if (multiplex_flag == 'Y'):
             rname = '01c_rename_demux',
             cmd = rename_cmd
         output:
-            o1 = temp(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'))
+            o1 = temp(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz')),
+            # o1 = join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz')
         shell:
             """
+            set -exo pipefail
             # Rename files
             mv {params.cmd}
             """     
@@ -708,6 +726,7 @@ else:
             fastqs = temp(expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list))
         shell:
             """
+            set -exo pipefail
             {params.cmd}
             """
 
@@ -728,10 +747,13 @@ rule remove_adaptors:
     envmodules:
         config['singularity'],    
     output:
+        # filtered = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
+        # removed = expand(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'),sp=sp_list)
         filtered = temp(expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list)),
         removed = temp(expand(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'),sp=sp_list))
     shell:
         """
+        set -exo pipefail
         if [ -d "/tmp/iCount/" ]; then rm -r "/tmp/iCount/"; fi
         
         {params.cmd}
@@ -765,6 +787,7 @@ rule qc_fastq_pre:
         html = temp(join(out_dir,'{mp}','01_qc_pre','{sp}_fastqc.html'))
     shell:
         """
+        set -exo pipefail
         fastqc {input.fastq} -o {params.base}
         """
 
@@ -783,6 +806,7 @@ rule qc_fastq_post:
         html = temp(join(out_dir, 'qc', '01_qc_post','{sp}_filtered_fastqc.html'))
     shell:
         """
+        set -exo pipefail
         fastqc {input.fastq} -o {params.base}
         """
 
@@ -822,6 +846,7 @@ rule qc_screen_validator:
         log = join(out_dir,'qc','{sp}.validated.fastq.log'),
     shell:
         """
+        set -exo pipefail
         # Setup tmp directory
         if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
             # Use lscratch on Biowulf
@@ -867,26 +892,6 @@ rule qc_screen_validator:
             --file {input.filtered} > {output.log};
         """
 
-# TODO: This rule is depreicated . Delete this later after testing!
-# rule determine_splits:
-#     """
-#     determine the number of files, and chunk sizes, to split FASTQ file
-#     split is necessary to improve speed of alignment
-#     split is done based off split_value input, maintaining every 4 lines = 1 seq
-#     """
-#     input:
-#         filtered = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list)
-#     params:
-#         sh = join(source_dir, 'workflow', 'scripts', '03_find_split_parameters.sh'),
-#     output:
-#         split_params = join(out_dir,'qc','split_params.tsv')
-#     shell:
-#         """
-#         sh {params.sh} \\
-#             {output.split_params} \\
-#             {split_value} \\
-#             {input.filtered}
-#         """
 
 rule split_files:
     """
@@ -900,8 +905,10 @@ rule split_files:
         nchunks = get_filechunk_size
     output:
         splits = temp(expand(join(out_dir,'01_preprocess','01_splits','{{sp}}.split.{n}.fastq.gz'), n=chunks_list))
+        # splits = expand(join(out_dir,'01_preprocess','01_splits','{{sp}}.split.{n}.fastq.gz'), n=chunks_list)
     shell:
         """
+        set -exo pipefail
         # Determine the number of reads 
         # required to create N file chunks 
         nreads=$(($(zcat {input.filtered} | wc -l) / 4))
@@ -930,26 +937,36 @@ rule novoalign:
     params:
         rname='06_novoalign',
         n_index = get_index,
-        l = filter_length
+        l = filter_length,
+        x = novoalign_x,
+        g = novoalign_g,
+        t = novoalign_t,
+        s = novoalign_s,
+        R = novoalign_R,
+        r_mode = novoalign_r_mode,
+        r_int = novoalign_r_int
     envmodules:
         config['novocraft']
+    threads: getthreads("novoalign")
     output:
         sam = temp(join(out_dir,'01_preprocess','02_alignment','{sp}.{al}.split.{n}.sam.gz')),
+        # sam = join(out_dir,'01_preprocess','02_alignment','{sp}.{al}.split.{n}.sam.gz'),
     shell:
         """
+        set -exo pipefail
         zcat {input.f1} \\
             | novoalign -d {params.n_index} -k \\
                 -f - \\
                 -F STDFQ \\
-                -c 32 \\
-                -t 15,3 \\
+                -c {threads} \\
+                -t {params.t} \\
                 -l {params.l} \\
-                -x 4 \\
-                -g 20 \\
-                -s 1 \\
+                -x {params.x} \\
+                -g {params.g} \\
+                -s {params.s} \\
                 -o SAM \\
-                -R 0 \\
-                -r EXHAUSTIVE 999 \\
+                -R {params.R} \\
+                -r {params.r_mode} {params.r_int} \\
             | gzip -c > {output.sam}
         """
 
@@ -960,16 +977,16 @@ if (splice_aware == "Y"):
     rule cleanup_conversion:
         """
         if alignment file is unaware:
-        - copies file to output location
+        - hard link file to output location
         - creates empty bam file - this is not used anywhere in the pipeline and will be deleted upon cleanup
 
         if alignment is unmasked or masked:
-        - performs cleanup for inserts
+        - performs cleanup for inserts/hardclips/softclips
+        - extract unmapped reads
         - converts transcriptome coordinates to genomic coordinates
         --- uses USeq version 8.9.6
+        - add unmapped reads back into sam
         - converts sam to bam
-        - unmapped reads are removed during genomic coordinates conversion, need to include them in final file
-          so merging is performed        
         - sort and index final bam file
         """
         input:
@@ -979,16 +996,21 @@ if (splice_aware == "Y"):
             al_type = '{al}',
             base = '{sp}.{al}.split.{n}',
             base_out = join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam'),
-            doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser')
+            doc = join(cont_dir,'USeq_8.9.6','Apps/SamTranscriptomeParser'),
+            useq_a = useq_a,
+            useq_n = useq_n,
         threads: getthreads("cleanup_conversion")
         envmodules:
             config['samtools'],
             config['java']
         output:
+            # sam = join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam.gz'),
+            # bam = join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam'),
             sam = temp(join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam.gz')),
             bam = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
         shell:
             """
+            set -exo pipefail
             # Setup tmp directory
             if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
                 tmpdir="/lscratch/${{SLURM_JOB_ID}}"
@@ -1003,48 +1025,45 @@ if (splice_aware == "Y"):
                 ln {input.sam} {output.sam};
                 touch {output.bam};
             else
-                # Run cleanup
-                zcat {input.sam} | samtools view | awk '{{ if (($4 == 1 && $6 ~/(^[0-9]+)H|S([0-9]+I)/ && $1~/:/ ) || ($4 == 1 && $6 ~/^[0-9]I/ && $1~/:/ )) {{}} else  print }}' > ${{tmpdir}}/{params.base}.tmp.sam;
-                # Alternative to samtool view -H to get the header,
-                # samtools view -H always fails with standard input
-                # when set -o pipefail is enabled, using grep instead.
-                zcat {input.sam} | grep --color=never '^@..\\b' | cat - ${{tmpdir}}/{params.base}.tmp.sam > ${{tmpdir}}/{params.base}.tmp.mapped.sam; 
-                zcat {input.sam} | samtools view --threads {threads} -f 4 > ${{tmpdir}}/{params.base}.tmp.unmapped.sam;
+                # separate header
+                zcat {input.sam} | \\
+                    grep --color=never '^@..\\b' > ${{tmpdir}}/{params.base}.tmp.header
+
+                # separate alignments (mapped + unmapped reads) and
+                # remove alignments starting with insertion, or clips (Hard or Soft)
+                zcat {input.sam} | \\
+                    grep -v --color=never '^@..\\b' | \\
+                    awk '{{ if (($4 == 1 && $6 ~/(^[0-9]+)H|S([0-9]+I)/ && $1~/:/ ) || ($4 == 1 && $6 ~/^[0-9]I/ && $1~/:/ )) {{}} else  print }}' > ${{tmpdir}}/{params.base}.tmp.alignments
+
+                # get mapped reads only
+                awk -F"\\t" '{{if ($6 == "*") {{}}  else {{print}}}}' ${{tmpdir}}/{params.base}.tmp.alignments > ${{tmpdir}}/{params.base}.tmp.mapped
+
+                # get unmapped reads only
+                awk -F"\\t" '{{if ($6 == "*"){{print}}}}' ${{tmpdir}}/{params.base}.tmp.alignments > ${{tmpdir}}/{params.base}.tmp.unmapped
+                rm -f ${{tmpdir}}/{params.base}.tmp.alignments
+
+                # create sam with mapped reads only
+                cat ${{tmpdir}}/{params.base}.tmp.header ${{tmpdir}}/{params.base}.tmp.mapped > ${{tmpdir}}/{params.base}.tmp.sam
+                rm -f ${{tmpdir}}/{params.base}.tmp.header ${{tmpdir}}/{params.base}.tmp.mapped
 
                 # Run genomic conversion
-                java -Djava.io.tmpdir=${{tmpdir}} -Xmx100G -jar {params.doc} \\
-                    -f ${{tmpdir}}/{params.base}.tmp.mapped.sam \\
-                    -a 50000 -n 25 -u -s {params.base_out};
-                
-                cat {params.base_out} ${{tmpdir}}/{params.base}.tmp.unmapped.sam | samtools view -bS - > {{tmpdir}}/{params.base}.merged.bam
-                samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} {{tmpdir}}/{params.base}.merged.bam -o {output.bam};
-                samtools index {output.bam}
+                # .sam input produces .sam.gz output file i.e {params.base}.tmp.genomic.sam.gz although the -s argument is set to {params.base}.tmp.genomic.sam
+                # useq -u option generates "UnMappedPoorScore.sam.gz" files which are no longer needed hence removing it
+                # match -n option to -r Exhaustive value for novoalign
+                java -Djava.io.tmpdir=${{tmpdir}} -Xmx100G -jar /data/CCBR_Pipeliner/iCLIP/container/USeq_8.9.6/Apps/SamTranscriptomeParser \\
+                    -f ${{tmpdir}}/{params.base}.tmp.sam \\
+                    -a {params.useq_a} -n {params.useq_n} -s {params.base_out}
+                # the above -s params.baseout argument generates output.sam
 
-                # create output.sam
-                gzip {params.base_out} 
+                # put the unmapped alignments back into the file
+                zcat {output.sam} | cat - ${{tmpdir}}/{params.base}.tmp.unmapped > ${{tmpdir}}/{params.base}.tmp.genomic.with_unmapped.sam
+                rm -f ${{tmpdir}}/{params.base}.tmp.genomic.sam ${{tmpdir}}/{params.base}.tmp.unmapped
 
-                
-                # # Converts SAM to BAM
-                # gunzip -c {output.sam} | samtools view --threads {threads} -S -b - > ${{tmpdir}}/{params.base}.unmasked.bam;
-                
-                # # Merge unmapped SAM and unmasked BAM into final output
-                # # if there are unmapped reads
-                # FILESIZE=$(stat -c%s ${{tmpdir}}/{params.base}.tmp.unmapped.sam)
-                # if [ "$FILESIZE" -gt 100 ]; then
-                #     # Merge unmasked reads with unmapped reads
-                #     samtools merge --threads {threads} -f ${{tmpdir}}/{params.base}.merged.bam ${{tmpdir}}/{params.base}.tmp.unmapped.sam ${{tmpdir}}/{params.base}.unmasked.bam;
-                    
-                #     # Pull header from merged and add to final output
-                #     samtools view --threads {threads} -h -o ${{tmpdir}}/{params.base}.final.bam ${{tmpdir}}/{params.base}.merged.bam;
-                    
-                #     # Sort and index final outupt
-                #     samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} ${{tmpdir}}/{params.base}.final.bam -o {output.bam};
-                #     samtools index {output.bam}
-                # else
-                #     # There are no unmapped reads, final file is unmasked bam
-                #     samtools sort  --threads {threads} -m 10G -T ${{tmpdir}} ${{tmpdir}}/{params.base}.unmasked.bam -o {output.bam};
-                #     samtools index {output.bam}
-                # fi
+                # convert sam to bam, sort and index
+                samtools sort --threads {threads} -m 10G -T ${{tmpdir}} -o {output.bam} ${{tmpdir}}/{params.base}.tmp.genomic.with_unmapped.sam
+                rm -f ${{tmpdir}}/{params.base}.tmp.genomic.with_unmapped.sam
+                samtools index -@ {threads} {output.bam}
+
             fi
             """
 
@@ -1063,6 +1082,7 @@ if (splice_aware == "Y"):
             final = join(out_dir,'02_bam','01_unmapped','{sp}.{al_sub}.complete.bam'),
         shell:
             """
+            set -exo pipefail
             samtools merge \\
                 --threads {params.threads} \\
                 -f {output.final} \\
@@ -1093,10 +1113,13 @@ rule create_bam_mm_unique:
     envmodules:
         config['samtools']
     output:
+        # sort_u = join(out_dir,'01_preprocess','05_unique','{sp}.{al}.split.{n}.unique.si.bam'), # this file also contains unmapped reads
+        # sort_m = join(out_dir,'01_preprocess','05_mm','{sp}.{al}.split.{n}.mm.si.bam'),
         sort_u = temp(join(out_dir,'01_preprocess','05_unique','{sp}.{al}.split.{n}.unique.si.bam')), # this file also contains unmapped reads
         sort_m = temp(join(out_dir,'01_preprocess','05_mm','{sp}.{al}.split.{n}.mm.si.bam')),
     shell:
         """
+        set -exo pipefail
         ################################################
         # Setup tmp directory
         ################################################
@@ -1203,10 +1226,13 @@ rule merge_splits_unique_mm:
     envmodules:
         config['samtools']  
     output:
+        # unique = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam'),
+        # mm = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam'),
         unique = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam')),
         mm = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam')),
     shell:
         """
+        set -exo pipefail
         samtools merge --threads {params.threads} -f {output.unique} {input.unique};
         samtools merge --threads {params.threads} -f {output.mm} {input.mm}
         """
@@ -1226,11 +1252,14 @@ rule merge_mm_and_unique:
         config['samtools']
     threads: getthreads("merge_mm_and_unique")  
     output:
+        # merged = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam'),
+        # samstat = join(out_dir, 'qc', '01_qc_post','{sp}.{al}_samstats.txt'),
         merged = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam')),
         samstat = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al}_samstats.txt')),
         sort = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'),
     shell:
         """
+        set -exo pipefail
         # Setup tmp directory
         if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
@@ -1278,6 +1307,7 @@ rule multiqc:
         o1 = join(out_dir,'qc', 'multiqc_report.html')
     shell:
         """
+        set -exo pipefail
         multiqc -f -v \\
             -c {params.qc_config} \\
             -d -dd 1 \\
@@ -1314,13 +1344,14 @@ rule qc_alignment:
         txt_unalign = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al_sub}_unaligned.txt')),
     shell:
         """
+        set -exo pipefail
         # Gather stats for all reads
-        samtools view -F 4 {input.merged} \\
+        samtools view --threads {threads} -F 4 {input.merged} \\
             | awk '{{ print length($10) }}' \\
             | sort -n \\
             | uniq -c > {output.bam_a};
 
-        samtools view -f 4 {input.merged} \\
+        samtools view --threads {threads} -f 4 {input.merged} \\
             | awk '{{ print length($10) }}' \\
             | sort -n \\
             | uniq -c > {output.bam_u};
@@ -1409,6 +1440,7 @@ rule dedup:
         bam = join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),
     shell:
         """
+        set -exo pipefail
         # Setup tmp directory
         if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
@@ -1420,7 +1452,6 @@ rule dedup:
         # Resets the UMI separator to correct value
         delimeter="{params.umi}"
         if [ '{params.mflag}' == 'N' ]; then
-            set +o pipefail
             # Prevents a premature SIGPIPE to samtools,
             # head -1 will result in a 141 return code 
             delimeter=$(samtools view {input.f1} \\
@@ -1428,7 +1459,6 @@ rule dedup:
                 | cut -f1 \\
                 | awk -F ':' '{{print $NF}}' \\
                 | awk '$0 ~ /_/ {{print}}')
-            set -o pipefail
             # Check for presence of underscore
             if [[ -n "${{delimeter}}" ]]; then
                 # String contains an underscore,
@@ -1492,6 +1522,7 @@ if (splice_aware == 'Y'):
             log = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.log')
         shell:
             """
+            set -exo pipefail
             # Setup tmp directory
             if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
                 tmpdir="/lscratch/${{SLURM_JOB_ID}}"
@@ -1530,28 +1561,37 @@ if (splice_aware == 'Y'):
             base = join(out_dir,'02_bam','04_mapq','tmp')
         envmodules:
             config['samtools'],
-            config['R']  
+            config['R']
+        threads: getthreads("mapq_stats")
         output:
             html = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recal_report.html'),
         shell:
             """
+            set -exo pipefail
             # Setup tmp directory
-            if [ ! -d {params.base} ]; then 
-                mkdir {params.base};
+            if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+            else
+                tmpdir="{params.base}"
+                # Setup tmp directory
+                if [ ! -d {params.base} ]; then 
+                    mkdir {params.base};
+                fi
             fi
             
             # Create files with new and old files
-            samtools view {input.unmasked} \\
+            samtools view -@ {threads} {input.unmasked} \\
                 | awk '{{print $5}}' \\
                 | sort -n \\
                 | uniq -c > {params.base}/{params.sid}.original_counts.txt
-            samtools view {input.recalc} \\
+            samtools view -@ {threads} {input.recalc} \\
                 | awk '{{print $5}}' \\
                 | sort -n \\
                 | uniq -c > {params.base}/{params.sid}.corrected_counts.txt
 
             # Grab changes
-            awk '{{print($4,$6)}}' {input.log} \\
+            tail -n+2 {input.log} \\
+                | awk '{{print($2,$3)}}' \\
                 | sort -n \\
                 | uniq -c > {params.base}/{params.sid}.diff_counts.txt
 
@@ -1584,7 +1624,8 @@ rule create_beds_safs:
     envmodules:
         config['samtools'],
         config['bedtools'],
-        config['python']  
+        config['python']
+    threads: getthreads("create_beds_safs")
     output:
         bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
         bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'),
@@ -1603,7 +1644,7 @@ rule create_beds_safs:
         # if read alignment has tag "NH:i:1" then it is an unique alignment
         python {params.pyscript} --inputBAM {input.bam} --outputBAM ${{tmpdir}}/{params.base}.unique.bam
 
-        samtools index ${{tmpdir}}/{params.base}.unique.bam;
+        samtools index -@ {threads} ${{tmpdir}}/{params.base}.unique.bam;
         
         # Create SAFs
         bedtools bamtobed \\
@@ -1658,6 +1699,7 @@ rule feature_counts:
         unique_mm = join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt')
     shell:
         """
+        set -exo pipefail
         # Run for allreadpeaks
         featureCounts -F SAF \\
             -a {input.saf_all} \\
@@ -1927,6 +1969,7 @@ if (DE_method=="MANORM"):
             n_bed = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_N.bed')),
         shell:
             """
+            set -exo pipefail
             awk '$6=="+"' {input.bed_all} > {output.p_bed}
             awk '$6=="-"' {input.bed_all} > {output.n_bed}
             """
@@ -2047,6 +2090,7 @@ elif (DE_method == "DIFFBIND"):
         params:
             rname = "18a_DIFFBIND_beds",
             base = "{sp}.dedup"
+        threads: getthreads("DIFFBIND_beds")
         envmodules:
             config['samtools']
         output:
@@ -2054,6 +2098,7 @@ elif (DE_method == "DIFFBIND"):
             n_bam = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforDIFFBIND_N.bam')),
         shell:
             """
+            set -exo pipefail
             ################################################
             # Setup tmp directory
             ################################################
@@ -2065,13 +2110,13 @@ elif (DE_method == "DIFFBIND"):
             fi
             
             # Create header
-            samtools view -H {input.f1} > ${{tmpdir}}/{params.base}.header.txt
+            samtools view -@ {threads} -H {input.f1} > ${{tmpdir}}/{params.base}.header.txt
             
             # Run 
-            samtools view -F 16 {input.f1} \\
+            samtools view -@ {threads} -F 16 {input.f1} \\
                 | cat ${{tmpdir}}/{params.base}.header.txt - \\
                 | samtools view -Sb > {output.p_bam}
-            samtools view -f 16 {input.f1} \\
+            samtools view -@ {threads} -f 16 {input.f1} \\
                 | cat ${{tmpdir}}/{params.base}.header.txt - \\
                 | samtools view -Sb > {output.n_bam}
             """
