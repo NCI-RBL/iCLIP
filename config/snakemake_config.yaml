@@ -32,6 +32,18 @@ pval: 0.005 #if DEmethod, pval cutoff for significance
 fc: 1 #if DEmethod, fold change cut off for significance
 splitSampleNChunks: 96 #split samples into N chunks to speed up compute heavy tasks like alignment [1 - 99]
 
+# novoalign parameters
+novoalign_x: 4
+novoalign_g: 20
+novoalign_s: 1
+novoalign_t: "15,3"
+novoalign_R: 0
+novoalign_r_mode: "EXHAUSTIVE"
+novoalign_r_int: 999 # integer represents number of alignments to be reported out
+# Useq parameters
+useq_a: 50000
+useq_n: 999 # trying to match this to novoalign_r_exhaustive_int .... was set to 25 earlier
+
 #modules, container parameters
 containerDir: "/data/CCBR_Pipeliner/iCLIP/container"
 fastq_val: "/data/CCBR_Pipeliner/iCLIP/bin/fastQValidator"
