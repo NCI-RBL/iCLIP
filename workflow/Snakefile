@@ -677,7 +677,7 @@ if (multiplex_flag == 'Y'):
             cmd = demux_cmd,
             ml = filter_length,
             mm = mismatch,
-            threads = getthreads('demultiplex')
+        threads: getthreads('demultiplex')
         envmodules:
             config['singularity'],
         output:
@@ -686,7 +686,7 @@ if (multiplex_flag == 'Y'):
             """
             set -exo pipefail
             {params.s_exec} {params.doc} iCount demultiplex \\
-                --threads {params.threads} \\
+                --threads {threads} \\
                 --minimum_length {params.ml} \\
                 --mismatches {params.mm} \\
                 {params.cmd}
@@ -1559,7 +1559,8 @@ if (splice_aware == 'Y'):
             rname='12c_mapq_stats',
             R = join(source_dir,'workflow','scripts','07_mapq_stats.Rmd'),
             sid = "{sp}",
-            base = join(out_dir,'02_bam','04_mapq','tmp')
+            base = join(out_dir,'02_bam','04_mapq','tmp'),
+            base2 = join(out_dir,'02_bam','04_mapq')
         envmodules:
             config['samtools'],
             config['R']
@@ -1576,7 +1577,7 @@ if (splice_aware == 'Y'):
                 tmpdir="{params.base}"
                 # Setup tmp directory
                 if [ ! -d {params.base} ]; then 
-                    mkdir {params.base};
+                    mkdir -p {params.base};
                 fi
             fi
             
@@ -1584,30 +1585,30 @@ if (splice_aware == 'Y'):
             samtools view -@ {threads} {input.unmasked} \\
                 | awk '{{print $5}}' \\
                 | sort -n \\
-                | uniq -c > {params.base}/{params.sid}.original_counts.txt
+                | uniq -c > ${{tmpdir}}/{params.sid}.original_counts.txt
             samtools view -@ {threads} {input.recalc} \\
                 | awk '{{print $5}}' \\
                 | sort -n \\
-                | uniq -c > {params.base}/{params.sid}.corrected_counts.txt
+                | uniq -c > ${{tmpdir}}/{params.sid}.corrected_counts.txt
 
             # Grab changes
             tail -n+2 {input.log} \\
                 | awk '{{print($2,$3)}}' \\
                 | sort -n \\
-                | uniq -c > {params.base}/{params.sid}.diff_counts.txt
+                | uniq -c > ${{tmpdir}}/{params.sid}.diff_counts.txt
 
             # Create report
             Rscript -e 'library(rmarkdown); \
             rmarkdown::render("{params.R}",
                 output_file = "{output.html}", \
-                params= list(counts_old="{params.base}/{params.sid}.original_counts.txt", \
-                    counts_new="{params.base}/{params.sid}.corrected_counts.txt", \
-                    counts_diff="{params.base}/{params.sid}.diff_counts.txt", \
+                params= list(counts_old="${{tmpdir}}/{params.sid}.original_counts.txt", \
+                    counts_new="${{tmpdir}}/{params.sid}.corrected_counts.txt", \
+                    counts_diff="${{tmpdir}}/{params.sid}.diff_counts.txt", \
                     sampleid="{params.sid}", \
-                    output_dir="{params.base}"))'
+                    output_dir="{params.base2}"))'
 
             # Remove intermediate files
-            rm -r {params.base}
+            # rm -r {params.base}
             """
 
 rule create_beds_safs:
