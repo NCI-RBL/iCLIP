@@ -1598,17 +1598,10 @@ if (splice_aware == 'Y'):
                 | uniq -c > ${{tmpdir}}/{params.sid}.diff_counts.txt
 
             # Create report
-            Rscript -e 'library(rmarkdown); \
-            rmarkdown::render("{params.R}",
-                output_file = "{output.html}", \
-                params= list(counts_old="${{tmpdir}}/{params.sid}.original_counts.txt", \
-                    counts_new="${{tmpdir}}/{params.sid}.corrected_counts.txt", \
-                    counts_diff="${{tmpdir}}/{params.sid}.diff_counts.txt", \
-                    sampleid="{params.sid}", \
-                    output_dir="{params.base2}"))'
+            Rscript -e "library(rmarkdown); rmarkdown::render(\"{params.R}\", output_file = \"{output.html}\", params= list(counts_old=\"${{tmpdir}}/{params.sid}.original_counts.txt\", counts_new=\"${{tmpdir}}/{params.sid}.corrected_counts.txt\", counts_diff=\"${{tmpdir}}/{params.sid}.diff_counts.txt\", sampleid=\"{params.sid}\", output_dir=\"{params.base2}\"))"
 
             # Remove intermediate files
-            # rm -r {params.base}
+            rm -r {params.base}
             """
 
 rule create_beds_safs:
