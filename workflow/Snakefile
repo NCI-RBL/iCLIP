@@ -75,6 +75,8 @@ testing_option = config['testing_option']
 with open(join(out_dir,'config','cluster_config.yaml')) as file:
     CLUSTER = yaml.load(file, Loader=yaml.FullLoader)
 getthreads=lambda rname:int(CLUSTER[rname]["threads"]) if rname in CLUSTER and "threads" in CLUSTER[rname] else int(CLUSTER["__default__"]["threads"])
+getmemg=lambda rname:CLUSTER[rname]["mem"] if rname in CLUSTER else CLUSTER["__default__"]["mem"]
+getmemG=lambda rname:getmemg(rname).replace("g","G")
 
 #expand reference selection
 if (nova_ref == "mm10"):
@@ -505,8 +507,8 @@ rule all:
         input_recalc,
 
         # create_beds_safs
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'), sp=sp_list),
+        expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed.gz'), sp=sp_list),
+        expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed.gz'), sp=sp_list),
         expand(join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'), sp=sp_list),
         expand(join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF'), sp=sp_list),
         
@@ -628,7 +630,9 @@ if (multiplex_flag == 'Y'):
             base = join(out_dir,'{mp}','01_qc_post'),
             mm = mismatch,
             bc_len = barcode_length,
+            memG = getmemG("qc_barcode")
             start_pos = 6 if barcode_length==6 else 4
+        threads: getthreads("qc_barcode")
         envmodules:
             config['R'],
         output:
@@ -641,7 +645,7 @@ if (multiplex_flag == 'Y'):
             gunzip -c  {input.fq} \\
                 | sed -n '/@/{{n;p}}' \\
                 | awk '{{print substr($0, {params.start_pos}, {params.bc_len});}}' \\
-                | sort -n \\
+                | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=/lscratch/${{SLURM_JOB_ID}} -n \\
                 | uniq -c > {output.counts};
             
             Rscript {params.R} --sample_manifest {sample_manifest} \\
@@ -1331,7 +1335,8 @@ rule qc_alignment:
         rname = "10_qc_alignment",
         R = join(source_dir,'workflow','scripts','04_alignment_stats.R'),
         sampleid = '{sp}.{al_sub}',
-        base = join(out_dir, 'qc', '01_qc_post/')
+        base = join(out_dir, 'qc', '01_qc_post/'),
+        memG = getmemG("qc_alignment")
     envmodules:
         config['samtools'],
         config['R']
@@ -1349,12 +1354,12 @@ rule qc_alignment:
         # Gather stats for all reads
         samtools view --threads {threads} -F 4 {input.merged} \\
             | awk '{{ print length($10) }}' \\
-            | sort -n \\
+            | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=/lscratch/${{SLURM_JOB_ID}} -n \\
             | uniq -c > {output.bam_a};
 
         samtools view --threads {threads} -f 4 {input.merged} \\
             | awk '{{ print length($10) }}' \\
-            | sort -n \\
+            | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=/lscratch/${{SLURM_JOB_ID}} -n \\
             | uniq -c > {output.bam_u};
         
         # Run alignment stats code
@@ -1560,7 +1565,8 @@ if (splice_aware == 'Y'):
             R = join(source_dir,'workflow','scripts','07_mapq_stats.Rmd'),
             sid = "{sp}",
             base = join(out_dir,'02_bam','04_mapq','tmp'),
-            base2 = join(out_dir,'02_bam','04_mapq')
+            base2 = join(out_dir,'02_bam','04_mapq'),
+            memG = getmemG("mapq_stats")
         envmodules:
             config['samtools'],
             config['R']
@@ -1571,7 +1577,7 @@ if (splice_aware == 'Y'):
             """
             set -exo pipefail
             # Setup tmp directory
-            if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            if [[ -d "/lscratch/${{SLURM_JOB_ID}}" ]]; then
                 tmpdir="/lscratch/${{SLURM_JOB_ID}}"
             else
                 tmpdir="{params.base}"
@@ -1584,24 +1590,26 @@ if (splice_aware == 'Y'):
             # Create files with new and old files
             samtools view -@ {threads} {input.unmasked} \\
                 | awk '{{print $5}}' \\
-                | sort -n \\
+                | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=$tmpdir -n \\
                 | uniq -c > ${{tmpdir}}/{params.sid}.original_counts.txt
             samtools view -@ {threads} {input.recalc} \\
                 | awk '{{print $5}}' \\
-                | sort -n \\
+                | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=$tmpdir -n \\
                 | uniq -c > ${{tmpdir}}/{params.sid}.corrected_counts.txt
 
             # Grab changes
             tail -n+2 {input.log} \\
                 | awk '{{print($2,$3)}}' \\
-                | sort -n \\
+                | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=$tmpdir \\
                 | uniq -c > ${{tmpdir}}/{params.sid}.diff_counts.txt
 
             # Create report
-            Rscript -e "library(rmarkdown); rmarkdown::render(\"{params.R}\", output_file = \"{output.html}\", params= list(counts_old=\"${{tmpdir}}/{params.sid}.original_counts.txt\", counts_new=\"${{tmpdir}}/{params.sid}.corrected_counts.txt\", counts_diff=\"${{tmpdir}}/{params.sid}.diff_counts.txt\", sampleid=\"{params.sid}\", output_dir=\"{params.base2}\"))"
+            Rscript -e "library(rmarkdown); rmarkdown::render(\\\"{params.R}\\\", output_file = \\\"{output.html}\\\", params= list(counts_old=\\\"${{tmpdir}}/{params.sid}.original_counts.txt\\\", counts_new=\\\"${{tmpdir}}/{params.sid}.corrected_counts.txt\\\", counts_diff=\\\"${{tmpdir}}/{params.sid}.diff_counts.txt\\\", sampleid=\\\"{params.sid}\\\", output_dir=\\\"{params.base2}\\\"))"
 
             # Remove intermediate files
-            rm -r {params.base}
+            if [[ -d {params.base} ]];then
+                rm -r {params.base}
+            fi
             """
 
 rule create_beds_safs:
@@ -1615,19 +1623,21 @@ rule create_beds_safs:
     params:
         rname='13_create_beds_safs',
         base = '{sp}.dedup',
-        pyscript = join(source_dir,'workflow','scripts','13_bam_to_unique_bam.py')
+        pyscript = join(source_dir,'workflow','scripts','13_bam_to_unique_bam.py'),
+        memG=getmemG("create_beds_safs")
     envmodules:
         config['samtools'],
         config['bedtools'],
         config['python']
     threads: getthreads("create_beds_safs")
     output:
-        bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
-        bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'),
+        bed_all = temp(join(out_dir,'03_peaks','01_bed','{sp}_all.bed')),
+        bed_unique = temp(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed')),
         saf_all = join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'),
-        saf_unique = join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF')
+        saf_unique = join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF'),
     shell:
         """
+        set -exo pipefail
         # Setup tmp directory
         if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
             tmpdir="/lscratch/${{SLURM_JOB_ID}}"
@@ -1642,25 +1652,40 @@ rule create_beds_safs:
         samtools index -@ {threads} ${{tmpdir}}/{params.base}.unique.bam;
         
         # Create SAFs
-        bedtools bamtobed \\
-            -split -i {input.bam} \\
-            | bedtools sort -i - > {output.bed_all}; 
-        bedtools bamtobed \\
-            -split -i ${{tmpdir}}/{params.base}.unique.bam \\
-            | bedtools sort -i - > {output.bed_unique};
+        bedtools bamtobed -split -i {input.bam} \\
+            | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=$tmpdir -k1,1V -k2,2n  > {output.bed_all}; 
+        bedtools bamtobed -split -i ${{tmpdir}}/{params.base}.unique.bam \\
+            | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=$tmpdir -k1,1V -k2,2n > {output.bed_unique};
+        awk '{{OFS="\\t";print "GeneID","Chr","Start","End","Strand"}}' > {output.saf_all}
+        awk '{{OFS="\\t";print "GeneID","Chr","Start","End","Strand"}}' > {output.saf_unique}
         bedtools merge \\
             -c 6 -o count,distinct \\
             -bed -s -d 50 \\
             -i {output.bed_all} \\
-            | awk '{{OFS="\t"; print $1":"$2"-"$3"_"$5,$1,$2,$3,$5}}' \\
-            | awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > {output.saf_all};
+            | awk '{{OFS="\\t"; print $1":"$2"-"$3"_"$5,$1,$2,$3,$5}}' >> {output.saf_all};
         bedtools merge \\
             -c 6 -o count,distinct \\
             -bed -s -d 50 \\
             -i {output.bed_unique} \\
-            | awk '{{OFS="\t"; print $1":"$2"-"$3"_"$5,$1,$2,$3,$5}}' \\
-            | awk 'BEGIN{{print "ID","Chr","Start","End","Strand"}}1' > {output.saf_unique}
+            | awk '{{OFS="\\t"; print $1":"$2"-"$3"_"$5,$1,$2,$3,$5}}' >> {output.saf_unique}
         """
+
+rule bgzip_beds:
+    input: 
+        bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
+        bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'),
+    output:
+        bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed.gz'),
+        bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed.gz'),
+    envmodules:
+        config['samtools'],
+    threads: getthreads("bgzip_beds")
+    shell:"""
+    bgzip --threads {threads} --force {input.bed_all}
+    tabix -p bed {output.bed_all}
+    bgzip --threads {threads} --force {input.bed_unique}
+    tabix -p bed {output.bed_unique}
+"""
 
 rule feature_counts:
     """
