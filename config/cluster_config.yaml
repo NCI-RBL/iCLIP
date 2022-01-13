@@ -9,8 +9,7 @@ __default__:
     error: .%j.{wildcards}.err
 
 qc_barcode:
-    threads: 3
-    mem: 3g
+    threads: 4
     time: 00-04:00:00
 
 demultiplex:
@@ -92,6 +91,10 @@ dedup:
 create_beds_safs:
     mem: 200g
     gres: lscratch:512
+    threads: 8
+
+bgzip_beds:
+    mem: 100g
     threads: 4
 
 project_annotations:
