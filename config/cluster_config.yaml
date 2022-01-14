@@ -23,12 +23,12 @@ remove_adaptors:
     mem: 32g
 
 qc_fastq_pre:
-    threads: 3
+    threads: 4
     mem: 3g
     time: 00-03:00:00
 
 qc_fastq_post:
-    threads: 3
+    threads: 4
     mem: 3g
     time: 00-03:00:00
 
@@ -37,7 +37,7 @@ qc_screen_validator:
     time: 00-03:00:00
 
 split_files:
-    threads: 3
+    threads: 4
     mem: 3g
     time: 00-03:00:00
 
@@ -79,7 +79,7 @@ qc_alignment:
     mem: 120g
 
 qc_troubleshoot:
-    threads: 3
+    threads: 4
     mem: 3g
 
 dedup:
@@ -103,13 +103,13 @@ project_annotations:
     time: 00-01:00:00
 
 peak_annotations:
-    threads: 3
+    threads: 4
     gres: lscratch:128
     mem: 30g
-    time: 00-12:00:00
+    time: 01-00:00:00
 
 annotation_report:
-    threads: 3
+    threads: 4
     gres: lscratch:128
     mem: 30g
     time: 00-12:00:00
@@ -125,6 +125,7 @@ DIFFBIND_beds:
 MANORM_analysis:
     threads: 4
     mem: 30g
+    time: 01-00:00:00
 
 DIFFBIND_preprocess:
     threads: 4
