@@ -8,7 +8,6 @@ library(argparse)
 
 #set args
 parser <- ArgumentParser()
-parser$add_argument("-r","--rscript", dest="rscript", required=TRUE, help="rscript for functions")
 parser$add_argument("-pt","--peak_type", dest="peak_type", required=TRUE, help="peak type (all, unique)")
 parser$add_argument("-pu","--peak_unique", dest="peak_unique", required=TRUE, help="path for unique peaks")
 parser$add_argument("-pa","--peak_all", dest="peak_all", required=TRUE, help="path all peaks")
@@ -19,6 +18,7 @@ parser$add_argument("-de","--demethod", dest="demethod", required=TRUE, help="DE
 parser$add_argument("-s","--sample_id", dest="sample_id", required=TRUE, help="sample id")
 parser$add_argument("-sp","--ref_species", dest="ref_species", required=TRUE, help="reference species")
 parser$add_argument("-anno","--anno_dir", dest="anno_dir", required=TRUE, help="path for annotation dir")
+parser$add_argument("-st","--splice_table", dest="splice_table", required=TRUE, help="path for Splice Table")
 parser$add_argument("-reft","--reftable_path", dest="reftable_path", required=TRUE, help="path for reftable")
 parser$add_argument("-g","--gencode_path", dest="gencode_path", required=TRUE, help="path for gencode")
 parser$add_argument("-i","--intron_path", dest="intron_path", required=TRUE, help="path for intron")
@@ -29,7 +29,6 @@ parser$add_argument("-odm","--out_dir_DEP", dest="out_dir_DEP", required=FALSE, 
 parser$add_argument("-o","--output_file_error", dest="output_file_error", required=FALSE, help="path for output error file")
 
 args <- parser$parse_args()
-rscript = args$rscript
 peak_type = args$peak_type
 peak_unique = args$peak_unique
 peak_all = args$peak_all
@@ -40,6 +39,7 @@ DEmethod = args$demethod
 sample_id = args$sample_id
 ref_species = args$ref_species
 anno_dir = args$anno_dir
+splice_table=args$splice_table
 reftable_path = args$reftable_path
 gencode_path = args$gencode_path
 intron_path = args$intron_path
@@ -49,41 +49,39 @@ out_dir = args$out_dir
 out_dir_DEP = args$out_dir_DEP
 output_file_error = args$output_file_error
 
-#source R script with functions
-source(rscript)
-
 ##testing
 testing="N"
 if(testing=="Y"){
   rm(list=setdiff(ls(), "params"))
-  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mESC_clip_2/"
+  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/"
   setwd(wd)
   wd="."
   
   peak_type= "ALL"
-  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mESC_clip_2/03_peaks/03_allreadpeaks/Control_Clip_1_uniqueCounts.txt"
-  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mESC_clip_2/03_peaks/03_allreadpeaks/Control_Clip_1_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
+  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/Ro_Clip_1_test1_uniqueCounts.txt"
+  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/Ro_Clip_1_test1_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
   reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
+  splice_table="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/tmp/KO_connected_peaks.txt"
   
   #output
-  out_dir = paste0(wd,"/04_annotation/02_peaks/")
-  out_dir_DEP =paste0(wd,"/14_MAnorm/")
+  out_dir = paste0(wd,"/09_annotations/test1/02_peaks/")
+  out_dir_DEP =paste0(wd,"/14_MAnorm/test1/")
   
   #project annotation files
-  anno_dir = paste0(wd,"/04_annotation/01_project/")
+  anno_dir = paste0(wd,"/09_annotations/test1/01_project/")
   ref_path = "/Users/homanpj/Documents/Resources/ref/"
-  tmp_dir= paste0(wd,"/04_annotation/02_peaks/")
-  pipline_dir="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/"
+  tmp_dir= paste0(wd,"/09_annotations/test1/02_peaks/")
   
   #feature information
   join_junction = "TRUE"
   condense_exon="TRUE"
   read_depth = 3
-  DEmethod = "DiffBind"
+  DEmethod = "MAnorm"
   ref_species="mm10"
   sample_id = "Control_Clip_1"
-  output_file_error= paste0(wd,"/04_annotation/02_peaks/")
+  output_file_error= paste0(wd,"/09_annotations/test1/test1/02_peaks/")
   
+  rscript="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/workflow/scripts/09_peak_annotation_functions.R"
   
   if(ref_species == "mm10"){
     gencode_path = paste0(ref_path, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
@@ -110,16 +108,19 @@ if(testing=="Y"){
   DEmethod = "MANORM"
   sample_id = "KO-NOPFA"
   ref_species="hg38"
-  anno_dir =paste0(out_base, "annotations_test/04_annotation/01_project/")
+  anno_dir =paste0(out_base, "annotations_test/05_annotation/01_project/")
   reftable_path = paste0(git_base,"config/annotation_config.txt")
   gencode_path = paste0(pipe_base,"hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt")
   intron_path = paste0(pipe_base,"hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed")
   rmsk_path = paste0(pipe_base,"annotations/hg38/repeatmasker/rmsk_GRCh38.txt")
-  tmp_dir = paste0(out_base, "annotations_test/04_annotation/02_peaks/")
-  out_dir = paste0(out_base, "annotations_test/04_annotation/02_peaks/")
-  out_dir_DEP = paste0(out_base, "annotations_test/05_demethod/01_input/")
-  output_file_error = paste0(out_base, "annotations_test/04_annotation/read_depth_error.txt")
+  tmp_dir = paste0(out_base, "annotations_test/05_annotation/02_peaks/")
+  out_dir = paste0(out_base, "annotations_test/05_annotation/02_peaks/")
+  out_dir_DEP = paste0(out_base, "annotations_test/06_MAnorm/01_input/")
+  output_file_error = paste0(out_base, "annotations_test/05_annotation/read_depth_error.txt")
 }
+
+#source R script with functions
+source(rscript)
 
 #annotation paths
 gencode_transc_path = paste0(anno_dir,"ref_gencode.txt")
@@ -169,6 +170,8 @@ if(nrow(FtrCount[FtrCount$Counts_fracMM>=read_depth,])==0){
 #########################################################################################
 ############### splice junctions
 ##########################################################################################
+
+
 system.time(
   if (join_junction) {  
     print("Running Join Junction")
@@ -187,20 +190,21 @@ system.time(
     
     #filter if primary gene is missing
     FtrCount_fracJCount=FtrCount_fracJCount[!is.na(FtrCount_fracJCount$PrimaryGene),]
-
+    
     if (nrow(FtrCount_fracJCount)>0) {
       print("Junctions were identitified")
       JoinJunc=T    
-############################################################    
-    FtrCount_out=Join_Junction(FtrCount,FtrCount_fracJCount)
+      ############################################################    
+      # FtrCount_out=Join_Junction_original(FtrCount,FtrCount_fracJCount)
+      FtrCount_out=Join_Junction(FtrCount,splice_table)
       FtrCount_out$FtrCount_trimmed=FtrCount_out$FtrCount_trimmed[duplicated(FtrCount_out$FtrCount_trimmed)==F & !FtrCount_out$FtrCount_trimmed$chr%in%c('chrM'),]
       FtrCount_trimmed = FtrCount_out$FtrCount_trimmed
-############################################################
-  } else { 
-    print("No junctions were identified")
-    JoinJunc=F
-    FtrCount_trimmed=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
-  }
+      ############################################################
+    } else { 
+      print("No junctions were identified")
+      JoinJunc=F
+      FtrCount_trimmed=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
+    }
   } else{
     JoinJunc=F
     FtrCount_trimmed=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
@@ -209,13 +213,16 @@ system.time(
 #remove duplicates, remove chrom M
 FtrCount_trimmed=FtrCount_trimmed[duplicated(FtrCount_trimmed)==F & !FtrCount_trimmed$chr%in%c('chrM'),]
 
+
+
+
 ##########################################################################################
 ############### DEP
 ##########################################################################################
 if (DEmethod=='NONE') {
   
   print("Differential Peaks skipped")
-
+  
 } else{
   
   DEP_input(FtrCount_trimmed)
@@ -286,7 +293,7 @@ print("RMSK")
 
 #read in rmsk
 rmsk_GRCm38=rmsk_prep(rmsk_path)
-  
+
 rpmsk_Same = rpmsk_calling(intronexon_Same,"Same_")
 rpmsk_Opposite = rpmsk_calling(intronexon_Opposite,"Oppo_")
 
@@ -312,7 +319,7 @@ PeaksdataOut = merge(peak_attributes(rpmsk_Same,"Same_"),
 ########################################################################################## 
 
 PeaksdataOut=Assign_CLIP_attributes(PeaksdataOut)
-  
+
 
 ##########################################################################################
 ############### Merge peak annotations with peak junctions
@@ -328,7 +335,7 @@ Peaksdata2_anno = merge(FtrCount_trimmed,
 if (JoinJunc==T) {
   print("Add annotations to Junctions")
   
-  Peaksdata2_anno=Join_Junction_Combine(Peaksdata2_anno,read_depth,FtrCount_out)
+  Peaksdata2_annox=Join_Junction_Combine(Peaksdata2_anno,read_depth,FtrCount_out)
   
 }else{
   
@@ -336,10 +343,9 @@ if (JoinJunc==T) {
   if (condense_exon==T) {
     print("Collapse exon")
     
-Peaksdata2_anno=Collapse_Exon(Peaksdata2_anno)
+    Peaksdata2_anno=Collapse_Exon(Peaksdata2_anno)
   }  
 } 
-
 
 ##########################################################################################
 ## correct lnLc annotation - keep lnLc annotation above to hepl track source of lnc annotation
@@ -351,4 +357,3 @@ Peaksdata2_anno=correct_lnLc(Peaksdata2_anno)
 ##########################################################################################
 #write out for junction annotation 
 write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_complete.txt'),sep = "\t")
-
