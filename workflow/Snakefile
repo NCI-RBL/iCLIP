@@ -507,8 +507,10 @@ rule all:
         input_recalc,
 
         # create_beds_safs
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed.gz'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed.gz'), sp=sp_list),
+        # expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed.gz'), sp=sp_list),
+        # expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed.gz'), sp=sp_list),
+        expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
+        expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'), sp=sp_list),
         expand(join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'), sp=sp_list),
         expand(join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF'), sp=sp_list),
         
@@ -1631,8 +1633,10 @@ rule create_beds_safs:
         config['python']
     threads: getthreads("create_beds_safs")
     output:
-        bed_all = temp(join(out_dir,'03_peaks','01_bed','{sp}_all.bed')),
-        bed_unique = temp(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed')),
+        # bed_all = temp(join(out_dir,'03_peaks','01_bed','{sp}_all.bed')),
+        # bed_unique = temp(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed')),
+        bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
+        bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'),
         saf_all = join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'),
         saf_unique = join(out_dir,'03_peaks','02_SAF','{sp}_unique.SAF'),
     shell:
@@ -1670,22 +1674,22 @@ rule create_beds_safs:
             | awk '{{OFS="\\t"; print $1":"$2"-"$3"_"$5,$1,$2,$3,$5}}' >> {output.saf_unique}
         """
 
-rule bgzip_beds:
-    input: 
-        bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
-        bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'),
-    output:
-        bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed.gz'),
-        bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed.gz'),
-    envmodules:
-        config['samtools'],
-    threads: getthreads("bgzip_beds")
-    shell:"""
-    bgzip --threads {threads} --force {input.bed_all}
-    tabix -p bed {output.bed_all}
-    bgzip --threads {threads} --force {input.bed_unique}
-    tabix -p bed {output.bed_unique}
-"""
+# rule bgzip_beds:
+#     input: 
+#         bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
+#         bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'),
+#     output:
+#         bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed.gz'),
+#         bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed.gz'),
+#     envmodules:
+#         config['samtools'],
+#     threads: getthreads("bgzip_beds")
+#     shell:"""
+#     bgzip --threads {threads} --force {input.bed_all}
+#     tabix -p bed {output.bed_all}
+#     bgzip --threads {threads} --force {input.bed_unique}
+#     tabix -p bed {output.bed_unique}
+# """
 
 rule feature_counts:
     """
@@ -1716,7 +1720,11 @@ rule feature_counts:
         all_unique = join(out_dir,'03_peaks','03_allreadpeaks','{sp}_uniqueCounts.txt'),
         all_mm = join(out_dir,'03_peaks','03_allreadpeaks','{sp}_allFracMMCounts.txt'),
         unique_unique = join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_uniqueCounts.txt'),
-        unique_mm = join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt')
+        unique_mm = join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt'),
+        all_unique_jcounts = join(out_dir,'03_peaks','03_allreadpeaks','{sp}_uniqueCounts.txt.jcounts'),
+        all_mm_jcounts = join(out_dir,'03_peaks','03_allreadpeaks','{sp}_allFracMMCounts.txt.jcounts'),
+        unique_unique_jcounts = join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_uniqueCounts.txt.jcounts'),
+        unique_mm_jcounts = join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt.jcounts')
     shell:
         """
         set -exo pipefail
@@ -1815,12 +1823,16 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
         '''
         input:
             unique = rules.feature_counts.output.all_unique,
+            unique_jcounts = rules.feature_counts.output.all_unique_jcounts,
             all = rules.feature_counts.output.all_mm,
+            all_jcounts = rules.feature_counts.output.all_mm_jcounts,
             anno = rules.project_annotations.output.anno
         params:
             rname = '16_peak_annotations',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
             functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+            bashscript = join(source_dir,'workflow','scripts','09_get_site2peak_lookup.sh'),
+            pyscript = join(source_dir,'workflow','scripts','09_jcounts2peakconnections.py'),
             p_type = peak_id,
             junc = sp_junc,
             c_exon = cond_exon,
@@ -1841,6 +1853,7 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
             config['R'],
             config['bedtools'],
         output:
+            splice_table = join(out_dir,'04_annotation', '02_peaks','{sp}_connected_peaks.txt'),
             anno = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
             text = join(out_dir,'04_annotation', '02_peaks', '{sp}_peakannotation_complete.txt'),
             bed = temp(join(out_dir,'05_demethod', '01_input', '{sp}_Peaksfor' + DE_method + '.bed')),
@@ -1855,6 +1868,12 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
                 tmpdir="{out_dir}01_preprocess/07_rscripts/"
                 if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
             fi
+
+            #bash script to run bedtools and get site2peak lookuptable
+
+            bash {params.bashscript} {input.all_jcounts} {input.all} {params.sp} {params.out} {params.pyscript}
+
+            # above bash script will create {output.splice_table}
                 
             Rscript {params.script} \\
                 --rscript {params.functions} \\
@@ -1868,6 +1887,7 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
                 --sample_id {params.sp} \\
                 --ref_species {params.ref_sp} \\
                 --anno_dir {params.anno_dir} \\
+                --splice_table {output.splice_table} \\
                 --reftable_path {params.a_config} \\
                 --gencode_path {params.g_path} \\
                 --intron_path {params.i_path} \\
