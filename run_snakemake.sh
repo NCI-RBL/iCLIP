@@ -285,7 +285,9 @@ if [ "\$?" -eq "0" ];then
   --configfile ${output_dir}/log/${log_time}/00_snakemake_config.yaml 
 fi
 
-bash <(curl https://raw.githubusercontent.com/CCBR/Tools/master/Biowulf/gather_cluster_stats_biowulf.sh 2>/dev/null) ${output_dir}/log/${log_time}/snakemake.log > ${output_dir}/log/${log_time}/snakemake.log.HPC_summary.txt
+#bash <(curl https://raw.githubusercontent.com/CCBR/Tools/master/Biowulf/gather_cluster_stats_biowulf.sh 2>/dev/null) ${output_dir}/log/${log_time}/snakemake.log > ${output_dir}/log/${log_time}/snakemake.log.HPC_summary.txt
+#${PIPELINE_HOME}/workflow/scripts/jobinfo -s ${output_dir}/log/${log_time}/snakemake.log -o ${output_dir}/log/${log_time}/snakemake.log.HPC_summary.txt
+
 EOF
 
 sbatch ${output_dir}/submit_script.sbatch
