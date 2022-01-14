@@ -8,6 +8,7 @@ library(argparse)
 
 #set args
 parser <- ArgumentParser()
+parser$add_argument("-r","--rscript", dest="rscript", required=TRUE, help="rscript for functions")
 parser$add_argument("-pt","--peak_type", dest="peak_type", required=TRUE, help="peak type (all, unique)")
 parser$add_argument("-pu","--peak_unique", dest="peak_unique", required=TRUE, help="path for unique peaks")
 parser$add_argument("-pa","--peak_all", dest="peak_all", required=TRUE, help="path all peaks")
@@ -29,6 +30,7 @@ parser$add_argument("-odm","--out_dir_DEP", dest="out_dir_DEP", required=FALSE, 
 parser$add_argument("-o","--output_file_error", dest="output_file_error", required=FALSE, help="path for output error file")
 
 args <- parser$parse_args()
+rscript = args$rscript
 peak_type = args$peak_type
 peak_unique = args$peak_unique
 peak_all = args$peak_all
