@@ -75,7 +75,7 @@ testing_option = config['testing_option']
 with open(join(out_dir,'config','cluster_config.yaml')) as file:
     CLUSTER = yaml.load(file, Loader=yaml.FullLoader)
 getthreads=lambda rname:int(CLUSTER[rname]["threads"]) if rname in CLUSTER and "threads" in CLUSTER[rname] else int(CLUSTER["__default__"]["threads"])
-getmemg=lambda rname:CLUSTER[rname]["mem"] if rname in CLUSTER else CLUSTER["__default__"]["mem"]
+getmemg=lambda rname:CLUSTER[rname]["mem"] if rname in CLUSTER and "mem" in CLUSTER[rname] else CLUSTER["__default__"]["mem"]
 getmemG=lambda rname:getmemg(rname).replace("g","G")
 
 #expand reference selection
@@ -507,8 +507,6 @@ rule all:
         input_recalc,
 
         # create_beds_safs
-        # expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed.gz'), sp=sp_list),
-        # expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed.gz'), sp=sp_list),
         expand(join(out_dir,'03_peaks','01_bed','{sp}_all.bed'), sp=sp_list),
         expand(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'), sp=sp_list),
         expand(join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'), sp=sp_list),
@@ -628,11 +626,11 @@ if (multiplex_flag == 'Y'):
             fq = get_fq_names,
         params:
             rname = "01a_qc_barcode",
+            memG = getmemG("qc_barcode"),
             R = join(source_dir,'workflow', 'scripts', '02_barcode_qc.R'),
             base = join(out_dir,'{mp}','01_qc_post'),
             mm = mismatch,
             bc_len = barcode_length,
-            memG = getmemG("qc_barcode")
             start_pos = 6 if barcode_length==6 else 4
         threads: getthreads("qc_barcode")
         envmodules:
@@ -683,7 +681,7 @@ if (multiplex_flag == 'Y'):
             cmd = demux_cmd,
             ml = filter_length,
             mm = mismatch,
-        threads: getthreads('demultiplex')
+            threads = getthreads('demultiplex')
         envmodules:
             config['singularity'],
         output:
@@ -692,7 +690,7 @@ if (multiplex_flag == 'Y'):
             """
             set -exo pipefail
             {params.s_exec} {params.doc} iCount demultiplex \\
-                --threads {threads} \\
+                --threads {params.threads} \\
                 --minimum_length {params.ml} \\
                 --mismatches {params.mm} \\
                 {params.cmd}
@@ -1633,8 +1631,6 @@ rule create_beds_safs:
         config['python']
     threads: getthreads("create_beds_safs")
     output:
-        # bed_all = temp(join(out_dir,'03_peaks','01_bed','{sp}_all.bed')),
-        # bed_unique = temp(join(out_dir,'03_peaks','01_bed','{sp}_unique.bed')),
         bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
         bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'),
         saf_all = join(out_dir,'03_peaks','02_SAF','{sp}_all.SAF'),
@@ -1674,22 +1670,24 @@ rule create_beds_safs:
             | awk '{{OFS="\\t"; print $1":"$2"-"$3"_"$5,$1,$2,$3,$5}}' >> {output.saf_unique}
         """
 
-# rule bgzip_beds:
-#     input: 
-#         bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
-#         bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'),
-#     output:
-#         bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed.gz'),
-#         bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed.gz'),
-#     envmodules:
-#         config['samtools'],
-#     threads: getthreads("bgzip_beds")
-#     shell:"""
-#     bgzip --threads {threads} --force {input.bed_all}
-#     tabix -p bed {output.bed_all}
-#     bgzip --threads {threads} --force {input.bed_unique}
-#     tabix -p bed {output.bed_unique}
-# """
+rule bgzip_beds:
+    input: 
+        bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed'),
+        bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed'),
+    output:
+        bed_all = join(out_dir,'03_peaks','01_bed','{sp}_all.bed.gz'),
+        bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_unique.bed.gz'),
+    params:
+        rname='bgzip_beds',
+    envmodules:
+        config['samtools'],
+    threads: getthreads("bgzip_beds")
+    shell:"""
+    bgzip --threads {threads} --force {input.bed_all}
+    tabix -p bed {output.bed_all}
+    bgzip --threads {threads} --force {input.bed_unique}
+    tabix -p bed {output.bed_unique}
+"""
 
 rule feature_counts:
     """
@@ -1724,7 +1722,7 @@ rule feature_counts:
         all_unique_jcounts = join(out_dir,'03_peaks','03_allreadpeaks','{sp}_uniqueCounts.txt.jcounts'),
         all_mm_jcounts = join(out_dir,'03_peaks','03_allreadpeaks','{sp}_allFracMMCounts.txt.jcounts'),
         unique_unique_jcounts = join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_uniqueCounts.txt.jcounts'),
-        unique_mm_jcounts = join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt.jcounts')
+        unique_mm_jcounts = join(out_dir,'03_peaks','03_uniquereadpeaks','{sp}_allFracMMCounts.txt.jcounts'),        
     shell:
         """
         set -exo pipefail
@@ -1868,13 +1866,13 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
                 tmpdir="{out_dir}01_preprocess/07_rscripts/"
                 if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
             fi
-
+            
             #bash script to run bedtools and get site2peak lookuptable
 
             bash {params.bashscript} {input.all_jcounts} {input.all} {params.sp} {params.out} {params.pyscript}
 
             # above bash script will create {output.splice_table}
-                
+
             Rscript {params.script} \\
                 --rscript {params.functions} \\
                 --peak_type {params.p_type} \\
