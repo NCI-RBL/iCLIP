@@ -10,6 +10,7 @@ __default__:
 
 qc_barcode:
     threads: 4
+    mem: 100g
     time: 00-04:00:00
 
 demultiplex:
