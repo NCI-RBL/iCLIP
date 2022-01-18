@@ -1,11 +1,11 @@
 #load libraries
-library(tidyr)
-library(GenomicRanges)
-library(stringr)
-library(dplyr)
-library(data.table)
-library("readxl")
-library(argparse)
+suppressMessages(library(tidyr))
+suppressMessages(library(GenomicRanges))
+suppressMessages(library(stringr))
+suppressMessages(library(dplyr))
+suppressMessages(library(data.table))
+suppressMessages(library("readxl"))
+suppressMessages(library(argparse))
 
 #set args
 parser <- ArgumentParser()
@@ -28,13 +28,14 @@ output_file = args$output_file
 
 # #testing
 # setwd("/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP")
-# samplename = "Y5KO_fCLIP_MAvalues"
-# background = "KO_fCLIP_MAvalues"
+# samplename = "Y5KO_fCLIP"
+# background = "KO_fCLIP"
 # peak_anno_g1 = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/13_annotation/Y5KO_fCLIP_peakannotation_final.txt"
 # peak_anno_g2 =  "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/13_annotation/KO_fCLIP_peakannotation_final.txt"
 # pos_manorm =  "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/14_MAnorm/02_analysis/Y5KO_fCLIPvsKO_fCLIP/Y5KO_fCLIP_Pos_MAvalues.xls"
 # neg_manorm = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/14_MAnorm/02_analysis/Y5KO_fCLIPvsKO_fCLIP/Y5KO_fCLIP_Neg_MAvalues.xls"
 # output_file = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/14_MAnorm/02_analysis/Y5KO_fCLIPvsKO_fCLIP/Y5KO_fCLIP_vs_KO_fCLIP_post_processing.txt"
+# output_file = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/testing/MAnorm_test/Y5KO_fCLIP_vs_KO_fCLIP_post_processing.txt"
 
 ############################################################################################################
 # Sample1 Processing
@@ -84,6 +85,13 @@ colnames(MAval)=gsub('_50nt_peakDepth5',"",colnames(MAval))
 
 ############################################################################################################
 ## for spliced peaks select stats from peak with greatest read density
+SmplA_Peaks=merge(SmplA_Peaks,MAval[,c("ID",'P_value',paste0('normalized_read_density_in_',samplename), paste0('normalized_read_density_in_',background))],by='ID',all.x=T)
+SmplA_Peaks=SmplA_Peaks[,!colnames(SmplA_Peaks)%in%'IDmerge']
+
+if ('IDmerge'%in%colnames(SmplA_Peaks)) {
+  if (nrow(SmplA_Peaks[(SmplA_Peaks$IDmerge)>1,])>0) {
+    
+
 SmplA_PeaksJunc=SmplA_Peaks[(SmplA_Peaks$IDmerge)>1,]
 for (x in 1:nrow(SmplA_PeaksJunc)) {
   val=MAval[MAval$ID%in%unlist(strsplit(SmplA_PeaksJunc[x,'IDmerge'],",")),]
@@ -94,8 +102,13 @@ for (x in 1:nrow(SmplA_PeaksJunc)) {
 }
 
 SmplA_Peaks_MAval=SmplA_Peaks[SmplA_Peaks$ID%in%SmplA_PeaksJunc$ID==F,]
-SmplA_Peaks_MAval=merge(SmplA_Peaks_MAval,MAval[,c("ID",'P_value',paste0('normalized_read_density_in_',samplename), paste0('normalized_read_density_in_',background))],by='ID',all.x=T)
+# SmplA_Peaks_MAval=merge(SmplA_Peaks_MAval,MAval[,c("ID",'P_value',paste0('normalized_read_density_in_',samplename), paste0('normalized_read_density_in_',background))],by='ID',all.x=T)
 SmplA_Peaks_MAval=rbind(SmplA_Peaks_MAval,SmplA_PeaksJunc)
+
+  }else{SmplA_Peaks_MAval=SmplA_Peaks;SmplA_Peaks_MAval$IDmerge=NA}
+}else{SmplA_Peaks_MAval=SmplA_Peaks;SmplA_Peaks_MAval$IDmerge=NA}
+
+
 
 
 ############################################################################################################

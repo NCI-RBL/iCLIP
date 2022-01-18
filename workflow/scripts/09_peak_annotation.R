@@ -1,10 +1,11 @@
 #library
-library(tidyr)
-library(GenomicRanges)
-library(stringr)
-library(dplyr)
-library(data.table)
-library(argparse)
+suppressMessages(library(tidyr))
+suppressMessages(library(GenomicRanges))
+suppressMessages(library(stringr))
+suppressMessages(library(dplyr))
+suppressMessages(library(data.table))
+suppressMessages(library(argparse))
+suppressMessages(library(reshape2))
 
 #set args
 parser <- ArgumentParser()
@@ -55,32 +56,50 @@ output_file_error = args$output_file_error
 testing="N"
 if(testing=="Y"){
   rm(list=setdiff(ls(), "params"))
-  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/"
+  # wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/"
+  wd="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/testing/MAnorm_test"
   setwd(wd)
   wd="."
   
+  # peak_type= "ALL"
+  # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/Ro_Clip_1_test1_uniqueCounts.txt"
+  # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/Ro_Clip_1_test1_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
+  # splice_table="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/tmp/KO_connected_peaks.txt"
+  # 
   peak_type= "ALL"
-  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/Ro_Clip_1_test1_uniqueCounts.txt"
-  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/Ro_Clip_1_test1_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
-  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
-  splice_table="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/tmp/KO_connected_peaks.txt"
+  peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/testing/MAnorm_test/03_peaks/03_allreadpeaks/KO_uniqueCounts.txt"
+  peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/testing/MAnorm_test/03_peaks/03_allreadpeaks/KO_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
+  splice_table="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/testing/MAnorm_test/04_annotation/02_peaks/KO_connected_peaks.txt"
   
+  reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
+  
+  # #output
+  # out_dir = paste0(wd,"/09_annotations/test1/02_peaks/")
+  # out_dir_DEP =paste0(wd,"/14_MAnorm/test1/")
+  # 
+  # #project annotation files
+  # anno_dir = paste0(wd,"/09_annotations/test1/01_project/")
+  # ref_path = "/Users/homanpj/Documents/Resources/ref/"
+  # tmp_dir= paste0(wd,"/09_annotations/test1/02_peaks/")
+
   #output
-  out_dir = paste0(wd,"/09_annotations/test1/02_peaks/")
-  out_dir_DEP =paste0(wd,"/14_MAnorm/test1/")
+  out_dir = paste0(wd,"/04_annotation/02_peaks/")
+  out_dir_DEP =paste0(wd,"/05_MAnorm/")
   
   #project annotation files
-  anno_dir = paste0(wd,"/09_annotations/test1/01_project/")
+  anno_dir = paste0(wd,"/04_annotation/01_project/")
   ref_path = "/Users/homanpj/Documents/Resources/ref/"
-  tmp_dir= paste0(wd,"/09_annotations/test1/02_peaks/")
+  tmp_dir= paste0(wd,"/04_annotation/02_peaks/")
+  
   
   #feature information
   join_junction = "TRUE"
   condense_exon="TRUE"
   read_depth = 3
   DEmethod = "MAnorm"
-  ref_species="mm10"
-  sample_id = "Control_Clip_1"
+  ref_species="hg38"
+  sample_id = "KO"
+  # sample_id = "Control_Clip_1"
   output_file_error= paste0(wd,"/09_annotations/test1/test1/02_peaks/")
   
   rscript="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/workflow/scripts/09_peak_annotation_functions.R"
@@ -172,7 +191,7 @@ if(nrow(FtrCount[FtrCount$Counts_fracMM>=read_depth,])==0){
 #########################################################################################
 ############### splice junctions
 ##########################################################################################
-
+# FtrCount=FtrCount[1:2000,]
 
 system.time(
   if (join_junction) {  
@@ -193,23 +212,29 @@ system.time(
     #filter if primary gene is missing
     FtrCount_fracJCount=FtrCount_fracJCount[!is.na(FtrCount_fracJCount$PrimaryGene),]
     
+    
     if (nrow(FtrCount_fracJCount)>0) {
       print("Junctions were identitified")
       JoinJunc=T    
       ############################################################    
-      # FtrCount_out=Join_Junction_original(FtrCount,FtrCount_fracJCount)
+      # FtrCount_outO=Join_Junction_original(FtrCount,FtrCount_fracJCount)
       FtrCount_out=Join_Junction(FtrCount,splice_table)
       FtrCount_out$FtrCount_trimmed=FtrCount_out$FtrCount_trimmed[duplicated(FtrCount_out$FtrCount_trimmed)==F & !FtrCount_out$FtrCount_trimmed$chr%in%c('chrM'),]
       FtrCount_trimmed = FtrCount_out$FtrCount_trimmed
+          print(paste0('AnnotatePeaks: ',nrow(FtrCount_trimmed)))
+          print(paste0('SplicePeaks: ',length(FtrCount_out$Junc_peaks)))
+      
       ############################################################
     } else { 
       print("No junctions were identified")
       JoinJunc=F
       FtrCount_trimmed=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
+      FtrCount_trimmed$IDmerge=NA
     }
   } else{
     JoinJunc=F
     FtrCount_trimmed=FtrCount[FtrCount$Counts_fracMM>=read_depth,]
+    FtrCount_trimmed$IDmerge=NA
   }
 )
 #remove duplicates, remove chrom M
@@ -337,7 +362,7 @@ Peaksdata2_anno = merge(FtrCount_trimmed,
 if (JoinJunc==T) {
   print("Add annotations to Junctions")
   
-  Peaksdata2_annox=Join_Junction_Combine(Peaksdata2_anno,read_depth,FtrCount_out)
+  Peaksdata2_anno=Join_Junction_Combine(Peaksdata2_anno,read_depth,FtrCount_out)
   
 }else{
   

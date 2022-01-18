@@ -78,10 +78,10 @@ Join_Junction_original=function(FtrCount,FtrCount_fracJCount) {
   
   ############### Add Junction ID
   junctionID <- function(Ftr_in, j_in, j_name, p_name){
-    xo=as.data.frame(GenomicRanges::findOverlaps(j_in, 
-                                                 Ftr_in, 
-                                                 type = "any",
-                                                 ignore.strand=F))
+    xo=suppressWarnings(as.data.frame(GenomicRanges::findOverlaps(j_in, 
+                                                                  Ftr_in, 
+                                                                  type = "any",
+                                                                  ignore.strand=F)))
     qh=as.data.frame(j_in[xo$queryHits],row.names = NULL)
     colnames(qh)=paste0(colnames(qh),j_name)
     
@@ -209,15 +209,18 @@ Join_Junction_original=function(FtrCount,FtrCount_fracJCount) {
 
 Join_Junction=function(FtrCount,splice_table) {    
   
+  # spliceGroups=fread(splice_table, sep="\t",stringsAsFactors = F,data.table=F,fill = T,header = F) 
+  ## failed because of some error Expected 20 fields but found 30 even with fill so used read.table (slower but working)
   
-  spliceGroups=fread(splice_table, header=F, sep="\t",stringsAsFactors = F,data.table=F,fill = T)
+  spliceGroups=read.table(splice_table, sep="\t",stringsAsFactors = F,fill = T,header = F) 
+  
   
   rownames(spliceGroups)=paste0('linkedID_',c(1:nrow(spliceGroups)))
   
   spliceGroups_All=spliceGroups
   spliceGroups_All$linkedID=paste0('linkedID_',c(1:nrow(spliceGroups_All)))
   
-  spliceGroups_All=melt(spliceGroups_All,id.vars='linkedID')
+  spliceGroups_All=reshape2::melt(spliceGroups_All,id.vars='linkedID')
   spliceGroups_All=spliceGroups_All[(spliceGroups_All$value%in%"")==F,]
   
   colapse=function(x){
@@ -241,7 +244,7 @@ Join_Junction=function(FtrCount,splice_table) {
   # View(FtrCount_out$PGene_TBL2)
   # FtrCount_out$Junc_peaks
   
-  out=list(FtrCount_trimmed,spliceGroups,spliceGroups_All)
+  out=list(FtrCount_trimmed,spliceGroups,(spliceGroups_All$value))
   names(out)=c('FtrCount_trimmed','PGene_TBL2','Junc_peaks')
   return(out)
 }
@@ -875,7 +878,7 @@ rpmsk_anno <- function(ColumnName,Annotable,peaksTable){
   s=anno.GR
   
   #find annotation overlaps
-  xo=as.data.frame(GenomicRanges::findOverlaps(q,s,type = "any",ignore.strand=F))
+  xo=suppressWarnings(as.data.frame(GenomicRanges::findOverlaps(q,s,type = "any",ignore.strand=F)))
   
   #run query
   qh=as.data.frame(q[xo$queryHits],row.names = NULL)
@@ -1286,7 +1289,7 @@ Assign_CLIP_attributes=function(PeaksdataOut){
 ############### Add annotations to junctions
 ##########################################################################################  
 Join_Junction_Combine=function(Peaksdata2_anno,read_depth,FtrCount_out) { 
-  Junc_peaks=unique(FtrCount_out$Junc_peaks$value)
+  Junc_peaks=unique(FtrCount_out$Junc_peaks)
   PGene_TBL2=FtrCount_out$PGene_TBL2
   
   Peaksdata2_anno_trns_exon=( Peaksdata2_anno[Peaksdata2_anno$ID%in%Junc_peaks,])
@@ -1362,7 +1365,7 @@ Collapse_Exon=function(Peaksdata2_anno){
   dupGeneName=unique(trns[duplicated(trns)])
   
   if(length(dupGeneName)>0){
-    CollapsedOut=as.data.frame(matrix(nrow = 1,ncol=ncol(Peaksdata2_anno_trns_exon)+1));colnames(CollapsedOut)=c(colnames(Peaksdata2_anno_trns_exon),'IDmerge')
+    CollapsedOut=as.data.frame(matrix(nrow = 1,ncol=ncol(Peaksdata2_anno_trns_exon)));colnames(CollapsedOut)=c(colnames(Peaksdata2_anno_trns_exon))
     for (x in 1:length(dupGeneName)) {
       d1=dupGeneName[x]
       d2=Peaksdata2_anno_trns_exon[grep(d1,Peaksdata2_anno_trns_exon$Same_ensembl_gene_id),]
@@ -1390,6 +1393,11 @@ Collapse_Exon=function(Peaksdata2_anno){
         d3$Oppo_ensembl_gene_id=paste0(unique(c(d2$Oppo_ensembl_gene_id,unlist(strsplit(trns,",")))),collapse = ",")
         trns=trns[grep(",",d2$Oppo_gene_name_comb)]
         d3$Oppo_gene_name_comb=paste0(unique(c(d2$Oppo_gene_name_comb,unlist(strsplit(trns,",")))),collapse = ",")
+        
+        d3$Same_ensembl_gene_id=gsub('NA,|,NA',"",d3$Same_ensembl_gene_id)
+        d3$Same_gene_name_comb=gsub('NA,|,NA',"",d3$Same_gene_name_comb)
+        d3$Oppo_ensembl_gene_id=gsub('NA,|,NA',"",d3$Oppo_ensembl_gene_id)
+        d3$Oppo_gene_name_comb=gsub('NA,|,NA',"",d3$Oppo_gene_name_comb)
         
         CollapsedOut=rbind(CollapsedOut,d3)
       }
