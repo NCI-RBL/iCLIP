@@ -71,15 +71,15 @@ python3 $pyscriptpath ${outdir}/${sample_name}_site2peak.lookup.txt ${jcounts} >
 if [[ "$keep_files" == "1" ]];then
     gzip -n -f ${outdir}/${sample_name}_allpeaks.uniq.bed
     gzip -n -f ${outdir}/${sample_name}_sites.uniq.bed
-    gzip -n -f ${outdir}/${sample_name}_sites_w_no_same_strand_peak.bed
     gzip -n -f ${outdir}/${sample_name}_site2peak.lookup.txt
-    gzip -n -f ${outdir}/${sample_name}_site_to_opposite_strand_peak.lookup.txt
-    gzip -n -f ${outdir}/${sample_name}_sites_w_no_peak.bed
+    # gzip -n -f ${outdir}/${sample_name}_sites_w_no_same_strand_peak.bed
+    # gzip -n -f ${outdir}/${sample_name}_site_to_opposite_strand_peak.lookup.txt
+    # gzip -n -f ${outdir}/${sample_name}_sites_w_no_peak.bed
 else
     rm -f ${outdir}/${sample_name}_allpeaks.uniq.bed
     rm -f ${outdir}/${sample_name}_sites.uniq.bed
-    rm -f ${outdir}/${sample_name}_sites_w_no_same_strand_peak.bed
     rm -f ${outdir}/${sample_name}_site2peak.lookup.txt
-    rm -f ${outdir}/${sample_name}_site_to_opposite_strand_peak.lookup.txt
-    rm -f ${outdir}/${sample_name}_sites_w_no_peak.bed
+    # rm -f ${outdir}/${sample_name}_sites_w_no_same_strand_peak.bed
+    # rm -f ${outdir}/${sample_name}_site_to_opposite_strand_peak.lookup.txt
+    # rm -f ${outdir}/${sample_name}_sites_w_no_peak.bed
 fi
