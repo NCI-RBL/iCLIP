@@ -10,6 +10,7 @@ fi
 #module load bedtools
 
 keep_files=1
+delete_unrequired_intermediate_files=1
 
 # get arguments
 jcounts="$1"
@@ -33,23 +34,23 @@ cut -f1 ${jcounts_filtered} | awk -F"_" '{print $2}' > ${outdir}/${sample_name}_
 # get site2 coordinates and save to bed file
 awk '{OFS="\t";print $6,$7,$7,".","."}' ${jcounts_filtered} > ${outdir}/${sample_name}_site2.bed.tmp
 paste ${outdir}/${sample_name}_site2.bed.tmp ${outdir}/${sample_name}_strand | sort -k1,1V -k2,2n | uniq > ${outdir}/${sample_name}_site2.uniq.bed
-# rm -f${outdir}/site2.bed.tmp
+if [[ "$delete_unrequired_intermediate_files" == "1" ]];then rm -f ${outdir}/site2.bed.tmp;fi
 
 # similarly get site1 bed file
 awk '{OFS="\t";print $3,$4,$4,".","."}' ${jcounts_filtered} > ${outdir}/${sample_name}_site1.bed.tmp
 paste ${outdir}/${sample_name}_site1.bed.tmp ${outdir}/${sample_name}_strand | sort -k1,1V -k2,2n | uniq > ${outdir}/${sample_name}_site1.uniq.bed
-# rm -f${outdir}/site1.bed.tmp ${outdir}/strand
+if [[ "$delete_unrequired_intermediate_files" == "1" ]];then rm -f ${outdir}/site1.bed.tmp ${outdir}/strand;fi
 
 # get all peaks
 tail -n+3 $countstxt | cut -f1 | awk -F"_" '{print $1}' | sed "s/:/\t/g" | sed "s/-/\t/g" > ${outdir}/${sample_name}_allpeaks.bed.tmp
 tail -n+3 $countstxt | cut -f1 > ${outdir}/${sample_name}_name
 tail -n+3 $countstxt | cut -f1 | awk -F"_" '{print $2}' > ${outdir}/${sample_name}_strand
 paste ${outdir}/${sample_name}_allpeaks.bed.tmp ${outdir}/${sample_name}_name ${outdir}/${sample_name}_strand | awk '{OFS="\t";print $1,$2,$3,$4,".",$5}' | sort -k1,1V -k2,2n | uniq > ${outdir}/${sample_name}_allpeaks.uniq.bed
-# rm -f${outdir}/allpeaks.bed.tmp ${outdir}/name ${outdir}/strand
+if [[ "$delete_unrequired_intermediate_files" == "1" ]];then rm -f ${outdir}/allpeaks.bed.tmp ${outdir}/name ${outdir}/strand;fi
 
 # intersect site1 and site2 with peaks to get site-to-peak annotations
 cat ${outdir}/${sample_name}_site1.uniq.bed ${outdir}/${sample_name}_site2.uniq.bed | sort -k1,1V -k2,2n | uniq > ${outdir}/${sample_name}_sites.uniq.bed
-# rm -f${outdir}/site1.uniq.bed ${outdir}/site2.uniq.bed
+if [[ "$delete_unrequired_intermediate_files" == "1" ]];then rm -f ${outdir}/site1.uniq.bed ${outdir}/site2.uniq.bed;fi
 bedtools intersect -nonamecheck -s -wa -wb -a ${outdir}/${sample_name}_sites.uniq.bed -b ${outdir}/${sample_name}_allpeaks.uniq.bed | awk '{OFS="\t";print $1"_"$2"_"$6,$(NF-2)}' > ${outdir}/${sample_name}_site2peak.lookup.txt
 
 # if bedtools is followed by grep and the bedtools output is zero lines then grep exitcode is non-zero ... causing the pipeline to fail...commenting these lines for now
@@ -68,12 +69,12 @@ python3 $pyscriptpath ${outdir}/${sample_name}_site2peak.lookup.txt ${jcounts} >
 # if keep_files == 1 then gzip files and keep them
 # else delete
 if [[ "$keep_files" == "1" ]];then
-    gzip -n ${outdir}/${sample_name}_allpeaks.uniq.bed
-    gzip -n ${outdir}/${sample_name}_sites.uniq.bed
-    gzip -n ${outdir}/${sample_name}_sites_w_no_same_strand_peak.bed
-    gzip -n ${outdir}/${sample_name}_site2peak.lookup.txt
-    gzip -n ${outdir}/${sample_name}_site_to_opposite_strand_peak.lookup.txt
-    gzip -n ${outdir}/${sample_name}_sites_w_no_peak.bed
+    gzip -n -f ${outdir}/${sample_name}_allpeaks.uniq.bed
+    gzip -n -f ${outdir}/${sample_name}_sites.uniq.bed
+    gzip -n -f ${outdir}/${sample_name}_sites_w_no_same_strand_peak.bed
+    gzip -n -f ${outdir}/${sample_name}_site2peak.lookup.txt
+    gzip -n -f ${outdir}/${sample_name}_site_to_opposite_strand_peak.lookup.txt
+    gzip -n -f ${outdir}/${sample_name}_sites_w_no_peak.bed
 else
     rm -f ${outdir}/${sample_name}_allpeaks.uniq.bed
     rm -f ${outdir}/${sample_name}_sites.uniq.bed
