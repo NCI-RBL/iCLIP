@@ -79,9 +79,9 @@ Join_Junction_original=function(FtrCount,FtrCount_fracJCount) {
   ############### Add Junction ID
   junctionID <- function(Ftr_in, j_in, j_name, p_name){
     xo=suppressWarnings(as.data.frame(GenomicRanges::findOverlaps(j_in, 
-                                                                  Ftr_in, 
-                                                                  type = "any",
-                                                                  ignore.strand=F)))
+                                                 Ftr_in, 
+                                                 type = "any",
+                                                 ignore.strand=F)))
     qh=as.data.frame(j_in[xo$queryHits],row.names = NULL)
     colnames(qh)=paste0(colnames(qh),j_name)
     
@@ -207,14 +207,13 @@ Join_Junction_original=function(FtrCount,FtrCount_fracJCount) {
   return(out)
 }          
 
-Join_Junction=function(FtrCount,splice_table) {    
+Join_Junction_WrongRead=function(FtrCount,splice_table) {    
   
   # spliceGroups=fread(splice_table, sep="\t",stringsAsFactors = F,data.table=F,fill = T,header = F) 
   ## failed because of some error Expected 20 fields but found 30 even with fill so used read.table (slower but working)
   
   spliceGroups=read.table(splice_table, sep="\t",stringsAsFactors = F,fill = T,header = F) 
-  
-  
+
   rownames(spliceGroups)=paste0('linkedID_',c(1:nrow(spliceGroups)))
   
   spliceGroups_All=spliceGroups
@@ -224,22 +223,131 @@ Join_Junction=function(FtrCount,splice_table) {
   spliceGroups_All=spliceGroups_All[(spliceGroups_All$value%in%"")==F,]
   
   colapse=function(x){
-    
+    # y=  x[x%in%""==F]
+    # print(length(y))
     x=  x[x%in%""==F]%>%sort()%>%paste(.,collapse = ',')
+    
     return(x)
   }
   spliceGroups=apply(spliceGroups,1,colapse)%>%as.data.frame()
   colnames(spliceGroups)='JoinID'
+  spliceGroups=spliceGroups%>%filter(grepl(",",spliceGroups$JoinID))
+
   spliceGroups$linkedID=rownames(spliceGroups)
   
-  #Trim peaks without Splicing
+  # trim splice groups with count less then read_depth
+  ###################################################
+
+  SpliceGroupsCount=function(i,FtrCount,read_depth){
+    Trnsc=(i)%>%as.data.frame()
+    # print(View(Trnsc));remove(Trnsc);xxxx
+    
+    rownames(Trnsc)=NULL
+    TrnscUL=unlist(unique(str_split(Trnsc$JoinID,pattern = ",")))
+    d2=FtrCount[FtrCount$ID%in%TrnscUL,]
+    Trnsc[,'Counts_fracMM']=sum(as.numeric(d2[,'Counts_fracMM']))
+    
+    return(((Trnsc)))
+  }
+  # system.time({
+      spliceGroups=split(spliceGroups, row.names(spliceGroups))%>%mclapply(SpliceGroupsCount ,FtrCount=FtrCount,read_depth=read_depth,mc.cores=8)
+        spliceGroups= do.call(rbind, spliceGroups)%>%as.data.frame()
+    # })
+
+
+  spliceGroups=spliceGroups[spliceGroups$Counts_fracMM>=read_depth,]
+  spliceGroups_All=spliceGroups_All[spliceGroups_All$linkedID%in%spliceGroups$linkedID,]
+  
+    ##Trim peaks without Splicing
+  #######################################
+  
+  
   FtrCount_trimmed=rbind(FtrCount[FtrCount$ID%in%spliceGroups_All$value==F & FtrCount$Counts_fracMM>=read_depth,],## peaks not spliced and count > readDepth cut
                          FtrCount[FtrCount$ID%in%spliceGroups_All$value,]) ## all peaks with spliced reads 
   FtrCount_trimmed$Junc_Peaks=FtrCount_trimmed$ID%in%spliceGroups_All$value
   
   spliceGroups=spliceGroups[rownames(spliceGroups)%in%unique(spliceGroups_All[spliceGroups_All$value%in%FtrCount_trimmed$ID,'linkedID']),]
   
+  
   rownames(spliceGroups)=gsub(",","|",spliceGroups$JoinID)
+  
+
+  # View(FtrCount_out$FtrCount_trimmed )
+  # View(FtrCount_out$PGene_TBL2)
+  # FtrCount_out$Junc_peaks
+
+  out=list(FtrCount_trimmed,spliceGroups,(spliceGroups_All$value))
+  names(out)=c('FtrCount_trimmed','PGene_TBL2','Junc_peaks')
+  return(out)
+}
+
+Join_Junction=function(FtrCount,splice_table) {    
+ 
+  splice_table3=gsub('OneDrive - National Institutes of Health','OneDrive\\\\ -\\\\ National\\\\ Institutes\\\\ of\\\\ Health',splice_table)
+  
+  cat('
+awk ',"'",'{gsub("\\t",",")}1',"' ",splice_table3,' > ',gsub('.txt',"",splice_table3),'2.txt
+',sep="",                 
+      file = paste0(gsub('.txt',"",splice_table),"_rename.sh"),
+      append = F)
+  
+  system(paste0('bash ',gsub('.txt',"",splice_table3),"_rename.sh"))
+  
+  
+  # spliceGroups=read.table(paste0(gsub('.txt',"",splice_table),'2.txt'), sep="\t",stringsAsFactors = F,fill = T,header = F) 
+  spliceGroups=fread(paste0(gsub('.txt',"",splice_table),'2.txt'), sep="\t",stringsAsFactors = F,data.table=F,fill = T,header = F)
+  ##########    
+  spliceGroups=spliceGroups%>%filter(grepl(",",spliceGroups$V1))
+  
+  rownames(spliceGroups)=paste0('linkedID_',c(1:nrow(spliceGroups)))
+  
+  
+  
+  spliceGroups_All=apply(spliceGroups,1,str_split,pattern=",")
+  spliceGroups_All=reshape2::melt(spliceGroups_All)
+  spliceGroups_All=dplyr::rename(spliceGroups_All,'linkedID'=L1)
+  
+  colnames(spliceGroups)='JoinID'
+  spliceGroups$linkedID=rownames(spliceGroups)
+
+  
+  # trim splice groups with count less then read_depth
+  ###################################################
+  
+  SpliceGroupsCount=function(i,FtrCount,read_depth){
+    Trnsc=(i)%>%as.data.frame()
+    # print(View(Trnsc));remove(Trnsc);xxxx
+    
+    rownames(Trnsc)=NULL
+    TrnscUL=unlist(unique(str_split(Trnsc$JoinID,pattern = ",")))
+    d2=FtrCount[FtrCount$ID%in%TrnscUL,]
+    Trnsc[,'Counts_fracMM']=sum(as.numeric(d2[,'Counts_fracMM']))
+    
+    return(((Trnsc)))
+  }
+  # system.time({
+  spliceGroups=split(spliceGroups, row.names(spliceGroups))%>%mclapply(SpliceGroupsCount ,FtrCount=FtrCount,read_depth=read_depth,mc.cores=8)
+  spliceGroups= do.call(rbind, spliceGroups)%>%as.data.frame()
+  # })
+  
+  
+  spliceGroups=spliceGroups[spliceGroups$Counts_fracMM>=read_depth,]
+  spliceGroups_All=spliceGroups_All[spliceGroups_All$linkedID%in%spliceGroups$linkedID,]
+  
+  ##Trim peaks without Splicing
+  #######################################
+  
+  
+  FtrCount_trimmed=rbind(FtrCount[FtrCount$ID%in%spliceGroups_All$value==F & FtrCount$Counts_fracMM>=read_depth,],## peaks not spliced and count > readDepth cut
+                         FtrCount[FtrCount$ID%in%spliceGroups_All$value,]) ## all peaks with spliced reads 
+  FtrCount_trimmed$Junc_Peaks=FtrCount_trimmed$ID%in%spliceGroups_All$value
+  
+  spliceGroups=spliceGroups[rownames(spliceGroups)%in%unique(spliceGroups_All[spliceGroups_All$value%in%FtrCount_trimmed$ID,'linkedID']),]
+  
+  
+  rownames(spliceGroups)=gsub(",","|",spliceGroups$JoinID)
+  
+  
   # View(FtrCount_out$FtrCount_trimmed )
   # View(FtrCount_out$PGene_TBL2)
   # FtrCount_out$Junc_peaks

@@ -6,6 +6,7 @@ suppressMessages(library(dplyr))
 suppressMessages(library(data.table))
 suppressMessages(library(argparse))
 suppressMessages(library(reshape2))
+suppressMessages(library(parallel))
 
 #set args
 parser <- ArgumentParser()
@@ -162,7 +163,7 @@ file_id = paste0(sample_id,"_")
 ############### unique, all read count input - then merge
 ##########################################################################################
 
-FtrCount=merge(subset(FtrCount_input(peak_unique),select=-c(Geneid)),
+FtrCount=merge(base::subset(FtrCount_input(peak_unique),select=-c(Geneid)),
                FtrCount_input(peak_all)[,c('ID','Counts')],
                by='ID',suffixes=c("_Unique","_fracMM"),
                all.x=T)
