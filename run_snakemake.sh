@@ -268,7 +268,7 @@ cd \$SLURM_SUBMIT_DIR
     --printshellcmds \
     --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yaml \
     --keep-going \
-    --restart-times 2 \
+    --restart-times 1 \
     -j 500 \
     --rerun-incomplete \
     --stats ${output_dir}/log/${log_time}/snakemake.stats \
@@ -405,6 +405,8 @@ else
   snakemake -s ${output_dir}/config/Snakefile \
   --configfile ${output_dir}/config/snakemake_config.yaml \
   --printshellcmds \
+  --verbose \
+  --rerun-incomplete \
   --cluster-config ${output_dir}/config/cluster_config.yaml \
   -npr | tee ${output_dir}/dryrun.${log_time}.log
 fi
