@@ -695,6 +695,7 @@ if (multiplex_flag == 'Y'):
         shell:
             """
             set -exo pipefail
+            export ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
             {params.s_exec} {params.doc} iCount demultiplex \\
                 --threads {params.threads} \\
                 --minimum_length {params.ml} \\
@@ -766,7 +767,8 @@ rule remove_adaptors:
     shell:
         """
         set -exo pipefail
-        if [ -d "/tmp/iCount/" ]; then rm -r "/tmp/iCount/"; fi
+        #if [ -d "/tmp/iCount/" ]; then rm -r "/tmp/iCount/"; fi
+	export ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
         
         {params.cmd}
 
