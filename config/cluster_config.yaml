@@ -50,18 +50,18 @@ novoalign:
 cleanup_conversion:
     threads: 8
     gres: lscratch:256
-    mem: 120g
+    mem: 200g
     time: 01-00:00:00
 
 merge_unmapped_splits:
     threads: 8
     time: 01-00:00:00
-    mem: 120g
+    mem: 200g
 
 create_bam_mm_unique:
     threads: 8
     gres: lscratch:256
-    mem: 120g
+    mem: 200g
     time: 01-00:00:00
 
 merge_splits_unique_mm:
@@ -72,12 +72,12 @@ merge_splits_unique_mm:
 merge_mm_and_unique:
     threads: 8
     gres: lscratch:256
-    mem: 120g
+    mem: 200g
     time: 01-00:00:00
 
 qc_alignment:
     threads: 4
-    mem: 120g
+    mem: 200g
 
 qc_troubleshoot:
     threads: 4
@@ -85,7 +85,7 @@ qc_troubleshoot:
 
 dedup:
     threads: 8
-    mem: 120g
+    mem: 200g
     gres: lscratch:256
     time: 01-00:00:00
 
@@ -158,9 +158,9 @@ mapq_recalc:
 
 mapq_stats:
     threads: 8
-    mem: 120g
+    mem: 200g
 
 feature_counts:
     threads: 8
-    mem: 120g
+    mem: 200g
     
