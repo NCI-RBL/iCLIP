@@ -259,6 +259,7 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
 #SBATCH --output=${output_dir}/log/${log_time}/00_%j_%x.out \
 #SBATCH --mail-type=BEGIN,END,FAIL
 module load snakemake
+module load graphviz
 cd \$SLURM_SUBMIT_DIR
     snakemake \
     --use-envmodules \
