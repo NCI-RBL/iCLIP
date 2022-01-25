@@ -87,7 +87,7 @@ dedup:
     threads: 8
     mem: 200g
     gres: lscratch:256
-    time: 01-00:00:00
+    time: 02-00:00:00
 
 create_beds_safs:
     mem: 200g
