@@ -649,8 +649,7 @@ if (multiplex_flag == 'Y'):
             """
             set -exo pipefail
             gunzip -c  {input.fq} \\
-                | sed -n '/@/{{n;p}}' \\
-                | awk '{{print substr($0, {params.start_pos}, {params.bc_len});}}' \\
+                | awk 'NR%4==2 {{print substr($0, {params.start_pos}, {params.bc_len});}}' \\
                 | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=/lscratch/${{SLURM_JOB_ID}} -n \\
                 | uniq -c > {output.counts};
             
