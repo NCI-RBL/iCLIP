@@ -693,7 +693,7 @@ if (multiplex_flag == 'Y'):
             cmd = demux_cmd,
             ml = filter_length,
             mm = mismatch,
-            threads = getthreads('demultiplex')
+        threads: getthreads('demultiplex')
         envmodules:
             config['singularity'],
         output:
@@ -703,7 +703,7 @@ if (multiplex_flag == 'Y'):
             set -exo pipefail
             export ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
             {params.s_exec} {params.doc} iCount demultiplex \\
-                --threads {params.threads} \\
+                --threads {threads} \\
                 --minimum_length {params.ml} \\
                 --mismatches {params.mm} \\
                 {params.cmd}
@@ -763,6 +763,7 @@ rule remove_adaptors:
     params:
         rname='02_remove_adaptors',
         cmd = adapt_cmd,
+    threads: getthreads("remove_adaptors")
     envmodules:
         config['singularity'],
     output:
@@ -855,7 +856,7 @@ rule qc_screen_validator:
         base_rrna = join(out_dir, 'qc', '02_qc_screen_rrna'),
         conf_rrna = join(source_dir,'config','fqscreen_rrna_config.conf'),
         base_val = join(out_dir,'qc'),
-        threads = getthreads("qc_screen_validator")
+    threads: getthreads("qc_screen_validator")
     envmodules:
         config['bowtie2'],
         config['perl'],
@@ -885,14 +886,14 @@ rule qc_screen_validator:
         # Run FastQ Screen
         fastq_screen --conf {params.conf_species} \\
             --outdir {params.base_species} \\
-            --threads {params.threads} \\
+            --threads {threads} \\
             --subset 1000000 \\
             --aligner bowtie2 \\
             --force \\
             ${{tmpdir}}/{params.tmp};
         fastq_screen --conf {params.conf_rrna} \\
             --outdir {params.base_rrna} \\
-            --threads {params.threads} \\
+            --threads {threads} \\
             --subset 1000000 \\
             --aligner bowtie2 \\
             --force \\
@@ -923,6 +924,7 @@ rule split_files:
         rname='05_split_files',
         base = join(out_dir,'01_preprocess','01_splits','{sp}.split.'),
         nchunks = get_filechunk_size
+    threads: getthreads("split_files")
     output:
         splits = temp(expand(join(out_dir,'01_preprocess','01_splits','{{sp}}.split.{n}.fastq.gz'), n=chunks_list))
         # splits = expand(join(out_dir,'01_preprocess','01_splits','{{sp}}.split.{n}.fastq.gz'), n=chunks_list)
@@ -1101,6 +1103,7 @@ if (splice_aware == "Y"):
             config['samtools']
         output:
             final = join(out_dir,'02_bam','01_unmapped','{sp}.{al_sub}.complete.bam'),
+        threads: getthreads("merge_unmapped_splits")
         shell:
             """
             set -exo pipefail
@@ -1243,7 +1246,7 @@ rule merge_splits_unique_mm:
         mm = expand(join(out_dir,'01_preprocess','05_mm','{{sp}}.{{al}}.split.{n}.mm.si.bam'), n=chunks_list),
     params:
         rname='08_merge_splits_unique_mm',
-        threads = getthreads('merge_splits_unique_mm'),
+    threads: getthreads('merge_splits_unique_mm'),
     envmodules:
         config['samtools']
     output:
@@ -1254,8 +1257,8 @@ rule merge_splits_unique_mm:
     shell:
         """
         set -exo pipefail
-        samtools merge --threads {params.threads} -f {output.unique} {input.unique};
-        samtools merge --threads {params.threads} -f {output.mm} {input.mm}
+        samtools merge --threads {threads} -f {output.unique} {input.unique};
+        samtools merge --threads {threads} -f {output.mm} {input.mm}
         """
 
 rule merge_mm_and_unique:
@@ -1727,7 +1730,7 @@ rule feature_counts:
         saf_unique = rules.create_beds_safs.output.saf_unique
     params:
         rname='14_feature_counts',
-        threads = getthreads("feature_counts")
+    threads: getthreads("feature_counts")
     envmodules:
         config['subread']
     output:
@@ -1750,7 +1753,7 @@ rule feature_counts:
             --fraction \\
             --minOverlap 1 \\
             -s 1 \\
-            -T {params.threads} \\
+            -T {threads} \\
             -o {output.all_unique} \\
             {input.bam};
         featureCounts -F SAF \\
@@ -1761,7 +1764,7 @@ rule feature_counts:
             --fraction \\
             --minOverlap 1 \\
             -s 1 \\
-            -T {params.threads} \\
+            -T {threads} \\
             -o {output.all_mm} \\
             {input.bam};
 
@@ -1773,7 +1776,7 @@ rule feature_counts:
             --fraction \\
             --minOverlap 1 \\
             -s 1 \\
-            -T {params.threads} \\
+            -T {threads} \\
             -o {output.unique_unique} \\
             {input.bam};
         featureCounts -F SAF \\
@@ -1784,7 +1787,7 @@ rule feature_counts:
             --fraction \\
             --minOverlap 1 \\
             -s 1 \\
-            -T {params.threads} \\
+            -T {threads} \\
             -o {output.unique_mm} \\
             {input.bam}
         """
@@ -1940,6 +1943,7 @@ else:
             i_path = intron_path,
             r_path = rmsk_path,
             error = join(out_dir,'04_annotation','read_depth_error.txt')
+        threads: getthreads("peak_annotations")
         envmodules:
             config['R'],
             config['bedtools'],
@@ -1960,7 +1964,7 @@ else:
             #bash script to run bedtools and get site2peak lookuptable
 
             bash {params.bashscript} {input.all_jcounts} {input.all} {params.sp}_{params.p_type} {params.out} {params.pyscript}
-            
+
             # above bash script will create {output.splice_table}
                 
             Rscript {params.script} \\
@@ -2024,6 +2028,7 @@ if (DE_method=="MANORM"):
             bed_all = rules.create_beds_safs.output.bed_all
         params:
             rname = "18a_MANORM_beds"
+        threads: getthreads("MANORM_beds")
         output:
             p_bed = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_P.bed')),
             n_bed = temp(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_N.bed')),
@@ -2057,6 +2062,7 @@ if (DE_method=="MANORM"):
             base = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}/'),
         envmodules:
             config['manorm']
+        threads: getthreads("MANORM_analysis")
         output:
             mavals = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_' + peak_id + 'readPeaks_MAvalues.xls'),
         shell:
@@ -2104,10 +2110,10 @@ if (DE_method=="MANORM"):
             smplSAF= join(out_dir,'03_peaks','02_SAF','{gid_1}_' + peak_id + 'readPeaks.SAF'),
             bkbam = join(out_dir,'02_bam','03_dedup','{gid_2}.dedup.si.bam'),
             bkSAF= join(out_dir,'03_peaks','02_SAF','{gid_2}_' + peak_id + 'readPeaks.SAF'),
-            threads = getthreads("MANORM_post_processing")
         envmodules:
             config['R'],
             config['subread']
+        threads: getthreads("MANORM_post_processing")
         output:
             bkUniqcountsmplPk= join(out_dir,'05_demethod','02_analysis', '{group_id}','counts','{gid_2}_Unique_{gid_1}_' + peak_id + 'readPeaks.txt'),
             bkMMcountsmplPk= join(out_dir,'05_demethod','02_analysis', '{group_id}','counts','{gid_2}_FracMMCounts_{gid_1}_' + peak_id + 'readPeaks.txt'),
@@ -2126,7 +2132,7 @@ if (DE_method=="MANORM"):
                 --fraction \\
                 --minOverlap 1 \\
                 -s 1 \\
-                -T {params.threads} \\
+                -T {threads} \\
                 -o {output.bkUniqcountsmplPk} \\
                 {params.bkbam}
             
@@ -2137,7 +2143,7 @@ if (DE_method=="MANORM"):
                 --fraction \\
                 --minOverlap 1 \\
                 -s 1 \\
-                -T {params.threads} \\
+                -T {threads} \\
                 -o {output.bkMMcountsmplPk} \\
                 {params.bkbam}
             
@@ -2161,7 +2167,7 @@ if (DE_method=="MANORM"):
                 --fraction \\
                 --minOverlap 1 \\
                 -s 1 \\
-                -T {params.threads} \\
+                -T {threads} \\
                 -o {output.smplUniqcountbkPk} \\
                 {params.smplbam}
             
@@ -2172,7 +2178,7 @@ if (DE_method=="MANORM"):
                 --fraction \\
                 --minOverlap 1 \\
                 -s 1 \\
-                -T {params.threads} \\
+                -T {threads} \\
                 -o {output.smplMMcountbkPk} \\
                 {params.smplbam}
             
@@ -2202,6 +2208,7 @@ if (DE_method=="MANORM"):
             pval = pval,
             fc = fc,
             rrna = include_rRNA
+        threads: getthreads("MANORM_RMD")
         envmodules:
             config['R']
         output:
