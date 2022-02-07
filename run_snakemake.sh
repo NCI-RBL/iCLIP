@@ -409,6 +409,11 @@ else
   --verbose \
   --rerun-incomplete \
   --cluster-config ${output_dir}/config/cluster_config.yaml \
+  --cluster \
+    "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
+    -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
+    --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} --error=${output_dir}/log/${log_time}/{params.rname}{cluster.error}" \
+  --jobs 100 \
   -npr | tee ${output_dir}/dryrun.${log_time}.log
 fi
 echo
