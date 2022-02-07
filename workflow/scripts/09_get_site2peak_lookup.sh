@@ -19,6 +19,9 @@ sample_name="$3"
 outdir="$4"
 pyscriptpath="$5"
 
+# remove trailing slash if it exists
+[[ "${outdir}" == */ ]] && outdir="${outdir: : -1}"
+
 #jcounts="/data/RBL_NCI/Wolin/11-30-21_7849iCLIP_010822/03_peaks/03_allreadpeaks/KO_allFracMMCounts.txt.jcounts"
 #countstxt="/data/RBL_NCI/Wolin/11-30-21_7849iCLIP_010822/03_peaks/03_allreadpeaks/KO_allFracMMCounts.txt"
 #outdir="/data/RBL_NCI/Wolin/11-30-21_7849iCLIP_010822/03_peaks/03_allreadpeaks"
