@@ -1,5 +1,3 @@
-
-
 ##########################################################################################
 ############### unique, all read count input - then merge
 ##########################################################################################
@@ -79,9 +77,9 @@ Join_Junction_original=function(FtrCount,FtrCount_fracJCount) {
   ############### Add Junction ID
   junctionID <- function(Ftr_in, j_in, j_name, p_name){
     xo=suppressWarnings(as.data.frame(GenomicRanges::findOverlaps(j_in, 
-                                                 Ftr_in, 
-                                                 type = "any",
-                                                 ignore.strand=F)))
+                                                                  Ftr_in, 
+                                                                  type = "any",
+                                                                  ignore.strand=F)))
     qh=as.data.frame(j_in[xo$queryHits],row.names = NULL)
     colnames(qh)=paste0(colnames(qh),j_name)
     
@@ -213,7 +211,7 @@ Join_Junction_WrongRead=function(FtrCount,splice_table) {
   ## failed because of some error Expected 20 fields but found 30 even with fill so used read.table (slower but working)
   
   spliceGroups=read.table(splice_table, sep="\t",stringsAsFactors = F,fill = T,header = F) 
-
+  
   rownames(spliceGroups)=paste0('linkedID_',c(1:nrow(spliceGroups)))
   
   spliceGroups_All=spliceGroups
@@ -232,12 +230,12 @@ Join_Junction_WrongRead=function(FtrCount,splice_table) {
   spliceGroups=apply(spliceGroups,1,colapse)%>%as.data.frame()
   colnames(spliceGroups)='JoinID'
   spliceGroups=spliceGroups%>%filter(grepl(",",spliceGroups$JoinID))
-
+  
   spliceGroups$linkedID=rownames(spliceGroups)
   
   # trim splice groups with count less then read_depth
   ###################################################
-
+  
   SpliceGroupsCount=function(i,FtrCount,read_depth){
     Trnsc=(i)%>%as.data.frame()
     # print(View(Trnsc));remove(Trnsc);xxxx
@@ -250,15 +248,15 @@ Join_Junction_WrongRead=function(FtrCount,splice_table) {
     return(((Trnsc)))
   }
   # system.time({
-      spliceGroups=split(spliceGroups, row.names(spliceGroups))%>%mclapply(SpliceGroupsCount ,FtrCount=FtrCount,read_depth=read_depth,mc.cores=8)
-        spliceGroups= do.call(rbind, spliceGroups)%>%as.data.frame()
-    # })
-
-
+  spliceGroups=split(spliceGroups, row.names(spliceGroups))%>%mclapply(SpliceGroupsCount ,FtrCount=FtrCount,read_depth=read_depth,mc.cores=8)
+  spliceGroups= do.call(rbind, spliceGroups)%>%as.data.frame()
+  # })
+  
+  
   spliceGroups=spliceGroups[spliceGroups$Counts_fracMM>=read_depth,]
   spliceGroups_All=spliceGroups_All[spliceGroups_All$linkedID%in%spliceGroups$linkedID,]
   
-    ##Trim peaks without Splicing
+  ##Trim peaks without Splicing
   #######################################
   
   
@@ -271,18 +269,18 @@ Join_Junction_WrongRead=function(FtrCount,splice_table) {
   
   rownames(spliceGroups)=gsub(",","|",spliceGroups$JoinID)
   
-
+  
   # View(FtrCount_out$FtrCount_trimmed )
   # View(FtrCount_out$PGene_TBL2)
   # FtrCount_out$Junc_peaks
-
+  
   out=list(FtrCount_trimmed,spliceGroups,(spliceGroups_All$value))
   names(out)=c('FtrCount_trimmed','PGene_TBL2','Junc_peaks')
   return(out)
 }
 
 Join_Junction=function(FtrCount,splice_table) {    
- 
+  
   splice_table3=gsub('OneDrive - National Institutes of Health','OneDrive\\\\ -\\\\ National\\\\ Institutes\\\\ of\\\\ Health',splice_table)
   
   cat('
@@ -309,7 +307,7 @@ awk ',"'",'{gsub("\\t",",")}1',"' ",splice_table3,' > ',gsub('.txt',"",splice_ta
   
   colnames(spliceGroups)='JoinID'
   spliceGroups$linkedID=rownames(spliceGroups)
-
+  
   
   # trim splice groups with count less then read_depth
   ###################################################
@@ -368,16 +366,16 @@ DEP_input=function(FtrCount_trimmed){
   
   #write peaks bed file
   write.table(manorm_bed,
-              file=paste0(out_dir_DEP, sample_id, "_", "Peaksfor",DEmethod,".bed"), 
+              file=paste0(out_dir_DEP, sample_id, "_", peak_type ,"readPeaks_for",DEmethod,".bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
   #write peaks + bed file
   write.table(manorm_bed[manorm_bed$strand%in%"+",],
-              file=paste0(out_dir_DEP, sample_id, "_", "Peaksfor",DEmethod,"_P.bed"), 
+              file=paste0(out_dir_DEP, sample_id, "_", peak_type ,"readPeaks_for",DEmethod,"_P.bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
   
   #write peaks - bed file
   write.table(manorm_bed[manorm_bed$strand%in%"-",],
-              file=paste0(out_dir_DEP, sample_id, "_", "Peaksfor",DEmethod,"_N.bed"), 
+              file=paste0(out_dir_DEP, sample_id, "_", peak_type ,"readPeaks_for",DEmethod,"_N.bed"), 
               sep = "\t", row.names = FALSE, col.names = F, append = F, quote= FALSE,na = "")
 }
 
@@ -497,11 +495,13 @@ bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
   system(paste0('bedtools intersect -a ',
                 tmp_dir, file_prefix,'peakstable.bed -b ',
                 tmp_dir, file_prefix,'annotable.bed -wao -s > ',
-                tmp_dir, file_prefix,'peaks_OL.txt'))
+                tmp_dir, file_prefix,'peaks_OLab.txt'))
   
   #read in merged file
-  ab_OL = read.table(paste0(tmp_dir,file_prefix,"peaks_OL.txt"), 
+  ab_OL = read.table(paste0(tmp_dir,file_prefix,"peaks_OLab.txt"), 
                      header=F, sep="\t",stringsAsFactors = F)
+  
+  file.remove(paste0(tmp_dir,file_prefix,"peaks_OLab.txt"))
   
   colnames(ab_OL) = c(paste0(colnames(peaksTable_output)),
                       paste0(colnames(anno_output)),'ntOL')
@@ -834,10 +834,12 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
   write.table(p,file=paste0(tmp_dir,file_id,"peakstable.bed"), sep = "\t", 
               row.names = FALSE, col.names = F, append = F, quote= FALSE)
   system(paste0('bedtools intersect -a ', tmp_dir, file_id, 'peakstable.bed -b ',
-                out_dir, file_id, 'annotable.bed -wao -s  >', tmp_dir, file_id, 'peaks_OL.txt'))
+                out_dir, file_id, 'annotable.bed -wao -s  >', tmp_dir, file_id, 'peaks_OLexon.txt'))
   
-  exoninof=fread(paste0(tmp_dir,file_id,"peaks_OL.txt"), 
+  exoninof=fread(paste0(tmp_dir,file_id,"peaks_OLexon.txt"), 
                  header=F, sep="\t",stringsAsFactors = F,data.table=F)
+  
+  file.remove(paste0(tmp_dir,file_id,"peaks_OLexon.txt"))
   
   #set up df
   colnames(exoninof)=c(paste0(colnames(p)),paste0(colnames(anno_IntExn)),'ntOL')
@@ -1535,7 +1537,7 @@ correct_lnLc=function(Peaksdata2_anno){
     Peaksdata2_anno[,x]=gsub("linLcRNA","lincRNA",Peaksdata2_anno[,x])
   }
   return(Peaksdata2_anno)
-}  
+}   
 
 
 

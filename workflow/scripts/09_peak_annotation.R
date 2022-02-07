@@ -7,7 +7,7 @@ suppressMessages(library(data.table))
 suppressMessages(library(argparse))
 suppressMessages(library(reshape2))
 suppressMessages(library(parallel))
-
+ 
 #set args
 parser <- ArgumentParser()
 parser$add_argument("-r","--rscript", dest="rscript", required=TRUE, help="rscript for functions")
@@ -15,7 +15,7 @@ parser$add_argument("-pt","--peak_type", dest="peak_type", required=TRUE, help="
 parser$add_argument("-pu","--peak_unique", dest="peak_unique", required=TRUE, help="path for unique peaks")
 parser$add_argument("-pa","--peak_all", dest="peak_all", required=TRUE, help="path all peaks")
 parser$add_argument("-jj","--join_junction", dest="join_junction", required=TRUE, help="include junctions (T or F)")
-parser$add_argument("-ce","--condense_exon", dest="condense_exon", required=TRUE, help="condense exons (T or F)")
+# parser$add_argument("-ce","--condense_exon", dest="condense_exon", required=TRUE, help="condense exons (T or F)")
 parser$add_argument("-rdepth","--read_depth", dest="read_depth", required=TRUE, help="read depth filtering parameter")
 parser$add_argument("-de","--demethod", dest="demethod", required=TRUE, help="DE method (MAnorm, DiffBind or none)")
 parser$add_argument("-s","--sample_id", dest="sample_id", required=TRUE, help="sample id")
@@ -37,7 +37,7 @@ peak_type = args$peak_type
 peak_unique = args$peak_unique
 peak_all = args$peak_all
 join_junction = as.logical(args$join_junction)
-condense_exon = as.logical(args$condense_exon)
+# condense_exon = as.logical(args$condense_exon)
 read_depth = as.numeric(args$read_depth)
 DEmethod = args$demethod
 sample_id = args$sample_id
@@ -48,7 +48,7 @@ reftable_path = args$reftable_path
 gencode_path = args$gencode_path
 intron_path = args$intron_path
 rmsk_path = args$rmsk_path
-tmp_dir = args$out_dir
+tmp_dir = args$tmp_dir
 out_dir = args$out_dir
 out_dir_DEP = args$out_dir_DEP
 output_file_error = args$output_file_error
@@ -82,7 +82,7 @@ if(testing=="Y"){
   # anno_dir = paste0(wd,"/09_annotations/test1/01_project/")
   # ref_path = "/Users/homanpj/Documents/Resources/ref/"
   # tmp_dir= paste0(wd,"/09_annotations/test1/02_peaks/")
-
+  
   #output
   out_dir = paste0(wd,"/04_annotation/02_peaks/")
   out_dir_DEP =paste0(wd,"/05_MAnorm/")
@@ -95,7 +95,7 @@ if(testing=="Y"){
   
   #feature information
   join_junction = "TRUE"
-  condense_exon="TRUE"
+  # condense_exon="TRUE"
   read_depth = 3
   DEmethod = "MAnorm"
   ref_species="hg38"
@@ -125,7 +125,7 @@ if(testing=="Y"){
   peak_unique = paste0(rbl_base,"Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/KO_fCLIP_uniqueCounts.txt")
   peak_all = paste0(rbl_base,"Wolin/6-22-21-HaCaT_fCLIP/12_counts/allreadpeaks/KO_fCLIP_allFracMMCounts.txt")
   join_junction = "TRUE"
-  condense_exon="TRUE"
+  # condense_exon="TRUE"
   read_depth = 5
   DEmethod = "MANORM"
   sample_id = "KO-NOPFA"
@@ -222,8 +222,8 @@ system.time(
       FtrCount_out=Join_Junction(FtrCount,splice_table)
       FtrCount_out$FtrCount_trimmed=FtrCount_out$FtrCount_trimmed[duplicated(FtrCount_out$FtrCount_trimmed)==F & !FtrCount_out$FtrCount_trimmed$chr%in%c('chrM'),]
       FtrCount_trimmed = FtrCount_out$FtrCount_trimmed
-          print(paste0('AnnotatePeaks: ',nrow(FtrCount_trimmed)))
-          print(paste0('SplicePeaks: ',length(FtrCount_out$Junc_peaks)))
+      print(paste0('AnnotatePeaks: ',nrow(FtrCount_trimmed)))
+      print(paste0('SplicePeaks: ',length(FtrCount_out$Junc_peaks)))
       
       ############################################################
     } else { 
@@ -367,12 +367,13 @@ if (JoinJunc==T) {
   
 }else{
   
-  #### collapse exon
-  if (condense_exon==T) {
-    print("Collapse exon")
-    
-    Peaksdata2_anno=Collapse_Exon(Peaksdata2_anno)
-  }  
+  Peaksdata2_anno=Peaksdata2_anno
+  # #### collapse exon
+  # if (condense_exon==T) {
+  #   print("Collapse exon")
+  #   
+  #   Peaksdata2_anno=Collapse_Exon(Peaksdata2_anno)
+  # }  
 } 
 
 ##########################################################################################
@@ -384,4 +385,4 @@ Peaksdata2_anno=correct_lnLc(Peaksdata2_anno)
 ### Write Output
 ##########################################################################################
 #write out for junction annotation 
-write.table(Peaksdata2_anno,paste0(out_dir,file_id,'peakannotation_complete.txt'),sep = "\t")
+write.table(Peaksdata2_anno,paste0(out_dir,file_id,'_',peak_type,'readPeaks_annotation_complete.txt'),sep = "\t")

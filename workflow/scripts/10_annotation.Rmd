@@ -54,7 +54,6 @@ library(ggpubr)
 library(circlize)
 library('regioneR')
 library(scales)
-
 blank_theme <- theme_minimal()+
   theme(
   axis.title.x = element_blank(),
@@ -67,7 +66,6 @@ blank_theme <- theme_minimal()+
 ```
 
 ```{r, eval=F, include=F ,echo=F,warning=F,message=FALSE}
-
 rmarkdown::render('/data/RBL_NCI/Wolin/Phil/6-22-21-HaCaT_fCLIP/pipeline/10_annotation.Rmd',
                         encoding=encoding,
                         output_file='/data/RBL_NCI/Wolin/Phil/6-22-21-HaCaT_fCLIP/13_annotation/WT-NOPFA_annotation_final_report.html'
@@ -107,8 +105,6 @@ nc_color= c(
 'miscRNA'= "grey",
 'misc_RNA'= "grey"
 )
-
-
 class_color=c(
   "ncRNA"="#1B9E77",
    "rRNA" ="#1fb487",
@@ -143,7 +139,6 @@ Peaksdata2_anno$Comb_type_exon_Oppo =
 ###### remove chrM clip peaks
 Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$chr%in%'chrM'==F,] 
 # Peaksdata2_anno=Peaksdata2_anno[1:10,]
-
 ```
 
 # CLIP peak annotations: `r toString(samplename)`  
@@ -264,7 +259,6 @@ All annotations from RNA type, Repeat regions, and Intronic/exonic regions are a
 ## Overview of targets by CLIP peak catagory   
 
 ```{r , echo=F, include=T, eval=T, fig.align='default', fig.ncol=2, fig.height=3.5, fig.width=7, out.height=200, out.width="50%", fig.show="hold", layout='l-screen', results = FALSE, message=FALSE , warning=F}
-
 #Plot 1
 if (params$PeakIdnt=='UNIQUE'){
   x1=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,y=Length,color=Comb_type_exon_Oppo,text=Same_external_gene_name))+geom_point(size=1)+
@@ -361,7 +355,6 @@ if (incd_rRNA==FALSE) {
 }
 #filter
 p=p[p$PlotColumn%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
-
 #if there are remaining types
 if (nrow(p)>0) {
 if(length(unique(p$Same_Comb_type_ncRNA)[unique(p$Same_Comb_type_ncRNA)%in%names(nc_color)==F])>0){
@@ -414,7 +407,6 @@ p=Peaksdata2_anno
 p$PlotColumn=p$Comb_type_exon_Oppo
 p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 p=p[p$PlotColumn%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
-
 #if there are remaining types
 if (nrow(p)>0) {
 if(length(unique(p$Same_Comb_type_ncRNA)[unique(p$Same_Comb_type_ncRNA)%in%names(nc_color)==F])>0){
@@ -547,7 +539,6 @@ if(length(unique(nccount$Same_RNA_Subtype)[unique(nccount$Same_RNA_Subtype)%in%n
 }else{
 nc_color_sel=nc_color[unique(nccount$Same_RNA_Subtype)]
 nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]
-
 gg2 = ggplot(nccount,aes(fill=Same_RNA_Subtype,x=RNA,y=Counts_fracMM) ) +
   geom_bar(stat='identity',width=.5)+theme_classic() +
   ggtitle("ncRNA only: # of reads (unique + Frac. MM) by catagory") + 
@@ -588,7 +579,6 @@ gg = ggplot(p,aes(x=RNA_Type,y=Counts_Unique,fill=RNA_Type)) +
   theme(legend.position = "none") +
   theme(axis.text.x = element_text(angle = -45))+
   scale_fill_manual(values=class_color) 
-
 if (nrow(p)==1|nrow(p)>5000) {gg
   }else { ggplotly(gg)}
 }else{print('No Features')}
@@ -602,7 +592,6 @@ p=Peaksdata2_anno
 p$PlotColumn=p$Same_Comb_type_ncRNA
   p=p[p$Comb_type_exon_Oppo%in%'ncRNA',]
 colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
-
 if (nrow(p)>0) {
   p$ID=paste0(p$ID,"\n",p$Same_gene_name_comb)
   
@@ -622,13 +611,10 @@ geom_jitter(height = 0, width = 0.1,size=0.5,aes(text=ID))+
   theme(legend.position = "none") +
   theme(axis.text.x = element_text(angle = -45))+
 scale_fill_manual(values=nc_color_sel)
-
 if (nrow(p)==1|nrow(p)>5000) {gg
 }else { ggplotly(gg,tooltip = c("text", "y"))}
 }
 }else{print('No Features')}
-
-
 ```
 
 
@@ -669,7 +655,6 @@ p=Peaksdata2_anno
 p$PlotColumn=p$Same_Comb_type_ncRNA
   p=p[p$Comb_type_exon_Oppo%in%'ncRNA',]
 colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
-
 if (nrow(p)>0) {
 p$ID=paste0(p$ID,"\n",p$Same_gene_name_comb)
   
@@ -830,4 +815,4 @@ write.table(Peaksdata3_anno, file=output_table, sep = "\t", row.names = FALSE, c
 "Opposite Strand: RNA_type_Classification" - Summary of Peak Classification  
 "Opposite Strand: ncRNA_Classification" - Summary of ncRNA Peak assignments  
 
-"Both Strand: RNA_type_Classification" - Summary of Peak Classification including both strand annotations 
+"Both Strand: RNA_type_Classification" - Summary of Peak Classification including both strand annotations
