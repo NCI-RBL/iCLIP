@@ -1880,7 +1880,7 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
             '''
             # Setup tmp directory
             if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
-                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}/"
             else
                 tmpdir="{out_dir}01_preprocess/07_rscripts/"
                 if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
@@ -1955,7 +1955,7 @@ else:
             '''
             # Setup tmp directory
             if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
-                tmpdir="/lscratch/${{SLURM_JOB_ID}}"
+                tmpdir="/lscratch/${{SLURM_JOB_ID}}/"
             else
                 tmpdir="{out_dir}01_preprocess/07_rscripts/"
                 if [[ ! -d $tmpdir ]]; then mkdir $tmpdir; fi
