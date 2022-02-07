@@ -1923,6 +1923,8 @@ else:
             rname = '16_peak_annotations',
             script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
             functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+            bashscript = join(source_dir,'workflow','scripts','09_get_site2peak_lookup.sh'),
+            pyscript = join(source_dir,'workflow','scripts','09_jcounts2peakconnections.py'),
             p_type = peak_id,
             junc = sp_junc,
             r_depth= min_count,
@@ -1943,7 +1945,8 @@ else:
             config['bedtools'],
         output:
             anno = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
-            text = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_annotation_complete.txt')
+            text = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),
+            splice_table = join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + '_connected_peaks.txt'),
         shell:
             '''
             # Setup tmp directory
@@ -1953,6 +1956,12 @@ else:
                 tmpdir="{out_dir}01_preprocess/07_rscripts/"
                 if [[ ! -d $tmpdir ]]; then mkdir $tmpdir; fi
             fi
+            
+            #bash script to run bedtools and get site2peak lookuptable
+
+            bash {params.bashscript} {input.all_jcounts} {input.all} {params.sp}_{params.p_type} {params.out} {params.pyscript}
+            
+            # above bash script will create {output.splice_table}
                 
             Rscript {params.script} \\
                 --rscript {params.functions} \\
@@ -1965,6 +1974,7 @@ else:
                 --sample_id {params.sp} \\
                 --ref_species {params.ref_sp} \\
                 --anno_dir {params.anno_dir} \\
+                --splice_table {output.splice_table} \\
                 --reftable_path {params.a_config} \\
                 --gencode_path {params.g_path} \\
                 --intron_path {params.i_path} \\
