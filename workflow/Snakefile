@@ -1920,7 +1920,9 @@ else:
         '''
         input:
             unique = rules.feature_counts.output.all_unique,
+            unique_jcounts = rules.feature_counts.output.all_unique_jcounts,
             all = rules.feature_counts.output.all_mm,
+            all_jcounts = rules.feature_counts.output.all_mm_jcounts,
             anno = rules.project_annotations.output.anno
         params:
             rname = '16_peak_annotations',
