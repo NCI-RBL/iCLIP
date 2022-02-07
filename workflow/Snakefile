@@ -483,7 +483,7 @@ else:
     input_demethod_reports = [expand(join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),sp=sp_list)]
 
 #local rules
-localrules: check_manifest, copy_nondemux, rename_demux, multiqc, feature_counts, MANORM_beds, MANORM_post_processing
+localrules: check_manifest, copy_nondemux, rename_demux, multiqc
 
 rule all:
     input:
@@ -1865,8 +1865,9 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
         envmodules:
             config['R'],
             config['bedtools'],
+        threads: getthreads("peak_annotations")
         output:
-            splice_table = join(out_dir,'04_annotation', '02_peaks','{sp}_connected_' + peak_id + 'readPeaks.txt'),
+            splice_table = join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + '_connected_peaks.txt'),
             anno = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
             text = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),
             bed = temp(join(out_dir,'05_demethod', '01_input', '{sp}_' + peak_id + 'readPeaks_for' + DE_method + '.bed')),
@@ -1884,7 +1885,7 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
             
             #bash script to run bedtools and get site2peak lookuptable
 
-            bash {params.bashscript} {input.all_jcounts} {input.all} {params.sp} {params.out} {params.pyscript}
+            bash {params.bashscript} {input.all_jcounts} {input.all} {params.sp}_{params.p_type} {params.out} {params.pyscript} 
 
             # above bash script will create {output.splice_table}
 
