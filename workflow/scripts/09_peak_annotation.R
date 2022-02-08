@@ -158,8 +158,8 @@ rRNA_rmsk_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
 tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
 
 #set id for files
-# file_id = paste0(sample_id,"_")
-file_id = sample_id
+file_id = paste0(sample_id,"_")
+# file_id = sample_id
 ##########################################################################################
 ############### unique, all read count input - then merge
 ##########################################################################################
@@ -386,4 +386,4 @@ Peaksdata2_anno=correct_lnLc(Peaksdata2_anno)
 ### Write Output
 ##########################################################################################
 #write out for junction annotation 
-write.table(Peaksdata2_anno,paste0(out_dir,file_id,'_',peak_type,'readPeaks_annotation_complete.txt'),sep = "\t")
+write.table(Peaksdata2_anno,paste0(out_dir,file_id,peak_type,'readPeaks_annotation_complete.txt'),sep = "\t")
