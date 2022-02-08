@@ -158,7 +158,8 @@ rRNA_rmsk_path = paste0(anno_dir, "rRNA_repeatmasker.bed")
 tRNA_rmsk_path = paste0(anno_dir, "tRNA_repeatmasker.bed")
 
 #set id for files
-file_id = paste0(sample_id,"_")
+# file_id = paste0(sample_id,"_")
+file_id = sample_id
 ##########################################################################################
 ############### unique, all read count input - then merge
 ##########################################################################################
