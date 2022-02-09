@@ -2,10 +2,10 @@
 title: ""
 output: html_document
 params:
-  peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH/02_analysis/YKO_fclip_vs_FLAG_Ro_fclip/FLAG_Ro_fclip_wd_vs_YKO_fclip_wd_post_processingTest.txt"
+  peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/testing/WT-NOPFA_vs_WT_fCLIP_ALLreadPeaks_post_processing.txt"
   PeakIdnt: "ALL"
-  samplename: 'FLAG_Ro_fclip_wd'
-  background: 'YKO_fclip_wd'
+  samplename: 'WT-NOPFA'
+  background: 'WT_fCLIP'
   pval: .005
   FC: 1
   incd_rRNA: T
@@ -244,7 +244,7 @@ if (params$PeakIdnt=='UNIQUE'){
   x1=ggplot(Peaksdata2_anno,
             aes(y=Peak_width,color=`Both Strand: RNA_type_Classification`,
                 text=`Same Strand: Host_gene_name`))+
-    geom_point(aes_string(x=paste0('Counts_Unique_',samplename)),size=1)+
+    geom_point(aes_string(x=paste0("`",'Counts_Unique_',samplename,"`")),size=1)+
     scale_y_continuous(trans = "log2",limits = c(NA,NA), oob = squish_infinite) +
     theme_classic()+
     ylab("Peak Width")+
@@ -253,7 +253,7 @@ if (params$PeakIdnt=='UNIQUE'){
     scale_color_manual(values=class_color) 
 } else if (params$PeakIdnt=='ALL'){
   x1=ggplot(Peaksdata2_anno,aes(y=Peak_width,color=`Both Strand: RNA_type_Classification`,text=`Same Strand: Host_gene_name`))+
-    geom_point(aes_string(x=paste0('Counts_Multimappers_Scaled_',samplename)),size=1)+
+    geom_point(aes_string(x=paste0("`",'Counts_Multimappers_Scaled_',samplename,"`")),size=1)+
     scale_y_continuous(trans = "log2",limits = c(NA,NA), oob = squish_infinite) + 
     theme_classic()+
     ylab("Peak Width")+
@@ -283,14 +283,14 @@ x4=ggplot(Peaksdata2_anno,
 if (params$PeakIdnt=='UNIQUE'){
   x5=ggplot(Peaksdata2_anno,
             aes(line=`Both Strand: RNA_type_Classification`,
-                color=`Both Strand: RNA_type_Classification`))+geom_density(aes_string(x=paste0('Counts_Unique_',samplename)))+
+                color=`Both Strand: RNA_type_Classification`))+geom_density(aes_string(x=paste0('`Counts_Unique_',samplename,"`")))+
     theme_classic()+ylab("Density")+xlab(paste0("Peak Counts (unique)\n",samplename))+ggtitle("Distribution of peak counts")+ 
     labs(color='RNA Type')+
     scale_color_manual(values=class_color) 
 } else if (params$PeakIdnt=='ALL'){
   x5=ggplot(Peaksdata2_anno,
             aes(line=`Both Strand: RNA_type_Classification`,
-                color=`Both Strand: RNA_type_Classification`))+geom_density(aes_string(x=paste0('Counts_Multimappers_Scaled_',samplename))) +
+                color=`Both Strand: RNA_type_Classification`))+geom_density(aes_string(x=paste0('`Counts_Multimappers_Scaled_',samplename,"`"))) +
     theme_classic()+ylab("Density")+xlab(paste0("Peak Counts (Unique+ FracMM)\n",samplename))+ggtitle("Distribution of peak counts") +
     labs(color='RNA Type') +
     scale_color_manual(values=class_color) 
@@ -457,7 +457,7 @@ if (nrow(p)>0) {
 
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,include=T,eval=T}
 if (exists('fcount')) {
-  gg1 = ggplot(fcount,aes_string(fill='RNA_Type',x='RNA',y=paste0('Counts_Unique_',samplename))) +
+  gg1 = ggplot(fcount,aes_string(fill='RNA_Type',x='RNA',y=paste0('`Counts_Unique_',samplename,"`"))) +
     geom_bar(stat='identity',position="stack",width=.5)+theme_classic() +
     ggtitle("BioType - # of reads (unique) by catagory)") +
       ylab(paste0("Counts \n",samplename))+
@@ -471,7 +471,7 @@ if (exists('fcount')) {
 ```{r fig.asp=.5, fig.align='center',fig.height=4, fig.width=8,echo=F,warning=F,include=T,eval=T}
 if (exists('fcount')) {
 #plot
-gg2 = ggplot(fcount,aes_string(fill='RNA_Type',x='RNA',y=paste0('Counts_Multimappers_Scaled_',samplename))) +
+gg2 = ggplot(fcount,aes_string(fill='RNA_Type',x='RNA',y=paste0('`Counts_Multimappers_Scaled_',samplename,"`"))) +
   geom_bar(stat='identity',position="stack",width=.5) +
   theme_classic() +
   ggtitle(paste0("BioType - # of reads (unique + Frac. MM) by catagory "))+
@@ -526,7 +526,7 @@ if (exists('nccount')) {
     nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]
     
     #plot
-    gg1 = ggplot(nccount,aes_string(fill='Same_RNA_Subtype',x='RNA',y=paste0('Counts_Unique_',samplename)) ) +
+    gg1 = ggplot(nccount,aes_string(fill='Same_RNA_Subtype',x='RNA',y=paste0('`Counts_Unique_',samplename,"`")) ) +
       geom_bar(stat='identity',width=.5)+theme_classic() +
       ggtitle(paste0("ncRNA only: # of reads (unique) by catagory\n",samplename)) + 
       labs(color='RNA Type') +
@@ -552,7 +552,7 @@ if (exists('nccount')) {
     nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]
     
     gg2 = ggplot(nccount,aes(fill=Same_RNA_Subtype,x=RNA) ) +
-      geom_bar(aes_string(y=paste0('Counts_Multimappers_Scaled_',samplename)),stat='identity',width=.5)+theme_classic() +
+      geom_bar(aes_string(y=paste0('`Counts_Multimappers_Scaled_',samplename,"`")),stat='identity',width=.5)+theme_classic() +
       ggtitle(paste0("ncRNA only: # of reads (unique + Frac. MM) by catagory\n",samplename)) + 
       labs(color='RNA Type') +
       scale_color_manual(values=nc_color_sel)+scale_fill_manual(values=nc_color_sel) +
@@ -578,7 +578,7 @@ colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
 if (nrow(p)>0) {
   p$RNA=''
   #plot
-  gg = ggplot(p,aes_string(x='RNA_Type',y=paste0('Counts_Unique_',samplename),fill='RNA_Type')) +
+  gg = ggplot(p,aes_string(x='RNA_Type',y=paste0('`Counts_Unique_',samplename,"`"),fill='RNA_Type')) +
     geom_violin()+theme_classic()+geom_jitter(height = 0, width = 0.1,size=0.5,aes(text=ID))+
     scale_y_continuous(trans = "log2", oob = squish_infinite) +
     ggtitle(paste0('Peak Counts (Unique) \nby Feature')) +
@@ -618,7 +618,7 @@ if (nrow(p)>0) {
     nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]  
     
     #plot
-    gg = ggplot(p,aes_string(x='RNA_Type',y=paste0('Counts_Unique_',samplename),fill='RNA_Type')) +
+    gg = ggplot(p,aes_string(x='RNA_Type',y=paste0('`Counts_Unique_',samplename,"`"),fill='RNA_Type')) +
       geom_violin()+theme_classic()+geom_jitter(height = 0, width = 0.1,size=0.5,aes(text=ID))+
       scale_y_continuous(trans = "log2", oob = squish_infinite) +
       ggtitle('Peak Counts (Unique)\nby Feature') +
@@ -654,7 +654,7 @@ if (nrow(p)>0) {
   p$RNA=''
   
   #plot
-  gg=ggplot(p,aes_string(x='RNA_Type',y=paste0('Counts_Multimappers_Scaled_',samplename),fill='RNA_Type')) +
+  gg=ggplot(p,aes_string(x='RNA_Type',y=paste0('`Counts_Multimappers_Scaled_',samplename,"`"),fill='RNA_Type')) +
     geom_violin()+
     theme_classic()+
     geom_jitter(height = 0, width = 0.1,size=0.5,aes(text=ID))+
@@ -694,7 +694,7 @@ if (nrow(p)>0) {
     nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]
     
     #plot
-    gg=ggplot(p,aes_string(x='RNA_Type',y=paste0('Counts_Multimappers_Scaled_',samplename),fill='RNA_Type') ) +
+    gg=ggplot(p,aes_string(x='RNA_Type',y=paste0('`Counts_Multimappers_Scaled_',samplename,"`"),fill='RNA_Type') ) +
       geom_violin()+theme_classic()+geom_jitter(height = 0, width = 0.05,size=.5,aes(text=ID)) +
       scale_y_continuous(trans = "log2", oob = squish_infinite) +
       ggtitle(paste0('Peak Counts (Unique + Frac. MM) \nby ncRNA Type'))+

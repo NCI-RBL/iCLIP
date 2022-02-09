@@ -639,7 +639,7 @@ if (multiplex_flag == 'Y'):
         output barplot with top barcode counts
         """
         input:
-            manifest = rules.check_manifest.output.manifest,
+           # manifest = rules.check_manifest.output.manifest,
             fq = get_fq_names,
         params:
             rname = "01a_qc_barcode",
@@ -689,7 +689,7 @@ if (multiplex_flag == 'Y'):
         """
         input:
             f1 = get_fq_names,
-            manifest = rules.check_manifest.output.manifest
+#            manifest = rules.check_manifest.output.manifest
         params:
             rname='01b_demultiplex',
             s_exec = singularity_exec,
