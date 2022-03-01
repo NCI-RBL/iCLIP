@@ -103,12 +103,30 @@ project_annotations:
     mem: 10g
     time: 00-01:00:00
 
-peak_annotations:
+peak_junctions:
     threads: 4
     gres: lscratch:128
     mem: 30g
-    time: 01-00:00:00
+    time: 04-00:00:00
+    
+peak_Transcripts:
+    threads: 4
+    gres: lscratch:128
+    mem: 30g
+    time: 04-00:00:00    
 
+peak_ExonIntron:
+    threads: 4
+    gres: lscratch:128
+    mem: 30g
+    time: 04-00:00:00 
+
+peak_RMSK:
+    threads: 4
+    gres: lscratch:128
+    mem: 30g
+    time: 04-00:00:00 
+    
 annotation_report:
     threads: 4
     gres: lscratch:128
@@ -126,7 +144,7 @@ DIFFBIND_beds:
 MANORM_analysis:
     threads: 4
     mem: 30g
-    time: 01-00:00:00
+    time: 04-00:00:00
 
 DIFFBIND_preprocess:
     threads: 4
@@ -139,7 +157,7 @@ DIFFBIND_analysis:
 MANORM_post_processing:
     threads: 2
     mem: 30g
-    time: 00-01:00:00
+    time: 00-12:00:00
 
 DIFFBIND_report:
     threads: 4
@@ -148,7 +166,7 @@ DIFFBIND_report:
 MANORM_RMD:
     threads: 2
     mem: 30g
-    time: 00-01:00:00
+    time: 00-02:00:00
 
 mapq_recalc:
     threads: 8
