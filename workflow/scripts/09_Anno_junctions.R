@@ -22,16 +22,18 @@ parser$add_argument("-rdepth","--read_depth", dest="read_depth", required=TRUE, 
 parser$add_argument("-de","--demethod", dest="demethod", required=TRUE, help="DE method (MAnorm, DiffBind or none)")
 parser$add_argument("-s","--sample_id", dest="sample_id", required=TRUE, help="sample id")
 parser$add_argument("-sp","--ref_species", dest="ref_species", required=TRUE, help="reference species")
-parser$add_argument("-anno","--anno_dir", dest="anno_dir", required=TRUE, help="path for annotation dir")
+# parser$add_argument("-anno","--anno_dir", dest="anno_dir", required=TRUE, help="path for annotation dir")
 parser$add_argument("-st","--splice_table", dest="splice_table", required=TRUE, help="path for Splice Table")
-parser$add_argument("-reft","--reftable_path", dest="reftable_path", required=TRUE, help="path for reftable")
-parser$add_argument("-g","--gencode_path", dest="gencode_path", required=TRUE, help="path for gencode")
-parser$add_argument("-i","--intron_path", dest="intron_path", required=TRUE, help="path for intron")
-parser$add_argument("-rmsk","--rmsk_path", dest="rmsk_path", required=TRUE, help="path for rmsk")
+# parser$add_argument("-reft","--reftable_path", dest="reftable_path", required=TRUE, help="path for reftable")
+# parser$add_argument("-g","--gencode_path", dest="gencode_path", required=TRUE, help="path for gencode")
+# parser$add_argument("-i","--intron_path", dest="intron_path", required=TRUE, help="path for intron")
+# parser$add_argument("-rmsk","--rmsk_path", dest="rmsk_path", required=TRUE, help="path for rmsk")
 parser$add_argument("-tmp","--tmp_dir", dest="tmp_dir", required=TRUE, help="path for tmp dir")
 parser$add_argument("-od","--out_dir", dest="out_dir", required=TRUE, help="path for output dir")
+parser$add_argument("-of","--out_file", dest="out_file", required=TRUE, help="path for output dir")
 parser$add_argument("-odm","--out_dir_DEP", dest="out_dir_DEP", required=FALSE, help="path for manorm output dir")
 parser$add_argument("-o","--output_file_error", dest="output_file_error", required=FALSE, help="path for output error file")
+# parser$add_argument("-ss","--subset", dest="subset", required=T, help="subset")
 
 args <- parser$parse_args()
 rscript = args$rscript
@@ -48,14 +50,16 @@ sample_id = args$sample_id
 ref_species = args$ref_species
 anno_dir = args$anno_dir
 splice_table=args$splice_table
-reftable_path = args$reftable_path
-gencode_path = args$gencode_path
-intron_path = args$intron_path
-rmsk_path = args$rmsk_path
+# reftable_path = args$reftable_path
+# gencode_path = args$gencode_path
+# intron_path = args$intron_path
+# rmsk_path = args$rmsk_path
 tmp_dir = args$tmp_dir
 out_dir = args$out_dir
+out_file = args$out_file
 out_dir_DEP = args$out_dir_DEP
 output_file_error = args$output_file_error
+# subset=as.numeric(args$subset)
 
 ##testing
 testing="N"
@@ -69,13 +73,16 @@ if(testing=="Y"){
   # peak_type= "ALL"
   # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/Ro_Clip_1_test1_uniqueCounts.txt"
   # peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/Ro_Clip_1_test1_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
+  # peak_total = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/Ro_Clip_1_test1_allFracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
   # splice_table="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/Sam/novoalign_v4/mm10/08_counts/test1/03_allreadpeaks/tmp/KO_connected_peaks.txt"
-  # 
+
   peak_type= "ALL"
   peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/testing/testoutput/03_peaks/03_counts/FLAG_Ro_fclip_ALLreadpeaks_uniqueCounts.txt"
   peak_all = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/testing/testoutput/03_peaks/03_counts/FLAG_Ro_fclip_ALLreadpeaks_FracMMCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
   peak_total = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/testing/testoutput/03_peaks/03_counts/FLAG_Ro_fclip_ALLreadpeaks_totalCounts.txt" # peak_unique = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/sam_test_master/13_counts/allreadpeaks/WT_fCLIP_50nt_uniqueCounts.txt"
   splice_table="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/testing/testoutput/04_annotation/02_peaks/FLAG_Ro_fclip_ALL_connected_peaks.txt"
+  # 
+  subset=5000
   
   reftable_path = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/config/annotation_config.txt"
   
@@ -109,7 +116,8 @@ if(testing=="Y"){
   # sample_id = "Control_Clip_1"
   output_file_error= paste0(wd,"/04_annotation/testoutput/02_peaks/")
   
-  rscript="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/workflow/scripts/09_peak_annotation_functions.R"
+  # rscript="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/CLIPpipeline/iCLIP/workflow/scripts/09_peak_annotation_functions.R"
+  rscript="/Volumes/RBL_NCI/Wolin/Phil/test/testoutput2/09_peak_annotation_functions.R"
   
   if(ref_species == "mm10"){
     gencode_path = paste0(ref_path, "mm10/Gencode_VM23/fromGencode/gencode.vM23.chr_patch_hapl_scaff.annotation.gtf.txt")
@@ -201,6 +209,8 @@ if(nrow(FtrCount[FtrCount$Counts_fracMM>=read_depth,])==0){
 } else{
   print("Peaks pass read_depth filter")
 }
+
+
 #########################################################################################
 ############### splice junctions
 ##########################################################################################
@@ -237,6 +247,9 @@ system.time(
       print(paste0('AnnotatePeaks: ',nrow(FtrCount_trimmed)))
       print(paste0('SplicePeaks: ',length(FtrCount_out$Junc_peaks)))
       
+      write.table(FtrCount_out$PGene_TBL2,paste0(out_dir,file_id,peak_type,"readPeaks_PGene_TBL2.txt"),sep = "\t",row.names = F)
+      write.table(FtrCount_out$Junc_peaks,paste0(out_dir,file_id,peak_type,"readPeaks_Junc_peaks.txt"),sep = "\t",row.names = F)
+      
       ############################################################
     } else { 
       print("No junctions were identified")
@@ -254,8 +267,16 @@ system.time(
 FtrCount_trimmed=FtrCount_trimmed[duplicated(FtrCount_trimmed)==F & !FtrCount_trimmed$chr%in%c('chrM'),]
 
 
+#########################################################################################
+############### subset table
+##########################################################################################
+# if (subset>nrow(FtrCount_trimmed)) {
+#   subset=nrow(FtrCount_trimmed)
+# }else{subset=subset}
+# 
+# FtrCount_trimmed=FtrCount_trimmed[sample(nrow(FtrCount_trimmed),subset),]
 
-
+print(paste0("Annotate Rows:",nrow(FtrCount_trimmed)))
 ##########################################################################################
 ############### DEP
 ##########################################################################################
@@ -268,133 +289,15 @@ if (DEmethod=='NONE') {
   DEP_input(FtrCount_trimmed)
 } 
 
-##########################################################################################
-############### reference, annotation table
-##########################################################################################
 
-gencode_Anno_RNA_comb=Ref_Prep('gencode')
-Anno_RNA_comb=Ref_Prep('Combined')
+write.table(FtrCount_trimmed,paste0(out_file),sep = "\t",row.names = F)
 
 
-##########################################################################################
-############### call peaks
-##########################################################################################
-print("Call peaks")
-
-#prep peaks
-peaks_Oppo=FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')] 
-peaks_Oppo$strand=gsub("\\+","pos",peaks_Oppo$strand) 
-peaks_Oppo$strand=gsub("\\-","+",peaks_Oppo$strand)
-peaks_Oppo$strand=gsub("pos","-",peaks_Oppo$strand)
-
-#run functions
-peaks_SameAnno = peak_calling(FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')],"Same_")
-peaks_OppoAnno = peak_calling(peaks_Oppo,"Oppo_")
-
-##########################################################################################
-############### INTRON EXON ANNOTATION
-##########################################################################################
-### Identify if CLIP peak overlaps with Intron or Exonic region   
-
-#   Using GTF file from GENCODE v23 -mm10
-#   Using GTF file from GENCODE v32 -hg38
-
-# Peaks were annotated by whether they overlap with Host gene intron/exon region
-# Intron coordinates were calculated from GTF file.
-# 
-# A second column was added to idenify if the peak also overlapped with the 5'UTR 3'UTR or CDS (Column: Featrue 2)
-#########################################################################################3
-print("Intron/exon annotation")
-
-intron_exon=IntronExon_prep(gencode_path,intron_path,gencode_transc_path)%>%suppressMessages()
-
-##########################################################################################
-############### Intron Exon Calling
-##########################################################################################
-print("IE Calling")
-
-intronexon_Same = IE_calling(peaks_SameAnno,'Same',"Same_")%>%suppressMessages()
-intronexon_Opposite = IE_calling(peaks_OppoAnno,'Oppo',"Oppo_")
-
-##########################################################################################
-############### IDENTIFY PEAKS IN REPEAT REGIONS   
-##########################################################################################
-# Annotate all repeat regions/Classes identified in Repeatmasker Annotation file (UCSC Table browser)  
-# Data was not filtered based on any of the identified Repeats.  
-#  1) LINE/SINE   
-#  2) LTR   
-#  3) DNA   
-#  4) Satalites   
-#  5) Simple Repeats   
-#  6) Low Complexity   
-#  7) Other   
-#  8) Unknown 
-print("RMSK")
-
-#read in rmsk
-rmsk_GRCm38=rmsk_prep(rmsk_path)
-
-rpmsk_Same = rpmsk_calling(intronexon_Same,"Same_")
-rpmsk_Opposite = rpmsk_calling(intronexon_Opposite,"Oppo_")
-
-##########################################################################################
-############### Assigning Clip peak attributes by strand
-##########################################################################################
-# Not all Peaks overlap with a single feature so peak assignments were assigned by priority:
-# ncRNA > Protein coding : Exonic > repeats > Pseudogene > Antisense Feature > 
-#Protein Coding : Intronic > lncRNA > no Feature  
-# All annotations from RNA type, Repeat regions, and Intronic/exonic regions are annoted in the Table
-print("Add peak attributes")
-
-#merge attributes
-peak_attrib_Oppo = peak_attributes(rpmsk_Opposite,"Oppo_")
-PeaksdataOut = merge(peak_attributes(rpmsk_Same,"Same_"),
-                     peak_attrib_Oppo[,colnames(peak_attrib_Oppo)[!colnames(peak_attrib_Oppo) %in% 
-                                                                    c("chr","start","end","strand" )]],
-                     by='ID')
 
 
-##########################################################################################
-############### Assigning Clip peak attributes - merged strands
-########################################################################################## 
-
-PeaksdataOut=Assign_CLIP_attributes(PeaksdataOut)
 
 
-##########################################################################################
-############### Merge peak annotations with peak junctions
-##########################################################################################
-Peaksdata2_anno = merge(FtrCount_trimmed,
-                        PeaksdataOut[,!colnames(PeaksdataOut)%in%c('chr','start','end','strand')],
-                        by='ID')
 
 
-##########################################################################################
-############### Add annotations to junctions
-##########################################################################################  
-if (JoinJunc==T) {
-  print("Add annotations to Junctions")
-  
-  Peaksdata2_anno=Join_Junction_Combine(Peaksdata2_anno,read_depth,FtrCount_out,anno_anchor)
-  
-}else{
-  
-  Peaksdata2_anno=Peaksdata2_anno
-  # #### collapse exon
-  # if (condense_exon==T) {
-  #   print("Collapse exon")
-  #   
-  #   Peaksdata2_anno=Collapse_Exon(Peaksdata2_anno)
-  # }  
-} 
 
-##########################################################################################
-## correct lnLc annotation - keep lnLc annotation above to hepl track source of lnc annotation
-##########################################################################################
-Peaksdata2_anno=correct_lnLc(Peaksdata2_anno)
 
-##########################################################################################
-### Write Output
-##########################################################################################
-#write out for junction annotation 
-write.table(Peaksdata2_anno,paste0(out_dir,file_id,peak_type,'readPeaks_annotation_complete.txt'),sep = "\t")

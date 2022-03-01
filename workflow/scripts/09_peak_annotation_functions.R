@@ -463,9 +463,17 @@ Ref_Prep=function(Output_option){
 ###########################################################################################
 #merge references depending on species, run annotation
 bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
-  
+    # peaksTable=peak_in
+    # Annotable=gencode_Anno_RNA_comb[,colMerge]
+    # ColumnName=colSelect
+    # pass_n="pass1"
+
   #set file prefix
   file_prefix = paste0(file_id,pass_n,"_")
+
+##########################
+## Set up tables for bedtools intersect
+##########################  
   
   ## the multiple chr is a space filler was to make a bed6 file for bedtools 
   anno_output = Annotable[,c('chr','start','end','chr','chr','strand',ColumnName)] %>%
@@ -505,41 +513,52 @@ bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
   
   colnames(ab_OL) = c(paste0(colnames(peaksTable_output)),
                       paste0(colnames(anno_output)),'ntOL')
-  
+
+  ##################################################################################################################################    
+##########################
+## format annotatin intersect table
+##########################  
   #add width
   ab_OL$width = ab_OL$end-ab_OL$start
   ab_OL$width_anno = ab_OL$end_anno-ab_OL$start_anno
   
-  #subset 
+  #subset for annotations with annotations
   ab_OL=ab_OL[ab_OL$ntOL>0,]
+  
   if (nrow(ab_OL)>0){
     #add nt / width in annotation and read
-    ab_OL$OLper_anno = ab_OL$ntOL/ab_OL$width_anno
-    ab_OL$OLper = ab_OL$ntOL/ab_OL$width
+    ab_OL$OLper_anno = ab_OL$ntOL/ab_OL$width_anno ## % overlap region+annotation by anno size
+    ab_OL$OLper = ab_OL$ntOL/ab_OL$width  ## % overlap region+annotation by peak size
     
-    #subset
+    #subset for annotations where overlap with peak is >50% 
+    #   # or for large peaks get annotations when peak covers > 75% of annotation
     ab_OL=ab_OL[(ab_OL$OLper_anno>.75 | ab_OL$OLper>.51), ]
     
     #ID duplicates and unique
-    dup=unique(ab_OL[duplicated(ab_OL$ID),'ID'])
-    ab_OL_single=ab_OL[!(ab_OL$ID%in%dup),]
-    ab_OL_double=ab_OL[(ab_OL$ID%in%dup),]
-    
+    dup=unique(ab_OL[duplicated(ab_OL$ID),'ID']) ### regions with multiple annotations
+    ab_OL_single=ab_OL[!(ab_OL$ID%in%dup),]  ### table of regions with one annotation
+    ab_OL_double=ab_OL[(ab_OL$ID%in%dup),]  ### table of all annotations for regions with multiple annotations
+
+    ####################################        
+    # Process table of all annotations for regions with multiple annotations 
+    ####################################
     unique_list=unique(ab_OL_double$ID)
     ab_OL_colapsed=as.data.frame(matrix(nrow=length(unique_list),ncol=ncol(ab_OL_double)));
     colnames(ab_OL_colapsed)=colnames(ab_OL_double)
     
-    #for every unique id
+    #for every unique id with multiple annotations
     for(x in 1:length(unique_list)){
       peaksTableU = unique_list[x]
       pam = ab_OL_double[ab_OL_double$ID%in%peaksTableU,]
+        ##get all anno info from first anno of region
       ab_OL_colapsed[x,colnames(ab_OL_double)%in%c(ColumnName)==F]=(pam[1,colnames(ab_OL_double)%in%c(ColumnName)==F,drop=T])
-      
+        ##Collapse desired columns
       for (cx in 1:length(ColumnName)) {
         ab_OL_colapsed[x,ColumnName[cx]]=paste(sort(unique((pam[,ColumnName[cx]]))), collapse =",")
       }
     }
     
+    ### Combine regions with single and multiplle annoations (region should only occure once in table)
     ab_OL_colapsed=rbind(ab_OL_colapsed,ab_OL_single)
     ab_OL_colapsed=ab_OL_colapsed[!is.na(ab_OL_colapsed$ID),]
     ab_OL_colapsed[(ab_OL_colapsed$ntOL<=0),ColumnName]=NA
@@ -565,13 +584,15 @@ bam_anno2<-function(peaksTable,Annotable,ColumnName,pass_n){
 }
 
 peak_calling<-function(peak_in,nmeprfix){
-  # peak_in=peaks_Oppo
-  # nmeprfix="Oppo_"
+  # peak_in=FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')] #peaks_Oppo
+  # nmeprfix="Same_"
   
   colMerge = c('chr','start','end','strand','ensembl_gene_id','transcript_id',
                'external_gene_name','gene_type','gene_type_ALL')
   colSelect=c('ensembl_gene_id','external_gene_name','gene_type','gene_type_ALL')
-  
+
+  system.time({ print('bam_anno2')
+    
   PeaksdataOut=bam_anno2(peak_in,
                          gencode_Anno_RNA_comb[,colMerge],
                          colSelect,
@@ -582,6 +603,7 @@ peak_calling<-function(peak_in,nmeprfix){
                          c('type','transcript_name'),
                          "pass2")
   print("D2")
+  })
   ##########################################################################################
   ############### Clean up
   ##########################################################################################
@@ -612,7 +634,7 @@ peak_calling<-function(peak_in,nmeprfix){
     peaksTable_noAnno=as.data.frame(matrix(nrow=1,ncol=ncol(PeaksdataOut)))
     colnames(peaksTable_noAnno)=colnames(PeaksdataOut)
   }
-  
+  system.time({ 
   if(length(anno)>0) { 
     
     u=unique(peaksTable_Anno$ID)
@@ -622,6 +644,9 @@ peak_calling<-function(peak_in,nmeprfix){
     ## Checking for conflicting annotations from gencode and additional supplied annotations
     ## If conflict prioritize Supplied annotations 
     ## Additionally Peak may overlap multiple features and so I am setting hierarchy
+
+      
+    print(paste0('Annotated Regions: ', length(u)))
     for(x in 1:length(u)){
       PeaksdataOutU=u[x]
       pam=peaksTable_Anno[peaksTable_Anno$ID%in%PeaksdataOutU,]
@@ -632,10 +657,25 @@ peak_calling<-function(peak_in,nmeprfix){
       
       pam_2=as.character(pam$type) ### type from Annotation
       pam_2=as.data.frame(strsplit(pam_2,','));colnames(pam_2)='a';pam_2$a=as.character(pam_2$a)
-      
+# if ((is.na(pam$ensembl_gene_id)==F)&(is.na(pam$transcript_name)==F)) {
+#   if (nrow(pam_1)>1) {
+#     if (grepl("lnc",pam_1)%in%F) {
+#       if (pam_1!=pam_2) {
+#         pamtest=pam
+#         pam_1test=pam_1
+#         pam_2test=pam_2
+#         STOP
+#       }
+#     }
+#   }
+# }
       type_list = c("miRNA","piRNA","rRNA","siRNA","snRNA","snoRNA",
                     "ribozyme","scRNA", "sRNA","scaRNA", "yRNA", "srpRNA", "7SKRNA",
                     "sncRNA","vaultRNA", "tRNA")
+####################
+### Format Gencode annotations
+######################      
+if(nrow(pam_1)>=1&(NA%in%pam_1)==F) {
       #remove misc_RNA catagory : these are covered by additional annotations (mostly yRNA)
       ## We should set this up to only display misc_RNA if no additional annotations
       if (nrow(pam_1)>1&grepl('misc_RNA',pam_1)&grepl(paste(type_list,collapse = "|"),pam_1)){
@@ -645,31 +685,33 @@ peak_calling<-function(peak_in,nmeprfix){
         pam_1[pam_1$a%in%'misc_RNA','a']=NA
       }
       
-      #lincRNA are from an older Gencode version (VM18 or older) so don't use    
-      if (grepl('lncRNA',pam_1)&grepl('lincRNA',pam_2)) {
-        pam_1[pam_2$a%in%'lincRNA',]='lncRNA'
-      }
-      
       #change ribozyme (gencode) to RNA type from additional anno
       if (grepl('ribozyme',pam_1)) {
         pam_1[pam_1$a%in%'ribozyme',]=unique(pam_2$a)
       }
+
+  }
+      #lincRNA are from an older Gencode version (VM18 or older) so don't use    
+      if (grepl('lncRNA',pam_1)&grepl('lincRNA',pam_2)) {xxx
+        pam_1[pam_2$a%in%'lincRNA',]='lncRNA'
+      }
       
-      #combine all rna types subtypes into ncRNA
+######################      
+## combine all rna types subtypes into ncRNA
+######################      
+#### Annotation from Gencode : unique(sort(mm10$gene_type_ALL))
+
+ReplaceType <-function(df_in,col_in,list_in,replace_id){
+  for (id in list_in){
+    df_in[,col_in]=gsub(paste0("\\<",id,"\\>"),replace_id,df_in[,col_in])
+  } 
+  return(df_in)
+}
+      type_list = c(type_list,"miscRNA","misc_RNA")
+
       pam_c=rbind(pam_1,pam_2)
       pam_c=pam_c[!is.na(pam_c$a),,drop=F]
       
-      #### Annotation from Gencode : unique(sort(mm10$gene_type_ALL))
-      ReplaceType <-function(df_in,col_in,list_in,replace_id){
-        for (id in list_in){
-          df_in[,col_in]=gsub(paste0("\\<",id,"\\>"),replace_id,df_in[,col_in])
-        } 
-        return(df_in)
-      }
-      
-      type_list = c("miRNA","miscRNA","misc_RNA","piRNA","rRNA","siRNA","snRNA","snoRNA",
-                    "ribozyme","scRNA", "sRNA","scaRNA", "yRNA", "srpRNA", "7SKRNA",
-                    "sncRNA",'vaultRNA', "tRNA")
       pam_c2 = ReplaceType(pam_c,"a", type_list,"ncRNA")
       
       if (length(pam_c$a)>1) {pam_c=pam_c[order(pam_c$a),,drop=F]}
@@ -677,6 +719,10 @@ peak_calling<-function(peak_in,nmeprfix){
       
       pam_c=paste(unique(pam_c$a),collapse = ',')
       pam_c2=paste(unique(pam_c2$a),collapse = ',')
+
+######################      
+## combine GeneName from Gencode transcript_name from additional anno
+###################### 
       
       #Comb GeneName 
       pam_G1=as.character(pam$external_gene_name) ### gene name from gencode
@@ -690,8 +736,10 @@ peak_calling<-function(peak_in,nmeprfix){
       if (grepl('sk',pam_G1)&grepl('7SK',pam_G2)) {
         pam_G2[pam_G2$a%in%'7SK',]=NA
       }
-      
-      #merge gene names from "gencode" and "annotation"
+
+######################      
+## merge gene names from "gencode" and "annotation"
+###################### 
       pam_gmerge=rbind(pam_G1,pam_G2)
       pam_gmerge=pam_gmerge[!is.na(pam_gmerge$a),,drop=F]
       pam_gmerge=paste(unique(pam_gmerge$a),collapse = ',')
@@ -701,8 +749,16 @@ peak_calling<-function(peak_in,nmeprfix){
       peaksTable_colapsed[x,'type_comb']=pam_c
       peaksTable_colapsed[x,'gene_name_comb']=pam_gmerge
     }
+####################################################################################################################################    
+    
+######################      
+## Format output table
+######################    
     
     
+    ######################      
+    ## Comnbine anno regions and NoAnno Regions
+    ######################     
     rnatype=peaksTable_colapsed[,c('ID','ensembl_gene_id','external_gene_name','gene_type',"gene_type_ALL",
                                    'type','transcript_name','type_simple_comb','type_comb','gene_name_comb')]
     
@@ -714,7 +770,10 @@ peak_calling<-function(peak_in,nmeprfix){
     rnames=c("ensembl_gene_id","external_gene_name","gene_type","gene_type_ALL","type","transcript_name","type_simple_comb","type_comb","gene_name_comb")
     
     colnames(peaksTable_colapsed)[colnames(peaksTable_colapsed)%in%rnames]=paste0(nmeprfix,rnames)
-    
+
+    ######################      
+    ## Rename Lnc Annotations in select columns(col_list)
+    ######################       
     type_start = c('lincRNA-exon,lncRNA','lincRNA-intron,lncRNA')
     type_end = c('lincRNA-exon','lincRNA-intron')
     col_list= c('type_comb','type_simple_comb','gene_type_ALL')
@@ -729,7 +788,7 @@ peak_calling<-function(peak_in,nmeprfix){
                                                                      peaksTable_colapsed[,paste0(nmeprfix,cols_to_change)] )
       }
     }
-    
+####################################################################################################################################    
   } else { 
     print("No Peaks Annotated")
     peaksTable_colapsed=PeaksdataOut
@@ -737,7 +796,7 @@ peak_calling<-function(peak_in,nmeprfix){
     peaksTable_colapsed[,rnames]=NA
     colnames(peaksTable_colapsed)[colnames(peaksTable_colapsed)%in%rnames]=paste0(nmeprfix,rnames)
   }  
-  
+  }) 
   return(peaksTable_colapsed)
 }
 
@@ -771,10 +830,10 @@ IntronExon_prep=function(gencode_path,intron_path,gencode_transc_path){
   #introns
   introns=fread(intron_path, 
                 header=F, sep="\t",stringsAsFactors = F,data.table=F, 
-                col.names = c('chr','start','end','attribute','V5','strand')) %>%
-    separate(attribute,
+                col.names = c('chr','start','end','attribute','V5','strand'))# %>%
+    introns=suppressWarnings(separate(introns,attribute,
              into=c('transcript_id','feature','exon_number','level','chr2','intronnumber','dir'),
-             remove = T,sep = "_")
+             remove = T,sep = "_"))
   
   #remove Non-Chromosome contigs
   introns$chr=(gsub('chr[0-9]+_|chr[X-Y]_|chrUn_|_alt|_random|_fix','',introns$chr))
@@ -813,6 +872,10 @@ IntronExon_prep=function(gencode_path,intron_path,gencode_transc_path){
 ############### Intron Exon Calling
 ##########################################################################################
 IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
+  # peak_in=FtrCount_trimmed[,c('chr','start','end','ID','ID','strand')]
+  # Peak_Strand_ref='Same'
+  # nmeprfix="Same_"
+  
   #create annotation table
   ColumnName = c("feature","exon_number")
   anno_IntExn = intron_exon[grep('protein_coding',intron_exon$gene_type),][,c('chr','start',
@@ -871,7 +934,8 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
     peak_in[,paste0(nmeprfix,c('Exn_start_dist','Intron_start_dist','Intron_5pStart','Exn_5pStart'))]=NA
   }
   
-  #for each peak in table
+  print(paste0('Annotated Regions: ', nrow(peak_in)))
+    #for each peak in table
   for (x in 1:nrow(peak_in)) {
     
     #subset ids
@@ -928,9 +992,9 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
     }
   }
   
-  ### protein coding peaks with not Correctly assigned exon overlap
-  peak_in[is.na(peak_in[,paste0(nmeprfix,'feature')]) & 
-            peak_in[,paste0(nmeprfix,'gene_type')]%in%'protein_coding',paste0(nmeprfix,'feature')]='exon'
+  ### protein coding peaks with not Correctly assigned exon overlap -- Moved to 09_Anno_Process.R
+  # peak_in[is.na(peak_in[,paste0(nmeprfix,'feature')]) & 
+  #           peak_in[,paste0(nmeprfix,'gene_type')]%in%'protein_coding',paste0(nmeprfix,'feature')]='exon'
   return(peak_in)
 }  
 
@@ -1011,6 +1075,8 @@ rpmsk_anno <- function(ColumnName,Annotable,peaksTable){
   colnames(peaksTable_colapsed)=colnames(peaksTable_double)
   
   #for each unique peak
+  
+  print(paste0('Annotated Regions: ',nrow(u)))
   for(x in 1:length(u)){
     peaksTable = u[x]
     pam = peaksTable_double[peaksTable_double$ID%in%peaksTable,]
@@ -1398,11 +1464,19 @@ Assign_CLIP_attributes=function(PeaksdataOut){
 ##########################################################################################
 ############### Add annotations to junctions
 ##########################################################################################  
-Join_Junction_Combine=function(Peaksdata2_anno,read_depth,FtrCount_out) { 
-  Junc_peaks=unique(FtrCount_out$Junc_peaks)
-  PGene_TBL2=FtrCount_out$PGene_TBL2
+# Join_Junction_Combine=function(Peaksdata2_anno_in,read_depth,FtrCount_out,anchor) {
+#   # Peaksdata2_anno_in=Peaksdata2_anno
+#   # anchor=anno_anchor
+#   
+#   Junc_peaks=unique(FtrCount_out$Junc_peaks)
+#   PGene_TBL2=FtrCount_out$PGene_TBL2
   
-  Peaksdata2_anno_trns_exon=( Peaksdata2_anno[Peaksdata2_anno$ID%in%Junc_peaks,])
+Join_Junction_Combine=function(Peaksdata2_anno_in,read_depth,Junc_peaks,PGene_TBL2,anchor) { 
+    # Peaksdata2_anno_in=Peaksdata2_anno
+    # anchor=anno_anchor
+  Junc_peaks=Junc_peaks$x
+  
+  Peaksdata2_anno_trns_exon=( Peaksdata2_anno_in[Peaksdata2_anno_in$ID%in%Junc_peaks,])
   CollapsedOut=as.data.frame(matrix(nrow = (1),ncol = ncol(Peaksdata2_anno_trns_exon)))
   colnames(CollapsedOut)=colnames(Peaksdata2_anno_trns_exon)
   CollapsedOut$IDmerge=NA
@@ -1419,31 +1493,59 @@ Join_Junction_Combine=function(Peaksdata2_anno,read_depth,FtrCount_out) {
       d5=d2[d2$start%in%min(d2$start),] 
       dmax=d2[d2$Counts_fracMM%in%max(d2$Counts_fracMM),]
       if (nrow(dmax)>1) {dmax=dmax[dmax$start%in%min(dmax$start),]}
+      dmaxT=d2[d2$Counts_total%in%max(d2$Counts_total),]
+      if (nrow(dmaxT)>1) {dmaxT=dmaxT[dmaxT$start%in%min(dmaxT$start),]}
     } else if (unique(d2$strand)=="-") {
       d5=d2[d2$start%in%max(d2$start),]
       dmax=d2[d2$Counts_fracMM%in%max(d2$Counts_fracMM),]
       if (nrow(dmax)>1) {dmax=dmax[dmax$start%in%max(dmax$start),]}
+      dmaxT=d2[d2$Counts_total%in%max(d2$Counts_total),]
+      if (nrow(dmaxT)>1) {dmaxT=dmaxT[dmaxT$start%in%max(dmaxT$start),]}
     }
     
     ### collapse all columns 
-    d3= ( apply(d2 ,2, function(x){paste(unique(x[!is.na(x)]),collapse = ',')}))
+    collapseCol=function(x){
+      # x=d2[,'Same_feature',drop=F]
+      if (T%in%grepl(",",x)) {
+       x=x[!is.na(x)]
+       x= str_split(x,",")%>%unlist%>%unique%>%sort
+       x=paste0(x,collapse=",")
+      }else{
+        x=x[!is.na(x)]
+        x= paste0(unique(x),collapse=",")
+      }
+      return(x)  
+    }
+    
+    # d3= ( apply(d2 ,2, function(x){paste(unique(x[!is.na(x)]),collapse = ',')}))
+    d3= apply(d2 ,2, collapseCol)
+  
+    ### add values from all regions
     d3[d3==""]<-NA
     cols=c('Counts_Unique','Counts_fracMM','Length')
+      ## convert to numeric
     d3=as.data.frame(t(d3))
     d3[1,cols]=t(as.data.frame(colSums(d2[,cols])))   
     d3[,cols]=as.numeric(d3[,cols])
     d3$IDmerge=d3$ID
     
     ## Select summary annotation based on Max(dmax) expression peak or 5'(d5) peak   
-    danno=dmax # d5 dmax
+    if (anchor=="max_MM") {
+      danno=dmax
+    }else if (anchor=="max_total"){
+      danno=dmaxT
+    }else if (anchor=="5prime"){
+      danno=d5
+    }else { print("select either max or 5prime for AnnoAnchor paramater")}
+    
     cols_AnnotSelect=c('Same_Comb_type_exon','Same_Comb_type_ncRNA','Oppo_Comb_type_exon',
                        'Oppo_Comb_type_ncRNA','Comb_type_exon_Oppo')
     d3[,cols_AnnotSelect]= (danno[,cols_AnnotSelect])
     
     # Select ID for 5' most read or max counts
-    d3$start=d5$start
-    d3$end=d5$end
-    d3$ID=paste0(d5$chr,":",d5$start,"-",d5$end,"_",d5$strand)   
+    d3$start=danno$start
+    d3$end=danno$end
+    d3$ID=paste0(danno$chr,":",danno$start,"-",danno$end,"_",danno$strand)   
     
     ## if count < read_depth skip
     if (d3$Counts_fracMM<read_depth) {
@@ -1453,16 +1555,16 @@ Join_Junction_Combine=function(Peaksdata2_anno,read_depth,FtrCount_out) {
     }
   }  
   CollapsedOut=CollapsedOut[is.na(CollapsedOut$ID)==F,]
-  Peaksdata2_anno$IDmerge=NA
-  Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$ID%in%Junc_peaks==F,]
-  Peaksdata2_anno=(rbind(Peaksdata2_anno,CollapsedOut))
+  Peaksdata2_anno_in$IDmerge=NA
+  Peaksdata2_anno_in=Peaksdata2_anno_in[Peaksdata2_anno_in$ID%in%Junc_peaks==F,]
+  Peaksdata2_anno_in=(rbind(Peaksdata2_anno_in,CollapsedOut))
   
   
   ######################################################################
   #### Re filter reads after combing counts of spliced reads
-  Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$Counts_fracMM>=read_depth,]
+  Peaksdata2_anno_in=Peaksdata2_anno_in[Peaksdata2_anno_in$Counts_fracMM>=read_depth,]
   
-  return(Peaksdata2_anno)
+  return(Peaksdata2_anno_in)
 }    
 
 #### collapse exon
