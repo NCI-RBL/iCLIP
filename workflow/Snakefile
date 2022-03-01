@@ -47,7 +47,8 @@ splice_aware = config['spliceaware'].capitalize()
 include_rRNA = config['includerRNA'].capitalize()
 splice_bp = config['spliceBPlength']
 sp_junc = config['splicejunction'].upper()
-condense_exon = config['condenseexon'].upper()
+anno_anchor=config['AnnoAnchor']
+#condense_exon = config['condenseexon'].upper()
 min_count = config['mincount']
 nt_merge = str(config['ntmerge']) + 'nt'
 peak_id = config['peakid'].upper()
@@ -126,10 +127,10 @@ else:
     sp_junc = "FALSE"
 
 #convert condense junction selection
-if (condense_exon=="Y"):
-    cond_exon = "TRUE"
-else:
-    cond_exon = "FALSE"
+#if (condense_exon=="Y"):
+#    cond_exon = "TRUE"
+#else:
+#    cond_exon = "FALSE"
 
 #create list of alignment types based on splice_aware flag
 if (splice_aware == "Y"):
@@ -528,6 +529,9 @@ rule all:
         expand(join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed'), sp=sp_list),
         expand(join(out_dir,'03_peaks','02_SAF','{sp}_ALLreadPeaks.SAF'), sp=sp_list),
         expand(join(out_dir,'03_peaks','02_SAF','{sp}_UNIQUEreadPeaks.SAF'), sp=sp_list),
+        
+        # annotations
+        expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_{AnnoStrand}.txt'),AnnoStrand=["SameStrand","OppoStrand"],sp=sp_list),
         
         # annotation_report
         expand(join(out_dir,'04_annotation', '{sp}_annotation_' + peak_id + 'readPeaks_final_report.html'),sp=sp_list),
@@ -1740,8 +1744,10 @@ rule feature_counts:
     output:
         all_unique = join(out_dir,'03_peaks','03_counts','{sp}_ALLreadpeaks_uniqueCounts.txt'),
         all_mm = join(out_dir,'03_peaks','03_counts','{sp}_ALLreadpeaks_FracMMCounts.txt'),
+        all_total = join(out_dir,'03_peaks','03_counts','{sp}_ALLreadpeaks_totalCounts.txt'),
         unique_unique = join(out_dir,'03_peaks','03_counts','{sp}_UNIQUEreadpeaks_uniqueCounts.txt'),
         unique_mm = join(out_dir,'03_peaks','03_counts','{sp}_UNIQUEreadpeaks_FracMMCounts.txt'),
+        unique_total = join(out_dir,'03_peaks','03_counts','{sp}_UNIQUEreadpeaks_totalCounts.txt'),
         all_unique_jcounts = join(out_dir,'03_peaks','03_counts','{sp}_ALLreadpeaks_uniqueCounts.txt.jcounts'),
         all_mm_jcounts = join(out_dir,'03_peaks','03_counts','{sp}_ALLreadpeaks_FracMMCounts.txt.jcounts'),
         unique_unique_jcounts = join(out_dir,'03_peaks','03_counts','{sp}_UNIQUEreadpeaks_uniqueCounts.txt.jcounts'),
@@ -1771,6 +1777,15 @@ rule feature_counts:
             -T {threads} \\
             -o {output.all_mm} \\
             {input.bam};
+        featureCounts -F SAF \\
+            -a {input.saf_all} \\
+            -M \\
+            -O \\
+            --minOverlap 1 \\
+            -s 1 \\
+            -T {threads} \\
+            -o {output.all_total} \\
+            {input.bam};
 
         # Run for uniquereadpeaks
         featureCounts -F SAF \\
@@ -1794,6 +1809,15 @@ rule feature_counts:
             -T {threads} \\
             -o {output.unique_mm} \\
             {input.bam}
+        featureCounts -F SAF \\
+            -a {input.saf_unique} \\
+            -M \\
+            -O \\
+            --minOverlap 1 \\
+            -s 1 \\
+            -T {threads} \\
+            -o {output.unique_total} \\
+            {input.bam}    
         """
 
 rule project_annotations:
@@ -1838,24 +1862,26 @@ rule project_annotations:
 
 # Pipeline splits depending on DE_method or none
 if DE_method=="MANORM" or DE_method=="DIFFBIND":
-    rule peak_annotations:
+    rule peak_junctions:
         '''
         find peak junctions, annotations peaks, merges junction and annotation information
         '''
         input:
-            unique = rules.feature_counts.output.all_unique,
-            unique_jcounts = rules.feature_counts.output.all_unique_jcounts,
-            all = rules.feature_counts.output.all_mm,
-            all_jcounts = rules.feature_counts.output.all_mm_jcounts,
+            unique = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_uniqueCounts.txt'),
+            unique_jcounts = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_uniqueCounts.txt.jcounts'),
+            mm = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_FracMMCounts.txt'),
+            mm_jcounts = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_FracMMCounts.txt.jcounts'),
+            total = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_totalCounts.txt'),
             anno = rules.project_annotations.output.anno
         params:
-            rname = '16_peak_annotations',
-            script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
+            rname = '16_peak_junctions',
+            script = join(source_dir,'workflow','scripts','09_Anno_junctions.R'),
             functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
             bashscript = join(source_dir,'workflow','scripts','09_get_site2peak_lookup.sh'),
             pyscript = join(source_dir,'workflow','scripts','09_jcounts2peakconnections.py'),
             p_type = peak_id,
             junc = sp_junc,
+            anchor= anno_anchor,
             r_depth= min_count,
             d_method=DE_method,
             sp = "{sp}",
@@ -1863,11 +1889,6 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
             ref_sp = nova_ref,
             out = join(out_dir,'04_annotation','02_peaks/',),
             out_de = join(out_dir,'05_demethod','01_input/',),
-            anno_dir = join(out_dir,'04_annotation','01_project/'),
-            a_config = annotation_config,
-            g_path = gen_path,
-            i_path = intron_path,
-            r_path = rmsk_path,
             error = join(out_dir,'04_annotation','read_depth_error.txt')
         envmodules:
             config['R'],
@@ -1875,8 +1896,7 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
         threads: getthreads("peak_annotations")
         output:
             splice_table = join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + '_connected_peaks.txt'),
-            anno = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
-            text = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),
+            text = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
             bed = temp(join(out_dir,'05_demethod', '01_input', '{sp}_' + peak_id + 'readPeaks_for' + DE_method + '.bed')),
             p_bed = temp(join(out_dir,'05_demethod', '01_input', '{sp}_' + peak_id + 'readPeaks_for' + DE_method + '_P.bed')),
             n_bed = temp(join(out_dir,'05_demethod', '01_input', '{sp}_' + peak_id + 'readPeaks_for' + DE_method + '_N.bed'))
@@ -1892,7 +1912,7 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
             
             #bash script to run bedtools and get site2peak lookuptable
 
-            bash {params.bashscript} {input.all_jcounts} {input.all} {params.sp}_{params.p_type} {params.out} {params.pyscript} 
+            bash {params.bashscript} {input.mm_jcounts} {input.mm} {params.sp}_{params.p_type} {params.out} {params.pyscript} 
 
             # above bash script will create {output.splice_table}
 
@@ -1900,42 +1920,42 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
                 --rscript {params.functions} \\
                 --peak_type {params.p_type} \\
                 --peak_unique {input.unique} \\
-                --peak_all {input.all} \\
+                --peak_all {input.mm} \\
+                --peak_total {input.total} \\
                 --join_junction {params.junc} \\
+                --anno_anchor {params.anchor} \\
                 --read_depth {params.r_depth} \\
                 --demethod {params.d_method} \\
                 --sample_id {params.sp} \\
                 --ref_species {params.ref_sp} \\
-                --anno_dir {params.anno_dir} \\
                 --splice_table {output.splice_table} \\
-                --reftable_path {params.a_config} \\
-                --gencode_path {params.g_path} \\
-                --intron_path {params.i_path} \\
-                --rmsk_path {params.r_path} \\
                 --tmp_dir ${{tmpdir}} \\
                 --out_dir {params.out} \\
+                --out_file {output.text} \\
                 --out_dir_DEP {params.out_de} \\
                 --output_file_error {params.error}
             '''
 else:
-    rule peak_annotations:
+    rule peak_junctions:
         '''
         find peak junctions, annotations peaks, merges junction and annotation information
         '''
         input:
-            unique = rules.feature_counts.output.all_unique,
-            unique_jcounts = rules.feature_counts.output.all_unique_jcounts,
-            all = rules.feature_counts.output.all_mm,
-            all_jcounts = rules.feature_counts.output.all_mm_jcounts,
+            unique = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_uniqueCounts.txt'),
+            unique_jcounts = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_uniqueCounts.txt.jcounts'),
+            mm = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_FracMMCounts.txt'),
+            mm_jcounts = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_FracMMCounts.txt.jcounts'),
+            total = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_totalCounts.txt'),
             anno = rules.project_annotations.output.anno
         params:
             rname = '16_peak_annotations',
-            script = join(source_dir,'workflow','scripts','09_peak_annotation.R'),
+            script = join(source_dir,'workflow','scripts','09_Anno_junctions.R'),
             functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
             bashscript = join(source_dir,'workflow','scripts','09_get_site2peak_lookup.sh'),
             pyscript = join(source_dir,'workflow','scripts','09_jcounts2peakconnections.py'),
             p_type = peak_id,
             junc = sp_junc,
+            anchor= anno_anchor,
             r_depth= min_count,
             d_method=DE_method,
             sp = "{sp}",
@@ -1943,19 +1963,13 @@ else:
             ref_sp = nova_ref,
             out = join(out_dir,'04_annotation','02_peaks/',),
             out_m = join(out_dir,'05_demethod','01_input/',),
-            anno_dir = join(out_dir,'04_annotation','01_project/'),
-            a_config = annotation_config,
-            g_path = gen_path,
-            i_path = intron_path,
-            r_path = rmsk_path,
             error = join(out_dir,'04_annotation','read_depth_error.txt')
         threads: getthreads("peak_annotations")
         envmodules:
             config['R'],
             config['bedtools'],
         output:
-            anno = join(out_dir,'04_annotation', '02_peaks', '{sp}_annotable.bed'),
-            text = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),
+            text = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
             splice_table = join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + '_connected_peaks.txt'),
         shell:
             '''
@@ -1969,7 +1983,7 @@ else:
             
             #bash script to run bedtools and get site2peak lookuptable
 
-            bash {params.bashscript} {input.all_jcounts} {input.all} {params.sp}_{params.p_type} {params.out} {params.pyscript}
+            bash {params.bashscript} {input.mm_jcounts} {input.mm} {params.sp}_{params.p_type} {params.out} {params.pyscript}
 
             # above bash script will create {output.splice_table}
                 
@@ -1977,23 +1991,252 @@ else:
                 --rscript {params.functions} \\
                 --peak_type {params.p_type} \\
                 --peak_unique {input.unique} \\
-                --peak_all {input.all} \\
+                --peak_all {input.mm} \\
+                --peak_total {input.total} \\
                 --join_junction {params.junc} \\
+                --anno_anchor {params.anchor} \\
                 --read_depth {params.r_depth} \\
                 --demethod {params.d_method} \\
                 --sample_id {params.sp} \\
                 --ref_species {params.ref_sp} \\
-                --anno_dir {params.anno_dir} \\
                 --splice_table {output.splice_table} \\
-                --reftable_path {params.a_config} \\
-                --gencode_path {params.g_path} \\
-                --intron_path {params.i_path} \\
-                --rmsk_path {params.r_path} \\
                 --tmp_dir ${{tmpdir}} \\
                 --out_dir {params.out} \\
+                --out_file {output.text} \\
                 --out_dir_DEP {params.out_m} \\
                 --output_file_error {params.error}
             '''
+
+
+rule peak_Transcripts:
+    '''
+    find peak junctions, annotations peaks, merges junction and annotation information
+    '''
+    input:
+        peaks = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
+        anno = rules.project_annotations.output.anno
+    params:
+        rname = '16_peak_Transcripts',
+        script = join(source_dir,'workflow','scripts','09_Anno_Transcript.R'),
+        functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+        p_type = peak_id,
+        anchor= anno_anchor,
+        r_depth= min_count,
+        sp = "{sp}",
+        n_merge = nt_merge,
+        ref_sp = nova_ref,
+        out = join(out_dir,'04_annotation','02_peaks/',),
+        anno_dir = join(out_dir,'04_annotation','01_project/'),
+        a_config = annotation_config,
+        g_path = gen_path,
+        i_path = intron_path,
+        r_path = rmsk_path,
+        anno_strand="{AnnoStrand}",
+        error = join(out_dir,'04_annotation','read_depth_error.txt')
+    envmodules:
+        config['R'],
+        config['bedtools'],
+    threads: getthreads("peak_annotations")
+    output:
+        outfile = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_transcripts_{AnnoStrand}.txt'),
+    shell:
+        '''
+        # Setup tmp directory
+        if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}/"
+        else
+            tmpdir="{out_dir}01_preprocess/07_rscripts/"
+            if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+        fi
+
+        Rscript {params.script} \\
+            --rscript {params.functions} \\
+            --peak_type {params.p_type} \\
+            --anno_anchor {params.anchor} \\
+            --read_depth {params.r_depth} \\
+            --sample_id {params.sp} \\
+            --ref_species {params.ref_sp} \\
+            --anno_dir {params.anno_dir} \\
+            --reftable_path {params.a_config} \\
+            --gencode_path {params.g_path} \\
+            --intron_path {params.i_path} \\
+            --rmsk_path {params.r_path} \\
+            --tmp_dir ${{tmpdir}} \\
+            --out_dir {params.out} \\
+            --out_file {output.outfile} \\
+            --anno_strand {params.anno_strand} 
+        '''
+
+rule peak_ExonIntron:
+    '''
+    find peak junctions, annotations peaks, merges junction and annotation information
+    '''
+    input:
+        peaks = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
+        anno = rules.project_annotations.output.anno
+    params:
+        rname = '16_peak_ExonIntron',
+        script = join(source_dir,'workflow','scripts','09_Anno_ExonIntron.R'),
+        functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+        p_type = peak_id,
+        anchor= anno_anchor,
+        r_depth= min_count,
+        sp = "{sp}",
+        n_merge = nt_merge,
+        ref_sp = nova_ref,
+        out = join(out_dir,'04_annotation','02_peaks/',),
+        anno_dir = join(out_dir,'04_annotation','01_project/'),
+        a_config = annotation_config,
+        g_path = gen_path,
+        i_path = intron_path,
+        r_path = rmsk_path,
+        anno_strand="{AnnoStrand}",
+        error = join(out_dir,'04_annotation','read_depth_error.txt')
+    envmodules:
+        config['R'],
+        config['bedtools'],
+    threads: getthreads("peak_annotations")
+    output:
+        outfile = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_{AnnoStrand}.txt'),
+    shell:
+        '''
+        # Setup tmp directory
+        if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}/"
+        else
+            tmpdir="{out_dir}01_preprocess/07_rscripts/"
+            if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+        fi
+
+        Rscript {params.script} \\
+            --rscript {params.functions} \\
+            --peak_type {params.p_type} \\
+            --anno_anchor {params.anchor} \\
+            --read_depth {params.r_depth} \\
+            --sample_id {params.sp} \\
+            --ref_species {params.ref_sp} \\
+            --anno_dir {params.anno_dir} \\
+            --reftable_path {params.a_config} \\
+            --gencode_path {params.g_path} \\
+            --intron_path {params.i_path} \\
+            --rmsk_path {params.r_path} \\
+            --tmp_dir ${{tmpdir}} \\
+            --out_dir {params.out} \\
+            --out_file {output.outfile} \\
+            --anno_strand {params.anno_strand} 
+        '''
+
+rule peak_RMSK:
+    '''
+    find peak junctions, annotations peaks, merges junction and annotation information
+    '''
+    input:
+        peaks = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
+        anno = rules.project_annotations.output.anno
+    params:
+        rname = '16_peak_RMSK',
+        script = join(source_dir,'workflow','scripts','09_Anno_RMSK.R'),
+        functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+        p_type = peak_id,
+        anchor= anno_anchor,
+        r_depth= min_count,
+        sp = "{sp}",
+        n_merge = nt_merge,
+        ref_sp = nova_ref,
+        out = join(out_dir,'04_annotation','02_peaks/',),
+        anno_dir = join(out_dir,'04_annotation','01_project/'),
+        a_config = annotation_config,
+        g_path = gen_path,
+        i_path = intron_path,
+        r_path = rmsk_path,
+        anno_strand="{AnnoStrand}",
+        error = join(out_dir,'04_annotation','read_depth_error.txt')
+    envmodules:
+        config['R'],
+        config['bedtools'],
+    threads: getthreads("peak_annotations")
+    output:
+        outfile = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_RMSK_{AnnoStrand}.txt'),
+    shell:
+        '''
+        # Setup tmp directory
+        if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}/"
+        else
+            tmpdir="{out_dir}01_preprocess/07_rscripts/"
+            if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+        fi
+
+        Rscript {params.script} \\
+            --rscript {params.functions} \\
+            --peak_type {params.p_type} \\
+            --anno_anchor {params.anchor} \\
+            --read_depth {params.r_depth} \\
+            --sample_id {params.sp} \\
+            --ref_species {params.ref_sp} \\
+            --anno_dir {params.anno_dir} \\
+            --reftable_path {params.a_config} \\
+            --gencode_path {params.g_path} \\
+            --intron_path {params.i_path} \\
+            --rmsk_path {params.r_path} \\
+            --tmp_dir ${{tmpdir}} \\
+            --out_dir {params.out} \\
+            --out_file {output.outfile} \\
+            --anno_strand {params.anno_strand}  
+        '''
+
+rule peak_process:
+    '''
+    find peak junctions, annotations peaks, merges junction and annotation information
+    '''
+    input:
+        peaks = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
+        TransOut_SS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_transcripts_SameStrand.txt'),
+        TransOut_OS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_transcripts_OppoStrand.txt'),
+        EIOut_SS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_SameStrand.txt'),
+        EIOut_OS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_OppoStrand.txt'),
+        RMSKOut_SS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_RMSK_SameStrand.txt'),
+        RMSKOut_OS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_RMSK_OppoStrand.txt'),
+    params:
+        rname = '16_peak_process',
+        script = join(source_dir,'workflow','scripts','09_Anno_Process.R'),
+        functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+        p_type = peak_id,
+        anchor= anno_anchor,
+        r_depth= min_count,
+        sp = "{sp}",
+        n_merge = nt_merge,
+        ref_sp = nova_ref,
+        out = join(out_dir,'04_annotation','02_peaks/',),
+    envmodules:
+        config['R'],
+        config['bedtools'],
+    threads: getthreads("peak_annotations")
+    output:
+        outfile = join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),
+    shell:
+        '''
+        # Setup tmp directory
+        if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
+            tmpdir="/lscratch/${{SLURM_JOB_ID}}/"
+        else
+            tmpdir="{out_dir}01_preprocess/07_rscripts/"
+            if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
+        fi
+
+        Rscript {params.script} \\
+            --rscript {params.functions} \\
+            --peak_type {params.p_type} \\
+            --anno_anchor {params.anchor} \\
+            --read_depth {params.r_depth} \\
+            --sample_id {params.sp} \\
+            --ref_species {params.ref_sp} \\
+            --tmp_dir ${{tmpdir}} \\
+            --out_dir {params.out} \\
+            --out_file {output.outfile}
+
+        '''
+
 
 rule annotation_report:
     """
