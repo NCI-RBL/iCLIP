@@ -61,10 +61,10 @@ properties:
     type: string
     enum: ["Y","N","y","n"]
     description: if spliceaware Y, include splice junctions in peak calls for DE_METHOD MANORM or DIFFBIND
-  condenseexon:
+  AnnoAnchor:
     type: string
-    enum: ["Y","N","y","n"]
-    description: if spliceaware Y, if there are multiple peaks in the same transcript, whether to combine into one feature
+    enum: ["max_MM","max_total","5prime"]
+    description: Annotations for spliced peaks will be based on either 5` most region or region with max reads based on Count_FracMM (max_mm) or total reads (max_total)
   mincount:
     type: number
     description: minimum number of values to count as a 'peak'
@@ -107,7 +107,7 @@ required:
   - includerRNA
   - spliceBPlength
   - splicejunction
-  - condenseexon
+  - AnnoAnchor
   - mincount
   - ntmerge
   - peakid
