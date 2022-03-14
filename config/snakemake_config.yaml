@@ -16,11 +16,11 @@ contrastManifest: "OUTPUT_DIR/manifest/contrasts.tsv"
 #path to fastq files
 fastqDir: "/path/to/fastq/files/"
 
-#########################################################################################
+########################################################################################
 #user parameters
 #########################################################################################
 filterlength: 20 #minimum read length to include in analysis [any int >20] this is also the novoalign l parameter
-multiplexflag: "Y" #whether samples are multiplexed ["Y","N"]
+multiplexflag: "N" #whether samples are multiplexed ["Y","N"]
 mismatch: 1 #if multiplexed, number of bp mismatches allowed in demultiplexing [1,2,3]
 reference: "mm10" #reference organism ["hg38","mm10"]
 spliceaware: "Y" #whether to run include splice_aware feature for alignment ["Y","N"]
@@ -31,7 +31,7 @@ AnnoAnchor: "max_total" #Annotations for spliced peaks will be based on either 5
 mincount: 3 #minimum number of reads to count as a peak [1,2,3]
 ntmerge: 10 #minimum distance of nucleotides to merge peaks [any integer >=1, default 10]
 peakid: "ALL" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
-DEmethod: "manorm" #choose DE method ["none", "manorm", "diffbind"]
+DEmethod: "none" #choose DE method ["none", "manorm", "diffbind"]
 sampleoverlap: 1 #if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted [>1]
 pval: 0.005 #if DEmethod, pval cutoff for significance
 fc: 1 #if DEmethod, fold change cut off for significance
