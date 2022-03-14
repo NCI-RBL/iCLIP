@@ -6,15 +6,15 @@
 #Folders and Paths
 #########################################################################################
 #path to iCLIP directory
-sourceDir: "/data/RBL_NCI/Pipelines/iCLIP/activeDev/"
+sourceDir: "PIPELINE_HOME"
 #path to output directory
-outputDir: "/gpfs/gsfs11/users/RBL_NCI/Wolin/mESC_clip_3_clip3"
+outputDir: "OUTPUT_DIR"
 #path to manifest files
-sampleManifest: "/gpfs/gsfs11/users/RBL_NCI/Wolin/mESC_clip_3_clip3/manifest/samples.tsv"
-multiplexManifest: "/gpfs/gsfs11/users/RBL_NCI/Wolin/mESC_clip_3_clip3/manifest/multiplex.tsv"
-contrastManifest: "/gpfs/gsfs11/users/RBL_NCI/Wolin/mESC_clip_3_clip3/manifest/contrasts.tsv"
+sampleManifest: "OUTPUT_DIR/manifest/samples.tsv"
+multiplexManifest: "OUTPUT_DIR/manifest/multiplex.tsv"
+contrastManifest: "OUTPUT_DIR/manifest/contrasts.tsv"
 #path to fastq files
-fastqDir: "/data/RBL_NCI/Wolin/mESC_clip_3/fastq"
+fastqDir: "/path/to/fastq/files/"
 
 #########################################################################################
 #user parameters
