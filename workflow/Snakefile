@@ -1968,6 +1968,7 @@ else:
         envmodules:
             config['R'],
             config['bedtools'],
+            config['python']
         output:
             text = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
             splice_table = join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + '_connected_peaks.txt'),
