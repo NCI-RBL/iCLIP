@@ -1,2 +1,2 @@
-file_name	multiplex
-test_1.fastq.gz	test_1
+file_name,multiplex
+test_1.fastq.gz,test_1
