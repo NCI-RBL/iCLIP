@@ -126,12 +126,6 @@ if (sp_junc=="Y"):
 else:
     sp_junc = "FALSE"
 
-#convert condense junction selection
-#if (condense_exon=="Y"):
-#    cond_exon = "TRUE"
-#else:
-#    cond_exon = "FALSE"
-
 #create list of alignment types based on splice_aware flag
 if (splice_aware == "Y"):
     align_list = ["unmasked", "unaware", "masked"]
@@ -234,20 +228,20 @@ def nondemux_cmd(wildcards):
 
 #command needed to cut adaptors from demux samples
 def adapt_cmd(wildcards):
-    #example:
-        #singularity exec -B /scratch /data/CCBR_Pipeliner/iCLIP/container/ccbr_icount_v1.0.0.sif iCount cutadapt --threads 16 -ml 20 --untrimmed_output /path/_untrimmed.fastq.gz
+    #example: 
+        #singularity exec -B /scratch /data/CCBR_Pipeliner/iCLIP/container/ccbr_icount_v1.0.0.sif iCount cutadapt --threads 16 -ml 20 --untrimmed_output /path/_untrimmed.fastq.gz 
         # --reads_trimmed /path/sp_trimmed.fastq.gz /path/fastq.gz ABCDEDFGH
-
-    sp=wildcards.sp
+    cmd=''
+    for sp in sp_list:
         #sub df
-    df_sub = df_samples[(df_samples['sample']==sp)]
+        df_sub = df_samples[(df_samples['sample']==sp)]
 
         #create cmd
-    filtered = join(out_dir, '01_preprocess', sp + '_filtered.fastq.gz')
-    removed =  join(out_dir, '01_preprocess', sp + '_removed_seq.fastq.gz ')
-    fastq = join(out_dir, df_sub.iloc[0]['multiplex'], '02_preprocess',sp + '.fastq.gz')
+        filtered = join(out_dir, '01_preprocess', sp + '_filtered.fastq.gz')
+        removed =  join(out_dir, '01_preprocess', sp + '_removed_seq.fastq.gz ')
+        fastq = join(out_dir, df_sub.iloc[0]['multiplex'], '02_preprocess',sp + '.fastq.gz')
 
-    cmd = singularity_exec + ' ' + join(cont_dir,'ccbr_icount_v1.0.0.sif') + ' iCount cutadapt -ml ' + str(filter_length) + ' --threads ' + str(getthreads('remove_adaptors')) + ' --untrimmed_output ' + filtered + ' --reads_trimmed ' + removed + ' ' + fastq + ' ' + df_sub.iloc[0]['adaptor']
+        cmd = singularity_exec + ' ' + join(cont_dir,'ccbr_icount_v1.0.0.sif') + ' iCount cutadapt -ml ' + str(filter_length) + ' --threads ' + str(getthreads('remove_adaptors')) + ' --untrimmed_output ' + filtered + ' --reads_trimmed ' + removed + ' ' + fastq + ' ' + df_sub.iloc[0]['adaptor'] + '; ' + cmd
     
     return(cmd)
     
@@ -393,8 +387,8 @@ def get_MANORM_post_processing(wildcards):
 # main code
 ###############################################################
 #read manifests
-df_multiplex = pd.read_csv(multiplex_manifest,sep="\t")
-df_samples = pd.read_csv(sample_manifest,sep="\t")
+df_multiplex = pd.read_csv(multiplex_manifest,sep=",")
+df_samples = pd.read_csv(sample_manifest,sep=",")
 
 #create dicts
 (multiplex_dict,samp_dict) = CreateSampleDicts(df_multiplex,df_samples)
@@ -488,7 +482,7 @@ else:
     input_demethod_reports = [expand(join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),sp=sp_list)]
 
 #local rules
-localrules: check_manifest, copy_nondemux, rename_demux, multiqc
+localrules: copy_nondemux, rename_demux, multiqc
 
 rule all:
     input:
@@ -496,11 +490,8 @@ rule all:
         # required, non temp files
         # non-rule: check sample fastq files exist
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list),
-        
-        # check manifest
-        join(out_dir,'qc','manifest_check.txt'),
 
-        # keep filtered fastqs ... no more temp
+        # filtered fastqs
         expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
         
         # #merge_unmapped_splits
@@ -605,35 +596,6 @@ else:
 ###############################################################
 # snakemake rules
 ###############################################################
-rule check_manifest:
-    """
-    Read in multiplex manifest, sample manifest, contrast manifest.
-    Use python script to check file matching, sample matching, and invalid characters.
-    Will only check contrast manifest if "MANORM" is selected
-    If files are correct, outputs a temp file. If not, outputs error file.
-    """
-    input:
-        mm = multiplex_manifest,
-        sm = sample_manifest,
-        cm = contrast_manifest
-    params:
-        py = join(source_dir,'workflow','scripts','01_check_manifest.py'),
-        base = join(out_dir,'qc','manifest_')
-    envmodules:
-        config['python']
-    output:
-        manifest = join(out_dir, 'qc', 'manifest_check.txt'),
-    shell:
-        """
-        set -exo pipefail
-        python {params.py} \\
-            '{params.base}' \\
-            {input.mm} \\
-            {input.sm} \\
-            {input.cm} \\
-            {DE_method}
-        """
-
 #pipeline branches to demultiplex, if necessary
 if (multiplex_flag == 'Y'):
     rule qc_barcode:
@@ -643,7 +605,6 @@ if (multiplex_flag == 'Y'):
         output barplot with top barcode counts
         """
         input:
-           # manifest = rules.check_manifest.output.manifest,
             fq = get_fq_names,
         params:
             rname = "01a_qc_barcode",
@@ -693,7 +654,6 @@ if (multiplex_flag == 'Y'):
         """
         input:
             f1 = get_fq_names,
-#            manifest = rules.check_manifest.output.manifest
         params:
             rname='01b_demultiplex',
             s_exec = singularity_exec,
@@ -730,7 +690,6 @@ if (multiplex_flag == 'Y'):
             cmd = rename_cmd
         output:
             o1 = temp(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz')),
-            # o1 = join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz')
         shell:
             """
             set -exo pipefail
@@ -749,7 +708,6 @@ else:
             cmd = nondemux_cmd
         output:
             fastqs = temp(expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list))
-            # fastqs = expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list)
         shell:
             """
             set -exo pipefail
@@ -766,8 +724,9 @@ rule remove_adaptors:
     2) trimmed.fastq.gz - reads that contained an adapter and were trimmed --> removed_seq.fastq.gz
     """
     input:
-        fastq = expand(join(out_dir,'{mp}', '02_preprocess','{{sp}}.fastq.gz'),mp=set(mp_list)),
-        # fastq = join(out_dir,'{{mp}}', '02_preprocess','{{sp}}.fastq.gz'),
+        fastq = expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list),
+        #fastq = expand(join(out_dir,'{mp}', '02_preprocess','{{sp}}.fastq.gz'),mp=set(mp_list)),
+        #fastq = join(out_dir,'{{mp}}', '02_preprocess','{{sp}}.fastq.gz'),
     params:
         rname='02_remove_adaptors',
         cmd = adapt_cmd,
@@ -775,10 +734,10 @@ rule remove_adaptors:
     envmodules:
         config['singularity'],
     output:
-        # filtered = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
-        # removed = expand(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'),sp=sp_list)
-        filtered = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),
-        removed = temp(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'))
+        filtered = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
+        removed = expand(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'),sp=sp_list)
+        #filtered = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),
+        #removed = temp(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'))
     shell:
         """
         set -exo pipefail
@@ -2593,7 +2552,7 @@ elif (DE_method == "DIFFBIND"):
     rule DIFFBIND_analysis:
         """
         input
-            /home/sevillas/git/iCLIP/manifest/sample_manifest.tsv
+            /home/sevillas/git/iCLIP/manifests/sample_manifest.tsv
             /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_table_P.txt
             /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_table_N.txt
         

@@ -10,9 +10,9 @@ sourceDir: "PIPELINE_HOME"
 #path to output directory
 outputDir: "OUTPUT_DIR"
 #path to manifest files
-sampleManifest: "OUTPUT_DIR/manifest/samples.tsv"
-multiplexManifest: "OUTPUT_DIR/manifest/multiplex.tsv"
-contrastManifest: "OUTPUT_DIR/manifest/contrasts.tsv"
+sampleManifest: "OUTPUT_DIR/manifests/samples.tsv"
+multiplexManifest: "OUTPUT_DIR/manifests/multiplex.tsv"
+contrastManifest: "OUTPUT_DIR/manifests/contrasts.tsv"
 #path to fastq files
 fastqDir: "/path/to/fastq/files/"
 
