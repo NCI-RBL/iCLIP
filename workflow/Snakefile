@@ -48,7 +48,6 @@ include_rRNA = config['includerRNA'].capitalize()
 splice_bp = config['spliceBPlength']
 sp_junc = config['splicejunction'].upper()
 anno_anchor=config['AnnoAnchor']
-#condense_exon = config['condenseexon'].upper()
 min_count = config['mincount']
 nt_merge = str(config['ntmerge']) + 'nt'
 peak_id = config['peakid'].upper()
@@ -463,10 +462,6 @@ if DE_method == "MANORM":
     input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}', '{group_id}_' + peak_id + 'readPeaks_manorm_report.html'),group_id=contrast_list),
     expand(join(out_dir,'05_demethod','02_analysis', '{group_id}', '{group_id}_' + peak_id + 'readPeaks_post_processing.txt'), group_id=contrast_list)]
 
-    #testing
-    #input_demethod_reports = expand(join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_P.bed'), sp=sp_list)
-    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_' + peak_id + 'readPeaks_MAvalues.xls'),group_id=contrast_list,strand=strand_list)
-    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt'), group_id=contrast_list)
 elif DE_method == "DIFFBIND":
     #input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}', '{group_id}_manorm_report.html'),group_id=contrast_list),
     #expand(join(out_dir,'05_demethod','02_analysis', '{group_id}', '{group_id}_post_processing.txt'), group_id=contrast_list)]
@@ -474,10 +469,6 @@ elif DE_method == "DIFFBIND":
     #testing
     input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}','{group_id}_diffbind_report.html'),group_id=contrast_list)]
 
-    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}','{group_id}_' + peak_id + 'readPeaks_MAvalues.xls'),group_id=contrast_list,strand=strand_list)
-    #input_demethod_reports = expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_post_processing.txt'), group_id=contrast_list)
-    #input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + 'Table_{strand}.txt'), group_id=contrast_list, strand=strand_list),
-    # expand(join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + DE_method + 'Summary_{strand}.txt'), group_id=contrast_list, strand=strand_list)]
 else:
     input_demethod_reports = [expand(join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),sp=sp_list)]
 
@@ -725,8 +716,6 @@ rule remove_adaptors:
     """
     input:
         fastq = expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list),
-        #fastq = expand(join(out_dir,'{mp}', '02_preprocess','{{sp}}.fastq.gz'),mp=set(mp_list)),
-        #fastq = join(out_dir,'{{mp}}', '02_preprocess','{{sp}}.fastq.gz'),
     params:
         rname='02_remove_adaptors',
         cmd = adapt_cmd,
@@ -736,8 +725,6 @@ rule remove_adaptors:
     output:
         filtered = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
         removed = expand(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'),sp=sp_list)
-        #filtered = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),
-        #removed = temp(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'))
     shell:
         """
         set -exo pipefail
@@ -894,7 +881,6 @@ rule split_files:
     threads: getthreads("split_files")
     output:
         splits = temp(expand(join(out_dir,'01_preprocess','01_splits','{{sp}}.split.{n}.fastq.gz'), n=chunks_list))
-        # splits = expand(join(out_dir,'01_preprocess','01_splits','{{sp}}.split.{n}.fastq.gz'), n=chunks_list)
     shell:
         """
         set -exo pipefail
@@ -939,7 +925,6 @@ rule novoalign:
     threads: getthreads("novoalign")
     output:
         sam = temp(join(out_dir,'01_preprocess','02_alignment','{sp}.{al}.split.{n}.sam.gz')),
-        # sam = join(out_dir,'01_preprocess','02_alignment','{sp}.{al}.split.{n}.sam.gz'),
     shell:
         """
         set -exo pipefail
@@ -993,8 +978,6 @@ if (splice_aware == "Y"):
             config['samtools'],
             config['java']
         output:
-            # sam = join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam.gz'),
-            # bam = join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam'),
             sam = temp(join(out_dir,'01_preprocess','03_genomic','{sp}.{al}.split.{n}.sam.gz')),
             bam = temp(join(out_dir,'01_preprocess','04_unmapped','{sp}.{al}.split.{n}.final.si.bam')),
         shell:
@@ -1104,8 +1087,6 @@ rule create_bam_mm_unique:
     envmodules:
         config['samtools']
     output:
-        # sort_u = join(out_dir,'01_preprocess','05_unique','{sp}.{al}.split.{n}.unique.si.bam'), # this file also contains unmapped reads
-        # sort_m = join(out_dir,'01_preprocess','05_mm','{sp}.{al}.split.{n}.mm.si.bam'),
         sort_u = temp(join(out_dir,'01_preprocess','05_unique','{sp}.{al}.split.{n}.unique.si.bam')), # this file also contains unmapped reads
         sort_m = temp(join(out_dir,'01_preprocess','05_mm','{sp}.{al}.split.{n}.mm.si.bam')),
     shell:
@@ -1217,8 +1198,6 @@ rule merge_splits_unique_mm:
     envmodules:
         config['samtools']
     output:
-        # unique = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam'),
-        # mm = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam'),
         unique = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam')),
         mm = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam')),
     shell:
@@ -1243,8 +1222,6 @@ rule merge_mm_and_unique:
         config['samtools']
     threads: getthreads("merge_mm_and_unique")
     output:
-        # merged = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam'),
-        # samstat = join(out_dir, 'qc', '01_qc_post','{sp}.{al}_samstats.txt'),
         merged = temp(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.bam')),
         samstat = temp(join(out_dir, 'qc', '01_qc_post','{sp}.{al}_samstats.txt')),
         sort = join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'),
@@ -1668,12 +1645,13 @@ rule bgzip_beds:
     envmodules:
         config['samtools'],
     threads: getthreads("bgzip_beds")
-    shell:"""
-    bgzip --threads {threads} --force {input.bed_all}
-    tabix -p bed {output.bed_all}
-    bgzip --threads {threads} --force {input.bed_unique}
-    tabix -p bed {output.bed_unique}
-"""
+    shell:
+        """
+        bgzip --threads {threads} --force {input.bed_all}
+        tabix -p bed {output.bed_all}
+        bgzip --threads {threads} --force {input.bed_unique}
+        tabix -p bed {output.bed_unique}
+        """
 
 rule feature_counts:
     """
