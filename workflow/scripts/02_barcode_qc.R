@@ -41,8 +41,8 @@ if(testing=="Y"){
 }
 
 #Read sample/multiplex manifests
-df_multiplex = read.table(multiplex_manifest,header=TRUE)
-df_samples = read.table(sample_manifest,header=TRUE)
+df_multiplex = read.table(multiplex_manifest,header=TRUE,sep=",")
+df_samples = read.table(sample_manifest,header=TRUE,sep=",")
 df_counts = read.table(barcode_input,header=FALSE)
 colnames(df_counts)=c("counts","barcode")
 
