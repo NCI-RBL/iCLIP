@@ -371,6 +371,7 @@ module load snakemake
 module load graphviz
 cd \$SLURM_SUBMIT_DIR
     snakemake \
+    --scheduler greedy \
     --use-envmodules \
     --latency-wait 120 \
     -s ${output_dir}/log/${log_time}/00_Snakefile \
