@@ -2,10 +2,10 @@
 title: ""
 output: html_document
 params:
-  samplename: "WT-NOPFA"
-  peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/13_annotation/02_peaks/WT-NOPFA_peakannotation_complete.txt"
-  output_table: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/6-22-21-HaCaT_fCLIP/13_annotation/02_peaks/WT-NOPFA_peakannotation_finalx.txt"
-  readdepth: 5
+  samplename: "Ro_Clip_u"
+  peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mESC_clip_3_clip3_u/04_annotation/02_peaks/Ro_Clip_u_ALLreadPeaks_annotation_complete.txt"
+  output_table: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mESC_clip_3_clip3_u/04_annotation/Ro_Clip_u_peakannotation_finalx.txt"
+  readdepth: 3
   PeakIdnt: "ALL" #MultiMap, Unique, all
 # params:
 #   samplename: "WT-NOPFA"
@@ -54,7 +54,6 @@ library(ggpubr)
 library(circlize)
 library('regioneR')
 library(scales)
-
 blank_theme <- theme_minimal()+
   theme(
   axis.title.x = element_blank(),
@@ -67,7 +66,6 @@ blank_theme <- theme_minimal()+
 ```
 
 ```{r, eval=F, include=F ,echo=F,warning=F,message=FALSE}
-
 rmarkdown::render('/data/RBL_NCI/Wolin/Phil/6-22-21-HaCaT_fCLIP/pipeline/10_annotation.Rmd',
                         encoding=encoding,
                         output_file='/data/RBL_NCI/Wolin/Phil/6-22-21-HaCaT_fCLIP/13_annotation/WT-NOPFA_annotation_final_report.html'
@@ -107,8 +105,6 @@ nc_color= c(
 'miscRNA'= "grey",
 'misc_RNA'= "grey"
 )
-
-
 class_color=c(
   "ncRNA"="#1B9E77",
    "rRNA" ="#1fb487",
@@ -124,7 +120,7 @@ class_color=c(
 
 ```{r echo=F, message=FALSE, warning=FALSE, eval=T, include=F,results=F,}
 # Identification of CLIP peaks: `r toString(params$samplename)`    
-Peaksdata2_anno = read.table(peak_in)
+Peaksdata2_anno = read.table(peak_in,header = T)
 # unique(Peaksdata2_anno$Same_Comb_type_exon)
 Peaksdata2_anno$Same_Comb_type_exon = 
     factor(Peaksdata2_anno$Same_Comb_type_exon, 
@@ -143,7 +139,6 @@ Peaksdata2_anno$Comb_type_exon_Oppo =
 ###### remove chrM clip peaks
 Peaksdata2_anno=Peaksdata2_anno[Peaksdata2_anno$chr%in%'chrM'==F,] 
 # Peaksdata2_anno=Peaksdata2_anno[1:10,]
-
 ```
 
 # CLIP peak annotations: `r toString(samplename)`  
@@ -264,7 +259,6 @@ All annotations from RNA type, Repeat regions, and Intronic/exonic regions are a
 ## Overview of targets by CLIP peak catagory   
 
 ```{r , echo=F, include=T, eval=T, fig.align='default', fig.ncol=2, fig.height=3.5, fig.width=7, out.height=200, out.width="50%", fig.show="hold", layout='l-screen', results = FALSE, message=FALSE , warning=F}
-
 #Plot 1
 if (params$PeakIdnt=='UNIQUE'){
   x1=ggplot(Peaksdata2_anno,aes(x=Counts_Unique,y=Length,color=Comb_type_exon_Oppo,text=Same_external_gene_name))+geom_point(size=1)+
@@ -318,6 +312,42 @@ if (nrow(Peaksdata2_anno)>1) {
   x5=x5+scale_x_continuous(trans = "log2",limits = c(.25,NA))
 }
   x1;x2;x3;x4;x5
+  
+```
+
+```{r Identify_length_Issues, echo=F,warning=F,eval=F,include=T}
+
+#############################
+### what is the most frequent peak width
+#############################
+  cnt=count(Peaksdata2_anno$Length)
+  nrow(cnt[cnt$x<20,])
+  cnt[order(cnt$freq,decreasing = T),]
+
+    View(Peaksdata2_anno[Peaksdata2_anno$Length%in%87,c('ID','IDmerge','Length')])
+
+  Peaksdata2_anno[Peaksdata2_anno$Length==2,c('ID','IDmerge')]
+  Peaksdata2_anno[Peaksdata2_anno$Length==2,c('ID','IDmerge')]
+  
+count(Peaksdata2_anno$chr)
+
+Peaksdata2_anno[grep("exon",Peaksdata2_anno$Comb_type_exon_Oppo),]
+#############################
+### Length of ID vs Length reported
+#############################
+## Lenth reported is sum of splice peak widths
+  Peaksdata2_annoSPLICE=
+  Peaksdata2_anno[!is.na(Peaksdata2_anno$IDmerge),c('ID','IDmerge','start','end','Length')]%>%
+    separate(col=ID,into=c('ID2','STRAND'),sep="_",remove = F)%>%
+    separate(col=ID2,into=c('CHR','START','END'),sep=":|-",remove = F)
+  
+  Peaksdata2_annoSPLICE$START=as.numeric(Peaksdata2_annoSPLICE$START)
+  Peaksdata2_annoSPLICE$END=as.numeric(Peaksdata2_annoSPLICE$END)
+  
+
+  Peaksdata2_annoSPLICE$length2=Peaksdata2_annoSPLICE$END-Peaksdata2_annoSPLICE$START
+  
+  
 ```
 
 <br>  
@@ -361,7 +391,6 @@ if (incd_rRNA==FALSE) {
 }
 #filter
 p=p[p$PlotColumn%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
-
 #if there are remaining types
 if (nrow(p)>0) {
 if(length(unique(p$Same_Comb_type_ncRNA)[unique(p$Same_Comb_type_ncRNA)%in%names(nc_color)==F])>0){
@@ -414,7 +443,6 @@ p=Peaksdata2_anno
 p$PlotColumn=p$Comb_type_exon_Oppo
 p=p[!p$Same_Comb_type_ncRNA%in%'rRNA',]
 p=p[p$PlotColumn%in%'ncRNA','Same_Comb_type_ncRNA',drop=F]
-
 #if there are remaining types
 if (nrow(p)>0) {
 if(length(unique(p$Same_Comb_type_ncRNA)[unique(p$Same_Comb_type_ncRNA)%in%names(nc_color)==F])>0){
@@ -547,7 +575,6 @@ if(length(unique(nccount$Same_RNA_Subtype)[unique(nccount$Same_RNA_Subtype)%in%n
 }else{
 nc_color_sel=nc_color[unique(nccount$Same_RNA_Subtype)]
 nc_color_sel=nc_color_sel[is.na(nc_color_sel)==F]
-
 gg2 = ggplot(nccount,aes(fill=Same_RNA_Subtype,x=RNA,y=Counts_fracMM) ) +
   geom_bar(stat='identity',width=.5)+theme_classic() +
   ggtitle("ncRNA only: # of reads (unique + Frac. MM) by catagory") + 
@@ -588,7 +615,6 @@ gg = ggplot(p,aes(x=RNA_Type,y=Counts_Unique,fill=RNA_Type)) +
   theme(legend.position = "none") +
   theme(axis.text.x = element_text(angle = -45))+
   scale_fill_manual(values=class_color) 
-
 if (nrow(p)==1|nrow(p)>5000) {gg
   }else { ggplotly(gg)}
 }else{print('No Features')}
@@ -602,7 +628,6 @@ p=Peaksdata2_anno
 p$PlotColumn=p$Same_Comb_type_ncRNA
   p=p[p$Comb_type_exon_Oppo%in%'ncRNA',]
 colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
-
 if (nrow(p)>0) {
   p$ID=paste0(p$ID,"\n",p$Same_gene_name_comb)
   
@@ -622,13 +647,10 @@ geom_jitter(height = 0, width = 0.1,size=0.5,aes(text=ID))+
   theme(legend.position = "none") +
   theme(axis.text.x = element_text(angle = -45))+
 scale_fill_manual(values=nc_color_sel)
-
 if (nrow(p)==1|nrow(p)>5000) {gg
 }else { ggplotly(gg,tooltip = c("text", "y"))}
 }
 }else{print('No Features')}
-
-
 ```
 
 
@@ -669,7 +691,6 @@ p=Peaksdata2_anno
 p$PlotColumn=p$Same_Comb_type_ncRNA
   p=p[p$Comb_type_exon_Oppo%in%'ncRNA',]
 colnames(p)[colnames(p)%in%'PlotColumn']='RNA_Type'
-
 if (nrow(p)>0) {
 p$ID=paste0(p$ID,"\n",p$Same_gene_name_comb)
   
@@ -764,15 +785,16 @@ gg = ggplot(p) +
 ```{r fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=T,include=F}
 #RUN2
 if ('IDmerge'%in% colnames(Peaksdata2_anno)) {
-  Peaksdata3_anno=Peaksdata2_anno[,c("ID","IDmerge",'chr',"start","end",#"strand",
+  Peaksdata3_anno=Peaksdata2_anno[,c("ID","IDmerge","Length",#'chr',"start","end",#"strand",
                                 'Counts_Unique','Counts_fracMM',
                                 "Same_gene_name_comb","Same_ensembl_gene_id","Same_type_comb","Same_Repeat_comb",'Same_feature',"Same_Comb_type_exon","Same_Comb_type_ncRNA","Oppo_gene_name_comb","Oppo_ensembl_gene_id","Oppo_type_comb","Oppo_Repeat_comb",'Oppo_feature',"Oppo_Comb_type_exon","Oppo_Comb_type_ncRNA","Comb_type_exon_Oppo")]
 } else {
-  Peaksdata3_anno=Peaksdata2_anno[,c("ID",'chr',"start","end",#"strand",
+  Peaksdata3_anno=Peaksdata2_anno[,c("ID","Length",#'chr',"start","end",#"strand",
                                 'Counts_Unique','Counts_fracMM',
                                 "Same_gene_name_comb","Same_ensembl_gene_id","Same_type_comb","Same_Repeat_comb",'Same_feature',"Same_Comb_type_exon","Same_Comb_type_ncRNA","Oppo_gene_name_comb","Oppo_ensembl_gene_id","Oppo_type_comb","Oppo_Repeat_comb",'Oppo_feature',"Oppo_Comb_type_exon","Oppo_Comb_type_ncRNA","Comb_type_exon_Oppo")]
 }
 Peaksdata3_anno=rename(Peaksdata3_anno,
+Peak_width='Length',                       
 Counts_Unique='Counts_Unique',
 Counts_Multimappers_Scaled='Counts_fracMM',
 `Same Strand: Host_gene_name`="Same_gene_name_comb",
@@ -802,32 +824,38 @@ Counts_Multimappers_Scaled='Counts_fracMM',
 ```{r ,fig.asp=.5, fig.align='center',fig.height=6, fig.width=12,echo=F,warning=F,eval=T,include=F}
 write.table(Peaksdata3_anno, file=output_table, sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
 ```
+
 ## Counts Table : 
 
 "`r output_table`"  
 
 **Columns:**  
-"ID" - CLIP peak location  
-"IDmerge" - CLIP regionns connected by spliced reads  
-"strand" - CLIP peak stand  
+**"ID"** - CLIP peak location in **`r samplename`**     
+**"IDmerge"** - CLIP regions connected by spliced reads   
+**"Peak_width"** - Width of CLIP peak  
 
-"Counts_Unique" - Number of Unique reads aligned to CLIP peak  
-"Counts_Multimappers_Scaled"  - number of reads with Unique reads =1 and Multimapped =1/#MM locations  
+**"Counts_Unique_`r samplename`"** - Number of **`r samplename`** Unique reads aligned to CLIP peak - FeatureCounts  
+**"Counts_Multimappers_Scaled_`r samplename`"** - number of **`r samplename`** Unique + Multimaped reads (Unique reads =1 and Multimapped =1/#MM) - FeatureCounts  
 
-"Same Strand: Host_gene_name" - Name of Host Gene on same strand as CLIP reads  
-"Same Strand: Host_gene_ensembl_id" - Ensemble Name of Host Gene on same strand as CLIP reads  
-"Same Strand: RNA_type" - Transcript type of CLIP peak host gene on same strand as CLIP reads  
-"Same Strand: Repeat_Type" - Type of repeat in Clip peak (determined by repeat masker) on same strand as CLIP reads  
-"Same Strand: Intron Exon" - Gene feature of CLIP peak location in protein coding Gene on same strand as CLIP reads  
-"Same Strand: RNA_type_Classification" - Summary of Peak Classification   
-"Same Strand: ncRNA_Classification" - Summary of ncRNA Peak assignments  
+**"Same Strand: Host_gene_name"** - Name of Host Gene on same strand as CLIP reads  
+**"Same Strand: Host_gene_ensembl_id"** - Ensemble Name of Host Gene on same strand as CLIP reads  
+**"Same Strand: RNA_type"** - Transcript type of CLIP peak host gene on same strand as CLIP reads  
+**"Same Strand: Repeat_Type"** - Type of repeat in Clip peak (determined by repeat masker) on same strand as CLIP reads  
+**"Same Strand: Intron Exon"** - Gene feature of CLIP peak location in protein coding Gene on same strand as CLIP reads  
+**"Same Strand: RNA_type_Classification"** - Summary of Peak Classification   
+**"Same Strand: ncRNA_Classification"** - Summary of ncRNA Peak assignments  
 
-"Opposite Strand: Host_gene_name" - Name of Host Gene on opposite strand as CLIP reads  
-"Opposite Strand: Host_gene_ensembl_id" - Ensemble Name of Host Gene on opposite strand as CLIP reads  
-"Opposite Strand: RNA_type" - Transcript type of CLIP peak host gene on opposite strand as CLIP reads  
-"Opposite Strand: Repeat_Type" - Type of repeat in Clip peak (determined by repeat masker) on opposite strand as CLIP reads  
-"Opposite Strand: Intron Exon" - Gene feature of CLIP peak location in protein coding Gene on opposite strand as CLIP reads  
-"Opposite Strand: RNA_type_Classification" - Summary of Peak Classification  
-"Opposite Strand: ncRNA_Classification" - Summary of ncRNA Peak assignments  
+**"Opposite Strand: Host_gene_name"** - Name of Host Gene on opposite strand as CLIP reads  
+**"Opposite Strand: Host_gene_ensembl_id"** - Ensemble Name of Host Gene on opposite strand as CLIP reads  
+**"Opposite Strand: RNA_type"** - Transcript type of CLIP peak host gene on opposite strand as CLIP reads  
+**"Opposite Strand: Repeat_Type"** - Type of repeat in Clip peak (determined by repeat masker) on opposite strand as CLIP reads  
+**"Opposite Strand: Intron Exon"** - Gene feature of CLIP peak location in protein coding Gene on opposite strand as CLIP reads  
+**"Opposite Strand: RNA_type_Classification"** - Summary of Peak Classification  
+**"Opposite Strand: ncRNA_Classification"** - Summary of ncRNA Peak assignments  
 
-"Both Strand: RNA_type_Classification" - Summary of Peak Classification including both strand annotations 
+**"Both Strand: RNA_type_Classification"** - Summary of Peak Classification including both strand annotations  
+
+<br>  
+<br>  
+<br>  
+

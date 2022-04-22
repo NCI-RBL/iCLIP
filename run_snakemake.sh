@@ -6,11 +6,13 @@
 
 helpFunction()
 {
-   echo ""
-   echo "Usage: $0 -p pipeline"
-   echo -e "\t-p options: initialize, check, dry, cluster, local, git, unlock, DAG, report"
-   echo "Usage: $1 -o output_dir"
-   echo -e "\t-o path to output directory"
+   echo "#########################################################" 
+   echo "Usage: bash $0 -p <PIPELINEMODE> -o <OUTPUTDIR>"
+   echo "#########################################################" 
+   echo "Acceptable inputs:"
+   echo -e "\t<PIPELINEMODE> options: initialize, dry, cluster, local, git, unlock, DAG, report"
+   echo -e "\t<OUTPUTDIR> : absolute path to output folder required"
+   echo "#########################################################" 
    exit 1 # Exit script after printing help
 }
 
@@ -90,6 +92,48 @@ check_writeaccess(){
   fi
 }
 
+# Read in multiplex manifest, sample manifest, contrast manifest.
+# Use python script to check file matching, sample matching, and invalid characters.
+# Will only check contrast manifest if "MANORM" is selected
+# If files are correct, outputs a temp file. If not, outputs error file.
+check_manifests(){
+
+  module load python
+  
+  # set args
+  py_script_in="$1"
+  manifest_file_prefix_in="$2"
+
+  # if the third argument is missing, it is a standard run
+  # if the third argument is present, but the fifth is missing it's a nonde test run
+  # if the third and fifth arguments are given, then its a DE test run
+  # for manifest testing
+  if [[ -z "$3" ]]; then
+    multiplexManifest=$config_multiplexManifest
+    sampleManifest=$config_sampleManifest
+    DEmethod=`echo "${config_DEmethod}" | cut -f1 -d"#"`
+    contrastManifest=$config_contrastManifest
+  elif [[ -z "$5" ]]; then
+    multiplexManifest=$3
+    sampleManifest=$4
+    DEmethod="NONE"
+    contrastManifest=""
+  else
+    multiplexManifest=$3
+    sampleManifest=$4
+    DEmethod=$5
+    contrastManifest=$6
+  fi
+  
+  # Run manifest check
+  python $py_script_in \
+    $manifest_file_prefix_in \
+    ${multiplexManifest} \
+    ${sampleManifest} \
+    ${DEmethod} \
+    ${contrastManifest}
+}
+
 #########################################################  
 # Formatting
 #########################################################
@@ -101,71 +145,143 @@ output_dir=$(echo $output_dir | sed 's:/*$::')
 
 # ## setting PIPELINE_HOME
 PIPELINE_HOME=$(readlink -f $(dirname "$0"))
-echo "Pipeline Dir: $PIPELINE_HOME"
 
 #########################################################
 # Pipeline options
 #########################################################
 ####################### INITIALIZE #######################
 if [[ $pipeline = "initialize" ]]; then
-  echo
-  echo "Initializing pipeline"
+  echo "------------------------------------------------------------------------"
+	echo "*** STARTING Initialization ***"
 
-  #check output dir, log dir
-  if [ -d "${output_dir}" ]; then
-    echo
-    echo "Output dir: ${output_dir}"
-
-    if [ ! -d "${output_dir}/log" ]; then
-      mkdir "${output_dir}/log/" 
-    fi
-
-    if [ ! -d "${output_dir}/config" ]; then
-      mkdir "${output_dir}/config/" 
-    fi
-
-    if [ ! -d "${output_dir}/manifest" ]; then
-      mkdir "${output_dir}/manifest/" 
-    fi
-
-  else
-    # Create any initialized parent directories
-    mkdir -p "${output_dir}"
-    mkdir "${output_dir}/config"
-    mkdir "${output_dir}/manifest"
-    mkdir "${output_dir}/log"
-    echo
-    echo "Creating output dir with configs: ${output_dir}"
-  fi
+  # create dirs
+  if [[ ! -d "${output_dir}" ]]; then mkdir ${output_dir}; fi
+  dir_list=(log config manifests qc)
+  for pd in "${dir_list[@]}"; do if [[ ! -d $output_dir/$pd ]]; then mkdir -p $output_dir/$pd; fi; done
   
   # copy config inputs to edit
   files_save=('config/snakemake_config.yaml' 'config/cluster_config.yaml' 'config/index_config.yaml' 'config/annotation_config.txt' 'workflow/Snakefile')
-
   for f in ${files_save[@]}; do
-  # converting $f path to absolute path so that
-  # run_snakemake.sh can be run from any location on the file system
-  # not just from the PIPELINE_HOME folder
     f="${PIPELINE_HOME}/$f"
     IFS='/' read -r -a strarr <<< "$f"
     sed -e "s/PIPELINE_HOME/${PIPELINE_HOME//\//\\/}/g" -e "s/OUTPUT_DIR/${output_dir//\//\\/}/g" $f > "${output_dir}/config/${strarr[-1]}"
   done
 
   # copy example manifests
-  files_save=('manifests/contrasts_example.tsv' 'manifests/samples_example.tsv' 'manifests/multiplex_example.tsv')
-
+  files_save=('manifests/contrasts_example_diffbind.tsv' 'manifests/contrasts_example_manorm.tsv' 'manifests/samples_example.tsv' 'manifests/multiplex_example.tsv')
   for f in ${files_save[@]}; do
-  # converting $f path to absolute path so that
-  # run_snakemake.sh can be run from any location on the file system
-  # not just from the PIPELINE_HOME folder
     f="${PIPELINE_HOME}/$f"
     IFS='/' read -r -a strarr <<< "$f"
-    cp $f "${output_dir}/manifest/${strarr[-1]}"
+    cp $f "${output_dir}/manifests/${strarr[-1]}"
   done
+
+  echo "*** COMPLETE Initialization ***"
+  echo "------------------------------------------------------------------------"
+
 ####################### CHECK, CLUSTER, LOCAL #######################
-#Run check of pipeline OR run pipeline locally/cluster
-elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
-  echo
-  echo "Running pipeline"
+# Run unit checks
+elif [[ $pipeline = "check" ]]; then
+    echo "------------------------------------------------------------------------"
+	  echo "*** STARTING CHECKS ***"
+
+    # Run manifest checks
+    manifest_file="${output_dir}/manifest_"
+    py_script="${PIPELINE_HOME}/workflow/scripts/01_check_manifest.py"
+
+    #set files
+    date_stamp=`date +'%Y%m%d'`
+    manifest_log=${output_dir}/manifest_log.txt
+    pass_qc="${output_dir}/manifest_no_errors.txt"
+    manorm_qc="${output_dir}/manifest_MANORM_comparisons.txt"
+    diffbind_qc="${output_dir}/manifest_DIFFBIND_comparisons.txt"
+    fail_qc="${output_dir}/manifest_contains_errors_${date_stamp}.txt"
+
+    # Run manifest check 
+    ## Test 1-2 expected no errors
+    check_manifests $py_script $manifest_file \
+      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv" "MANORM" "${PIPELINE_HOME}/testing/manifests/contrasts_manorm.tsv"
+    if [[ -f $pass_qc ]] && [[ -f $manorm_qc ]]; then rm $pass_qc; rm $manorm_qc; echo "Test1 pass" > $manifest_log; else echo "Test1 fail" > $manifest_log; fi
+
+    check_manifests $py_script $manifest_file \
+      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv" "DIFFBIND" "${PIPELINE_HOME}/testing/manifests/contrasts_diffbind.tsv"
+    if [[ -f $pass_qc ]] && [[ -f $diffbind_qc ]]; then rm $pass_qc; rm $diffbind_qc; echo "Test2 pass" >> $manifest_log; else echo "Test2 fail" > $manifest_log; fi
+
+    ## Test 3 - expect error with duplicate values
+    check_manifests $py_script $manifest_file \
+      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_sampledups.tsv"
+    if [[ -f "${fail_qc}" ]]; then 
+      check=`cat ${fail_qc} | grep "sample names must be unique" | wc -l`
+      if [[ $check > 0 ]]; then rm $fail_qc; echo "Test3 pass" >> $manifest_log; else echo "Test3 fail" >> $manifest_log; fi
+    else
+      echo "Test3 fail" >> $manifest_log
+    fi
+
+    ## Test 4 - barcode has duplicates
+    check_manifests $py_script $manifest_file \
+      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_barcodedups.tsv"
+    if [[ -f "${fail_qc}" ]]; then 
+      check=`cat ${fail_qc} | grep "Barcodes must be unique by sample" | wc -l`
+      if [[ $check > 0 ]]; then rm $fail_qc; echo "Test4 pass" >> $manifest_log; else echo "Test4 fail" >> $manifest_log; fi
+    else
+      echo "Test4 fail" >> $manifest_log
+    fi
+
+    ## Test 5 - FASTQ files are duplicated
+    check_manifests $py_script $manifest_file \
+      "${PIPELINE_HOME}/testing/manifests/multiplex_filedups.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv"
+    if [[ -f "${fail_qc}" ]]; then 
+      check=`cat ${fail_qc} | grep "File names must be unique" | wc -l`
+      if [[ $check > 0 ]]; then rm $fail_qc; echo "Test5 pass" >> $manifest_log; else echo "Test5 fail" >> $manifest_log; fi
+    else
+      echo "Test5 fail" >> $manifest_log
+    fi
+
+    ## Test 6 - FASTQ files wrong extension
+    check_manifests $py_script $manifest_file \
+      "${PIPELINE_HOME}/testing/manifests/multiplex_fileext.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv"
+    if [[ -f "${fail_qc}" ]]; then 
+      check=`cat ${fail_qc} | grep "All items in file_name column must end in fastq.gz" | wc -l`
+      if [[ $check > 0 ]]; then rm $fail_qc; echo "Test6 pass" >> $manifest_log; else echo "Test6 fail" >> $manifest_log; fi
+    else
+      echo "Test6 fail" >> $manifest_log
+    fi
+
+    ## Test 7 - sample names don't match between multiplex and sample
+    check_manifests $py_script $manifest_file \
+      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_extrasamples.tsv"
+    if [[ -f "${fail_qc}" ]]; then 
+      check=`cat ${fail_qc} | grep "Multiplex ID's must be consistent between both files." | wc -l`
+      if [[ $check > 0 ]]; then rm $fail_qc; echo "Test7 pass" >> $manifest_log; else echo "Test7 fail" >> $manifest_log; fi
+    else
+      echo "Test7 fail" >> $manifest_log
+    fi
+
+    ## Test 8-9 - DE method requests do not match sample names / group names
+    check_manifests $py_script $manifest_file \
+      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv" "MANORM" "${PIPELINE_HOME}/testing/manifests/contrasts_manormfail.tsv"
+    if [[ -f "${fail_qc}" ]]; then 
+      check=`cat ${fail_qc} | grep "was/were not found in the sample_manifest tsv but were found in the contrasts manifest" | wc -l`
+      if [[ $check > 0 ]]; then rm $fail_qc; echo "Test8 pass" >> $manifest_log; else echo "Test8 fail" >> $manifest_log; fi
+    else
+      echo "Test8 fail" >> $manifest_log
+    fi
+
+    check_manifests $py_script $manifest_file \
+      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv" "DIFFBIND" "${PIPELINE_HOME}/testing/manifests/contrasts_diffbindfail.tsv"
+    if [[ -f "${fail_qc}" ]]; then 
+      check=`cat ${fail_qc} | grep "was/were not found in the sample_manifest tsv but were found in the contrasts manifest" | wc -l`
+      if [[ $check > 0 ]]; then rm $fail_qc; echo "Test9 pass" >> $manifest_log; else echo "Test9 fail" >> $manifest_log; fi
+    else
+      echo "Test9 fail" >> $manifest_log
+    fi
+    
+    cat $manifest_log
+
+ 
+# Run pipeline locally/cluster
+elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
+  echo "------------------------------------------------------------------------"
+	echo "*** STARTING PIPELINE ***"
 
   ####################### Preparation
   #parse config
@@ -175,9 +291,22 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
   #save source dir
   source_dir=$(echo $config_sourceDir | sed 's:/*$::')
 
+  # prep manifest check
+  manifest_file="${output_dir}/qc/manifest_"
+  py_script="${config_sourceDir}/workflow/scripts/01_check_manifest.py"
+
   #run checks
   check_initialization
   check_output_dir
+  check_manifests $py_script $manifest_file
+  
+  # if the manifest file contains error exit pipeline
+  if [[ ! -f "${manifest_file}no_errors.txt" ]]; then
+    echo "The manifest check FAILED. Check "${output_dir}/qc/" for more information."
+    exit 1
+  else
+    echo "-- manifest check completed successfully"
+  fi
 
   if [[ $config_reference == "hg38" ]]; then
     check_readaccess "${yaml_hg38_std}"
@@ -211,7 +340,7 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
   mkdir "${output_dir}/log/${log_time}"
   
   # copy config inputs for ref
-  files_save=("${output_dir}/config/snakemake_config.yaml" "${output_dir}/config/cluster_config.yaml" "${output_dir}/config/index_config.yaml" "${output_dir}/config/Snakefile" ${config_multiplexManifest} ${config_sampleManifest} "${PIPELINE_HOME}/workflow/scripts/create_error_report.sh")
+  files_save=("${output_dir}/config/snakemake_config.yaml" "${output_dir}/config/cluster_config.yaml" "${output_dir}/config/index_config.yaml" "${output_dir}/config/Snakefile" ${config_multiplexManifest} ${config_sampleManifest}  ${config_contrastManifest} "${PIPELINE_HOME}/workflow/scripts/create_error_report.sh")
 
   for f in ${files_save[@]}; do
     IFS='/' read -r -a strarr <<< "$f"
@@ -224,37 +353,25 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
   cd "${output_dir}"
 
   ####################### Selection
-  # run check - only includes check_manifest rule - run locally
-  if [[ $pipeline = "check" ]]; then
-    echo
-    echo "Running manifest check"
-
-    module load snakemake
+  if [[ $pipeline = "cluster" ]]; then
+    echo "-- submitting to cluster"
+    echo "---- output dir: ${output_dir}"
+    echo "---- pipeline jobid:"
+    
+  cat > ${output_dir}/submit_script.sbatch << EOF
+#!/bin/bash
+#SBATCH --job-name="RBLiCLIP"
+#SBATCH --mem=40g
+#SBATCH --gres=lscratch:200
+#SBATCH --time=10-00:00:00
+#SBATCH --cpus-per-task=2
+#SBATCH --output=${output_dir}/log/${log_time}/00_%j_%x.out \
+#SBATCH --mail-type=BEGIN,END,FAIL
+module load snakemake
+module load graphviz
+cd \$SLURM_SUBMIT_DIR
     snakemake \
-    -s ${output_dir}/log/${log_time}/00_Snakefile \
-    --use-envmodules \
-    --configfile ${output_dir}/log/${log_time}/00_snakemake_config.yaml \
-    --printshellcmds \
-    --cluster-config ${output_dir}/log/${log_time}/00_cluster_config.yaml \
-    --cores 8 \
-    --until check_manifest
-
-    echo "If running differential expression, review the qc/manifest_check.txt file to confirm your settings"
-
-  # run cluster - includes all rules - run on cluster
-  elif [[ $pipeline = "cluster" ]]; then
-    echo
-    echo "Output dir: ${output_dir}"
-    echo "Pipeline jobid:"
-    module load snakemake
-
-    sbatch \
-    --job-name="iCLIP" \
-    --gres=lscratch:200 \
-    --time=10-00:00:00 \
-    --output=${output_dir}/log/${log_time}/00_%j_%x.out \
-    --mail-type=BEGIN,END,FAIL \
-    snakemake \
+    --scheduler greedy \
     --use-envmodules \
     --latency-wait 120 \
     -s ${output_dir}/log/${log_time}/00_Snakefile \
@@ -270,7 +387,21 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
     "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
     --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} --error=${output_dir}/log/${log_time}/{params.rname}{cluster.error}" \
-    |tee ${output_dir}/log/${log_time}/snakemake.log
+    2>&1|tee ${output_dir}/log/${log_time}/snakemake.log
+
+if [ "\$?" -eq "0" ];then
+  snakemake -s ${output_dir}/log/${log_time}/00_Snakefile \
+  --directory $output_dir \
+  --report ${output_dir}/log/${log_time}/runslurm_snakemake_report.html \
+  --configfile ${output_dir}/log/${log_time}/00_snakemake_config.yaml 
+fi
+
+#bash <(curl https://raw.githubusercontent.com/CCBR/Tools/master/Biowulf/gather_cluster_stats_biowulf.sh 2>/dev/null) ${output_dir}/log/${log_time}/snakemake.log > ${output_dir}/log/${log_time}/snakemake.log.HPC_summary.txt
+#${PIPELINE_HOME}/workflow/scripts/jobinfo -s ${output_dir}/log/${log_time}/snakemake.log -o ${output_dir}/log/${log_time}/snakemake.log.HPC_summary.txt
+
+EOF
+
+sbatch ${output_dir}/submit_script.sbatch
 
   # run local - includes all rules - run locally
   else
@@ -290,8 +421,8 @@ elif [[ $pipeline = "check" ]] || [[ $pipeline = "cluster" ]] || [[ $pipeline = 
 
 ####################### UNLOCK #######################
 elif [[ $pipeline = "unlock" ]]; then
-  echo
-  echo "Unlocking pipeline"
+  echo "------------------------------------------------------------------------"
+	echo "*** STARTING Unlock ***"
   module load snakemake
 
   # Change directories before running any important
@@ -308,8 +439,8 @@ elif [[ $pipeline = "unlock" ]]; then
 ######################## GIT #######################
 #Run github actions
 elif [[ $pipeline = "git" ]]; then
-  echo
-  echo "Starting Git Tests"
+  echo "------------------------------------------------------------------------"
+	echo "*** STARTING GITTests ***"
 
   snakemake \
   -s "${output_dir}/config/Snakefile" \
@@ -319,6 +450,8 @@ elif [[ $pipeline = "git" ]]; then
   -npr
 ######################## DAG #######################
 elif [[ $pipeline = "DAG" ]]; then
+  echo "------------------------------------------------------------------------"
+	echo "*** STARTING DAG ***"
   module load snakemake
 
   # Change directories before running any important
@@ -332,9 +465,8 @@ elif [[ $pipeline = "DAG" ]]; then
   --rulegraph | dot -Tpdf > ${output_dir}/log/dag.pdf
 ######################## Report #######################
 elif [[ $pipeline = "report" ]]; then
-  echo
-  echo "Generating Snakemake Report Command"
-  echo
+  echo "------------------------------------------------------------------------"
+	echo "*** STARTING Snakemake Report ***"
 
   # Change directories before running any important
   # snakemake commands, ensures the .snakemake 
@@ -349,8 +481,8 @@ elif [[ $pipeline = "report" ]]; then
 
 ######################## cleanup #######################
 elif [[ $pipeline = "cleanup" ]]; then
-  echo
-  echo "Starting cleanup"
+  echo "------------------------------------------------------------------------"
+	echo "*** STARTING Cleanup ***"
   
   module load snakemake
 
@@ -368,15 +500,31 @@ elif [[ $pipeline = "cleanup" ]]; then
 
 ######################## Dry #######################
 else
-  echo
-  echo "Starting dry-run"
-  
+  echo "------------------------------------------------------------------------"
+	echo "*** STARTING DryRun ***"
+  module load snakemake
+
+  ####################### Preparation
+  #parse config
+  eval $(parse_yaml ${output_dir}/config/snakemake_config.yaml "config_")  
+
+  # prep manifest check
+  manifest_file="${output_dir}/qc/manifest_"
+  py_script="${config_sourceDir}/workflow/scripts/01_check_manifest.py"
+
   #run check
   check_initialization
   check_output_dir
+  check_manifests $py_script $manifest_file
   
-  module load snakemake
-
+  # if the manifest file contains error exit pipeline
+  if [[ ! -f "${manifest_file}no_errors.txt" ]]; then
+    echo "The manifest check FAILED. Check "${output_dir}/qc/" for more information."
+    exit 1
+  else
+    echo "-- manifest check completed successfully"
+  fi
+  
   # Change directories before running any important
   # snakemake commands, ensures the .snakemake 
   # directory get created in the output directory
@@ -385,7 +533,14 @@ else
   snakemake -s ${output_dir}/config/Snakefile \
   --configfile ${output_dir}/config/snakemake_config.yaml \
   --printshellcmds \
+  --verbose \
+  --rerun-incomplete \
   --cluster-config ${output_dir}/config/cluster_config.yaml \
-  -npr
+  --cluster \
+    "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
+    -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
+    --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} --error=${output_dir}/log/${log_time}/{params.rname}{cluster.error}" \
+  --jobs 100 \
+  -npr | tee ${output_dir}/dryrun.${log_time}.log
 fi
 echo
