@@ -485,11 +485,11 @@ rule all:
         # filtered fastqs
         expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
         
-        # #merge_unmapped_splits
-        # input_unmapped,
+        #merge_unmapped_splits
+        input_unmapped,
          
         # merge_mm_and_unique
-        # expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
+        expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
 
         # multiqc
         join(out_dir,'qc','multiqc_report.html'),
@@ -660,7 +660,10 @@ if (multiplex_flag == 'Y'):
         shell:
             """
             set -exo pipefail
-            export ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
+            ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
+            if [[ ! -d "${{ICOUNT_TMP_ROOT}}" ]]; then ICOUNT_TMP_ROOT={params.tmp}; fi
+            export ICOUNT_TMP_ROOT
+            
             {params.s_exec} {params.doc} iCount demultiplex \\
                 --threads {threads} \\
                 --minimum_length {params.ml} \\
@@ -693,7 +696,9 @@ else:
         copies fastq files from source location and moves into renamed file folder
         """
         input:
-            manifest = rules.check_manifest.output.manifest
+            mm = multiplex_manifest,
+            sm = sample_manifest,
+            cm = contrast_manifest
         params:
             rname = '01_copy_nondemux',
             cmd = nondemux_cmd
@@ -719,6 +724,7 @@ rule remove_adaptors:
     params:
         rname='02_remove_adaptors',
         cmd = adapt_cmd,
+        tmp=join(out_dir,"tmp"),
     threads: getthreads("remove_adaptors")
     envmodules:
         config['singularity'],
@@ -728,9 +734,12 @@ rule remove_adaptors:
     shell:
         """
         set -exo pipefail
-        #if [ -d "/tmp/iCount/" ]; then rm -r "/tmp/iCount/"; fi
-    export ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
-        
+
+        ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
+        if [[ ! -d "${{ICOUNT_TMP_ROOT}}" ]]; then ICOUNT_TMP_ROOT={params.tmp}; fi
+
+        export ICOUNT_TMP_ROOT
+
         {params.cmd}
 
         if [ -f {output.removed} ]; then
