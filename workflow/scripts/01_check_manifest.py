@@ -219,8 +219,10 @@ elif DE_method == "DIFFBIND":
     #Check concordance between sample and contrast files
     error_log,de_log = check_DIFFBIND_contrast(s_df,c_df,error_log, de_log)
 
-#print out error_log
+# if there is no error, create empty file
+# if there is an error, create error log
 if len(error_log)==0:
+    #create empty no_error file
     new_path = str(sys.argv[1]) + "no_errors.txt"
     open(new_path,"w+").write('\n'.join(error_log))
 else:
