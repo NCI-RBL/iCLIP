@@ -652,7 +652,8 @@ if (multiplex_flag == 'Y'):
             cmd = demux_cmd,
             ml = filter_length,
             mm = mismatch,
-        threads: getthreads('demultiplex')
+            tmp = join(out_dir,"tmp"),
+        threads: getthreads('demultiplex'),
         envmodules:
             config['singularity'],
         output:
@@ -661,7 +662,7 @@ if (multiplex_flag == 'Y'):
             """
             set -exo pipefail
             ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
-            if [[ ! -d "${{ICOUNT_TMP_ROOT}}" ]]; then ICOUNT_TMP_ROOT={params.tmp}; fi
+            if [[ ! -d "${{ICOUNT_TMP_ROOT}}" ]]; then ICOUNT_TMP_ROOT={params.tmp}; mkdir {params.tmp}; fi
             export ICOUNT_TMP_ROOT
             
             {params.s_exec} {params.doc} iCount demultiplex \\
@@ -724,7 +725,7 @@ rule remove_adaptors:
     params:
         rname='02_remove_adaptors',
         cmd = adapt_cmd,
-        tmp=join(out_dir,"tmp"),
+        tmp = join(out_dir,"tmp"),
     threads: getthreads("remove_adaptors")
     envmodules:
         config['singularity'],
@@ -736,7 +737,7 @@ rule remove_adaptors:
         set -exo pipefail
 
         ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
-        if [[ ! -d "${{ICOUNT_TMP_ROOT}}" ]]; then ICOUNT_TMP_ROOT={params.tmp}; fi
+        if [[ ! -d "${{ICOUNT_TMP_ROOT}}" ]]; then ICOUNT_TMP_ROOT={params.tmp}; mkdir {params.tmp}; fi
 
         export ICOUNT_TMP_ROOT
 
