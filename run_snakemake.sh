@@ -95,7 +95,11 @@ check_writeaccess(){
 # Read in multiplex manifest, sample manifest, contrast manifest.
 # Use python script to check file matching, sample matching, and invalid characters.
 # Will only check contrast manifest if "MANORM" is selected
-# If files are correct, outputs a temp file. If not, outputs error file.
+# If files are correct, outputs: 
+# 1) an empty "no_error" file
+# 2) barcode-to-sample file needed for barcode/adaptor removal
+# If there are errors, outputs:
+# 1) a detailed error file
 check_manifests(){
 
   module load python
@@ -105,8 +109,8 @@ check_manifests(){
   manifest_file_prefix_in="$2"
 
   # if the third argument is missing, it is a standard run
-  # if the third argument is present, but the fifth is missing it's a nonde test run
-  # if the third and fifth arguments are given, then its a DE test run
+  # if the third argument is present, but the fifth is missing it's a test run - NOT for DE
+  # if the third and fifth arguments are given, then its a test run - for DE
   # for manifest testing
   if [[ -z "$3" ]]; then
     multiplexManifest=$config_multiplexManifest
@@ -307,6 +311,12 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   else
     echo "-- manifest check completed successfully"
   fi
+
+  # create manfiest file needed for ULTRAPLEX
+  mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f1 -d"," | uniq`
+  for mp_id in ${mp_id_list[@]}; do
+      cat ${config_multiplexManifest} | grep "$mp_id" | awk -F"," '{ print $4":"$2 }' > ${output_dir}/manifests/${mp_id}_barcodes.txt
+  done
 
   if [[ $config_reference == "hg38" ]]; then
     check_readaccess "${yaml_hg38_std}"

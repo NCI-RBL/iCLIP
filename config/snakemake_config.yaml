@@ -19,7 +19,8 @@ fastqDir: "/path/to/fastq/files/"
 ########################################################################################
 #user parameters
 #########################################################################################
-filterlength: 20 #minimum read length to include in analysis [any int >20] this is also the novoalign l parameter
+filterlength: 20 #minimum read length to include in analysis [any int >20]; this is also the novoalign l parameter
+phredQuality: 20 #The minimum quality score for 3’ end trimming
 multiplexflag: "N" #whether samples are multiplexed ["Y","N"]
 mismatch: 1 #if multiplexed, number of bp mismatches allowed in demultiplexing [1,2,3]
 reference: "mm10" #reference organism ["hg38","mm10"]
@@ -86,6 +87,7 @@ samtools: "samtools/1.11"
 umitools: "umitools/1.1.1"
 subread: "subread/2.0.1"
 R: "R/4.0"
+ultraplex: "ultraplex/1.2.5"
 
 #testing parameter
 testing_option: "N"

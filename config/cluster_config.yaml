@@ -14,7 +14,7 @@ qc_barcode:
     time: 00-04:00:00
 
 demultiplex:
-    threads: 16
+    threads: 56
     mem: 32g
     time: 04-00:00:00
 

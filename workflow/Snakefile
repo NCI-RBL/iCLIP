@@ -43,6 +43,7 @@ multiplex_flag = config['multiplexflag'].capitalize()
 mismatch = config['mismatch']
 nova_ref = config['reference']
 filter_length = config['filterlength']
+phredQuality = config['phredQuality']
 splice_aware = config['spliceaware'].capitalize()
 include_rRNA = config['includerRNA'].capitalize()
 splice_bp = config['spliceBPlength']
@@ -442,7 +443,7 @@ if DE_method == "MANORM" or DE_method == "DIFFBIND":
 ## if samples have been multiplexed
 if multiplex_flag == 'Y':
     input_multiplex = [expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list),
-                        expand(join(out_dir,'{mp}', '02_preprocess','demux_nomatch5.fastq.gz'), mp=samp_dict.keys())]
+                        expand(join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz'), mp=samp_dict.keys())]
 else:
     input_multiplex = [expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list)]
 
@@ -482,54 +483,54 @@ rule all:
         # non-rule: check sample fastq files exist
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list),
 
-        # filtered fastqs
-        expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
+        # different inputs for multiplexed or nonmultiplexed pipeline
+        input_multiplex,
+
+        # # filtered fastqs
+        # expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
         
-        #merge_unmapped_splits
-        input_unmapped,
+        # #merge_unmapped_splits
+        # input_unmapped,
          
-        # merge_mm_and_unique
-        expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
+        # # merge_mm_and_unique
+        # expand(join(out_dir,'02_bam','02_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
 
-        # multiqc
-        join(out_dir,'qc','multiqc_report.html'),
+        # # multiqc
+        # join(out_dir,'qc','multiqc_report.html'),
 
-        # qc_troubleshoot
-        join(out_dir,'qc','qc_report.html'),
+        # # qc_troubleshoot
+        # join(out_dir,'qc','qc_report.html'),
 
-        #merge_mm_and_unique
-        expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
+        # #merge_mm_and_unique
+        # expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.si.bam'), sp=sp_list, al=align_list),
         
-        # dedup
-        expand(join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),sp=sp_list),
+        # # dedup
+        # expand(join(out_dir,'02_bam','03_dedup','{sp}.dedup.si.bam'),sp=sp_list),
         
-        # recalc
-        input_recalc,
+        # # recalc
+        # input_recalc,
 
-        # create_beds_safs
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','02_SAF','{sp}_ALLreadPeaks.SAF'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','02_SAF','{sp}_UNIQUEreadPeaks.SAF'), sp=sp_list),
+        # # create_beds_safs
+        # expand(join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed'), sp=sp_list),
+        # expand(join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed'), sp=sp_list),
+        # expand(join(out_dir,'03_peaks','02_SAF','{sp}_ALLreadPeaks.SAF'), sp=sp_list),
+        # expand(join(out_dir,'03_peaks','02_SAF','{sp}_UNIQUEreadPeaks.SAF'), sp=sp_list),
         
-        # annotations
-        expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_{AnnoStrand}.txt'),AnnoStrand=["SameStrand","OppoStrand"],sp=sp_list),
+        # # annotations
+        # expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_{AnnoStrand}.txt'),AnnoStrand=["SameStrand","OppoStrand"],sp=sp_list),
         
-        # annotation_report
-        expand(join(out_dir,'04_annotation', '{sp}_annotation_' + peak_id + 'readPeaks_final_report.html'),sp=sp_list),
-        expand(join(out_dir,'04_annotation', '{sp}_annotation_' + peak_id + 'readPeaks_final_table.txt'),sp=sp_list),
+        # # annotation_report
+        # expand(join(out_dir,'04_annotation', '{sp}_annotation_' + peak_id + 'readPeaks_final_report.html'),sp=sp_list),
+        # expand(join(out_dir,'04_annotation', '{sp}_annotation_' + peak_id + 'readPeaks_final_table.txt'),sp=sp_list),
 
-        # MANORM or DIFFBIND
-        input_demethod_reports
+        # # MANORM or DIFFBIND
+        # input_demethod_reports
 
         ################################################################################################
         #intermediate troubleshooting, temp files
         ################################################################################################
         # # remove_adaptors
         # expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
-        
-        # # different inputs for multiplexed or nonmultiplexed pipeline
-        # input_multiplex,
 
         # #qc_fastq_pre
         # expand(join(out_dir,'{mp}','01_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
@@ -645,31 +646,41 @@ if (multiplex_flag == 'Y'):
         """
         input:
             f1 = get_fq_names,
+            barcodes = join(out_dir,'manifests','{mp}_barcode_manifest.txt')
         params:
             rname='01b_demultiplex',
-            s_exec = singularity_exec,
-            doc = join(cont_dir,'ccbr_icount_v1.0.0.sif'),
-            cmd = demux_cmd,
             ml = filter_length,
             mm = mismatch,
-            tmp = join(out_dir,"tmp"),
-        threads: getthreads('demultiplex'),
+            pq = phredQuality,
+            tmp = join(out_dir,'tmp')
+        threads: getthreads('demultiplex')
         envmodules:
-            config['singularity'],
+            config['ultraplex'],
         output:
-            fastq = temp(join(out_dir,'{mp}', '02_preprocess','demux_nomatch5.fastq.gz')),
+            fastq = temp(join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz')),
         shell:
             """
             set -exo pipefail
-            ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
-            if [[ ! -d "${{ICOUNT_TMP_ROOT}}" ]]; then ICOUNT_TMP_ROOT={params.tmp}; mkdir {params.tmp}; fi
-            export ICOUNT_TMP_ROOT
+            tmp_dir="/lscratch/${{SLURM_JOB_ID}}"
+            if [[ ! -d "${{tmp_dir}}" ]]; then tmp_dir={params.tmp}; mkdir {params.tmp}; fi
+            export tmp_dir
             
-            {params.s_exec} {params.doc} iCount demultiplex \\
+            # run ultraplex to remove adaptors, separate barcodes
+            # output files to tmp scratch dir
+            ultraplex \\
                 --threads {threads} \\
-                --minimum_length {params.ml} \\
-                --mismatches {params.mm} \\
-                {params.cmd}
+                --barcodes {input.barcodes} \\
+                --directory $tmp_dir \\
+                --inputfastq {input.f1} \\
+                --final_min_length {params.ml} \\
+                --phredquality {params.pq} \\
+                --fiveprimemismatches {params.mm} \\
+                --ultra
+                --sbatchcompression
+
+            # move files to final location after they are zipped
+            # TBD depending on the output
+            mv $tmp_dir /data/RBL_NCI/Wolin/Sam/
             """
 
     rule rename_demux:
@@ -725,7 +736,7 @@ rule remove_adaptors:
     params:
         rname='02_remove_adaptors',
         cmd = adapt_cmd,
-        tmp = join(out_dir,"tmp"),
+        tmp=join(out_dir,"tmp"),
     threads: getthreads("remove_adaptors")
     envmodules:
         config['singularity'],
@@ -735,14 +746,10 @@ rule remove_adaptors:
     shell:
         """
         set -exo pipefail
-
         ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
-        if [[ ! -d "${{ICOUNT_TMP_ROOT}}" ]]; then ICOUNT_TMP_ROOT={params.tmp}; mkdir {params.tmp}; fi
-
+        if [[ ! -d "${{ICOUNT_TMP_ROOT}}" ]]; then ICOUNT_TMP_ROOT={params.tmp}; fi
         export ICOUNT_TMP_ROOT
-
         {params.cmd}
-
         if [ -f {output.removed} ]; then
             # Merge filtered reads (no adapters were present)
             # AND removed reads (adapter present and trimmed),
@@ -843,7 +850,6 @@ rule qc_screen_validator:
                 mkdir -p "$tmpdir"
             fi
         fi
-
         # Gzip input files
         gunzip -c {input.filtered} > ${{tmpdir}}/{params.tmp};
         
@@ -963,7 +969,6 @@ if (splice_aware == "Y"):
         if alignment file is unaware:
         - hard link file to output location
         - creates empty bam file - this is not used anywhere in the pipeline and will be deleted upon cleanup
-
         if alignment is unmasked or masked:
         - performs cleanup for inserts/hardclips/softclips
         - extract unmapped reads
@@ -1002,7 +1007,6 @@ if (splice_aware == "Y"):
                     mkdir -p $tmpdir;
                 fi
             fi
-
             if [ "{params.al_type}" == "unaware" ]; then
                 ln {input.sam} {output.sam};
                 touch {output.bam};
@@ -1010,24 +1014,19 @@ if (splice_aware == "Y"):
                 # separate header
                 zcat {input.sam} | \\
                     grep --color=never '^@..\\b' > ${{tmpdir}}/{params.base}.tmp.header
-
                 # separate alignments (mapped + unmapped reads) and
                 # remove alignments starting with insertion, or clips (Hard or Soft)
                 zcat {input.sam} | \\
                     grep -v --color=never '^@..\\b' | \\
                     awk '{{ if (($4 == 1 && $6 ~/(^[0-9]+)H|S([0-9]+I)/ && $1~/:/ ) || ($4 == 1 && $6 ~/^[0-9]I/ && $1~/:/ )) {{}} else  print }}' > ${{tmpdir}}/{params.base}.tmp.alignments
-
                 # get mapped reads only
                 awk -F"\\t" '{{if ($6 == "*") {{}}  else {{print}}}}' ${{tmpdir}}/{params.base}.tmp.alignments > ${{tmpdir}}/{params.base}.tmp.mapped
-
                 # get unmapped reads only
                 awk -F"\\t" '{{if ($6 == "*"){{print}}}}' ${{tmpdir}}/{params.base}.tmp.alignments > ${{tmpdir}}/{params.base}.tmp.unmapped
                 rm -f ${{tmpdir}}/{params.base}.tmp.alignments
-
                 # create sam with mapped reads only
                 cat ${{tmpdir}}/{params.base}.tmp.header ${{tmpdir}}/{params.base}.tmp.mapped > ${{tmpdir}}/{params.base}.tmp.sam
                 rm -f ${{tmpdir}}/{params.base}.tmp.header ${{tmpdir}}/{params.base}.tmp.mapped
-
                 # Run genomic conversion
                 # .sam input produces .sam.gz output file i.e {params.base}.tmp.genomic.sam.gz although the -s argument is set to {params.base}.tmp.genomic.sam
                 # useq -u option generates "UnMappedPoorScore.sam.gz" files which are no longer needed hence removing it
@@ -1036,17 +1035,14 @@ if (splice_aware == "Y"):
                     -f ${{tmpdir}}/{params.base}.tmp.sam \\
                     -a {params.useq_a} -n {params.useq_n} -s {params.base_out}
                 # the above -s params.baseout argument generates output.sam
-
                 # put the unmapped alignments back into the file
                 zcat {output.sam} | cat - ${{tmpdir}}/{params.base}.tmp.unmapped > ${{tmpdir}}/{params.base}.tmp.genomic.with_unmapped.sam
                 rm -f ${{tmpdir}}/{params.base}.tmp.genomic.sam ${{tmpdir}}/{params.base}.tmp.unmapped
-
                 # convert sam to bam, sort and index
                 samtools sort --threads {threads} -m 10G -T ${{tmpdir}} -o {output.bam} ${{tmpdir}}/{params.base}.tmp.genomic.with_unmapped.sam
                 rm -f ${{tmpdir}}/{params.base}.tmp.genomic.with_unmapped.sam
                 # merging bams do not need them to be index ... these files can either be set to temp or not created at all
                 # samtools index -@ {threads} {output.bam}
-
             fi
             """
 
@@ -1119,7 +1115,6 @@ rule create_bam_mm_unique:
             if [ ! -d $tmpdir_u ]; then mkdir -p $tmpdir_u; fi
             if [ ! -d $tmpdir_m ]; then mkdir -p $tmpdir_m; fi
         fi
-
         ################################################
         # Create mm, unique, header files
         ################################################
@@ -1136,13 +1131,11 @@ rule create_bam_mm_unique:
         # when set -o pipefail is enabled, using grep instead.
         gunzip -c {input.f1} \\
             | grep --color=never '^@..\\b' > ${{tmpdir}}/{params.base}.header.txt
-
         ################################################
         # Create unique BAM, correcting NH header
         ################################################
         # If the file exists, remove it
         if [ -f ${{tmpdir_u}}/{params.base}.unique.sam ]; then rm ${{tmpdir_u}}/{params.base}.unique.sam; fi
-
         # Fixes NH tags in unique reads and
         # removes NH tags from unmapped reads
         # ${{tmpdir_u}}/{params.base}.unique.tmp.sam contains unique reads as well as unmapped reads
@@ -1153,7 +1146,6 @@ rule create_bam_mm_unique:
             --output ${{tmpdir_u}}/{params.base}.unique.sam
         rm ${{tmpdir_u}}/{params.base}.unique.tmp.sam
         # again, ${{tmpdir_u}}/{params.base}.unique.sam contains unique and unmapped reads
-
         # Sort and convert to BAM
         mkdir -p ${{tmpdir_u}}/{params.base}_tmp
         samtools sort --threads {threads} -m 10G \\
@@ -1169,11 +1161,9 @@ rule create_bam_mm_unique:
         if [ -f ${{tmpdir_m}}/{params.base}.mm.sam ]; then
             rm ${{tmpdir_m}}/{params.base}.mm.sam;
         fi
-
         # Replace value of the NH tag
         # to the value of the IH tag
         python {params.replace_tags} ${{tmpdir_m}}/{params.base}.mm.txt > ${{tmpdir_m}}/{params.base}.mm.sam
-
         # Place header back on file, sort, convert to BAM
         mkdir -p ${{tmpdir_m}}/{params.base}_tmp
         cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_m}}/{params.base}.mm.sam \\
@@ -1245,7 +1235,6 @@ rule merge_mm_and_unique:
             tmpdir="{out_dir}01_preprocess/05_merge_mu"
             if [ ! -d $tmpdir ]; then mkdir -p $tmpdir; fi
         fi
-
         # Merge uniuqe and mm
         samtools merge --threads {threads} -f {output.merged} \\
             {input.un} \\
@@ -1329,7 +1318,6 @@ rule qc_alignment:
             | awk '{{ print length($10) }}' \\
             | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=/lscratch/${{SLURM_JOB_ID}} -n \\
             | uniq -c > {output.bam_a};
-
         samtools view --threads {threads} -f 4 {input.merged} \\
             | awk '{{ print length($10) }}' \\
             | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=/lscratch/${{SLURM_JOB_ID}} -n \\
@@ -1451,7 +1439,6 @@ rule dedup:
                 delimeter=":"
             fi
         fi
-
         # Run UMI Tools Deduplication
         echo "Using the following UMI seperator: ${{delimeter}}"
         umi_tools dedup \\
@@ -1461,7 +1448,6 @@ rule dedup:
             --umi-separator=${{delimeter}} \\
             -S ${{tmpdir}}/{params.base}.bam \\
             --log2stderr;
-
         # Sort and Index
         samtools sort --threads {threads} -m 10G -T ${{tmpdir}} \\
             ${{tmpdir}}/{params.base}.bam \\
@@ -1474,12 +1460,10 @@ if (splice_aware == 'Y'):
     rule mapq_recalc:
         """
         generate readids from unmasked files
-
         subsample:
         A) splice unaware BAM
         B) splice aware (masked exon) BAM
         using the readids from splice aware (unmasked exon) in rule generate_readids
-
         using deduplicated reads (splie aware unmasked exon BAM), and subset reads (splice unaware and splice aware masked exon) BAMs, pysam script will adjust for MAPQ correction
         
         outputs updated mapq score bam file and metadata file of changes
@@ -1527,7 +1511,6 @@ if (splice_aware == 'Y'):
         """
         create diff files of old/new mapq scores to input into R script to create
         plots and reports
-
         """
         input:
             unmasked = rules.dedup.output.bam,
@@ -1569,16 +1552,13 @@ if (splice_aware == 'Y'):
                 | awk '{{print $5}}' \\
                 | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=$tmpdir -n \\
                 | uniq -c > ${{tmpdir}}/{params.sid}.corrected_counts.txt
-
             # Grab changes
             tail -n+2 {input.log} \\
                 | awk '{{print($2,$3)}}' \\
                 | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=$tmpdir \\
                 | uniq -c > ${{tmpdir}}/{params.sid}.diff_counts.txt
-
             # Create report
             Rscript -e "library(rmarkdown); rmarkdown::render(\\\"{params.R}\\\", output_file = \\\"{output.html}\\\", params= list(counts_old=\\\"${{tmpdir}}/{params.sid}.original_counts.txt\\\", counts_new=\\\"${{tmpdir}}/{params.sid}.corrected_counts.txt\\\", counts_diff=\\\"${{tmpdir}}/{params.sid}.diff_counts.txt\\\", sampleid=\\\"{params.sid}\\\", output_dir=\\\"{params.base2}\\\"))"
-
             # Remove intermediate files
             if [[ -d {params.base} ]];then
                 rm -r {params.base}
@@ -1621,7 +1601,6 @@ rule create_beds_safs:
         
         # if read alignment has tag "NH:i:1" then it is an unique alignment
         python {params.pyscript} --inputBAM {input.bam} --outputBAM ${{tmpdir}}/{params.base}.unique.bam
-
         samtools index -@ {threads} ${{tmpdir}}/{params.base}.unique.bam;
         
         # Create SAFs
@@ -1672,7 +1651,6 @@ rule feature_counts:
     fractional count when spliced peaks combined in R script the summed counts give
     whole count for the unique alignement in combined peak.
     http://manpages.ubuntu.com/manpages/bionic/man1/featureCounts.1.html
-
     Output summary
     - Differences within any folder (allreadpeaks or uniquereadpeaks) should ONLY be the counts column -
     as this represent the number of peaks that were uniquely identified (uniqueCounts) or the number of peaks MM (allFracMMCounts)
@@ -1733,7 +1711,6 @@ rule feature_counts:
             -T {threads} \\
             -o {output.all_total} \\
             {input.bam};
-
         # Run for uniquereadpeaks
         featureCounts -F SAF \\
             -a {input.saf_unique} \\
@@ -1858,11 +1835,8 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
             fi
             
             #bash script to run bedtools and get site2peak lookuptable
-
             bash {params.bashscript} {input.mm_jcounts} {input.mm} {params.sp}_{params.p_type} {params.out} {params.pyscript} 
-
             # above bash script will create {output.splice_table}
-
             Rscript {params.script} \\
                 --rscript {params.functions} \\
                 --peak_type {params.p_type} \\
@@ -1930,9 +1904,7 @@ else:
             fi
             
             #bash script to run bedtools and get site2peak lookuptable
-
             bash {params.bashscript} {input.mm_jcounts} {input.mm} {params.sp}_{params.p_type} {params.out} {params.pyscript}
-
             # above bash script will create {output.splice_table}
                 
             Rscript {params.script} \\
@@ -1996,7 +1968,6 @@ rule peak_Transcripts:
             tmpdir="{out_dir}01_preprocess/07_rscripts/"
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
-
         Rscript {params.script} \\
             --rscript {params.functions} \\
             --peak_type {params.p_type} \\
@@ -2055,7 +2026,6 @@ rule peak_ExonIntron:
             tmpdir="{out_dir}01_preprocess/07_rscripts/"
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
-
         Rscript {params.script} \\
             --rscript {params.functions} \\
             --peak_type {params.p_type} \\
@@ -2114,7 +2084,6 @@ rule peak_RMSK:
             tmpdir="{out_dir}01_preprocess/07_rscripts/"
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
-
         Rscript {params.script} \\
             --rscript {params.functions} \\
             --peak_type {params.p_type} \\
@@ -2171,7 +2140,6 @@ rule peak_process:
             tmpdir="{out_dir}01_preprocess/07_rscripts/"
             if [ ! -d $tmpdir ]; then mkdir $tmpdir; fi
         fi
-
         Rscript {params.script} \\
             --rscript {params.functions} \\
             --peak_type {params.p_type} \\
@@ -2182,7 +2150,6 @@ rule peak_process:
             --tmp_dir ${{tmpdir}} \\
             --out_dir {params.out} \\
             --out_file {output.outfile}
-
         '''
 
 
@@ -2283,7 +2250,6 @@ if (DE_method=="MANORM"):
                 -o {params.base} \\
                 --name1 {params.gid_1} \\
                 --name2 {params.gid_2}
-
                 mv {params.base}/{wildcards.group_id}_all_MAvalues.xls {output.mavals}
                 mv {params.base}/{params.gid_1}_MAvalues.xls {params.base}/{params.gid_1}_{params.peak_id}readPeaks_MAvalues.xls
                 mv {params.base}/{params.gid_2}_MAvalues.xls {params.base}/{params.gid_2}_{params.peak_id}readPeaks_MAvalues.xls
@@ -2366,9 +2332,7 @@ if (DE_method=="MANORM"):
                 --pos_manorm {params.de_dir}/{wildcards.group_id}/{wildcards.group_id}_P/{params.gid_1}_{params.peak_id}readPeaks_MAvalues.xls \\
                 --neg_manorm {params.de_dir}/{wildcards.group_id}/{wildcards.group_id}_N/{params.gid_1}_{params.peak_id}readPeaks_MAvalues.xls \\
                 --output_file {output.post_proc}
-
             ### for Bg vs sample compairson
-
             featureCounts -F SAF \\
                 -a {params.bkSAF} \\
                 -O \\
