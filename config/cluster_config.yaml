@@ -16,7 +16,8 @@ qc_barcode:
 demultiplex:
     threads: 56
     mem: 32g
-    time: 04-00:00:00
+    gres: lscratch:800
+    time: 00-05:00:00
 
 remove_adaptors:
     threads: 16
