@@ -194,29 +194,7 @@ def get_fq_names(wildcards):
     fq = join(fastq_dir,multiplex_dict[wildcards.mp])
     return(fq)
 
-#create demux command line
-def demux_cmd(wildcards):
-    #subset dataframe by multiplex name that matches multiplex and barcode
-    sub_df = df_samples[(df_samples['multiplex']==wildcards.mp)]
-    sub_df.reset_index(inplace=True)
-
-    barcodes = ' '.join(sub_df['barcode'].tolist())
-
-    #create command
-    cmd_line = fastq_dir + multiplex_dict[wildcards.mp] + ' ' + sub_df.iloc[0]['adaptor'] + ' ' + barcodes + ' --out_dir ' + out_dir + wildcards.mp + '/02_preprocess/',
-
-    return(cmd_line)
-
-#command needed to move and rename demux files
-def rename_cmd(wildcards):
-    bc = samp_dict[wildcards.mp][wildcards.sp]
-
-    cmd_line = out_dir + wildcards.mp + '/02_preprocess/' + 'demux_' + bc + '.fastq.gz' + \
-    ' ' + out_dir + wildcards.mp + '/02_preprocess/' + wildcards.sp + '.fastq.gz'
-
-    return(cmd_line)
-    
-#create nondemux command line
+# create command to move each fastq file from source location to pre-processing folder
 def nondemux_cmd(wildcards):
   cmd_line = ''
 
@@ -226,23 +204,27 @@ def nondemux_cmd(wildcards):
   
   return(cmd_line)
 
-#command needed to cut adaptors from demux samples
-def adapt_cmd(wildcards):
-    #example: 
-        #singularity exec -B /scratch /data/CCBR_Pipeliner/iCLIP/container/ccbr_icount_v1.0.0.sif iCount cutadapt --threads 16 -ml 20 --untrimmed_output /path/_untrimmed.fastq.gz 
-        # --reads_trimmed /path/sp_trimmed.fastq.gz /path/fastq.gz ABCDEDFGH
+# rename output from ultraplex to standard naming schema
+def rename_cmd(wildcards):
+    bc = samp_dict[wildcards.mp][wildcards.sp]
+
+    cmd_line = out_dir + wildcards.mp + '/02_preprocess/' + 'demux_' + bc + '.fastq.gz' + ' ' + out_dir + wildcards.mp + '/02_preprocess/' + wildcards.sp + '.fastq.gz'
+
+    return(cmd_line)
+
+# for each sample name, move the sample from the multiplexed folder to the sample folder
+def organize_cmd(wildcards):
     cmd=''
     for sp in sp_list:
-        #sub df
+        #sub df to determine multiplex name
         df_sub = df_samples[(df_samples['sample']==sp)]
 
-        #create cmd
-        filtered = join(out_dir, '01_preprocess', sp + '_filtered.fastq.gz')
-        removed =  join(out_dir, '01_preprocess', sp + '_removed_seq.fastq.gz ')
-        fastq = join(out_dir, df_sub.iloc[0]['multiplex'], '02_preprocess',sp + '.fastq.gz')
+        # set source (rename_fq) and destination files
+        source = join(out_dir, df_sub.iloc[0]['multiplex'], '02_preprocess', sp + '.fastq.gz')
+        destination = join(out_dir, '01_preprocess', sp + '.fastq.gz')
 
-        cmd = singularity_exec + ' ' + join(cont_dir,'ccbr_icount_v1.0.0.sif') + ' iCount cutadapt -ml ' + str(filter_length) + ' --threads ' + str(getthreads('remove_adaptors')) + ' --untrimmed_output ' + filtered + ' --reads_trimmed ' + removed + ' ' + fastq + ' ' + df_sub.iloc[0]['adaptor'] + '; ' + cmd
-    
+        # create command
+        cmd = 'mv ' + source + ' ' + destination + '; ' + cmd
     return(cmd)
     
 # Previous method of dynamically generating N
@@ -440,13 +422,6 @@ if DE_method == "MANORM" or DE_method == "DIFFBIND":
 # rule all
 ###############################################################
 #set rule_all inputs depending on flags:
-## if samples have been multiplexed
-if multiplex_flag == 'Y':
-    input_multiplex = [expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list),
-                        expand(join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz'), mp=samp_dict.keys())]
-else:
-    input_multiplex = [expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'), zip, mp=mp_list, sp=sp_list)]
-
 ## if samples are spliced
 if splice_aware == 'Y':
     input_unmapped = expand(join(out_dir,'02_bam','01_unmapped','{sp}.{al_sub}.complete.bam'),  sp=sp_list, al_sub=align_sub)
@@ -474,7 +449,7 @@ else:
     input_demethod_reports = [expand(join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),sp=sp_list)]
 
 #local rules
-localrules: copy_nondemux, rename_demux, multiqc
+localrules: nondemux, rename_fastqs, organize_fastqs
 
 rule all:
     input:
@@ -483,12 +458,22 @@ rule all:
         # non-rule: check sample fastq files exist
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list),
 
-        # different inputs for multiplexed or nonmultiplexed pipeline
-        input_multiplex,
+        # demux input
+        expand(join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz'), mp=samp_dict.keys()),
 
-        # # filtered fastqs
-        # expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
+        # renamed files
+        expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip, mp=mp_list, sp=sp_list),
         
+        # reorganized files
+        expand(join(out_dir,'01_preprocess','{sp}.fastq.gz'),sp=sp_list),
+
+        # # qc_fastq
+        expand(join(out_dir, 'qc', '01_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+
+        # qc_screen
+        expand(join(out_dir, 'qc', '02_qc_screen_species','{sp}_screen.txt'),sp=sp_list),
+        expand(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_screen.txt'),sp=sp_list),
+
         # #merge_unmapped_splits
         # input_unmapped,
          
@@ -529,19 +514,6 @@ rule all:
         ################################################################################################
         #intermediate troubleshooting, temp files
         ################################################################################################
-        # # remove_adaptors
-        # expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
-
-        # #qc_fastq_pre
-        # expand(join(out_dir,'{mp}','01_qc_pre','{sp}_fastqc.html'),zip, mp=mp_list,sp=sp_list),
-
-        # #qc_fastq_post
-        # expand(join(out_dir, 'qc', '01_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
-        
-        # #qc_screen
-        # expand(join(out_dir, 'qc', '02_qc_screen_species','{sp}_filtered_screen.txt'),sp=sp_list),
-        # expand(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_filtered_screen.txt'),sp=sp_list),
-        
         # #merge_splits_unique_mm
         # expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.unique.bam'), sp=sp_list, al=align_list),
         # expand(join(out_dir,'02_bam','02_merged','{sp}.{al}.merged.mm.bam'),sp=sp_list, al=align_list),
@@ -631,13 +603,12 @@ if (multiplex_flag == 'Y'):
 
     rule demultiplex:
         """
-        https://icount.readthedocs.io/en/latest/ref_CLI.html
-        Custom iCount version:
-            https://github.com/skchronicles/iCount
-        Reads in fastq files from multiplex_manifest.
-        Finds multiplex match between manifest files, splits files based on list of
-        barcodeIDs found in sample_manifest
-        For example: SIM_iCLIP_S1_R1_001.fastq would be split into barcodes NNNTGGCNN and NNNCGGANN
+        https://github.com/ulelab/ultraplex
+
+        NOTE: our SLURM system does not allow the use of --sbatchcompression which is recommended
+        for increase in speed with --ultra. When the --sbatchcompression is used on our system, files 
+        do not get compressed and will be transferred using a significant amount of disc space. 
+
         file_name                   multiplex
         SIM_iCLIP_S1_R1_001.fastq   SIM_iCLIP_S1
         multiplex       sample          group       barcode     adaptor
@@ -652,7 +623,7 @@ if (multiplex_flag == 'Y'):
             ml = filter_length,
             mm = mismatch,
             pq = phredQuality,
-            tmp = join(out_dir,'tmp')
+            out_dir=join(out_dir,'{mp}', '02_preprocess')
         threads: getthreads('demultiplex')
         envmodules:
             config['ultraplex'],
@@ -662,7 +633,7 @@ if (multiplex_flag == 'Y'):
             """
             set -exo pipefail
             tmp_dir="/lscratch/${{SLURM_JOB_ID}}"
-            if [[ ! -d "${{tmp_dir}}" ]]; then tmp_dir={params.tmp}; mkdir {params.tmp}; fi
+            if [[ ! -d "${{tmp_dir}}" ]]; then tmp_dir={params.out_dir}/tmp; mkdir -p $tmp_dir; fi
             export tmp_dir
             
             # run ultraplex to remove adaptors, separate barcodes
@@ -675,127 +646,90 @@ if (multiplex_flag == 'Y'):
                 --final_min_length {params.ml} \\
                 --phredquality {params.pq} \\
                 --fiveprimemismatches {params.mm} \\
-                --ultra
-                --sbatchcompression
+                --ultra 
 
             # move files to final location after they are zipped
-            # TBD depending on the output
-            mv $tmp_dir /data/RBL_NCI/Wolin/Sam/
+            mv $tmp_dir/* {params.out_dir}
             """
 
-    rule rename_demux:
+else:
+    rule nondemux:
         """
-        renames demultiplexed files based on
-        from: {out_dir}/{multiplex_id}/demux_{barcode}.fastq.gz
-        to: {out_dir}/{multiplex_id}/01_renamed/demux_{sample_id}.fast.gz
+        creates a dummy file for nondemux projects
         """
         input:
-            fastq = rules.demultiplex.output.fastq
+            f1 = get_fq_names,
         params:
-            rname = '01c_rename_demux',
+            rname = '01_nondemux',
+            cmd = nondemux_cmd
+        output:
+            fastq = temp(join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz')),
+        shell:
+            """
+            set -exo pipefail
+            touch {output.fastq}
+            {parmas.cmd}
+            """
+
+rule rename_fastqs:
+    """
+    renames demultiplexed files based on
+    from: {out_dir}/{multiplex_id}/demux_{barcode}.fastq.gz
+    to: {out_dir}/{multiplex_id}/01_renamed/demux_{sample_id}.fast.gz
+    
+    OR 
+    moves nondemux files into a renamed folder
+    """
+        input:
+            fastq = join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz')
+        params:
+            rname = '02a_rename_fqs',
             cmd = rename_cmd
         output:
-            o1 = temp(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz')),
+            fastq = temp(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'))
         shell:
             """
             set -exo pipefail
             # Rename files
             mv {params.cmd}
             """
-else:
-    rule copy_nondemux:
-        """
-        copies fastq files from source location and moves into renamed file folder
-        """
+
+rule organize_fastqs:
+    """
+    renames demultiplexed files based on
+    from: {out_dir}/{multiplex_id}/demux_{barcode}.fastq.gz
+    to: {out_dir}/{multiplex_id}/01_renamed/demux_{sample_id}.fast.gz
+    
+    OR 
+    moves nondemux files into a renamed folder
+    """
         input:
-            mm = multiplex_manifest,
-            sm = sample_manifest,
-            cm = contrast_manifest
+            fastq = expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip, mp=mp_list, sp=sp_list),
         params:
-            rname = '01_copy_nondemux',
-            cmd = nondemux_cmd
+            rname = '02b_org_fqs',
+            cmd = organize_cmd
         output:
-            fastqs = temp(expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list))
+            fastq = expand(join(out_dir,'01_preprocess','{sp}.fastq.gz'),sp=sp_list),
         shell:
             """
             set -exo pipefail
+            # Rename files
             {params.cmd}
             """
 
-rule remove_adaptors:
-    """
-    Input is all samples, output is all samples with adaptors removed with iCOUNT and renamed
-    Custom iCount version:
-        https://github.com/skchronicles/iCount
-    removes adaptors from files. software outputs:
-    1) untrimmed.fastq.gz - reads with no adaptor present --> filtered.fastq.gz
-    2) trimmed.fastq.gz - reads that contained an adapter and were trimmed --> removed_seq.fastq.gz
-    """
-    input:
-        fastq = expand(join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz'),zip,mp=mp_list,sp=sp_list),
-    params:
-        rname='02_remove_adaptors',
-        cmd = adapt_cmd,
-        tmp=join(out_dir,"tmp"),
-    threads: getthreads("remove_adaptors")
-    envmodules:
-        config['singularity'],
-    output:
-        filtered = expand(join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),sp=sp_list),
-        removed = expand(join(out_dir,'01_preprocess','{sp}_removed_seq.fastq.gz'),sp=sp_list)
-    shell:
-        """
-        set -exo pipefail
-        ICOUNT_TMP_ROOT="/lscratch/${{SLURM_JOB_ID}}"
-        if [[ ! -d "${{ICOUNT_TMP_ROOT}}" ]]; then ICOUNT_TMP_ROOT={params.tmp}; fi
-        export ICOUNT_TMP_ROOT
-        {params.cmd}
-        if [ -f {output.removed} ]; then
-            # Merge filtered reads (no adapters were present)
-            # AND removed reads (adapter present and trimmed),
-            # to keep both untrimmed and trimmed reads. A read
-            # will not contain a 3' prime adapter sequence if
-            # the sequenced fragment is longer than the sequencing
-            # read length. Shorter sequenced fragements will have
-            # 3' adapter contamination and represent trimmed reads
-            mv {output.filtered} {output.filtered}.tmp
-            cat {output.filtered}.tmp {output.removed} > {output.filtered}
-            rm {output.filtered}.tmp
-        fi
-        """
-
-rule qc_fastq_pre:
-    """
-    Runs FastQC report on each sample before adaptors have been removed
-    """
-    input:
-        fastq = join(out_dir,'{mp}', '02_preprocess','{sp}.fastq.gz')
-    params:
-        rname='03a_qc_fastq_pre',
-        base = join(out_dir,'{mp}','01_qc_pre/')
-    envmodules:
-        config['fastqc']
-    output:
-        html = temp(join(out_dir,'{mp}','01_qc_pre','{sp}_fastqc.html'))
-    shell:
-        """
-        set -exo pipefail
-        fastqc {input.fastq} -o {params.base}
-        """
-
-rule qc_fastq_post:
+rule qc_fastq:
     """
     Runs FastQC report on each sample after adaptors have been removed
     """
     input:
-        fastq = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')
+        fastq = rules.organize_fastqs.output.fastq
     params:
-        rname='03b_qc_fastq_post',
+        rname='03_qc_fastq_post',
         base = join(out_dir, 'qc', '01_qc_post'),
     envmodules:
         config['fastqc']
     output:
-        html = temp(join(out_dir, 'qc', '01_qc_post','{sp}_filtered_fastqc.html'))
+        html = temp(join(out_dir, 'qc', '01_qc_post','{sp}_fastqc.html'))
     shell:
         """
         set -exo pipefail
@@ -817,11 +751,11 @@ rule qc_screen_validator:
         Log file containing any warnings or errors on file
     """
     input:
-        filtered = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz')
+        filtered = rules.organize_fastqs.output.fastq
     params:
         rname='04_qc_screen_validator',
         fastq_v = fastq_val,
-        tmp = join('{sp}_filtered.fastq'),
+        tmp = join('{sp}.fastq'),
         base_species = join(out_dir, 'qc', '02_qc_screen_species'),
         conf_species = join(source_dir,'config','fqscreen_species_config.conf'),
         base_rrna = join(out_dir, 'qc', '02_qc_screen_rrna'),
@@ -833,8 +767,8 @@ rule qc_screen_validator:
         config['perl'],
         config['fastq_screen'],
     output:
-        species = temp(join(out_dir, 'qc', '02_qc_screen_species','{sp}_filtered_screen.txt')),
-        screen = temp(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_filtered_screen.txt')),
+        species = temp(join(out_dir, 'qc', '02_qc_screen_species','{sp}_screen.txt')),
+        screen = temp(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_screen.txt')),
         log = join(out_dir,'qc','{sp}.validated.fastq.log'),
     shell:
         """
@@ -889,7 +823,7 @@ rule split_files:
     Performs split of fastq file into smaller files using pre-defined config 'splitSampleNChunks' option
     """
     input:
-        filtered = join(out_dir,'01_preprocess','{sp}_filtered.fastq.gz'),
+        filtered = join(out_dir,'01_preprocess','{sp}.fastq.gz'),
     params:
         rname='05_split_files',
         base = join(out_dir,'01_preprocess','01_splits','{sp}.split.'),
@@ -1167,8 +1101,8 @@ rule create_bam_mm_unique:
         # Place header back on file, sort, convert to BAM
         mkdir -p ${{tmpdir_m}}/{params.base}_tmp
         cat ${{tmpdir}}/{params.base}.header.txt ${{tmpdir_m}}/{params.base}.mm.sam \\
-            | samtools sort --threads {threads} -m 10G -T ${{tmpdir_m}}/{params.base}_tmp\\
-        -O bam -o ${{tmpdir_m}}/{params.base}.mm.bam
+            | samtools sort --threads {threads} -m 10G -T ${{tmpdir_m}}/{params.base}_tmp \\
+                -O bam -o ${{tmpdir_m}}/{params.base}.mm.bam
         rm -rf ${{tmpdir_m}}/{params.base}.mm.sam ${{tmpdir_m}}/{params.base}_tmp
         
         ################################################
