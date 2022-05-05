@@ -38,15 +38,10 @@ qc_screen_validator:
     mem: 32g
     time: 00-03:00:00
 
-split_files:
-    threads: 4
-    mem: 3g
-    time: 00-03:00:00
-
-novoalign:
+star:
     mem: 50g
     threads: 32
-    time: 10-00:00:00
+    time: 00-05:00:00
 
 cleanup_conversion:
     threads: 8

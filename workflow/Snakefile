@@ -41,7 +41,7 @@ contrast_manifest = config['contrastManifest']
 
 multiplex_flag = config['multiplexflag'].capitalize()
 mismatch = config['mismatch']
-nova_ref = config['reference']
+species_ref = config['reference']
 filter_length = config['filterlength']
 phredQuality = config['phredQuality']
 splice_aware = config['spliceaware'].capitalize()
@@ -57,14 +57,32 @@ sample_overlap = int(config['sampleoverlap'])
 pval = config['pval']
 fc = config['fc']
 
-# novoalign parameters
-novoalign_x = config['novoalign_x']
-novoalign_g = config['novoalign_g']
-novoalign_s = config['novoalign_s']
-novoalign_R = config['novoalign_R']
-novoalign_r_mode = config['novoalign_r_mode']
-novoalign_r_int = config['novoalign_r_int']
-novoalign_t = config['novoalign_t']
+# STAR parameters
+star_align_type = config['alignEndsType']
+star_align_intron = config['alignIntronMax']
+star_align_sjdb = config['alignSJDBoverhangMin']
+star_align_sj = config['alignSJoverhangMin']
+star_align_transc = config['alignTranscriptsPerReadNmax']
+star_align_windows = config['alignWindowsPerReadNmax']
+star_filt_match = config['outFilterMatchNmin']
+star_filt_readmatch = config['outFilterMatchNminOverLread']
+star_filt_mismatch = config['outFilterMismatchNmax']
+star_filt_readmm = config['outFilterMismatchNoverReadLmax']
+star_filt_mm = config['outFilterMultimapNmax']
+star_filt_mmscore = config['outFilterMultimapScoreRange']
+star_filt_score = config['outFilterScoreMin']
+star_filt_type = config['outFilterType']
+star_sam_att = config['outSAMattributes']
+star_sam_unmap = config['outSAMunmapped']
+star_filt_sjmin = config['outSJfilterCountTotalMin']
+star_filt_overhang = config['outSJfilterOverhangMin']
+star_filt_sjreads = config['outSJfilterReads']
+star_seed_mm = config['seedMultimapNmax']
+star_seed_loci = config['seedNoneLociPerWindow']
+star_seed_read = config['seedPerReadNmax']
+star_seed_wind = config['seedPerWindowNmax']
+star_sj = config['sjdbScore']
+star_win_anchor = config['winAnchorMultimapNmax']
 
 # useq parameters
 useq_a = config['useq_a']
@@ -87,9 +105,9 @@ getmemG=lambda rname:getmemg(rname).replace("g","G")
 getmemG_80perc=lambda rname:str(int(int(getmemG(rname).split("G")[0])*0.8))+"G"
 
 #expand reference selection
-if (nova_ref == "mm10"):
+if (species_ref == "mm10"):
     genome_ref = "GENCODE mm10 v23"
-elif (nova_ref == "hg38"):
+elif (species_ref == "hg38"):
     genome_ref = "GENCODE hg38 v32"
 
 #read in index config file and assign paths
@@ -98,13 +116,13 @@ index_manifest = join(out_dir, 'config', 'index_config.yaml')
 with open(index_manifest) as file:
     index_list = yaml.load(file, Loader=yaml.FullLoader)
 
-gen_path = index_list[nova_ref]['gencodepath']
-rseq_path = index_list[nova_ref]['refseqpath']
-can_path = index_list[nova_ref]['canonicalpath']
-intron_path = index_list[nova_ref]['intronpath']
-rmsk_path = index_list[nova_ref]['rmskpath']
-alias_path = index_list[nova_ref]['aliaspath']
-add_anno_path = index_list[nova_ref]['additionalannopath']
+gen_path = index_list[species_ref]['gencodepath']
+rseq_path = index_list[species_ref]['refseqpath']
+can_path = index_list[species_ref]['canonicalpath']
+intron_path = index_list[species_ref]['intronpath']
+rmsk_path = index_list[species_ref]['rmskpath']
+alias_path = index_list[species_ref]['aliaspath']
+add_anno_path = index_list[species_ref]['additionalannopath']
 
 #singularity exec command
 singularity_exec = "singularity exec -B /lscratch,/data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir
@@ -192,6 +210,7 @@ def CreateProjLists(dict_m,dict_s):
 def get_fq_names(wildcards):
     #example: {fastq_dir}/{filename}.fastq.gz
     fq = join(fastq_dir,multiplex_dict[wildcards.mp])
+    print(fq)
     return(fq)
 
 # create command to move each fastq file from source location to pre-processing folder
@@ -226,48 +245,6 @@ def organize_cmd(wildcards):
         # create command
         cmd = 'mv ' + source + ' ' + destination + '; ' + cmd
     return(cmd)
-    
-# Previous method of dynamically generating N
-# chunks is depreciated, in favor of splitting
-# a given sample into N number of pre-defined
-# N chunks. See 'splitSampleNChunks' in the
-# snakemake_config.yaml file. Try/accept block
-# added to ensure backwards compatibilty with
-# the previous method, where default is set to
-# 99 chunks.
-def get_filechunk_size(*args, **kwargs):
-    # Read in splitSampleNChunks key from config file
-    try:
-        chunk_size = config['splitSampleNChunks']
-        chunk_size = int(chunk_size)
-    except KeyError:
-        # Attribute 'splitSampleNChunks' not in
-        # snakemake_config.yaml, default to 96.
-        chunk_size = 96
-    except ValueError as e:
-        # User provided a value that cannot be
-        # converted into an integer (maybe a string)
-        print(e)
-        raise Exception(
-            'Fatal: Attribute "splitSampleNChunks" in \
-            snakemake_config.yaml is NOT an integer! \
-            Please edit you config file to resolve the \
-            issue and run again.'
-        )
-    return(chunk_size)
-
-#get index file depending on alignment type
-def get_index(wildcards):
-
-    #unaware index
-    if (wildcards.al == "unaware"):
-        nova_index = index_list[nova_ref]['std']
-    elif (wildcards.al == "masked"):
-        nova_index = index_list[nova_ref]['spliceawaremasked'][str(splice_bp)+'bp']
-    elif (wildcards.al == "unmasked"):
-        nova_index = index_list[nova_ref]['spliceawareunmasked'][str(splice_bp)+'bp']
-    
-    return(nova_index)
 
 #determine alignment input based on splice_aware flag
 def get_align_input(wildcards):
@@ -381,36 +358,6 @@ df_samples = pd.read_csv(sample_manifest,sep=",")
 #mp1        sample2
 (mp_list,sp_list,file_list) = CreateProjLists(multiplex_dict,samp_dict)
 
-# Creating list of N chunks, the numerical
-# representation of the chunks corresponds
-# to how split cmd generates a int for a
-# given chunk, chunks are prefixed with
-# a zero offset, i.e 99 chunks have two
-# sig figures so numbers less than 10 need
-# to be offset with a zero: 9 -> 09
-chunks_list = []
-rangelen = len(str(get_filechunk_size()))
-# Sanity check to ensure the user did not
-# set splitSampleNChunks to a crazy high
-# number. This could put extra strain on
-# the job scheduler as there is some over
-# head to scheduling each job.
-assert get_filechunk_size() < 100, 'Fatal: splitSampleNChunks value cannot \
-exceed 99 due to limitations relating to job scheduling. \
-Please edit snakemake_config.yaml and try running again!'
-for n in range(1, get_filechunk_size()+1):
-    chunklen = len(str(n))
-    if rangelen < 2:
-        # split -a option set to default '2',
-        # corrects for edge case where a user
-        # sets splitSampleNChunks < 10
-        n = '{}{}'.format('0', n)
-    elif chunklen < rangelen:
-        offset = rangelen - chunklen
-        padding = offset * '0'
-        n = '{}{}'.format(padding, n)
-    chunks_list.append(str(n))
-
 #determine barcode length
 barcode_length = int(len(df_samples.iloc[0,3].replace('N',''))) #length of barcode
 
@@ -467,12 +414,15 @@ rule all:
         # reorganized files
         expand(join(out_dir,'01_preprocess','{sp}.fastq.gz'),sp=sp_list),
 
-        # # qc_fastq
-        expand(join(out_dir, 'qc', '01_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
+        # # # qc_fastq
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}_filtered_fastqc.html'),sp=sp_list),
 
-        # qc_screen
-        expand(join(out_dir, 'qc', '02_qc_screen_species','{sp}_screen.txt'),sp=sp_list),
-        expand(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_screen.txt'),sp=sp_list),
+        # # qc_screen
+        # expand(join(out_dir, 'qc', '02_qc_screen_species','{sp}_screen.txt'),sp=sp_list),
+        # expand(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_screen.txt'),sp=sp_list),
+
+        # alignment
+        expand(join(out_dir,'01_preprocess','02_alignment','{sp}.bam'),sp=sp_list),
 
         # #merge_unmapped_splits
         # input_unmapped,
@@ -817,81 +767,96 @@ rule qc_screen_validator:
             --file {input.filtered} > {output.log};
         """
 
-
-rule split_files:
+rule STAR:
     """
-    Performs split of fastq file into smaller files using pre-defined config 'splitSampleNChunks' option
-    """
-    input:
-        filtered = join(out_dir,'01_preprocess','{sp}.fastq.gz'),
-    params:
-        rname='05_split_files',
-        base = join(out_dir,'01_preprocess','01_splits','{sp}.split.'),
-        nchunks = get_filechunk_size
-    threads: getthreads("split_files")
-    output:
-        splits = temp(expand(join(out_dir,'01_preprocess','01_splits','{{sp}}.split.{n}.fastq.gz'), n=chunks_list))
-    shell:
-        """
-        set -exo pipefail
-        # Determine the number of reads
-        # required to create N file chunks
-        nreads=$(($(zcat {input.filtered} | wc -l) / 4))
-        readsPerChunk=$(python3 -c "from math import ceil; print(ceil(${{nreads}}/{params.nchunks}))")
-        if [ $nreads -lt {params.nchunks} ]; then
-            exit 'Fatal: Unable to split {input.filtered} into {params.nchunks} chunks!';
-        fi
-        
-        # Split file into N file chunks
-        zcat {input.filtered} \\
-            | paste - - - - \\
-            | split --additional-suffix .fastq \\
-                -l $readsPerChunk \\
-                --numeric-suffixes=1 \\
-                --filter='tr "\\t" "\\n" | gzip > $FILE.gz' \\
-                - {params.base}
-        """
-
-rule novoalign:
-    """
-    alignment for non-splice aware pipeline and for splice aware pipeline MAPQ recalculation
-    http://www.novocraft.com/documentation/novoalign-2/novoalign-user-guide/novoalign-command-options/
+    
+    STAR Alignment
+    https://github.com/alexdobin/STAR/releases
+    
     """
     input:
-        f1 = join(out_dir,'01_preprocess','01_splits','{sp}.split.{n}.fastq.gz')
+        f1 = rules.organize_fastqs.output.fastq
     params:
-        rname='06_novoalign',
-        n_index = get_index,
-        l = filter_length,
-        x = novoalign_x,
-        g = novoalign_g,
-        t = novoalign_t,
-        s = novoalign_s,
-        R = novoalign_R,
-        r_mode = novoalign_r_mode,
-        r_int = novoalign_r_int
+        rname = '06_star',
+        s_index=index_list[species_ref]['stardir'],
+        s_gtf=index_list[species_ref]['stargtf'],
+        s_atype = star_align_type,
+        s_intron = star_align_intron, 
+        s_sjdb = star_align_sjdb,
+        s_asj = star_align_sj,
+        s_transc = star_align_transc,
+        s_windows = star_align_windows,
+        s_match = star_filt_match,
+        s_readmatch = star_filt_readmatch,
+        s_mismatch = star_filt_mismatch,
+        s_readmm = star_filt_readmm,
+        s_fmm = star_filt_mm,
+        s_mmscore = star_filt_mmscore,
+        s_score = star_filt_score,
+        s_ftype = star_filt_type,
+        s_att = star_sam_att,
+        s_unmap = star_sam_unmap,
+        s_sjmin = star_filt_sjmin,
+        s_overhang = star_filt_overhang,
+        s_sjreads = star_filt_sjreads,
+        s_smm = star_seed_mm,
+        s_loci = star_seed_loci,
+        s_read = star_seed_read,
+        s_wind = star_seed_wind,
+        s_sj = star_sj,
+        s_anchor = star_win_anchor,
+        out_dir = join(out_dir,'01_preprocess','02_alignment'),
+        out_prefix = '{sp}'
     envmodules:
-        config['novocraft']
-    threads: getthreads("novoalign")
+        config['star']
+    threads: getthreads("star")
     output:
-        sam = temp(join(out_dir,'01_preprocess','02_alignment','{sp}.{al}.split.{n}.sam.gz')),
+        bam = join(out_dir,'01_preprocess','02_alignment','{sp}.bam'),
+        log = join(out_dir,'log','STAR','{sp}.log')
     shell:
         """
         set -exo pipefail
-        zcat {input.f1} \\
-            | novoalign -d {params.n_index} -k \\
-                -f - \\
-                -F STDFQ \\
-                -c {threads} \\
-                -t {params.t} \\
-                -l {params.l} \\
-                -x {params.x} \\
-                -g {params.g} \\
-                -s {params.s} \\
-                -o SAM \\
-                -R {params.R} \\
-                -r {params.r_mode} {params.r_int} \\
-            | gzip -c > {output.sam}
+        # set tmp dir
+        tmp_dir="/lscratch/${{SLURM_JOB_ID}}"
+        if [[ ! -d "${{tmp_dir}}" ]]; then tmp_dir={params.out_dir}/tmp; mkdir -p $tmp_dir; fi
+        export tmp_dir
+
+        STAR --runMode alignReads \
+        --genomeDir {params.s_index} \
+        --sjdbGTFfile {params.s_gtf} \
+        --readFilesIn {input.f1} \
+        --outFileNamePrefix $tmp_dir/{params.out_prefix} \
+        --outReadsUnmapped Fastx \
+        --outSAMtype BAM SortedByCoordinate \
+        --alignEndsType {params.s_atype} \
+        --alignIntronMax {params.s_intron} \
+        --alignSJDBoverhangMin {params.s_sjdb} \
+        --alignSJoverhangMin {params.s_asj} \
+        --alignTranscriptsPerReadNmax={params.s_transc} \
+        --alignWindowsPerReadNmax={params.s_windows} \
+        --outFilterMatchNmin {params.s_match} \
+        --outFilterMatchNminOverLread {params.s_readmatch} \ 
+        --outFilterMismatchNmax {params.s_mismatch} \
+        --outFilterMismatchNoverReadLmax {params.s_readmm} \
+        --outFilterMultimapNmax {params.s_fmm} \
+        --outFilterMultimapScoreRange {params.s_mmscore} \
+        --outFilterScoreMin {params.s_score} \
+        --outFilterType {params.s_ftype} \
+        --outSAMattributes {params.s_att} \
+        --outSAMunmapped {params.s_unmap} \
+        --outSJfilterCountTotalMin {params.s_sjmin} \
+        --outSJfilterOverhangMin {params.s_overhang} \
+        --outSJfilterReads {params.s_sjreads} \
+        --seedMultimapNmax={params.s_smm} \
+        --seedNoneLociPerWindow={params.s_loci} \
+        --seedPerReadNmax={params.s_read} \
+        --seedPerWindowNmax={params.s_wind} \
+        --sjdbScore {params.s_sj} \
+        --winAnchorMultimapNmax={params.s_anchor}
+
+        # move STAR files and final log file to output
+        mv $tmp_dir/{params.out_prefix}_Aligned.sortedByCoord.out.bam {output.bam}
+        mv $tmp_dir/{params.out_prefix}_Log.final.out {output.log}
         """
 
 #pipeline branches for splice_aware processing
@@ -1685,7 +1650,7 @@ rule project_annotations:
     params:
         rname='15_project_annotations',
         script = join(source_dir,'workflow','scripts','08_annotation.R'),
-        ref_sp = nova_ref,
+        ref_sp = species_ref,
         rrna_flag = refseq_rrna,
         a_path = alias_path,
         g_path = gen_path,
@@ -1744,7 +1709,7 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
             d_method=DE_method,
             sp = "{sp}",
             n_merge = nt_merge,
-            ref_sp = nova_ref,
+            ref_sp = species_ref,
             out = join(out_dir,'04_annotation','02_peaks/',),
             out_de = join(out_dir,'05_demethod','01_input/',),
             error = join(out_dir,'04_annotation','read_depth_error.txt')
@@ -1815,7 +1780,7 @@ else:
             d_method=DE_method,
             sp = "{sp}",
             n_merge = nt_merge,
-            ref_sp = nova_ref,
+            ref_sp = species_ref,
             out = join(out_dir,'04_annotation','02_peaks/',),
             out_m = join(out_dir,'05_demethod','01_input/',),
             error = join(out_dir,'04_annotation','read_depth_error.txt')
@@ -1878,7 +1843,7 @@ rule peak_Transcripts:
         r_depth= min_count,
         sp = "{sp}",
         n_merge = nt_merge,
-        ref_sp = nova_ref,
+        ref_sp = species_ref,
         out = join(out_dir,'04_annotation','02_peaks/',),
         anno_dir = join(out_dir,'04_annotation','01_project/'),
         a_config = annotation_config,
@@ -1936,7 +1901,7 @@ rule peak_ExonIntron:
         r_depth= min_count,
         sp = "{sp}",
         n_merge = nt_merge,
-        ref_sp = nova_ref,
+        ref_sp = species_ref,
         out = join(out_dir,'04_annotation','02_peaks/',),
         anno_dir = join(out_dir,'04_annotation','01_project/'),
         a_config = annotation_config,
@@ -1994,7 +1959,7 @@ rule peak_RMSK:
         r_depth= min_count,
         sp = "{sp}",
         n_merge = nt_merge,
-        ref_sp = nova_ref,
+        ref_sp = species_ref,
         out = join(out_dir,'04_annotation','02_peaks/',),
         anno_dir = join(out_dir,'04_annotation','01_project/'),
         a_config = annotation_config,
@@ -2057,7 +2022,7 @@ rule peak_process:
         r_depth= min_count,
         sp = "{sp}",
         n_merge = nt_merge,
-        ref_sp = nova_ref,
+        ref_sp = species_ref,
         out = join(out_dir,'04_annotation','02_peaks/',),
     envmodules:
         config['R'],
@@ -2097,7 +2062,7 @@ rule annotation_report:
         rname = "17_annotation_output",
         R = join(source_dir,'workflow','scripts','10_annotation.Rmd'),
         sp = "{sp}",
-        ref_sp = nova_ref,
+        ref_sp = species_ref,
         r_depth= min_count,
         junc = sp_junc,
         p_type = peak_id,
@@ -2476,7 +2441,7 @@ elif (DE_method == "DIFFBIND"):
             gid_2 = get_DEMETHOD_gid2,
             p_type = peak_id,
             junc = sp_junc,
-            ref_sp = nova_ref,
+            ref_sp = species_ref,
             g_path = gen_path,
             i_path = intron_path,
             r_path = rmsk_path,

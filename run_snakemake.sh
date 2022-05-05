@@ -138,6 +138,46 @@ check_manifests(){
     ${contrastManifest}
 }
 
+# create ultraplex barcode manifest
+create_barcode_manifest(){
+    # create list of all multiplexed samples
+    mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
+    
+    # for each id create a single barcode manifest
+    for mp_id in "${mp_id_list[@]}"; do
+      bc_file="${output_dir}/manifests/${mp_id}_barcode_manifest.txt"
+      
+      # if the file exists, skip
+      if [[ ! -f ${output_dir}/manifests/${mp_id}_barcode_manifest.txt ]]; then
+        cat ${config_sampleManifest} | grep "$mp_id" | awk -F"," '{ print $4":"$2 }' > $bc_file
+      fi
+    done
+}
+
+check_manifest_qc(){
+  #check for errors in manifests (sample,multiplex,contrasts)
+  if [[ ! -f "${manifest_file}no_errors.txt" ]]; then
+    echo "The manifest check FAILED. Check "${output_dir}/qc/" for more information."
+    exit 1
+  else
+    echo "-- user manifest check completed successfully"
+  fi
+
+  # check for errors in barcode manifest
+  mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
+  for mp_id in "${mp_id_list[@]}"; do
+        # check length of file, if 0 then print error
+      len_bc=`cat $bc_file | wc -l`
+      if [[ "$len_bc" -lt 1 ]]; then
+        echo "The barcode manifest check FAILED. Check "${bc_file}" for more information."
+        exit 1
+      else
+        echo "-- barcode check completed successfully"
+      fi
+  done
+}
+
+
 #########################################################  
 # Formatting
 #########################################################
@@ -303,20 +343,8 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   check_initialization
   check_output_dir
   check_manifests $py_script $manifest_file
-  
-  # if the manifest file contains error exit pipeline
-  if [[ ! -f "${manifest_file}no_errors.txt" ]]; then
-    echo "The manifest check FAILED. Check "${output_dir}/qc/" for more information."
-    exit 1
-  else
-    echo "-- manifest check completed successfully"
-  fi
-
-  # create manfiest file needed for ULTRAPLEX
-  mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
-  for mp_id in "${mp_id_list[@]}"; do
-    cat ${config_sampleManifest} | grep "$mp_id" | awk -F"," '{ print $4":"$2 }' > ${output_dir}/manifests/${mp_id}_barcode_manifest.txt
-  done
+  create_barcode_manifest
+  check_manifest_qc
 
   if [[ $config_reference == "hg38" ]]; then
     check_readaccess "${yaml_hg38_std}"
@@ -526,20 +554,8 @@ else
   check_initialization
   check_output_dir
   check_manifests $py_script $manifest_file
-  
-  # if the manifest file contains error exit pipeline
-  if [[ ! -f "${manifest_file}no_errors.txt" ]]; then
-    echo "The manifest check FAILED. Check "${output_dir}/qc/" for more information."
-    exit 1
-  else
-    echo "-- manifest check completed successfully"
-  fi
-  
-  # create manfiest file needed for ULTRAPLEX
-  mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
-  for mp_id in "${mp_id_list[@]}"; do
-    cat ${config_sampleManifest} | grep "$mp_id" | awk -F"," '{ print $4":"$2 }' > ${output_dir}/manifests/${mp_id}_barcode_manifest.txt
-  done
+  create_barcode_manifest
+  check_manifest_qc
 
   # Change directories before running any important
   # snakemake commands, ensures the .snakemake 

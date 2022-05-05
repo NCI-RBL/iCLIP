@@ -1,4 +1,6 @@
 hg38:
+  stardir: '/data/CCBR_Pipeliner/iCLIP/index/active/hg38/index'
+  stargtf: '/data/CCBR_Pipeliner/iCLIP/index/active/hg38/gencode.vM32.annotation.gtf'
   std: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/hg38.nix'
   spliceawareunmasked:
     50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc_50.nix'
@@ -14,6 +16,8 @@ hg38:
   aliaspath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/hg38.chromAlias.txt'
   additionalannopath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/additional_anno/'
 mm10:
+  stardir: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/mm10/index'
+  stargtf: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/mm10/gencode.vM23.annotation.gtf'
   std: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/mm10/mm10.nix'
   spliceawareunmasked:
     50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/mm10/mm10_splice50bp_unmasked.nix'
