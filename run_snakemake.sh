@@ -313,9 +313,9 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   fi
 
   # create manfiest file needed for ULTRAPLEX
-  mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f1 -d"," | uniq`
-  for mp_id in ${mp_id_list[@]}; do
-      cat ${config_multiplexManifest} | grep "$mp_id" | awk -F"," '{ print $4":"$2 }' > ${output_dir}/manifests/${mp_id}_barcodes.txt
+  mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
+  for mp_id in "${mp_id_list[@]}"; do
+    cat ${config_sampleManifest} | grep "$mp_id" | awk -F"," '{ print $4":"$2 }' > ${output_dir}/manifests/${mp_id}_barcode_manifest.txt
   done
 
   if [[ $config_reference == "hg38" ]]; then
@@ -535,6 +535,12 @@ else
     echo "-- manifest check completed successfully"
   fi
   
+  # create manfiest file needed for ULTRAPLEX
+  mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
+  for mp_id in "${mp_id_list[@]}"; do
+    cat ${config_sampleManifest} | grep "$mp_id" | awk -F"," '{ print $4":"$2 }' > ${output_dir}/manifests/${mp_id}_barcode_manifest.txt
+  done
+
   # Change directories before running any important
   # snakemake commands, ensures the .snakemake 
   # directory get created in the output directory
