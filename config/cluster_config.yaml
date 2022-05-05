@@ -72,7 +72,7 @@ merge_splits_unique_mm:
 
 merge_mm_and_unique:
     threads: 8
-    gres: lscratch:500
+    gres: lscratch:800
     mem: 200g
     time: 01-00:00:00
 
