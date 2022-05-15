@@ -390,24 +390,16 @@ rule all:
         # dedup
         expand(join(out_dir,'02_bam','02_dedup','{sp}.dedup.si.bam'),sp=sp_list),
     
-        # create_beds_safs
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','02_SAF','{sp}_ALLreadPeaks.SAF'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','02_SAF','{sp}_UNIQUEreadPeaks.SAF'), sp=sp_list),
-        
-        # qc_troubleshoot
-        join(out_dir,'qc','qc_report.html')
-        
-        # dedup
-        expand(join(out_dir,'02_bam','02_dedup','{sp}.dedup.si.bam'), sp=sp_list),
+        # bgzip_beds
+        expand(join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed.gz'),sp=sp_list),
+        expand(join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed.gz'),sp=sp_list),
 
         # annotation_report
         expand(join(out_dir,'04_annotation', '{sp}_annotation_' + peak_id + 'readPeaks_final_report.html'),sp=sp_list),
         expand(join(out_dir,'04_annotation', '{sp}_annotation_' + peak_id + 'readPeaks_final_table.txt'),sp=sp_list),
 
         # MANORM or DIFFBIND
-        input_demethod_reports
+        input_demethod_reports,
 
         ################################################################################################
         #intermediate tmp files
@@ -425,7 +417,7 @@ rule all:
         expand(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_screen.txt'),sp=sp_list),
 
         # star
-        expand(join(out_dir,'01_preprocess','02_alignment','{sp}.bam'),sp=sp_list),
+        expand(join(out_dir,'01_preprocess','02_alignment','{sp}_Aligned.sortedByCoord.out.bam'),sp=sp_list),
 
         # qc_alignment
         expand(join(out_dir, 'qc', '01_qc_post','{sp}_align_len.txt'),sp=sp_list),
@@ -446,11 +438,9 @@ rule all:
         expand(join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed.gz'),sp=sp_list),
 
         # feature_counts
-        expand(join(out_dir,'03_peaks','03_counts,'{sp}_' + peak_id + 'readPeaks_uniqueCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','03_counts,'{sp}_' + peak_id + 'readPeaks_FracMMCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','03_counts,'{sp}_' + peak_id + 'readPeaks_uniqueCounts.txt'), sp=sp_list),
-        expand(join(out_dir,'03_peaks','03_counts,'{sp}_' + peak_id + 'readPeaks_FracMMCounts.txt'), sp=sp_list),
-
+        expand(join(out_dir,'03_peaks','03_counts','{sp}_ALLreadpeaks_uniqueCounts.txt'), sp=sp_list),
+        expand(join(out_dir,'03_peaks','03_counts','{sp}_UNIQUEreadpeaks_uniqueCounts.txt'), sp=sp_list),
+       
         # project_annotations
         join(out_dir,'04_annotation', '01_project','annotations.txt'),
 
@@ -467,12 +457,7 @@ rule all:
         expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_RMSK_{AnnoStrand}.txt'),AnnoStrand=["SameStrand","OppoStrand"],sp=sp_list),
 
         # peak_process
-        expand(join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),sp=sp_list)
-
-        # MANORM
-        input_manorm_input,
-        input_manorm_analysis,
-        input_manorm_post_proccessing,
+        expand(join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),sp=sp_list),
 
 # common and other SMK
 if source_dir == "":
@@ -723,6 +708,12 @@ rule star:
     """
     STAR Alignment
     https://github.com/alexdobin/STAR/releases
+
+            # move STAR files and final log file to output
+#         mv $tmp_dir/*bam {params.out_dir}
+# #        mv $tmp_dir/{params.out_prefix}_Aligned.sortedByCoord.out.bam {output.bam}
+#         mv $tmp_dir/{params.out_prefix}_Unmapped.out.mate1 {output.unmapped}
+#         mv $tmp_dir/{params.out_prefix}_Log.final.out {output.log}
     """
     input:
         f1 = rules.rename_fastqs.output.fastq,
@@ -756,14 +747,14 @@ rule star:
         s_sj = star_sj,
         s_anchor = star_win_anchor,
         out_dir = join(out_dir,'01_preprocess','02_alignment'),
-        out_prefix = '{sp}'
+        out_prefix = join(out_dir,'01_preprocess','02_alignment','{sp}_')
     envmodules:
         config['star']
     threads: getthreads("star")
     output:
-        unmapped = join(out_dir,'01_preprocess','02_alignment','01_unmapped','{sp}.unmapped.out'),
-        bam = join(out_dir,'01_preprocess','02_alignment','{sp}.bam'),
-        log = join(out_dir,'log','STAR','{sp}.log')
+        #unmapped = join(out_dir,'01_preprocess','02_alignment','01_unmapped','{sp}.unmapped.out'),
+        bam = join(out_dir,'01_preprocess','02_alignment','{sp}_Aligned.sortedByCoord.out.bam'),
+        #log = join(out_dir,'log','STAR','{sp}.log')
     shell:
         """
         set -exo pipefail
@@ -777,7 +768,7 @@ rule star:
         --sjdbGTFfile {params.s_gtf} \
         --readFilesCommand zcat \
         --readFilesIn {input.f1} \
-        --outFileNamePrefix $tmp_dir/{params.out_prefix} \
+        --outFileNamePrefix {params.out_prefix} \
         --outReadsUnmapped Fastx \
         --outSAMtype BAM SortedByCoordinate \
         --alignEndsType {params.s_atype} \
@@ -806,11 +797,7 @@ rule star:
         --sjdbScore {params.s_sj} \
         --winAnchorMultimapNmax={params.s_anchor}
 
-        # move STAR files and final log file to output
-        mv $tmp_dir/*bam {params.out_dir}
-#        mv $tmp_dir/{params.out_prefix}_Aligned.sortedByCoord.out.bam {output.bam}
-        mv $tmp_dir/{params.out_prefix}_Unmapped.out.mate1 {output.unmapped}
-        mv $tmp_dir/{params.out_prefix}_Log.final.out {output.log}
+
         """
 
 rule sort_index_stats:
@@ -1118,8 +1105,8 @@ rule create_beds_safs:
 
 rule bgzip_beds:
     input:
-        rules.create_beds_safs.output.bed_all,
-        rules.create_beds_safs.output.bed_unique
+        bed_all = rules.create_beds_safs.output.bed_all,
+        bed_unique = rules.create_beds_safs.output.bed_unique
     output:
         bed_all = join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed.gz'),
         bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed.gz'),
@@ -1254,7 +1241,7 @@ rule project_annotations:
         i_path = intron_path,
         r_path = rmsk_path,
         custom_path = add_anno_path,
-        base = join(out_dir,'04_annotation', '01_project/',),
+        base = join(out_dir,'04_annotation', '01_project/'),
         a_config = annotation_config,
     envmodules:
         config['R']
