@@ -19,17 +19,10 @@ demultiplex:
     gres: lscratch:800
     time: 00-05:00:00
 
-remove_adaptors:
-    threads: 16
-    time: 01-00:00:00
-    mem: 32g
+nondemux:
+    time: 00-01:00:00
 
-qc_fastq_pre:
-    threads: 4
-    mem: 3g
-    time: 00-03:00:00
-
-qc_fastq_post:
+qc_fastq:
     threads: 4
     mem: 3g
     time: 00-03:00:00
@@ -38,34 +31,7 @@ qc_screen_validator:
     mem: 32g
     time: 00-03:00:00
 
-star:
-    mem: 50g
-    threads: 32
-    time: 00-05:00:00
-
-cleanup_conversion:
-    threads: 8
-    gres: lscratch:500
-    mem: 200g
-    time: 01-00:00:00
-
-merge_unmapped_splits:
-    threads: 8
-    time: 01-00:00:00
-    mem: 200g
-
-create_bam_mm_unique:
-    threads: 8
-    gres: lscratch:500
-    mem: 200g
-    time: 01-00:00:00
-
-merge_splits_unique_mm:
-    threads: 32
-    mem: 200g
-    time: 01-00:00:00
-
-merge_mm_and_unique:
+sort_index_stats:
     threads: 8
     gres: lscratch:800
     mem: 200g
