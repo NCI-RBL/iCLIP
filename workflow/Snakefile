@@ -26,19 +26,19 @@ import yaml
 import csv
 
 ###############################################################
-# config handling, set parameters
+# set snakemake config params
 ###############################################################
-#snakemake config
+# dirs
 source_dir = config['sourceDir']
-cont_dir = config['containerDir']
 out_dir = config['outputDir'].rstrip('/') + '/'
 fastq_dir = config['fastqDir'].rstrip('/') + '/'
-fastq_val = config['fastq_val']
 
+# manifests
 sample_manifest = config['sampleManifest']
 multiplex_manifest = config['multiplexManifest']
 contrast_manifest = config['contrastManifest']
 
+# user parameters
 multiplex_flag = config['multiplexflag'].capitalize()
 mismatch = config['mismatch']
 species_ref = config['reference']
@@ -82,11 +82,18 @@ star_seed_wind = config['seedPerWindowNmax']
 star_sj = config['sjdbScore']
 star_win_anchor = config['winAnchorMultimapNmax']
 
+# modules, container
+cont_dir = config['containerDir']
+fastq_val = config['fastq_val']
+
+# testing option
+testing_option = config['testing_option']
+###############################################################
+# set parameters
+###############################################################
 # manorm parameters
 manorm_w = config['manorm_w'] if 'manorm_w' in config else "50"
 manorm_d = config['manorm_d'] if 'manorm_d' in config else "25"
-
-testing_option = config['testing_option']
 
 #define threads
 with open(join(out_dir,'config','cluster_config.yaml')) as file:
