@@ -372,14 +372,15 @@ else:
     input_demethod_reports = [expand(join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),sp=sp_list)]
 
 #local rules
-localrules: nondemux, rename_fastqs
+localrules: multiqc, nondemux, rename_fastqs
 
 #structure
 #mp
-####02_preprocess
+##01_qc_post
+##02_preprocess
 
 #01_preprocess
-####02_alignement
+####02_alignment
 #02_bam
 ####02_merged
 ####03_dedup
@@ -751,7 +752,7 @@ rule star:
     input:
         f1 = join(out_dir,'01_preprocess','{sp}.fastq.gz')
     params:
-        rname = '06_star',
+        rname = '05_star',
         s_index=index_list[species_ref]['stardir'],
         s_gtf=index_list[species_ref]['stargtf'],
         s_atype = star_align_type,
@@ -845,7 +846,7 @@ rule sort_index_stats:
     input:
         bam = rules.star.output.bam
     params:
-        rname='09_merge_mm_and_unique',
+        rname='06_merge_mm_and_unique',
     envmodules:
         config['samtools']
     threads: getthreads("merge_mm_and_unique")
@@ -915,7 +916,7 @@ rule qc_alignment:
     input:
         bam = rules.sort_index_stats.output.bam
     params:
-        rname = "10_qc_alignment",
+        rname = "07_qc_alignment",
         R = join(source_dir,'workflow','scripts','04_alignment_stats.R'),
         sampleid = '{sp}',
         base = join(out_dir, 'qc', '01_qc_post/'),
@@ -974,7 +975,7 @@ if (multiplex_flag == 'Y'):
             txt_bc = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys()),
             png_bc = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())
         params:
-            rname = "11_qc_troubleshoot",
+            rname = "08_qc_troubleshoot",
             R = join(source_dir,'workflow','scripts','05_qc_report.Rmd'),
         envmodules:
             config['R']
@@ -1000,7 +1001,7 @@ else:
             txt_align = expand(join(out_dir, 'qc', '01_qc_post','{sp}_aligned.txt'), sp=sp_list),
             txt_unalign = expand(join(out_dir, 'qc', '01_qc_post','{sp}_unaligned.txt'), sp=sp_list),
         params:
-            rname = "11_qc_troubleshoot",
+            rname = "09_qc_troubleshoot",
             R = join(source_dir,'workflow','scripts','05_qc_report_nondemux.Rmd'),
         envmodules:
             config['R']
@@ -1024,7 +1025,7 @@ rule dedup:
     input:
         f1 = rules.sort_index_stats.output.bam
     params:
-        rname='12_dedup',
+        rname='10_dedup',
         umi = umi_sep,
         base = '{sp}.unmasked',
         mflag=multiplex_flag,
@@ -1095,7 +1096,7 @@ rule create_beds_safs:
     input:
         bam = rules.dedup.output.bam
     params:
-        rname='13_create_beds_safs',
+        rname='11_create_beds_safs',
         base = '{sp}.dedup',
         pyscript = join(source_dir,'workflow','scripts','13_bam_to_unique_bam.py'),
         memG=getmemG_80perc("create_beds_safs")
@@ -1151,7 +1152,7 @@ rule bgzip_beds:
         bed_all = join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed.gz'),
         bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed.gz'),
     params:
-        rname='bgzip_beds',
+        rname='12_bgzip_beds',
     envmodules:
         config['samtools'],
     threads: getthreads("bgzip_beds")
@@ -1183,7 +1184,7 @@ rule feature_counts:
         saf_all = rules.create_beds_safs.output.saf_all,
         saf_unique = rules.create_beds_safs.output.saf_unique
     params:
-        rname='14_feature_counts',
+        rname='13_feature_counts',
     threads: getthreads("feature_counts")
     envmodules:
         config['subread']
@@ -1270,7 +1271,7 @@ rule project_annotations:
     generate annotation table once per project
     """
     params:
-        rname='15_project_annotations',
+        rname='14_project_annotations',
         script = join(source_dir,'workflow','scripts','08_annotation.R'),
         ref_sp = species_ref,
         rrna_flag = refseq_rrna,
@@ -1319,7 +1320,7 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
             total = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_totalCounts.txt'),
             anno = rules.project_annotations.output.anno
         params:
-            rname = '16_peak_junctions',
+            rname = '15_peak_junctions',
             script = join(source_dir,'workflow','scripts','09_Anno_junctions.R'),
             functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
             bashscript = join(source_dir,'workflow','scripts','09_get_site2peak_lookup.sh'),
@@ -1390,7 +1391,7 @@ else:
             total = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_totalCounts.txt'),
             anno = rules.project_annotations.output.anno
         params:
-            rname = '16_peak_annotations',
+            rname = '15_peak_annotations',
             script = join(source_dir,'workflow','scripts','09_Anno_junctions.R'),
             functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
             bashscript = join(source_dir,'workflow','scripts','09_get_site2peak_lookup.sh'),
@@ -1515,7 +1516,7 @@ rule peak_ExonIntron:
         peaks = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
         anno = rules.project_annotations.output.anno
     params:
-        rname = '16_peak_ExonIntron',
+        rname = '17_peak_ExonIntron',
         script = join(source_dir,'workflow','scripts','09_Anno_ExonIntron.R'),
         functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
         p_type = peak_id,
@@ -1573,7 +1574,7 @@ rule peak_RMSK:
         peaks = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
         anno = rules.project_annotations.output.anno
     params:
-        rname = '16_peak_RMSK',
+        rname = '18_peak_RMSK',
         script = join(source_dir,'workflow','scripts','09_Anno_RMSK.R'),
         functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
         p_type = peak_id,
@@ -1636,7 +1637,7 @@ rule peak_process:
         RMSKOut_SS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_RMSK_SameStrand.txt'),
         RMSKOut_OS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_RMSK_OppoStrand.txt'),
     params:
-        rname = '16_peak_process',
+        rname = '19_peak_process',
         script = join(source_dir,'workflow','scripts','09_Anno_Process.R'),
         functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
         p_type = peak_id,
@@ -1681,7 +1682,7 @@ rule annotation_report:
     input:
         peak_in = join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),
     params:
-        rname = "17_annotation_output",
+        rname = "20_annotation_output",
         R = join(source_dir,'workflow','scripts','10_annotation.Rmd'),
         sp = "{sp}",
         ref_sp = species_ref,
@@ -1712,7 +1713,7 @@ if (DE_method=="MANORM"):
         input:
             bed_all = rules.create_beds_safs.output.bed_all
         params:
-            rname = "18a_MANORM_beds"
+            rname = "21a_MANORM_beds"
         threads: getthreads("MANORM_beds")
         output:
             p_bed = (join(out_dir,'05_demethod', '01_input','{sp}_ReadsforMANORM_P.bed')),
@@ -1740,7 +1741,7 @@ if (DE_method=="MANORM"):
         input:
             get_MANORM_analysis_input
         params:
-            rname = "18b_MANORM_analysis",
+            rname = "21b_MANORM_analysis",
             gid_1 = get_DEMETHOD_gid1,
             gid_2 = get_DEMETHOD_gid2,
             de_dir = join(out_dir,'05_demethod', '01_input'),
@@ -1794,7 +1795,7 @@ if (DE_method=="MANORM"):
         input:
             get_MANORM_post_processing
         params:
-            rname = "18c_MANORM_processing",
+            rname = "21c_MANORM_processing",
             script = join(source_dir,'workflow','scripts','11_MAnorm_Process.R'),
             anno_dir = join(out_dir,'04_annotation'),
             de_dir = join(out_dir,'05_demethod', '02_analysis'),
@@ -1893,7 +1894,7 @@ if (DE_method=="MANORM"):
             post_proc = rules.MANORM_post_processing.output.post_proc,
             post_procRev = rules.MANORM_post_processing.output.post_procRev
         params:
-            rname = "18d_MANORM_RMD",
+            rname = "21d_MANORM_RMD",
             R = join(source_dir,'workflow','scripts','12_MAnormAnnotation.Rmd'),
             gid_1 = get_DEMETHOD_gid1,
             gid_2 = get_DEMETHOD_gid2,
@@ -1938,7 +1939,7 @@ elif (DE_method == "DIFFBIND"):
         input:
             f1 = rules.dedup.output.bam
         params:
-            rname = "18a_DIFFBIND_beds",
+            rname = "21a_DIFFBIND_beds",
             base = "{sp}.dedup"
         threads: getthreads("DIFFBIND_beds")
         envmodules:
@@ -1995,7 +1996,7 @@ elif (DE_method == "DIFFBIND"):
             get_DIFFBIND_analysis_input,
             s_manifest = sample_manifest,
         params:
-            rname = "18b_DIFFBIND_preprocess",
+            rname = "21b_DIFFBIND_preprocess",
             script = join(source_dir,'workflow','scripts','11_DIFFBIND_PreProcess.R'),
             gid_1 = get_DEMETHOD_gid1,
             gid_2 = get_DEMETHOD_gid2,
@@ -2056,7 +2057,7 @@ elif (DE_method == "DIFFBIND"):
             table_p = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + peak_id + 'readPeaks_' + DE_method + '_table_P.txt'),
             table_n = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + peak_id + 'readPeaks_' + DE_method + '_table_N.txt'),
         params:
-            rname = "18c_DIFFBIND_process",
+            rname = "21c_DIFFBIND_process",
             script = join(source_dir,'workflow','scripts','11_DIFFBIND_Process.R'),
             script_func = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
             gid_1 = get_DEMETHOD_gid1,
@@ -2102,7 +2103,7 @@ elif (DE_method == "DIFFBIND"):
             final = rules.DIFFBIND_analysis.output.final,
             s_manifest = sample_manifest,
         params:
-            rname = "18d_DIFFBIND_RMD",
+            rname = "21d_DIFFBIND_RMD",
             R = join(source_dir,'workflow','scripts','12_DIFFBINDAnnotation.Rmd'),
             gid_1 = get_DEMETHOD_gid1,
             gid_2 = get_DEMETHOD_gid2,
