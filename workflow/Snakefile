@@ -869,9 +869,6 @@ rule sort_index_stats:
         
         # Run samstats
         samtools stats --threads {threads} {output.bam} > {output.samstat}
-
-        # remove tmp dir if created
-        if [ -d $tmp_dir ]; then rm -r $tmp_dir; fi
         """
 
 rule multiqc:
