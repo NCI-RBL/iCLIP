@@ -44,9 +44,7 @@ mismatch = config['mismatch']
 species_ref = config['reference']
 filter_length = config['filterlength']
 phredQuality = config['phredQuality']
-splice_aware = config['spliceaware'].capitalize()
 include_rRNA = config['includerRNA'].capitalize()
-splice_bp = config['spliceBPlength']
 sp_junc = config['splicejunction'].upper()
 anno_anchor=config['AnnoAnchor']
 min_count = config['mincount']
@@ -84,10 +82,6 @@ star_seed_wind = config['seedPerWindowNmax']
 star_sj = config['sjdbScore']
 star_win_anchor = config['winAnchorMultimapNmax']
 
-# useq parameters
-useq_a = config['useq_a']
-useq_n = config['useq_n']
-
 # manorm parameters
 manorm_w = config['manorm_w'] if 'manorm_w' in config else "50"
 manorm_d = config['manorm_d'] if 'manorm_d' in config else "25"
@@ -104,12 +98,6 @@ getmemG=lambda rname:getmemg(rname).replace("g","G")
 # sort command sometimes run out of memory if all 100% of the RAM is given to sort... especially if you have cascading pipes
 getmemG_80perc=lambda rname:str(int(int(getmemG(rname).split("G")[0])*0.8))+"G"
 
-#expand reference selection
-if (species_ref == "mm10"):
-    genome_ref = "GENCODE mm10 v23"
-elif (species_ref == "hg38"):
-    genome_ref = "GENCODE hg38 v32"
-
 #read in index config file and assign paths
 index_manifest = join(out_dir, 'config', 'index_config.yaml')
 
@@ -123,9 +111,6 @@ intron_path = index_list[species_ref]['intronpath']
 rmsk_path = index_list[species_ref]['rmskpath']
 alias_path = index_list[species_ref]['aliaspath']
 add_anno_path = index_list[species_ref]['additionalannopath']
-
-#singularity exec command
-singularity_exec = "singularity exec -B /lscratch,/data/$USER,/data/CCBR_Pipeliner," + out_dir + "," + fastq_dir
 
 #annotation config
 annotation_config = join(out_dir,'config','annotation_config.txt')
@@ -143,17 +128,6 @@ if (sp_junc=="Y"):
     sp_junc = "TRUE"
 else:
     sp_junc = "FALSE"
-
-#create list of alignment types based on splice_aware flag
-if (splice_aware == "Y"):
-    align_list = ["unmasked", "unaware", "masked"]
-else:
-    align_list = ["unaware"]
-
-if (splice_aware == "Y"):
-    align_sub = ["unmasked"]
-else:
-    align_sub = ["unaware"]
 
 #convert rRNA selection
 if (include_rRNA=="Y"):
@@ -237,14 +211,6 @@ def rename_cmd(wildcards):
         # create command
         cmd = 'mv ' + source + ' ' + destination + '; ' + cmd
     return(cmd)
-
-#determine dedup input based on splcie_aware flag
-def input_mapq_corrected_bam(wildcards):
-    if (splice_aware=="Y"):
-        f1 = join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),
-    else:
-        f1 = join(out_dir,'02_bam','02_dedup','{sp}.dedup.si.bam'),
-    return(f1)
 
 #read in contrast list for manorm
 def get_de_list():
@@ -344,19 +310,9 @@ if DE_method == "MANORM" or DE_method == "DIFFBIND":
 ###############################################################
 # rule all
 ###############################################################
-#set rule_all inputs depending on flags:
-## if samples are spliced
-if splice_aware == 'Y':
-    input_unmapped = expand(join(out_dir,'02_bam','01_unmapped','{sp}.{al_sub}.complete.bam'),  sp=sp_list, al_sub=align_sub)
+# set rule_all inputs depending on flags:
 
-    input_recalc = [expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recalculated.bam'),sp=sp_list),
-                    expand(join(out_dir,'02_bam','04_mapq','{sp}.mapq_recal_report.html'),sp=sp_list)]
-else:
-    input_unmapped = expand(join(out_dir,'02_bam','01_merged','{sp}.{al_sub}.merged.si.bam'), sp=sp_list, al_sub=align_sub),
-
-    input_recalc = []
-
-#if samples are running MANORM
+# if samples are running MANORM
 if DE_method == "MANORM":
     input_demethod_reports = [expand(join(out_dir,'05_demethod','02_analysis','{group_id}', '{group_id}_' + peak_id + 'readPeaks_manorm_report.html'),group_id=contrast_list),
     expand(join(out_dir,'05_demethod','02_analysis', '{group_id}', '{group_id}_' + peak_id + 'readPeaks_post_processing.txt'), group_id=contrast_list)]
