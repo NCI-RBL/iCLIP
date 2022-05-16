@@ -613,7 +613,7 @@ rule qc_fastq:
     Runs FastQC report on each sample after adaptors have been removed
     """
     input:
-        fastq = rules.rename_fastqs.output.fastq,
+        fastq = join(out_dir,'01_preprocess','01_fastq','{sp}.fastq.gz')
     params:
         rname='03_qc_fastq_post',
         base = join(out_dir, 'qc', '01_qc_post'),
@@ -644,7 +644,7 @@ rule qc_screen_validator:
         Log file containing any warnings or errors on file
     """
     input:
-        filtered = rules.rename_fastqs.output.fastq,
+        filtered = join(out_dir,'01_preprocess','01_fastq','{sp}.fastq.gz')
     params:
         rname='04_qc_screen_validator',
         fastq_v = fastq_val,
@@ -709,14 +709,9 @@ rule star:
     STAR Alignment
     https://github.com/alexdobin/STAR/releases
 
-            # move STAR files and final log file to output
-#         mv $tmp_dir/*bam {params.out_dir}
-# #        mv $tmp_dir/{params.out_prefix}_Aligned.sortedByCoord.out.bam {output.bam}
-#         mv $tmp_dir/{params.out_prefix}_Unmapped.out.mate1 {output.unmapped}
-#         mv $tmp_dir/{params.out_prefix}_Log.final.out {output.log}
     """
     input:
-        f1 = rules.rename_fastqs.output.fastq,
+        f1 = join(out_dir,'01_preprocess','01_fastq','{sp}.fastq.gz')
     params:
         rname = '05_star',
         s_index=index_list[species_ref]['stardir'],
@@ -746,15 +741,14 @@ rule star:
         s_wind = star_seed_wind,
         s_sj = star_sj,
         s_anchor = star_win_anchor,
-        out_dir = join(out_dir,'01_preprocess','02_alignment'),
-        out_prefix = join(out_dir,'01_preprocess','02_alignment','{sp}_')
+        out_prefix = '{sp}_'
     envmodules:
         config['star']
     threads: getthreads("star")
     output:
-        #unmapped = join(out_dir,'01_preprocess','02_alignment','01_unmapped','{sp}.unmapped.out'),
+        unmapped = join(out_dir,'01_preprocess','02_alignment','01_unmapped','{sp}.unmapped.out'),
         bam = join(out_dir,'01_preprocess','02_alignment','{sp}_Aligned.sortedByCoord.out.bam'),
-        #log = join(out_dir,'log','STAR','{sp}.log')
+        log = join(out_dir,'log','STAR','{sp}.log')
     shell:
         """
         set -exo pipefail
@@ -768,7 +762,7 @@ rule star:
         --sjdbGTFfile {params.s_gtf} \
         --readFilesCommand zcat \
         --readFilesIn {input.f1} \
-        --outFileNamePrefix {params.out_prefix} \
+        --outFileNamePrefix $tmp_dir/{params.out_prefix} \
         --outReadsUnmapped Fastx \
         --outSAMtype BAM SortedByCoordinate \
         --alignEndsType {params.s_atype} \
@@ -797,7 +791,11 @@ rule star:
         --sjdbScore {params.s_sj} \
         --winAnchorMultimapNmax={params.s_anchor}
 
-
+        # move STAR files and final log file to output
+        mv $tmp_dir/{params.out_prefix}_Aligned.sortedByCoord.out.bam {output.bam}
+        cat $tmp_dir/{params.out_prefix}_Unmapped.out.mate1 > {output.unmapped}
+        cat $tmp_dir/{params.out_prefix}_Unmapped.out.mate2 >> {output.unmapped}
+        mv $tmp_dir/{params.out_prefix}_Log.final.out {output.log}
         """
 
 rule sort_index_stats:
