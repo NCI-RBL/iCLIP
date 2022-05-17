@@ -1,6 +1,6 @@
 hg38:
-  stardir: '/data/CCBR_Pipeliner/iCLIP/index/active/hg38/index'
-  stargtf: '/data/CCBR_Pipeliner/iCLIP/index/active/hg38/gencode.vM32.annotation.gtf'
+  stardir: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/hg38/index'
+  stargtf: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/hg38/gencode.vM32.annotation.gtf'
   std: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/hg38.nix'
   spliceawareunmasked:
     50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc_50.nix'
