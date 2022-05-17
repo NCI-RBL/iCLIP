@@ -792,10 +792,12 @@ rule star:
         --winAnchorMultimapNmax={params.s_anchor}
 
         # move STAR files and final log file to output
-        mv $tmp_dir/{params.out_prefix}_Aligned.sortedByCoord.out.bam {output.bam}
-        cat $tmp_dir/{params.out_prefix}_Unmapped.out.mate1 > {output.unmapped}
-        cat $tmp_dir/{params.out_prefix}_Unmapped.out.mate2 >> {output.unmapped}
-        mv $tmp_dir/{params.out_prefix}_Log.final.out {output.log}
+        mv $tmp_dir/{params.out_prefix}Aligned.sortedByCoord.out.bam {output.bam}
+        mv $tmp_dir/{params.out_prefix}Log.final.out {output.log}
+        
+        # move mates to unmapped file
+        touch {output.unmapped}
+        for f in $tmp_dir/{params.out_prefix}Unmapped.out.mate*; do cat $f >> {output.unmapped}; done
         """
 
 rule sort_index_stats:
@@ -913,9 +915,6 @@ rule qc_alignment:
             --bam_aligned {output.bam_a} \\
             --bam_unaligned {output.bam_u} \\
             --output_dir {params.base}
-
-        # remove tmp dir if created
-        if [ -d $tmp_dir ]; then rm -r $tmp_dir; fi
         """
 
 # Pipeline splits to handle multiplexed QC vs non-multiplexed QC
@@ -1039,9 +1038,6 @@ rule dedup:
             ${{tmp_dir}}/{params.base}.bam \\
             -o {output.bam};
         samtools index -@ {threads} {output.bam};
-
-        # remove tmp dir if created
-        if [ -d $tmp_dir ]; then rm -r $tmp_dir; fi
         """
 
 rule create_beds_safs:
@@ -1070,13 +1066,9 @@ rule create_beds_safs:
     shell:
         """
         set -exo pipefail
-        # Setup tmp directory
-        if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
-            tmp_dir="/lscratch/${{SLURM_JOB_ID}}"
-        else
-            tmp_dir="{out_dir}01_preprocess/07_bed"
-            if [ ! -d $tmp_dir ]; then mkdir $tmp_dir; fi
-        fi
+        # set tmp dir
+        tmp_dir="/lscratch/${{SLURM_JOB_ID}}"
+        export tmp_dir
         
         # if read alignment has tag "NH:i:1" then it is an unique alignment
         python {params.pyscript} --inputBAM {input.bam} --outputBAM ${{tmp_dir}}/{params.base}.unique.bam
@@ -1084,9 +1076,9 @@ rule create_beds_safs:
         
         # Create SAFs
         bedtools bamtobed -split -i {input.bam} \\
-            | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --orary-directory=$tmp_dir -k1,1V -k2,2n  > {output.bed_all};
+            | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=$tmp_dir -k1,1V -k2,2n  > {output.bed_all};
         bedtools bamtobed -split -i ${{tmp_dir}}/{params.base}.unique.bam \\
-            | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --orary-directory=$tmp_dir -k1,1V -k2,2n > {output.bed_unique};
+            | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=$tmp_dir -k1,1V -k2,2n > {output.bed_unique};
         awk '{{OFS="\\t";print "GeneID","Chr","Start","End","Strand"}}' > {output.saf_all}
         awk '{{OFS="\\t";print "GeneID","Chr","Start","End","Strand"}}' > {output.saf_unique}
         bedtools merge \\
@@ -1405,7 +1397,6 @@ else:
                 --out_dir_DEP {params.out_m} \\
                 --output_file_error {params.error}
             '''
-
 
 rule peak_Transcripts:
     '''
