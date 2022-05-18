@@ -213,7 +213,7 @@ def rename_cmd(wildcards):
 
         # set source (rename_fq) and destination files
         source = join(out_dir, df_sub.iloc[0]['multiplex'], '02_preprocess/ultraplex_demux_' + sp + '.fastq.gz')
-        destination = join(out_dir, '01_preprocess', sp + '.fastq.gz')
+        destination = join(out_dir, '01_preprocess', '01_fastq', sp + '.fastq.gz')
 
         # create command
         cmd = 'mv ' + source + ' ' + destination + '; ' + cmd
