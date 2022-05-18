@@ -1,0 +1,241 @@
+---
+title: "Benchmarking STAR vs NovoAlign "
+author: "Samantha Sevilla"
+date: "3/4/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+## Background
+
+In this benchmarking experiment, STAR was compared to NOVOAlign, currently utilized in our iCLIP pipeline. STAR version 2.7.8a was used (https://github.com/alexdobin/STAR/releases).
+
+For each read, an alignment was assessed for any gaps. Gaps greater than 100 were considered, with two possible outcomes:
+
+1) alignment---gap---alignment
+
+2) alignment---gap--insertion/deletion---alignment
+
+For all reads that match outcome #1, overhang and parent were assigned to the alignments as follows:
+
+3) overhang: the smaller length of the two alignments
+
+4) parent: the larger length of the two alignments
+
+Ratios were calculated for each read that met this criterion. For example #5 would have a ratio of 2/70, #6 would have a ratio of 2/70, and #7 would not be included due to the gap being <100.
+
+5) alignment1(N=2)---gap(N=100)---alignment2(N=70)
+
+6) alignment3(N=70)---gap(N=100)---alignment4(N=2)
+
+7) alignment3(N=70)---gap(N=10)---alignment4(N=2)
+
+```{r echo=FALSE, include=FALSE}
+library(tidyr)
+library(ggplot2)
+library(knitr)
+library(dplyr)
+library(DT)
+```
+
+```{r setup, include=FALSE}
+parent_dir="~/../../Volumes/RBL_NCI/Wolin/mES_fclip_1_YL_012122/alignment_analysis/star/"
+counts_file=paste0(parent_dir,"output/partial_sample/cigar/count_cigar.csv")
+plot_file=paste0(parent_dir,"output/partial_sample/cigar/cigar_plot.png")
+variations_file=paste0(parent_dir,"docs/STAR_variations.txt")
+```
+
+To determine the best parameters to decrease the number of instances overhang scenerios similar to #5 above, several STAR parameters were implemented based on three sources:
+
+- https://www.sciencedirect.com/science/article/pii/S1046202318304948
+
+- https://www.encodeproject.org/documents/739ca190-8d43-4a68-90ce-1a0ddfffc6fd/@@download/attachment/eCLIP_analysisSOP_v2.2.pdf
+
+- https://rnajournal.cshlp.org/content/22/1/1
+
+From these sources, 16 alignments were performed using STAR, with 17 different parameters. To compare these parameters with current alignment parameters NOVOAlign was used, with three variations in addition to the standard method. Listed below are the STAR parameters used, summarized by FLAG used with it's description, default settings, settings based on the Busch paper with unique alignments only (1A-C) and all reads (2A-I), settings based on ENCODE standards (Encode 1,2) and settings based on ClipSeqTools. 
+
+```{r echo=FALSE}
+#read in variation file
+variations_summary=read.csv(variations_file,sep="\t")
+colnames(variations_summary) = c("Alignment Flag", "Description",
+                                 "Default", 
+                                 "star_1a", "star_1b", "star_1c",
+                                 "star_2a", "star_2b", "star_2c", "star_2d", "star_2e", "star_2f", "star_2g", "star_2h","star_2i",
+                                 "star_encode1", "star_encode2",
+                                 "star_clipseqtools_v1","star_clipseqtools_v2",
+                                 "novo_test5", "novo_1", "novo_2", "novo_3")
+
+#split for definitions only
+kable(variations_summary[c(1:18),1:2])
+
+#split for variations star
+kable(variations_summary[c(1:18),c(1,3:15)])
+
+#split for variations star
+kable(variations_summary[c(1:18),c(1,c(3,16:19))])
+
+#split for variations novo
+kable(variations_summary[c(19:nrow(variations_summary)),c(1,3,20:ncol(variations_summary))])
+
+```
+
+
+```{r include=FALSE}
+#import count cigar file
+counts_df=read.csv(counts_file)
+
+#remove spacing before count
+counts_df$X1.Ratio <- sub("\\s*", "", counts_df$X1.Ratio)
+
+#split count col
+counts_df = counts_df %>%
+  separate(col="X1.Ratio",sep="\\s",
+           c("count","ratio"))
+colnames(counts_df)=c("count","ratio","length_of_gap","overhang_length","parent_length", "id")
+
+#remove duplicate col headers
+counts_df=subset(counts_df,id!="id")
+
+#convert to numeric
+counts_df$count=as.numeric(counts_df$count)
+counts_df$length_of_gap=as.numeric(counts_df$length_of_gap)
+
+#format overhang
+counts_df$overhang_length=sub(".0","",counts_df$overhang_length)
+
+#sort data by overhang
+counts_df=counts_df[order(counts_df$overhang_length),]
+
+#fix factor levels, order
+counts_df$overhang_length=factor(counts_df$overhang_length, 
+                                 levels=c(as.character(sort(as.numeric(unique(counts_df$overhang_length))))))
+
+```
+
+```{r include=FALSE}
+# set up cut-off values 
+breaks <- c(0,1000,10000,20000,30000,40000,50000,100000000)
+    
+# specify interval/bin labels
+tags <- c("[0-1,000)","[1,000-100,00)", "[10,000-20,000)", "[20,000-30,000)", "[30,000-40,000)", "[40,000-50,000)",
+          "[50,000<)")
+    
+# bucketing values into bins
+counts_df$gap_group <- cut(counts_df$length_of_gap, 
+                    breaks=breaks, 
+                    include.lowest=TRUE, 
+                    right=FALSE, 
+                    labels=tags)
+
+#fix factor levels, order
+counts_df$gap_group=factor(counts_df$gap_group, 
+                                 levels=c(tags))
+```
+
+## Summary Tables
+Summary table of alignment variation by the length of overhang or length of gap. Values indicate the number of times this feature was observed.
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+#counts of overhang length
+summary_df=data.frame()
+for (version_id in unique(counts_df$id)){
+  tmp_df=subset(counts_df,id==version_id)
+  
+  summary_df[nrow(summary_df)+1,"id"]=version_id
+  for (overhang_val in unique(tmp_df$overhang_length)){
+    tmp_df2=subset(tmp_df,overhang_length==overhang_val)
+    summary_df[nrow(summary_df),paste0(overhang_val)]=sum(tmp_df2$count)
+  }
+}
+col_list=as.character(sort(as.numeric(as.character(unique(counts_df$overhang_length)))))
+
+#convert NAs
+summary_df = summary_df %>% 
+  select(c("id",col_list)) %>% 
+  replace(is.na(.), 0)
+
+summary_df$totals=rowSums(summary_df[,2:ncol(summary_df)])
+summary_df <-summary_df[order(summary_df$id),]
+kable(summary_df)
+
+#counts of gap length
+summary_df=data.frame()
+for (version_id in unique(counts_df$id)){
+  tmp_df=subset(counts_df,id==version_id)
+  
+  summary_df[nrow(summary_df)+1,"id"]=version_id
+  
+  for (gap_id in unique(tmp_df$gap_group)){
+    tmp_df2=subset(tmp_df,gap_group==gap_id)
+    summary_df[nrow(summary_df),paste0(gap_id)]=sum(tmp_df2$count)
+  }
+}
+
+summary_df = summary_df %>% 
+  select(c("id",all_of(tags))) %>% 
+  replace(is.na(.), 0)
+summary_df <-summary_df[order(summary_df$id),]
+kable(summary_df)
+```
+
+## Summary Plots
+### Overhang length
+Summary plot of ratios of overhang/parent alignment (see above for definitions) by the number of times they occur within the alignment variation. Only ratios under 0.5 are shown.
+
+```{r echo=FALSE}
+tmp_df=subset(counts_df,ratio<.2)
+
+#plot data
+tmp_df2=tmp_df[grep("novo", tmp_df$id), ]
+p = ggplot(tmp_df2,aes(x=ratio,y=count,fill=overhang_length))+ 
+    geom_bar(position='stack', stat='identity') +
+    facet_wrap(~id) +
+    xlab("Ratio of overhang/parent") +
+    ylab("N of Occurances")
+
+p = p + theme(legend.position="top")
+print(p)
+
+tmp_df2=tmp_df[grep("star", tmp_df$id), ]
+p = ggplot(tmp_df2,aes(x=ratio,y=count,fill=overhang_length))+ 
+    geom_bar(position='stack', stat='identity') +
+    facet_wrap(~id) +
+    xlab("Ratio of overhang/parent") +
+    ylab("N of Occurances")
+
+p = p + theme(legend.position="top")
+print(p)
+```
+
+### Gap length
+Summary plot of ratios of overhang/parent by the number of times they occur within the alignment variation, colored by the length of the gap observed. Only ratios under 0.5 are shown.
+```{r echo=FALSE}
+#plot data
+tmp_df2=tmp_df[grep("novo", tmp_df$id), ]
+p = ggplot(tmp_df2,aes(x=ratio,y=count,fill=gap_group))+ 
+    geom_bar(position='stack', stat='identity') +
+    facet_wrap(~id) +
+    xlab("Ratio of overhang/parent") +
+    ylab("N of Occurances")
+
+p = p + theme(legend.position="top")
+print(p)
+
+tmp_df2=tmp_df[grep("star", tmp_df$id), ]
+p = ggplot(tmp_df2,aes(x=ratio,y=count,fill=gap_group))+ 
+    geom_bar(position='stack', stat='identity') +
+    facet_wrap(~id) +
+    xlab("Ratio of overhang/parent") +
+    ylab("N of Occurances")
+
+p = p + theme(legend.position="top")
+print(p)
+```
+
+
+## Conclusion
+NOVOAlign set three improves the overhang length, as seen through the increase in length from 2 to 4, as compared to the original as seen in the overhang length plots. However, this still cannot compare with the total number of these types of alignments (N=1380) to the worst STAR alignment output (star_encode1 N=125). STAR alignments based on the Busch paper (1A-C, 2A-I), including all reads (unique and multimapped average N=~7.6) are comparable to unique reads only (N=~7.3). Within the all reads alignments, the minimum overhang length of 12 is a significant improvement over the common overhang length of 2 in NOVOAlign. In addition, the majority of overhangs are 36bp in length. Similarly, STAR also decreases the length of the gap present between alignments, from NOVOAlign between 1,000 to 100,000 in NOVOAlign to 0-1,000 in STAR.
+
+Of the remaining STAR parameters, the default settings and ENCODE settings did improve the overhang length and gap length over NOVOAlign. These two settings, however, did not improve either metric as compared to the settings provided by the Busch paper.
+
+Based on these results, the Busch paper parameters appear to have optimized alignment of iCLIP data based on overhang length and gap length. Within the variations attempted, all reads can be included without interference to this metric. Additional testing will need to be completed to determine which Busch parameter set (2A-2I) is best suited for this pipeline based on additional metrics.
