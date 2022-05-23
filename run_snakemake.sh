@@ -358,11 +358,8 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   check_manifest_qc
 
   if [[ $config_reference == "hg38" ]]; then
-    check_readaccess "${yaml_hg38_std}"
-    check_readaccess "${yaml_hg38_spliceawareunmasked_50bp}"
-    check_readaccess "${yaml_hg38_spliceawareunmasked_75bp}"
-    check_readaccess "${yaml_hg38_spliceawaremasked_50bp}"
-    check_readaccess "${yaml_hg38_spliceawaremasked_75bp}"
+    check_readaccess "${yaml_hg38_stargtf}"
+    check_readaccess "${yaml_hg38_stardir}"
     check_readaccess "${yaml_hg38_gencodepath}"
     check_readaccess "${yaml_hg38_refseqpath}"
     check_readaccess "${yaml_hg38_canonicalpath}"
@@ -371,11 +368,8 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     check_readaccess "${yaml_hg38_sypath}"
     check_readaccess "${yaml_hg38_aliaspath}"
   else
-    check_readaccess "${yaml_mm10_std}"
-    check_readaccess "${yaml_mm10_spliceawareunmasked_50bp}"
-    check_readaccess "${yaml_mm10_spliceawareunmasked_75bp}"
-    check_readaccess "${yaml_mm10_spliceawaremasked_50bp}"
-    check_readaccess "${yaml_mm10_spliceawaremasked_75bp}"
+    check_readaccess "${yaml_mm10_stargtf}"
+    check_readaccess "${yaml_mm10_stardir}"
     check_readaccess "${yaml_mm10_gencodepath}"
     check_readaccess "${yaml_mm10_refseqpath}"
     check_readaccess "${yaml_mm10_canonicalpath}"

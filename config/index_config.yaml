@@ -1,13 +1,6 @@
 hg38:
   stardir: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/hg38/index'
-  stargtf: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/hg38/gencode.vM32.annotation.gtf'
-  std: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/hg38.nix'
-  spliceawareunmasked:
-    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc_50.nix'
-    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc_75.nix'
-  spliceawaremasked:
-    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc.maskedexon_50.nix'
-    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/hg38/gencode.v32.chr_patch_hapl_scaff.annotation.gtf.SplicedTransc.maskedexon_75.nix'
+  stargtf: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/hg38/ref/gencode.vM32.annotation.gtf'
   gencodepath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt'
   refseqpath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt'
   canonicalpath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt'
@@ -17,14 +10,7 @@ hg38:
   additionalannopath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/additional_anno/'
 mm10:
   stardir: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/mm10/index'
-  stargtf: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/mm10/gencode.vM23.annotation.gtf'
-  std: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/mm10/mm10.nix'
-  spliceawareunmasked:
-    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/mm10/mm10_splice50bp_unmasked.nix'
-    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/mm10/mm10_splice75bp_unmasked.nix'
-  spliceawaremasked:
-    50bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/mm10/mm10_splice50bp_masked.nix'
-    75bp: '/data/CCBR_Pipeliner/iCLIP/index/active/phil/mm10/mm10_splice75bp_masked.nix'
+  stargtf: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/mm10/ref/gencode.vM23.annotation.gtf'
   gencodepath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/Gencode_VM23/fromGencode/gencode.vM23.annotation.gtf.txt'
   refseqpath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/NCBI_RefSeq/GCF_000001635.26_GRCm38.p6_genomic.gtf.txt'
   canonicalpath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/mm10/Gencode_VM23/fromUCSC/KnownCanonical/KnownCanonical_GencodeM23_GRCm38.txt'
