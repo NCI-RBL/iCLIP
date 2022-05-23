@@ -12,6 +12,9 @@ properties:
   outputDir:
     type: string
     description: /path/to/output/dir
+  fastqDir:
+    type: string
+    description: /path/to/fastq/files
   sampleManifest:
     type: string
     description: /path/to/sample/manifest
@@ -21,18 +24,6 @@ properties:
   contrastManifest:
     type: string
     description: /path/to/contrast/manifest
-  containerDir:
-    type: string
-    description: /path/to/container/sif/files
-  fastq_val:
-    type: string
-    description: /path/to/fastQValidator
-  fastqDir:
-    type: string
-    description: /path/to/fastq/files
-  filterlength: 
-    types: number
-    description: minimum read length to include in analysis, any int greater than 20
   multiplexflag:
     types: string
     enum: ["Y","N","y","n"]
@@ -45,18 +36,16 @@ properties:
     type: string
     enum: ["hg38","mm10"]
     description: reference organism
-  spliceaware:
-    type: string
-    enum: ["Y","N","y","n"]
-    description: whether to run include splice_aware feature for alignment
+  filterlength: 
+    types: number
+    description: minimum read length to include in analysis, any int greater than 20
+  phredQuality: 
+    types: number
+    description: The minimum quality score for 3 prime end trimming
   includerRNA:
     type: string
     enum: ["Y","N","y","n"]
     description: if spliceaware, include refseq rRNA's in annotations
-  spliceBPlength:
-    type: number
-    enum: [50,75]
-    description: bp length of created index
   splicejunction: 
     type: string
     enum: ["Y","N","y","n"]
@@ -88,24 +77,27 @@ properties:
   fc:
     type: number
     description: if DEmethod, fold change cut off for significance
+  containerDir:
+    type: string
+    description: /path/to/container/sif/files
+  fastq_val:
+    type: string
+    description: /path/to/fastQValidator
 
 # entries that have to be in the config file for successful validation
 required:
   - sourceDir
   - outputDir
+  - fastqDir
   - sampleManifest
   - multiplexManifest
   - contrastManifest
-  - fastqDir
-  - containerDir
-  - fastq_val
-  - filterlength
   - multiplexflag
   - mismatch
   - reference
-  - spliceaware
+  - filterlength
+  - phredQuality
   - includerRNA
-  - spliceBPlength
   - splicejunction
   - AnnoAnchor
   - mincount
@@ -115,3 +107,5 @@ required:
   - sampleoverlap
   - pval
   - fc
+  - containerDir
+  - fastq_val
