@@ -117,16 +117,27 @@ check_manifests(){
     sampleManifest=$config_sampleManifest
     DEmethod=`echo "${config_DEmethod}" | cut -f1 -d"#"`
     contrastManifest=$config_contrastManifest
+
+    check_existence $multiplexManifest
+    check_existence $sampleManifest
+    check_existence $contrastManifest
   elif [[ -z "$5" ]]; then
     multiplexManifest=$3
     sampleManifest=$4
     DEmethod="NONE"
     contrastManifest=""
+
+    check_existence $multiplexManifest
+    check_existence $sampleManifest
   else
     multiplexManifest=$3
     sampleManifest=$4
     DEmethod=$5
     contrastManifest=$6
+
+    check_existence $multiplexManifest
+    check_existence $sampleManifest
+    check_existence $contrastManifest
   fi
   
   # Run manifest check
