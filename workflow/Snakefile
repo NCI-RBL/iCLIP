@@ -757,7 +757,8 @@ rule star:
         tmp_dir="/lscratch/${{SLURM_JOB_ID}}"
         export tmp_dir
 
-        STAR --runMode alignReads \
+        STAR \
+        ---runMode alignReads \
         --genomeDir {params.s_index} \
         --sjdbGTFfile {params.s_gtf} \
         --readFilesCommand zcat \
@@ -789,7 +790,8 @@ rule star:
         --seedPerReadNmax={params.s_read} \
         --seedPerWindowNmax={params.s_wind} \
         --sjdbScore {params.s_sj} \
-        --winAnchorMultimapNmax={params.s_anchor}
+        --winAnchorMultimapNmax={params.s_anchor} \
+        --outTmpDir $tmp_dir
 
         # move STAR files and final log file to output
         mv $tmp_dir/{params.out_prefix}Aligned.sortedByCoord.out.bam {output.bam}
