@@ -1,4 +1,10 @@
 ############################################################################################
+# Controls
+############################################################################################
+flag_download="Y"
+flag_index="Y"
+
+############################################################################################
 # USER INPUTS
 ############################################################################################
 parent_dir="/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505"
@@ -35,11 +41,11 @@ for new_dir in "${dir_list[@]}"; do if [[ ! -d $new_dir ]]; then mkdir -p $new_d
 # example: $ref_dir/GRCm38.p6.fa
 ref_bk=$ref_dir/BK000964.3_TPA_exp.fa
 
-ref_gen=`echo $ref_fa_link | cut -f9 -d"/" | sed "s/.genome.fa.gz//"`
-ref_gen="${ref_dir}/${ref_gen}.fa"
+ref_gen=`echo $ref_fa_link | cut -f9 -d"/" | sed "s/.gz//g"`
+ref_gen="${ref_dir}/${ref_gen}"
     
-ref_gtf=`echo $ref_gtf_link | cut -f9 -d"/" | sed "s/.annotation.gtf.gz//"`
-ref_gtf="${ref_dir}/${ref_gtf}.gtf"
+ref_gtf=`echo $ref_gtf_link | cut -f9 -d"/"| sed "s/.gz//g"`
+ref_gtf="${ref_dir}/${ref_gtf}"
   
 ############################################################################################
 # FUNCTIONS
@@ -54,21 +60,15 @@ function star_index_mm10()
     echo "$star_command"
 }
 
-function star_index_human()
+function star_index_hg38()
 {
-    local star_command="STAR \
+    local star_command="module load STAR; STAR \
         --runThreadN 32 \
         --runMode genomeGenerate \
         --genomeDir $index_dir \
         --genomeFastaFiles $ref_gen"
     echo "$star_command"
 }
-
-############################################################################################
-# Controls
-############################################################################################
-flag_download="Y"
-flag_index="N"
 
 ############################################################################################
 # RUN
@@ -78,20 +78,28 @@ if [[ "$flag_download" == "Y" ]]; then
     echo "*** Running download ***"
 
     # get FA file
-    if [[ ! -f $ref_gen ]]; then
-        #wget -P $ref_dir $ref_fa_link
+    # if .fa file is missing, but .fa.gz is present, gunzip it
+    # if .fa.gz is missing, download it
+    if [[ ! -f $ref_gen ]] && [[ -f ${ref_gen}.gz ]]; then
+        echo "unzipping $ref_gen"
         gunzip ${ref_gen}.gz
+    elif [[ ! -f $ref_gen ]]; then
+        wget -P $ref_dir $ref_fa_link
     fi
 
     # additional fa not included in mm10
-    if [[ $species == "mm10" ]] && [[ ! -f $ref_bk ]]; then
+    if [[ $ref_species == "mm10" ]] && [[ ! -f $ref_bk ]]; then
         cp $perm_bk_path $ref_bk
     fi
 
     ## get GTF file
-    if [[ ! -f $ref_gtf ]]; then
-        #wget -P $ref_dir $ref_gtf_link
+    # if .fa file is missing, but .fa.gz is present, gunzip it
+    # if .fa.gz is missing, download it
+    if [[ ! -f $ref_gtf ]] && [[ -f "${ref_gtf}.gz" ]]; then
+        echo "unzipping $ref_gtf"
         gunzip ${ref_gtf}.gz
+    elif [[ ! -f $ref_gtf ]]; then
+        wget -P $ref_dir $ref_gtf_link
     fi
 fi 
 
@@ -100,10 +108,10 @@ if [[ "$flag_index" == "Y" ]]; then
     module load STAR
 
     #create index
-    if [[ $species == "mm10" ]]; then
+    if [[ $ref_species == "mm10" ]]; then
         cmd=`star_index_mm10`
-    elif [[ $species == "human" ]]; then
-        cmd=`star_index_human`
+    elif [[ $ref_species == "hg38" ]]; then
+        cmd=`star_index_hg38`
     fi
 
     echo $cmd > $log_dir/index.sh
