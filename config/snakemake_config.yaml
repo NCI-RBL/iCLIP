@@ -44,7 +44,7 @@ alignSJDBoverhangMin: 3 # minimum overhang value for annotated spliced junctions
 alignSJoverhangMin: 5 # minimum overhang value for non-cannonical splied junctions
 alignTranscriptsPerReadNmax: 10000
 alignWindowsPerReadNmax: 10000
-outFilterMatchNmin: 15
+outFilterMatchNmin: 15 # alignment will be output only if the number of matched bases is higher than or equal to this value.
 outFilterMatchNminOverLread: 0.9
 outFilterMismatchNmax: 999
 outFilterMismatchNoverReadLmax: 0.04
