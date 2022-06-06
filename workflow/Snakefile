@@ -800,7 +800,7 @@ rule star:
         for f in $tmp_dir/{params.out_prefix}Unmapped.out.mate*; do cat $f >> {output.unmapped}; done
         """
 
-rule sort_index_stats:
+rule index_stats:
     """
     sort, index files
     run samstats on files
@@ -808,10 +808,10 @@ rule sort_index_stats:
     input:
         bam = rules.star.output.bam
     params:
-        rname='06_sort_index_stats',
+        rname='06_index_stats',
     envmodules:
         config['samtools']
-    threads: getthreads("sort_index_stats")
+    threads: getthreads("index_stats")
     output:
         bam = join(out_dir,'02_bam','01_merged','{sp}.si.bam'),
         samstat = (join(out_dir, 'qc', '01_qc_post','{sp}_samstats.txt'))
@@ -823,10 +823,7 @@ rule sort_index_stats:
         tmp_dir="/lscratch/${{SLURM_JOB_ID}}"
         export tmp_dir
         
-        # Sort and Index
-        samtools sort --threads {threads} -m 10G -T ${{tmp_dir}} \\
-            {input.bam} \\
-            -o {output.bam};
+        # Index
         samtools index -@ {threads} {output.bam};
         
         # Run samstats
