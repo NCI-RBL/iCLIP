@@ -174,18 +174,20 @@ check_manifest_qc(){
     echo "-- user manifest check completed successfully"
   fi
 
-  # check for errors in barcode manifest
-  mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
-  for mp_id in "${mp_id_list[@]}"; do
-        # check length of file, if 0 then print error
-      len_bc=`cat $bc_file | wc -l`
-      if [[ "$len_bc" -lt 1 ]]; then
-        echo "The barcode manifest check FAILED. Check "${bc_file}" for more information."
-        exit 1
-      else
-        echo "-- barcode check completed successfully"
-      fi
-  done
+  # check for errors in barcode manifest, if multiplex flag is turned on
+  if [[ ${yaml_multiplexflag} == "Y" ]]; then
+    mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
+    for mp_id in "${mp_id_list[@]}"; do
+          # check length of file, if 0 then print error
+        len_bc=`cat $bc_file | wc -l`
+        if [[ "$len_bc" -lt 1 ]]; then
+          echo "The barcode manifest check FAILED. Check "${bc_file}" for more information."
+          exit 1
+        else
+          echo "-- barcode check completed successfully"
+        fi
+    done
+  fi
 }
 
 
