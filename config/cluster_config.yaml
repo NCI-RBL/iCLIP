@@ -31,6 +31,10 @@ qc_screen_validator:
     mem: 32g
     time: 00-03:00:00
 
+star:
+    time: 04-00:00:00
+    gres: lscratch:800
+
 sort_index_stats:
     threads: 8
     gres: lscratch:800
