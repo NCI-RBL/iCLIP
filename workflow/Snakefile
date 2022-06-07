@@ -1692,7 +1692,7 @@ if (DE_method=="MANORM"):
             gid_1 = get_DEMETHOD_gid1,
             gid_2 = get_DEMETHOD_gid2,
             de_dir = join(out_dir,'05_demethod', '01_input'),
-            base = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}'),
+            base = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_{strand}/'),
             peak_id = peak_id,
             manorm_w = manorm_w,
             manorm_d = manorm_d,
@@ -1721,20 +1721,20 @@ if (DE_method=="MANORM"):
                 --name2 {params.gid_2}
             
             # rename MANORM final output file
-            mv {params.base}/{wildcards.group_id}_all_MAvalues.xls {output.mavals}
+            mv {params.base}{wildcards.group_id}_all_MAvalues.xls {output.mavals}
 
             # rename individual file names for each sample
-            mv {params.base}/{params.gid_1}_MAvalues.xls {params.base}/{params.gid_1}_{params.peak_id}readPeaks_MAvalues.xls
-            mv {params.base}/{params.gid_2}_MAvalues.xls {params.base}/{params.gid_2}_{params.peak_id}readPeaks_MAvalues.xls
+            mv {params.base}{params.gid_1}_MAvalues.xls {params.base}{params.gid_1}_{params.peak_id}readPeaks_MAvalues.xls
+            mv {params.base}{params.gid_2}_MAvalues.xls {params.base}{params.gid_2}_{params.peak_id}readPeaks_MAvalues.xls
 
             # mv folders of figures, filters, tracks to new location
             # remove folders if they already exist
-            if [[ -d {params.base}/output_figures_{params.peak_id}readPeaks ]]; then rm {params.base}/output_figures_{params.peak_id}readPeaks; fi
-            if [[ -d {params.base}/output_filters_{params.peak_id}readPeaks ]]; then rm {params.base}/output_filters_{params.peak_id}readPeaks; fi
-            if [[ -d {params.base}/output_tracks_{params.peak_id}readPeaks ]]; then rm {params.base}/output_tracks_{params.peak_id}readPeaks; fi
-            mv {params.base}/output_figures {params.base}/output_figures_{params.peak_id}readPeaks
-            mv {params.base}/output_filters {params.base}/output_filters_{params.peak_id}readPeaks
-            mv {params.base}/output_tracks {params.base}/output_tracks_{params.peak_id}readPeaks
+            if [[ -d {params.base}output_figures_{params.peak_id}readPeaks ]]; then rm {params.base}output_figures_{params.peak_id}readPeaks; fi
+            if [[ -d {params.base}output_filters_{params.peak_id}readPeaks ]]; then rm {params.base}output_filters_{params.peak_id}readPeaks; fi
+            if [[ -d {params.base}output_tracks_{params.peak_id}readPeaks ]]; then rm {params.base}output_tracks_{params.peak_id}readPeaks; fi
+            mv {params.base}output_figures {params.base}output_figures_{params.peak_id}readPeaks
+            mv {params.base}output_filters {params.base}output_filters_{params.peak_id}readPeaks
+            mv {params.base}output_tracks {params.base}output_tracks_{params.peak_id}readPeaks
             """
             
     rule MANORM_post_processing:
