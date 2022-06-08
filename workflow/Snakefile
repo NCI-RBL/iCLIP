@@ -118,6 +118,8 @@ intron_path = index_list[species_ref]['intronpath']
 rmsk_path = index_list[species_ref]['rmskpath']
 alias_path = index_list[species_ref]['aliaspath']
 add_anno_path = index_list[species_ref]['additionalannopath']
+star_index=index_list[species_ref]['stardir']
+star_gtf=index_list[species_ref]['stargtf']
 
 #annotation config
 annotation_config = join(out_dir,'config','annotation_config.txt')
@@ -714,8 +716,8 @@ rule star:
         f1 = join(out_dir,'01_preprocess','01_fastq','{sp}.fastq.gz')
     params:
         rname = '05_star',
-        s_index=index_list[species_ref]['stardir'],
-        s_gtf=index_list[species_ref]['stargtf'],
+        s_index=star_index,
+        s_gtf=star_gtf,
         s_atype = star_align_type,
         s_intron = star_align_intron, 
         s_sjdb = star_align_sjdb,
@@ -791,7 +793,7 @@ rule star:
         --seedPerWindowNmax={params.s_wind} \
         --sjdbScore {params.s_sj} \
         --winAnchorMultimapNmax={params.s_anchor} \
-        --outTmpDir $tmp_dir
+        --outTmpDir $tmp_dir/STAR
 
         # move STAR files and final log file to output
         mv $tmp_dir/{params.out_prefix}Aligned.sortedByCoord.out.bam {output.bam}
