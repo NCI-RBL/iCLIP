@@ -153,9 +153,8 @@ check_manifests(){
 create_barcode_manifest(){
     # create list of all multiplexed samples
     mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
-    
     # for each id create a single barcode manifest
-    for mp_id in "${mp_id_list[@]}"; do
+    for mp_id in ${mp_id_list[@]}; do
       bc_file="${output_dir}/manifests/${mp_id}_barcode_manifest.txt"
       
       # if the file exists, skip
@@ -175,21 +174,26 @@ check_manifest_qc(){
   fi
 
   # check for errors in barcode manifest, if multiplex flag is turned on
-  if [[ ${yaml_multiplexflag} == "Y" ]]; then
+  mp_flag=`echo "${config_multiplexflag}" | cut -f1 -d" "`
+  if [[ ${mp_flag} == "Y" ]]; then
+    # search for all barcodes
     mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
-    for mp_id in "${mp_id_list[@]}"; do
-          # check length of file, if 0 then print error
+    
+    for mp_id in ${mp_id_list[@]}; do
+        # check length of file
+        bc_file="${output_dir}/manifests/${mp_id}_barcode_manifest.txt"
         len_bc=`cat $bc_file | wc -l`
+
+        #if 0 then print error
         if [[ "$len_bc" -lt 1 ]]; then
           echo "The barcode manifest check FAILED. Check "${bc_file}" for more information."
           exit 1
         else
-          echo "-- barcode check completed successfully"
+          echo "-- barcode check completed successfully (sample $mp_id)"
         fi
     done
   fi
 }
-
 
 #########################################################  
 # Formatting
