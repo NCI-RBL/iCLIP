@@ -1,6 +1,6 @@
 hg38:
   stardir: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/hg38/index'
-  stargtf: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/hg38/ref/gencode.vM32.annotation.gtf'
+  stargtf: '/data/CCBR_Pipeliner/iCLIP/index/active/2022_0505/hg38/ref/gencode.v32.annotation.gtf'
   gencodepath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt'
   refseqpath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/NCBI_RefSeq/GCF_000001405.39_GRCh38.p13_genomic.gtf.txt'
   canonicalpath: '/data/CCBR_Pipeliner/iCLIP/ref/annotations/hg38/Gencode_V32/fromUCSC/KnownCanonical/KnownCanonical_GencodeM32_GRCh38.txt'
