@@ -200,7 +200,7 @@ def nondemux_cmd(wildcards):
 
   for k,v in multiplex_dict.items():
     for k2,v2 in samp_dict[k].items():
-      cmd_line = 'cp ' + fastq_dir + v + ' ' + out_dir + k + '/02_preprocess/' + k2 + '.fastq.gz; ' + cmd_line
+      cmd_line = 'cp ' + fastq_dir + v + ' ' + out_dir + k + '/02_preprocess/ultraplex_demux_' + k2 + '.fastq.gz; ' + cmd_line
   
   return(cmd_line)
 
@@ -378,7 +378,7 @@ rule all:
         # rename_fastqs
         expand(join(out_dir,'01_preprocess','01_fastq','{sp}.fastq.gz'),sp=sp_list),       
          
-        # sort_index_stats
+        # index_stats
         expand(join(out_dir,'02_bam','01_merged','{sp}.si.bam'), sp=sp_list),
 
         # multiqc
@@ -758,7 +758,7 @@ rule star:
         export tmp_dir
 
         STAR \
-        ---runMode alignReads \
+        --runMode alignReads \
         --genomeDir {params.s_index} \
         --sjdbGTFfile {params.s_gtf} \
         --readFilesCommand zcat \
@@ -872,7 +872,7 @@ rule qc_alignment:
     generates plots and summmary file for aligned vs unaligned statistics
     """
     input:
-        bam = rules.sort_index_stats.output.bam
+        bam = rules.index_stats.output.bam
     params:
         rname = "07_qc_alignment",
         R = join(source_dir,'workflow','scripts','04_alignment_stats.R'),
@@ -978,7 +978,7 @@ rule dedup:
     get header of dedup file
     """
     input:
-        f1 = rules.sort_index_stats.output.bam
+        f1 = rules.index_stats.output.bam
     params:
         rname='09_dedup',
         umi = umi_sep,
