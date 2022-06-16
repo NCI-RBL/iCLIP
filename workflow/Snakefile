@@ -428,10 +428,10 @@ rule all:
         expand(join(out_dir, 'qc', '01_qc_post','{sp}_unaligned.txt'),sp=sp_list),
 
         # create_beds_safs
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed'),sp=sp_list),
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed'),sp=sp_list),
-        expand(join(out_dir,'03_peaks','02_SAF','{sp}_ALLreadPeaks.SAF'),sp=sp_list),
-        expand(join(out_dir,'03_peaks','02_SAF','{sp}_UNIQUEreadPeaks.SAF'),sp=sp_list),
+        # expand(join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed'),sp=sp_list),
+        # expand(join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed'),sp=sp_list),
+        # expand(join(out_dir,'03_peaks','02_SAF','{sp}_ALLreadPeaks.SAF'),sp=sp_list),
+        # expand(join(out_dir,'03_peaks','02_SAF','{sp}_UNIQUEreadPeaks.SAF'),sp=sp_list),
 
         # bgzip_beds
         expand(join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed.gz'),sp=sp_list),
@@ -825,6 +825,7 @@ rule index_stats:
         export tmp_dir
         
         # Index
+        cp {input.bam} {output.bam}
         samtools index -@ {threads} {output.bam};
         
         # Run samstats
@@ -1728,9 +1729,9 @@ if (DE_method=="MANORM"):
 
             # mv folders of figures, filters, tracks to new location
             # remove folders if they already exist
-            if [[ -d {params.base}output_figures_{params.peak_id}readPeaks ]]; then rm {params.base}output_figures_{params.peak_id}readPeaks; fi
-            if [[ -d {params.base}output_filters_{params.peak_id}readPeaks ]]; then rm {params.base}output_filters_{params.peak_id}readPeaks; fi
-            if [[ -d {params.base}output_tracks_{params.peak_id}readPeaks ]]; then rm {params.base}output_tracks_{params.peak_id}readPeaks; fi
+            if [[ -d {params.base}output_figures_{params.peak_id}readPeaks ]]; then rm -r {params.base}output_figures_{params.peak_id}readPeaks; fi
+            if [[ -d {params.base}output_filters_{params.peak_id}readPeaks ]]; then rm -r {params.base}output_filters_{params.peak_id}readPeaks; fi
+            if [[ -d {params.base}output_tracks_{params.peak_id}readPeaks ]]; then rm -r {params.base}output_tracks_{params.peak_id}readPeaks; fi
             mv {params.base}output_figures {params.base}output_figures_{params.peak_id}readPeaks
             mv {params.base}output_filters {params.base}output_filters_{params.peak_id}readPeaks
             mv {params.base}output_tracks {params.base}output_tracks_{params.peak_id}readPeaks
