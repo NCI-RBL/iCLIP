@@ -785,10 +785,10 @@ rule star:
         --outSJfilterCountTotalMin {params.s_sjmin} \
         --outSJfilterOverhangMin {params.s_overhang} \
         --outSJfilterReads {params.s_sjreads} \
-        --seedMultimapNmax={params.s_smm} \
-        --seedNoneLociPerWindow={params.s_loci} \
-        --seedPerReadNmax={params.s_read} \
-        --seedPerWindowNmax={params.s_wind} \
+        --seedMultimapNmax {params.s_smm} \
+        --seedNoneLociPerWindow {params.s_loci} \
+        --seedPerReadNmax {params.s_read} \
+        --seedPerWindowNmax {params.s_wind} \
         --sjdbScore {params.s_sj} \
         --winAnchorMultimapNmax={params.s_anchor}
 
