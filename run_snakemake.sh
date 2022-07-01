@@ -579,6 +579,7 @@ else
   --verbose \
   --rerun-incomplete \
   --scheduler greedy  \
+  --rerun-triggers mtime \
   --cluster-config ${output_dir}/config/cluster_config.yaml \
   --cluster \
     "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
