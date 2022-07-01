@@ -60,9 +60,9 @@ outSJfilterReads: "All"
 seedMultimapNmax: 10000
 seedNoneLociPerWindow: 20
 seedPerReadNmax: 10000
-seedPerWindowNmax: 10000
+seedPerWindowNmax: 500
 sjdbScore: 2
-winAnchorMultimapNmax: 10000
+winAnchorMultimapNmax: 500
 
 #########################################################################################
 # modules, container parameters
