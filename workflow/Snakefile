@@ -1474,23 +1474,30 @@ rule peak_ExonIntron:
         g_path = gen_path,
         i_path = intron_path,
         r_path = rmsk_path,
-        anno_strand="{AnnoStrand}",
         error = join(out_dir,'04_annotation','read_depth_error.txt')
     envmodules:
         config['R'],
         config['bedtools'],
     threads: getthreads("peak_annotations")
     output:
-        outfile = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_{AnnoStrand}.txt'),
+        EIOut_SS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_SameStrand.txt'),
+        EIOut_OS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_OppoStrand.txt'),
+
     shell:
         '''
         # Setup tmp directory
         if [ -d "/lscratch/${{SLURM_JOB_ID}}" ]; then
-            tmp_dir="/lscratch/${{SLURM_JOB_ID}}/"
+            tmp_dir="/lscratch/${{SLURM_JOB_ID}}"
         else
             tmp_dir="{out_dir}01_preprocess/07_rscripts/"
             if [ ! -d $tmp_dir ]; then mkdir $tmp_dir; fi
         fi
+        tmp_dir_s=$tmp_dir/same
+        tmp_dir_o=$tmp_dir/oppo
+
+        mkdir $tmp_dir_s
+        mkdir $tmp_dir_o
+
         Rscript {params.script} \\
             --rscript {params.functions} \\
             --peak_type {params.p_type} \\
@@ -1503,10 +1510,27 @@ rule peak_ExonIntron:
             --gencode_path {params.g_path} \\
             --intron_path {params.i_path} \\
             --rmsk_path {params.r_path} \\
-            --tmp_dir ${{tmp_dir}} \\
+            --tmp_dir ${{tmp_dir_s}} \\
             --out_dir {params.out} \\
-            --out_file {output.outfile} \\
-            --anno_strand {params.anno_strand} 
+            --out_file {output.EIOut_SS} \\
+            --anno_strand "SameStrand" 
+
+        Rscript {params.script} \\
+            --rscript {params.functions} \\
+            --peak_type {params.p_type} \\
+            --anno_anchor {params.anchor} \\
+            --read_depth {params.r_depth} \\
+            --sample_id {params.sp} \\
+            --ref_species {params.ref_sp} \\
+            --anno_dir {params.anno_dir} \\
+            --reftable_path {params.a_config} \\
+            --gencode_path {params.g_path} \\
+            --intron_path {params.i_path} \\
+            --rmsk_path {params.r_path} \\
+            --tmp_dir ${{tmp_dir_o}} \\
+            --out_dir {params.out} \\
+            --out_file {output.EIOut_OS} \\
+            --anno_strand "OppoStrand"
         '''
 
 rule peak_RMSK:
