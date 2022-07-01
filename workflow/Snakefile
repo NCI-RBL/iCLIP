@@ -372,9 +372,6 @@ rule all:
         # non-rule: check sample fastq files exist
         expand(join(fastq_dir,'{fq_file}'), fq_file=file_list),
 
-        # demux OR nondemux
-        expand(join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz'), mp=samp_dict.keys()),
-
         # rename_fastqs
         expand(join(out_dir,'01_preprocess','01_fastq','{sp}.fastq.gz'),sp=sp_list),       
          
@@ -389,10 +386,6 @@ rule all:
 
         # dedup
         expand(join(out_dir,'02_bam','02_dedup','{sp}.dedup.si.bam'),sp=sp_list),
-    
-        # bgzip_beds
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed.gz'),sp=sp_list),
-        expand(join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed.gz'),sp=sp_list),
 
         # annotation_report
         expand(join(out_dir,'04_annotation', '{sp}_annotation_' + peak_id + 'readPeaks_final_report.html'),sp=sp_list),
@@ -404,28 +397,31 @@ rule all:
         ###############################################################################################
         # intermediate tmp files
         ###############################################################################################        
-        # qc barcode
+        # # qc barcode
         # expand(join(out_dir,'{mp}','01_qc_post','{mp}_barcode_counts.txt'),mp=mp_list),
         # expand(join(out_dir,'{mp}','01_qc_post','{mp}_barcode.png'),mp=mp_list),
         # expand(join(out_dir,'{mp}','01_qc_post','{mp}_barcode.txt'),mp=mp_list),
 
-        # qc_fastq
-        expand(join(out_dir, 'qc', '01_qc_post','{sp}_fastqc.html'),sp=sp_list),
+        # # demux OR nondemux
+        # expand(join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz'), mp=samp_dict.keys()),
 
-        # qc_screen_validator
-        expand(join(out_dir, 'qc', '02_qc_screen_species','{sp}_screen.txt'),sp=sp_list),
-        expand(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_screen.txt'),sp=sp_list),
+        # # qc_fastq
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}_fastqc.html'),sp=sp_list),
 
-        # star
-        expand(join(out_dir,'01_preprocess','02_alignment','{sp}_Aligned.sortedByCoord.out.bam'),sp=sp_list),
+        # # qc_screen_validator
+        # expand(join(out_dir, 'qc', '02_qc_screen_species','{sp}_screen.txt'),sp=sp_list),
+        # expand(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_screen.txt'),sp=sp_list),
 
-        # qc_alignment
-        expand(join(out_dir, 'qc', '01_qc_post','{sp}_align_len.txt'),sp=sp_list),
-        expand(join(out_dir, 'qc', '01_qc_post','{sp}_unalign_len.txt'),sp=sp_list),
-        expand(join(out_dir, 'qc', '01_qc_post','{sp}_aligned.png'),sp=sp_list),
-        expand(join(out_dir, 'qc', '01_qc_post','{sp}_unaligned.png'),sp=sp_list),
-        expand(join(out_dir, 'qc', '01_qc_post','{sp}_aligned.txt'),sp=sp_list),
-        expand(join(out_dir, 'qc', '01_qc_post','{sp}_unaligned.txt'),sp=sp_list),
+        # # star
+        # expand(join(out_dir,'01_preprocess','02_alignment','{sp}_Aligned.sortedByCoord.out.bam'),sp=sp_list),
+
+        # # qc_alignment
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}_align_len.txt'),sp=sp_list),
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}_unalign_len.txt'),sp=sp_list),
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}_aligned.png'),sp=sp_list),
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}_unaligned.png'),sp=sp_list),
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}_aligned.txt'),sp=sp_list),
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}_unaligned.txt'),sp=sp_list),
 
         # create_beds_safs
         # expand(join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed'),sp=sp_list),
@@ -492,9 +488,9 @@ if (multiplex_flag == 'Y'):
         envmodules:
             config['R'],
         output:
-            counts = (join(out_dir,'{mp}','01_qc_post','{mp}_barcode_counts.txt')),
-            png = (join(out_dir,'{mp}','01_qc_post','{mp}_barcode.png')),
-            txt = (join(out_dir,'{mp}','01_qc_post','{mp}_barcode.txt'))
+            counts = temp(join(out_dir,'{mp}','01_qc_post','{mp}_barcode_counts.txt')),
+            png = temp(join(out_dir,'{mp}','01_qc_post','{mp}_barcode.png')),
+            txt = temp(join(out_dir,'{mp}','01_qc_post','{mp}_barcode.txt'))
         shell:
             """
             set -exo pipefail
@@ -538,7 +534,7 @@ if (multiplex_flag == 'Y'):
         envmodules:
             config['ultraplex'],
         output:
-            fastq = (join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz')),
+            fastq = temp(join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz')),
         shell:
             """
             set -exo pipefail
@@ -575,7 +571,7 @@ else:
             rname = '01_nondemux',
             cmd = nondemux_cmd
         output:
-            fastq = (join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz')),
+            fastq = temp(join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz')),
         shell:
             """
             set -exo pipefail
@@ -620,7 +616,7 @@ rule qc_fastq:
     envmodules:
         config['fastqc']
     output:
-        html = (join(out_dir, 'qc', '01_qc_post','{sp}_fastqc.html'))
+        html = temp(join(out_dir, 'qc', '01_qc_post','{sp}_fastqc.html'))
     shell:
         """
         set -exo pipefail
@@ -660,8 +656,8 @@ rule qc_screen_validator:
         config['perl'],
         config['fastq_screen'],
     output:
-        species = (join(out_dir, 'qc', '02_qc_screen_species','{sp}_screen.txt')),
-        screen = (join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_screen.txt')),
+        species = temp(join(out_dir, 'qc', '02_qc_screen_species','{sp}_screen.txt')),
+        screen = temp(join(out_dir, 'qc', '02_qc_screen_rrna','{sp}_screen.txt')),
         log = join(out_dir,'qc','{sp}.validated.fastq.log'),
     shell:
         """
@@ -747,7 +743,7 @@ rule star:
     threads: getthreads("star")
     output:
         unmapped = join(out_dir,'01_preprocess','02_alignment','01_unmapped','{sp}.unmapped.out'),
-        bam = join(out_dir,'01_preprocess','02_alignment','{sp}_Aligned.sortedByCoord.out.bam'),
+        bam = temp(join(out_dir,'01_preprocess','02_alignment','{sp}_Aligned.sortedByCoord.out.bam')),
         log = join(out_dir,'log','STAR','{sp}.log')
     shell:
         """
@@ -770,8 +766,8 @@ rule star:
         --alignIntronMax {params.s_intron} \
         --alignSJDBoverhangMin {params.s_sjdb} \
         --alignSJoverhangMin {params.s_asj} \
-        --alignTranscriptsPerReadNmax={params.s_transc} \
-        --alignWindowsPerReadNmax={params.s_windows} \
+        --alignTranscriptsPerReadNmax {params.s_transc} \
+        --alignWindowsPerReadNmax {params.s_windows} \
         --outFilterMatchNmin {params.s_match} \
         --outFilterMatchNminOverLread {params.s_readmatch} \
         --outFilterMismatchNmax {params.s_mismatch} \
@@ -790,7 +786,7 @@ rule star:
         --seedPerReadNmax {params.s_read} \
         --seedPerWindowNmax {params.s_wind} \
         --sjdbScore {params.s_sj} \
-        --winAnchorMultimapNmax={params.s_anchor}
+        --winAnchorMultimapNmax {params.s_anchor}
 
         # move STAR files and final log file to output
         mv $tmp_dir/{params.out_prefix}Aligned.sortedByCoord.out.bam {output.bam}
@@ -815,7 +811,7 @@ rule index_stats:
     threads: getthreads("index_stats")
     output:
         bam = join(out_dir,'02_bam','01_merged','{sp}.si.bam'),
-        samstat = (join(out_dir, 'qc', '01_qc_post','{sp}_samstats.txt'))
+        samstat = temp(join(out_dir, 'qc', '01_qc_post','{sp}_samstats.txt'))
     shell:
         """
         set -exo pipefail
@@ -884,12 +880,12 @@ rule qc_alignment:
         config['R']
     threads: getthreads("qc_alignment")
     output:
-        bam_a = (join(out_dir, 'qc', '01_qc_post','{sp}_align_len.txt')),
-        bam_u = (join(out_dir, 'qc', '01_qc_post','{sp}_unalign_len.txt')),
-        png_align = (join(out_dir, 'qc', '01_qc_post','{sp}_aligned.png')),
-        png_unalign = (join(out_dir, 'qc', '01_qc_post','{sp}_unaligned.png')),
-        txt_align = (join(out_dir, 'qc', '01_qc_post','{sp}_aligned.txt')),
-        txt_unalign = (join(out_dir, 'qc', '01_qc_post','{sp}_unaligned.txt')),
+        bam_a = temp(join(out_dir, 'qc', '01_qc_post','{sp}_align_len.txt')),
+        bam_u = temp(join(out_dir, 'qc', '01_qc_post','{sp}_unalign_len.txt')),
+        png_align = temp(join(out_dir, 'qc', '01_qc_post','{sp}_aligned.png')),
+        png_unalign = temp(join(out_dir, 'qc', '01_qc_post','{sp}_unaligned.png')),
+        txt_align = temp(join(out_dir, 'qc', '01_qc_post','{sp}_aligned.txt')),
+        txt_unalign = temp(join(out_dir, 'qc', '01_qc_post','{sp}_unaligned.txt')),
     shell:
         """
         set -exo pipefail
@@ -1058,10 +1054,10 @@ rule create_beds_safs:
         config['python']
     threads: getthreads("create_beds_safs")
     output:
-        bed_all = join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed'),
-        bed_unique = join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed'),
-        saf_all = join(out_dir,'03_peaks','02_SAF','{sp}_ALLreadPeaks.SAF'),
-        saf_unique = join(out_dir,'03_peaks','02_SAF','{sp}_UNIQUEreadPeaks.SAF'),
+        bed_all = (join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed')),
+        bed_unique = (join(out_dir,'03_peaks','01_bed','{sp}_UNIQUEreadPeaks.bed')),
+        saf_all = (join(out_dir,'03_peaks','02_SAF','{sp}_ALLreadPeaks.SAF')),
+        saf_unique = (join(out_dir,'03_peaks','02_SAF','{sp}_UNIQUEreadPeaks.SAF')),
     shell:
         """
         set -exo pipefail
