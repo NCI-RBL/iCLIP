@@ -248,10 +248,10 @@ def get_MANORM_analysis_input(wildcards):
     gid_2 = wildcards.group_id.split("_vs_")[1]
 
     input_list = [join(out_dir, '05_demethod', '01_input', gid_1 + '_' + peak_id + 'readPeaks_for' + DE_method + '.bed'),
-                join(out_dir, '05_demethod', '01_input', gid_1 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_1 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed.gz'),
                 join(out_dir, '05_demethod', '01_input', gid_1 + '_' + peak_id + 'readPeaks_for' + DE_method + '_' + wildcards.strand + '.bed'),
                 join(out_dir, '05_demethod', '01_input', gid_2 + '_' + peak_id + 'readPeaks_for' + DE_method + '.bed'),
-                join(out_dir, '05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
+                join(out_dir, '05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed.gz'),
                 join(out_dir, '05_demethod', '01_input', gid_2 + '_' + peak_id + 'readPeaks_for' + DE_method + '_' + wildcards.strand + '.bed')]
     return(input_list)
 
@@ -1482,7 +1482,6 @@ rule peak_ExonIntron:
     output:
         EIOut_SS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_SameStrand.txt'),
         EIOut_OS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_OppoStrand.txt'),
-
     shell:
         '''
         # Setup tmp directory
@@ -1678,7 +1677,7 @@ rule annotation_report:
 if (DE_method=="MANORM"):
     rule MANORM_beds:
         input:
-            bed_all = rules.create_beds_safs.output.bed_all
+            bed_all = rules.bgzip_beds.output.bed_all
         params:
             rname = "21a_MANORM_beds"
         threads: getthreads("MANORM_beds")
@@ -1688,8 +1687,8 @@ if (DE_method=="MANORM"):
         shell:
             """
             set -exo pipefail
-            awk '$6=="+"' {input.bed_all} > {output.p_bed}
-            awk '$6=="-"' {input.bed_all} > {output.n_bed}
+            zcat {input.bed_all} | awk '$6=="+"' > {output.p_bed}
+            zcat {input.bed_all} | awk '$6=="-"' > {output.n_bed}
             """
 
     rule MANORM_analysis:
