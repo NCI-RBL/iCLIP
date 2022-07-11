@@ -14,7 +14,7 @@ show_analysis_paths: False
 #find samples
 sp:
     fastq_screen:
-        fn: '*_filtered.txt'
+        fn: '*_screen.txt'
 
 module_order:
 # Pre-alignment QC
