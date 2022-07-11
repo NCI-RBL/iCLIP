@@ -841,9 +841,9 @@ rule multiqc:
     params:
         out_dir = join(out_dir,'qc'),
         qc_config = join(source_dir,'config','multiqc_config.yaml'),
-        dir_post = expand(join(out_dir, 'qc', '01_qc_post')),
-        dir_screen_species = expand(join(out_dir, 'qc', '02_qc_screen_species')),
-        dir_screen_rrna = expand(join(out_dir, 'qc', '02_qc_screen_rrna')),
+        dir_post = join(out_dir, 'qc', '01_qc_post'),
+        dir_screen_species = join(out_dir, 'qc', '02_qc_screen_species'),
+        dir_screen_rrna = join(out_dir, 'qc', '02_qc_screen_rrna'),
     envmodules:
         config['multiqc']
     output:
