@@ -242,16 +242,26 @@ def get_de_list():
         contrast_list.pop(0)
     return(contrast_list)
 
+#get sample name for demethod comparison - sample
+def get_DEMETHOD_gid1(wildcards):
+    gid = wildcards.group_id.split("_vs_")[0]
+    return(gid)
+
+#get sample name for demethod comparison - background
+def get_DEMETHOD_gid2(wildcards):
+    gid = wildcards.group_id.split("_vs_")[1]
+    return(gid)
+
 #get the input files for DE analysisanalysis
 def get_MANORM_analysis_input(wildcards):
     gid_1 = wildcards.group_id.split("_vs_")[0]
     gid_2 = wildcards.group_id.split("_vs_")[1]
 
     input_list = [join(out_dir, '05_demethod', '01_input', gid_1 + '_' + peak_id + 'readPeaks_for' + DE_method + '.bed'),
-                join(out_dir, '05_demethod', '01_input', gid_1 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed.gz'),
+                join(out_dir, '05_demethod', '01_input', gid_1 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
                 join(out_dir, '05_demethod', '01_input', gid_1 + '_' + peak_id + 'readPeaks_for' + DE_method + '_' + wildcards.strand + '.bed'),
                 join(out_dir, '05_demethod', '01_input', gid_2 + '_' + peak_id + 'readPeaks_for' + DE_method + '.bed'),
-                join(out_dir, '05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed.gz'),
+                join(out_dir, '05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bed'),
                 join(out_dir, '05_demethod', '01_input', gid_2 + '_' + peak_id + 'readPeaks_for' + DE_method + '_' + wildcards.strand + '.bed')]
     return(input_list)
 
@@ -264,16 +274,6 @@ def get_DIFFBIND_analysis_input(wildcards):
                 join(out_dir,'05_demethod', '01_input', gid_2 + '_Readsfor' + DE_method + '_' + wildcards.strand + '.bam'),
                 join(out_dir,'05_demethod', '01_input', gid_2 + '_' + peak_id + 'readPeaks_for' + DE_method + '_' + wildcards.strand + '.bed')]
     return(input_list)
-
-#get sample name for demethod comparison - sample
-def get_DEMETHOD_gid1(wildcards):
-    gid = wildcards.group_id.split("_vs_")[0]
-    return(gid)
-
-#get sample name for demethod comparison - background
-def get_DEMETHOD_gid2(wildcards):
-    gid = wildcards.group_id.split("_vs_")[1]
-    return(gid)
 
 #get input files for post-processing MANORM
 def get_MANORM_post_processing(wildcards):
@@ -1706,6 +1706,9 @@ if (DE_method=="MANORM"):
 
     rule MANORM_analysis:
         '''
+        input requirements are listed as list as they cannot be resolved from the output
+        - group_id is not part of the input parameters
+
         input requirements:
         - '05_demethod', '01_input', sample1 + '_' + peak_id + 'readPeaks_forMANORM.bed'),
         - '05_demethod', '01_input', sample1 + '_ReadsforMANORM_' + P + '.bed'),
@@ -1718,7 +1721,7 @@ if (DE_method=="MANORM"):
         - '05_demethod','02_analysis', 'sample1_vs_sample2_N/
         '''
         input:
-            get_MANORM_analysis_input
+            get_MANORM_analysis_input    
         params:
             rname = "21b_MANORM_analysis",
             gid_1 = get_DEMETHOD_gid1,
