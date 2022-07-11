@@ -2,74 +2,292 @@
 title: "QC Troubleshooting"
 output: html_document
 params:
-  a_txt: 
+  log_list: 
     value: x
-  u_txt: 
-      value: x
   b_txt: 
-      value: x
+    value: x
 ---
 
-```{r Params, echo=FALSE}
-align_txt = as.list(strsplit(params$a_txt, '\\s+')[[1]])
-unalign_txt = as.list(strsplit(params$u_txt, '\\s+')[[1]])
-bc_txt = as.list(strsplit(params$b_txt, '\\s+')[[1]])
+```{r setup, include=FALSE}
+package_list=c("ggplot2","ggpubr","ggrepel","dplyr","forcats")
+invisible(lapply(package_list, library, character.only = TRUE))
 ```
 
-```{r echo=FALSE, warning=FALSE}
-#Generate mpids
-mp_list = c()
+```{r Params, echo=FALSE, include=FALSE}
+# testing
+#"~/../../Volumes/Wolin/8-09-21-HaCaT_fCLIP_v2.0/log/STAR/WT_fCLIP.log ~/../../Volumes/Wolin/8-09-21-HaCaT_fCLIP_v2.0/log/STAR/KO_fCLIP.log ~/../../Volumes/Wolin/8-09-21-HaCaT_fCLIP_v2.0/log/STAR/Y5KO_fCLIP.log ~/../../Volumes/Wolin/8-09-21-HaCaT_fCLIP_v2.0/log/STAR/WT-NOPFA.log ~/../../Volumes/Wolin/8-09-21-HaCaT_fCLIP_v2.0/log/STAR/KO-NOPFA.log ~/../../Volumes/Wolin/8-09-21-HaCaT_fCLIP_v2.0/log/STAR/Y5KO-NOPFA.log"
+#"~/../../Volumes/Wolin/8-09-21-HaCaT_fCLIP_v2.0/fCLIP/01_qc_post/fCLIP_barcode.txt"
 
-for (paths in bc_txt){
-  mp_list[length(mp_list)+1] = strsplit(paths,"/")[[1]][6]
+# split files into list
+log_file = as.list(strsplit(params$log_list, '\\s+')[[1]])
+bc_txt = as.list(strsplit(params$b_txt, '\\s+')[[1]])
+
+#Generate mpids for barcode analysis
+mp_list = c()
+if (bc_txt != "x"){
+  for (paths in bc_txt){
+    mp_list[length(mp_list)+1] = strsplit(paths,"/")[[1]][6]
+  }
+  mp_list = mp_list[!duplicated(mp_list)]
+}
+```
+
+```{r functions, echo=FALSE, include=FALSE}
+# read in and prepare log file
+prep_log_file<-function(log_path){
+  
+  tmp_log=read.csv(log_path,sep="\t",header=FALSE)
+  colnames(tmp_log)=c("description","value")
+  tmp_log$description=gsub(" ","_",tmp_log$description)
+  tmp_log$description=gsub("__*","_",tmp_log$description)
+  tmp_log$description=gsub("_[|]","",tmp_log$description)
+  tmp_log$description=gsub(":","",tmp_log$description)
+  
+  return(tmp_log)
 }
 
-mp_list = mp_list[!duplicated(mp_list)]
+# calculate mapping stats
+calculate_mapping_stats<-function(log_in){
+  final_out=data.frame()
+  tmp_mapped=data.frame()
+  
+  ######################################################################
+  # mapped vs unmapped
+  ######################################################################
+  # calculate unique/mm
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="unique"
+  tmp_mapped[nrow(tmp_mapped),"n"]=as.numeric(subset(log_in,description=="_Uniquely_mapped_reads_number")$value)
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="mm"
+  tmp_mapped[nrow(tmp_mapped),"n"]=as.numeric(subset(log_in,description=="_Number_of_reads_mapped_to_multiple_loci")$value)
+  
+  # calculate unmapped reads
+  unmapped_list=c("_Number_of_reads_unmapped_too_many_mismatches","_Number_of_reads_unmapped_too_short",
+                  "_Number_of_reads_unmapped_other")
+  unmapped_reads=0
+  for (id in unmapped_list){
+    unmapped_reads=unmapped_reads+as.numeric(subset(log_in,description==id)$value)
+  }
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="unmapped"
+  tmp_mapped[nrow(tmp_mapped),"n"]=unmapped_reads
+  
+  # find all reads
+  all_reads=as.numeric(subset(log_in,description=="_Number_of_input_reads")$value)
+  
+  # calculate perc
+  for (rowid in rownames(tmp_mapped)){
+    tmp_mapped[rowid,"perc"]=round((tmp_mapped[rowid,"n"]/all_reads)*100,2)
+  }
+  
+  # get positions, plot
+  ## all totals
+  tmp_out=tmp_mapped %>% 
+    mutate(csum = rev(cumsum(rev(n))), 
+         pos = n/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), n/2, pos))
+  tmp_out$cat="mapping"
+  
+  final_out=rbind(final_out,tmp_out)
+  ######################################################################
+  # unmapped
+  ######################################################################
+  tmp_mapped=data.frame()
+
+  # calculate unmapped reasons
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="mismatches"
+  tmp_mapped[nrow(tmp_mapped),"n"]=as.numeric(subset(log_in,description=="_Number_of_reads_unmapped_too_many_mismatches")$value)
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="too short"
+  tmp_mapped[nrow(tmp_mapped),"n"]=as.numeric(subset(log_in,description=="_Number_of_reads_unmapped_too_short")$value)
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="other"
+  tmp_mapped[nrow(tmp_mapped),"n"]=as.numeric(subset(log_in,description=="_Number_of_reads_unmapped_other")$value)
+  
+  # calculate unmapped reads
+  unmapped_list=c("_Number_of_reads_unmapped_too_many_mismatches","_Number_of_reads_unmapped_too_short",
+                  "_Number_of_reads_unmapped_other")
+  unmapped_reads=0
+  for (id in unmapped_list){
+    unmapped_reads=unmapped_reads+as.numeric(subset(log_in,description==id)$value)
+  }
+
+  # calculate perc
+  for (rowid in rownames(tmp_mapped)){
+    tmp_mapped[rowid,"perc"]=round((tmp_mapped[rowid,"n"]/unmapped_reads)*100,2)
+  }
+  
+  # get positions, plot
+  ## all totals
+  tmp_out=tmp_mapped %>% 
+  mutate(csum = rev(cumsum(rev(n))), 
+         pos = n/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), n/2, pos))
+  tmp_out$cat="unmapped"
+  final_out=rbind(final_out,tmp_out)
+  
+  ######################################################################
+  # annotation for splices
+  ######################################################################
+  tmp_mapped=data.frame()
+
+  # calculate unmapped reasons
+  total=as.numeric(subset(log_df,description=="_Number_of_splices_Total")$value)
+  anno=as.numeric(subset(log_df,description=="_Number_of_splices_Annotated_(sjdb)")$value)
+  non_anno=total-anno
+  
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="annotated"
+  tmp_mapped[nrow(tmp_mapped),"n"]=anno
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="non-annotated"
+  tmp_mapped[nrow(tmp_mapped),"n"]=non_anno
+  
+  # calculate perc
+  for (rowid in rownames(tmp_mapped)){
+    tmp_mapped[rowid,"perc"]=round((tmp_mapped[rowid,"n"]/total)*100,2)
+  }
+  
+  # get positions, plot
+  ## all totals
+  tmp_out=tmp_mapped %>% 
+  mutate(csum = rev(cumsum(rev(n))), 
+         pos = n/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), n/2, pos))
+  tmp_out$cat="spliced_annotated"
+  final_out=rbind(final_out,tmp_out)
+  
+  ######################################################################
+  # splice type
+  ######################################################################
+  tmp_mapped=data.frame()
+  
+  # calculate unmapped reasons
+  total=as.numeric(subset(log_df,description=="_Number_of_splices_Total")$value)
+  non_can=as.numeric(subset(log_df,description=="_Number_of_splices_Non-canonical")$value)
+  gt=as.numeric(subset(log_df,description=="_Number_of_splices_GT/AG")$value)
+  gc=as.numeric(subset(log_df,description=="_Number_of_splices_GC/AG")$value)
+  at=as.numeric(subset(log_df,description=="_Number_of_splices_AT/AC")$value)
+  
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="non-canonical"
+  tmp_mapped[nrow(tmp_mapped),"n"]=non_can
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="GT/AG"
+  tmp_mapped[nrow(tmp_mapped),"n"]=gt
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="GC/AG"
+  tmp_mapped[nrow(tmp_mapped),"n"]=gc
+  tmp_mapped[nrow(tmp_mapped)+1,"type"]="AT/AC"
+  tmp_mapped[nrow(tmp_mapped),"n"]=at
+  
+  # calculate perc
+  for (rowid in rownames(tmp_mapped)){
+    tmp_mapped[rowid,"perc"]=round((tmp_mapped[rowid,"n"]/total)*100,2)
+  }
+  
+  # get positions, plot
+  ## all totals
+  tmp_out=tmp_mapped %>% 
+  mutate(csum = rev(cumsum(rev(n))), 
+         pos = n/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), n/2, pos))
+  tmp_out$cat="spliced_type"
+  final_out=rbind(final_out,tmp_out)
+  
+  return(final_out)
+}
+
+# create pie chart for each comparison
+plot_pies_mapping<-function(df_in,y_in,percent_in,sample_in){
+  # plot general mapping
+  sub_df=subset(df_in,cat=="mapping")
+  p1 = ggplot(sub_df, aes(x = "" , y = get(y_in), fill = fct_inorder(type))) +
+  geom_col(width = 1, color = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "Pastel1") +
+  geom_label_repel(data = sub_df,
+                     aes(y = pos, label = paste0(get(percent_in), "%")),
+                     size = 4, nudge_x = 1, show.legend = FALSE) +
+  guides(fill = guide_legend(title = "Group")) +
+  ggtitle("   General mapping stats") +
+  theme_void()
+  
+  # plot unmapped stats  
+  sub_df=subset(df_in,cat=="unmapped")
+  p2 = ggplot(sub_df, aes(x = "" , y = get(y_in), fill = fct_inorder(type))) +
+  geom_col(width = 1, color = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "Pastel1") +
+  geom_label_repel(data = sub_df,
+                     aes(y = pos, label = paste0(get(percent_in), "%")),
+                     size = 4, nudge_x = 1, show.legend = FALSE) +
+  guides(fill = guide_legend(title = "Group")) +
+  ggtitle("   Unmapped mapping stats") +
+  theme_void()
+  
+  # plot unmapped stats  
+  sub_df=subset(df_in,cat=="spliced_annotated")
+  p3 = ggplot(sub_df, aes(x = "" , y = get(y_in), fill = fct_inorder(type))) +
+  geom_col(width = 1, color = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "Pastel1") +
+  geom_label_repel(data = sub_df,
+                     aes(y = pos, label = paste0(get(percent_in), "%")),
+                     size = 4, nudge_x = 1, show.legend = FALSE) +
+  guides(fill = guide_legend(title = "Group")) +
+  ggtitle("   Spliced annotation stats") +
+  theme_void()
+  
+  # plot unmapped stats  
+  sub_df=subset(df_in,cat=="spliced_type")
+  p4 = ggplot(sub_df, aes(x = "" , y = get(y_in), fill = fct_inorder(type))) +
+  geom_col(width = 1, color = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "Pastel1") +
+  geom_label_repel(data = sub_df,
+                     aes(y = pos, label = paste0(get(percent_in), "%")),
+                     size = 4, nudge_x = 1, show.legend = FALSE) +
+  guides(fill = guide_legend(title = "Group")) +
+  ggtitle("   Spliced type stats") +
+  theme_void()
+  
+  p_out=ggarrange(p1,p2,p3,p4,
+        labels = c("A","B","C","D"),
+        ncol = 2, nrow = 2)
+  return(p_out)
+}
 ```
 
 ## Demultiplexing 
-**Statistics for sample barcodes:**
+**Statistics for sample barcodes, if demultiplexing with performed within the pipeline.**
 
 ```{r, echo=FALSE, warning=FALSE, comment='', results="asis"}
-for (mp in mp_list){
-  for (a_file in bc_txt){
-    if(strsplit(a_file,"/")[[1]][6]==mp){
-      #text files
-      cat(readLines(a_file), sep = '\n\n')
-
-      #png files
-      png_file = gsub(".txt",".png",a_file)
-      cat("\t\t", paste0("![](", png_file,")"), "\n")
+if (bc_txt != "x"){
+  print ("This project was not demultiplexed within the iCLIP pipeline. No statistics are available")
+} else{
+  for (mp in mp_list){
+    for (a_file in bc_txt){
+      if(strsplit(a_file,"/")[[1]][6]==mp){
+        #text files
+        cat(readLines(a_file), sep = '\n\n')
+  
+        #png files
+        png_file = gsub(".txt",".png",a_file)
+        cat("\t\t", paste0("![](", png_file,")"), "\n")
+      }
     }
   }
 }
 ```
 
-## Alignment
-### Aligned
-**Statistics for aligned samples:**
-
+## Mapping 
+**Statistics for mapping and spliced reads**
 ```{r, echo=FALSE, comment='', results="asis"}
-for (a_file in align_txt){
-  #text files
-  cat(readLines(a_file), sep = '\n\n')
-      
-  #png files
-  png_file = gsub(".txt",".png",a_file)
-  cat("\t\t", paste0("![](", png_file,")"), "\n")
-}
-```
-
-### Unaligned
-**Statistics for unaligned samples:**
-
-```{r, echo=FALSE, comment='', results="asis"}
-for (a_file in unalign_txt){
-  #text files
-  cat(readLines(a_file), sep = '\n')
-
-  #png files
-  png_file = gsub(".txt",".png",a_file)
-  cat("\t\t", paste0("![](", png_file,")"), "\n")
+for (l_file in log_file){
+  #read in log files
+  log_df=prep_log_file(l_file)
+  
+  # calculate stats
+  mapped_df=calculate_mapping_stats(log_df)
+  
+  # plot pie chart
+  sample_id=strsplit(l_file,"STAR")[[1]][2]
+  sample_id=gsub(".log","",gsub("/","",sample_id))
+  p = plot_pies_mapping(mapped_df,"n","perc")
+  p_final=annotate_figure(p, top = text_grob(sample_id, 
+               color = "red", face = "bold", size = 14))
+  print(p_final)
 }
 ```
