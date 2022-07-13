@@ -429,23 +429,23 @@ rule all:
         # expand(join(out_dir,'03_peaks','02_SAF','{sp}_ALLreadPeaks.SAF'),sp=sp_list),
         # expand(join(out_dir,'03_peaks','02_SAF','{sp}_UNIQUEreadPeaks.SAF'),sp=sp_list),
        
-        # project_annotations
-        join(out_dir,'04_annotation', '01_project','annotations.txt'),
+        # # project_annotations
+        # join(out_dir,'04_annotation', '01_project','annotations.txt'),
 
-        # peak_junctions
-        expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),sp=sp_list),
+        # # peak_junctions
+        # expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),sp=sp_list),
         
-        # peak_Transcripts
-        expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_transcripts_{AnnoStrand}.txt'),AnnoStrand=["SameStrand","OppoStrand"],sp=sp_list),
+        # # peak_Transcripts
+        # expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_transcripts_{AnnoStrand}.txt'),AnnoStrand=["SameStrand","OppoStrand"],sp=sp_list),
 
-        # peak_ExonIntron
-        expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_{AnnoStrand}.txt'),AnnoStrand=["SameStrand","OppoStrand"],sp=sp_list),
+        # # peak_ExonIntron
+        # expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_IntronExon_{AnnoStrand}.txt'),AnnoStrand=["SameStrand","OppoStrand"],sp=sp_list),
 
-        # peak_RMSK
-        expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_RMSK_{AnnoStrand}.txt'),AnnoStrand=["SameStrand","OppoStrand"],sp=sp_list),
+        # # peak_RMSK
+        # expand(join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_RMSK_{AnnoStrand}.txt'),AnnoStrand=["SameStrand","OppoStrand"],sp=sp_list),
 
-        # peak_process
-        expand(join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),sp=sp_list),
+        # # peak_process
+        # expand(join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),sp=sp_list),
 
 # common and other SMK
 if source_dir == "":
@@ -1047,11 +1047,13 @@ rule bgzip_beds:
         
         cp {input.bed_all} $tmp_dir/all.bed
         bgzip --threads {threads} --force $tmp_dir/all.bed
-        tabix -p -f bed {output.bed_all}
+        mv $tmp_dir/all.bed.gz {output.bed_all}
+        tabix -p bed -f {output.bed_all}
 
         cp {input.bed_unique} $tmp_dir/unique.bed
         bgzip --threads {threads} --force $tmp_dir/unique.bed
-        tabix -p -f bed {output.bed_unique}
+        mv $tmp_dir/unique.bed.gz {output.bed_unique}
+        tabix -p bed -f {output.bed_unique}
         """
 
 rule feature_counts:
