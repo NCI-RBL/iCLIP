@@ -1047,11 +1047,11 @@ rule bgzip_beds:
         
         cp {input.bed_all} $tmp_dir/all.bed
         bgzip --threads {threads} --force $tmp_dir/all.bed
-        tabix -p bed {output.bed_all}
+        tabix -p -f bed {output.bed_all}
 
         cp {input.bed_unique} $tmp_dir/unique.bed
         bgzip --threads {threads} --force $tmp_dir/unique.bed
-        tabix -p bed {output.bed_unique}
+        tabix -p -f bed {output.bed_unique}
         """
 
 rule feature_counts:
