@@ -865,7 +865,7 @@ if (multiplex_flag == 'Y'):
             png_bc = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())
         params:
             rname = "08_qc_troubleshoot",
-            R = join(source_dir,'workflow','scripts','05_qc_report.Rmd'),
+            R = join(source_dir,'workflow','scripts','03_qc_report.Rmd'),
         envmodules:
             config['R']
         output:
@@ -887,7 +887,7 @@ else:
             log_list = expand(join(out_dir,'log','STAR','{sp}.log'),sp=sp_list),
         params:
             rname = "08_qc_troubleshoot",
-            R = join(source_dir,'workflow','scripts','05_qc_report.Rmd'),
+            R = join(source_dir,'workflow','scripts','03_qc_report.Rmd'),
         envmodules:
             config['R']
         output:
@@ -979,7 +979,7 @@ rule create_beds_safs:
     params:
         rname='10_create_beds_safs',
         base = '{sp}.dedup',
-        pyscript = join(source_dir,'workflow','scripts','13_bam_to_unique_bam.py'),
+        pyscript = join(source_dir,'workflow','scripts','09_bam_to_unique_bam.py'),
         memG=getmemG_80perc("create_beds_safs")
     envmodules:
         config['samtools'],
@@ -1164,7 +1164,7 @@ rule project_annotations:
     """
     params:
         rname='13_project_annotations',
-        script = join(source_dir,'workflow','scripts','08_annotation.R'),
+        script = join(source_dir,'workflow','scripts','04_annotation.R'),
         ref_sp = species_ref,
         rrna_flag = refseq_rrna,
         a_path = alias_path,
@@ -1213,10 +1213,10 @@ if DE_method=="MANORM" or DE_method=="DIFFBIND":
             anno = rules.project_annotations.output.anno
         params:
             rname = '14_peak_junctions',
-            script = join(source_dir,'workflow','scripts','09_Anno_junctions.R'),
-            functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
-            bashscript = join(source_dir,'workflow','scripts','09_get_site2peak_lookup.sh'),
-            pyscript = join(source_dir,'workflow','scripts','09_jcounts2peakconnections.py'),
+            script = join(source_dir,'workflow','scripts','05_Anno_junctions.R'),
+            functions = join(source_dir,'workflow','scripts','05_peak_annotation_functions.R'),
+            bashscript = join(source_dir,'workflow','scripts','05_get_site2peak_lookup.sh'),
+            pyscript = join(source_dir,'workflow','scripts','05_jcounts2peakconnections.py'),
             p_type = peak_id,
             junc = sp_junc,
             anchor= anno_anchor,
@@ -1284,10 +1284,10 @@ else:
             anno = rules.project_annotations.output.anno
         params:
             rname = '14_peak_annotations',
-            script = join(source_dir,'workflow','scripts','09_Anno_junctions.R'),
-            functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
-            bashscript = join(source_dir,'workflow','scripts','09_get_site2peak_lookup.sh'),
-            pyscript = join(source_dir,'workflow','scripts','09_jcounts2peakconnections.py'),
+            script = join(source_dir,'workflow','scripts','05_Anno_junctions.R'),
+            functions = join(source_dir,'workflow','scripts','05_peak_annotation_functions.R'),
+            bashscript = join(source_dir,'workflow','scripts','05_get_site2peak_lookup.sh'),
+            pyscript = join(source_dir,'workflow','scripts','05_jcounts2peakconnections.py'),
             p_type = peak_id,
             junc = sp_junc,
             anchor= anno_anchor,
@@ -1350,8 +1350,8 @@ rule peak_Transcripts:
         anno = rules.project_annotations.output.anno
     params:
         rname = '15_peak_Transcripts',
-        script = join(source_dir,'workflow','scripts','09_Anno_Transcript.R'),
-        functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+        script = join(source_dir,'workflow','scripts','05_Anno_Transcript.R'),
+        functions = join(source_dir,'workflow','scripts','05_peak_annotation_functions.R'),
         p_type = peak_id,
         anchor= anno_anchor,
         r_depth= min_count,
@@ -1408,8 +1408,8 @@ rule peak_ExonIntron:
         anno = rules.project_annotations.output.anno
     params:
         rname = '16_peak_ExonIntron',
-        script = join(source_dir,'workflow','scripts','09_Anno_ExonIntron.R'),
-        functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+        script = join(source_dir,'workflow','scripts','05_Anno_ExonIntron.R'),
+        functions = join(source_dir,'workflow','scripts','05_peak_annotation_functions.R'),
         p_type = peak_id,
         anchor= anno_anchor,
         r_depth= min_count,
@@ -1489,8 +1489,8 @@ rule peak_RMSK:
         anno = rules.project_annotations.output.anno
     params:
         rname = '17_peak_RMSK',
-        script = join(source_dir,'workflow','scripts','09_Anno_RMSK.R'),
-        functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+        script = join(source_dir,'workflow','scripts','05_Anno_RMSK.R'),
+        functions = join(source_dir,'workflow','scripts','05_peak_annotation_functions.R'),
         p_type = peak_id,
         anchor= anno_anchor,
         r_depth= min_count,
@@ -1552,8 +1552,8 @@ rule peak_process:
         RMSKOut_OS = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions_RMSK_OppoStrand.txt'),
     params:
         rname = '18_peak_process',
-        script = join(source_dir,'workflow','scripts','09_Anno_Process.R'),
-        functions = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+        script = join(source_dir,'workflow','scripts','05_Anno_Process.R'),
+        functions = join(source_dir,'workflow','scripts','05_peak_annotation_functions.R'),
         p_type = peak_id,
         anchor= anno_anchor,
         r_depth= min_count,
@@ -1723,7 +1723,7 @@ if (DE_method=="MANORM"):
             get_MANORM_post_processing
         params:
             rname = "20c_MANORM_processing",
-            script = join(source_dir,'workflow','scripts','11_MAnorm_Process.R'),
+            script = join(source_dir,'workflow','scripts','07_MAnorm_Process.R'),
             anno_dir = join(out_dir,'04_annotation'),
             de_dir = join(out_dir,'05_demethod', '02_analysis'),
             gid_1 = get_DEMETHOD_gid1,
@@ -1818,7 +1818,7 @@ if (DE_method=="MANORM"):
             post_procRev = rules.MANORM_post_processing.output.post_procRev
         params:
             rname = "20d_MANORM_RMD",
-            R = join(source_dir,'workflow','scripts','12_MAnormAnnotation.Rmd'),
+            R = join(source_dir,'workflow','scripts','08_MAnormAnnotation.Rmd'),
             gid_1 = get_DEMETHOD_gid1,
             gid_2 = get_DEMETHOD_gid2,
             p_id = peak_id,
@@ -1904,7 +1904,7 @@ elif (DE_method == "DIFFBIND"):
         output:
         - '05_demethod', '02_analysis', group_id, groupid + '_DIFFBIND_' + strand + '.txt'
         example input
-            Rscript /home/sevillas2/git/iCLIP/workflow/scripts/11_DIFFBIND_PreProcess.R
+            Rscript /home/sevillas2/git/iCLIP/workflow/scripts/07_DIFFBIND_PreProcess.R
             --samplename WT
             --background KO
             --sample_overlap 1
@@ -1920,7 +1920,7 @@ elif (DE_method == "DIFFBIND"):
             s_manifest = sample_manifest,
         params:
             rname = "20b_DIFFBIND_preprocess",
-            script = join(source_dir,'workflow','scripts','11_DIFFBIND_PreProcess.R'),
+            script = join(source_dir,'workflow','scripts','07_DIFFBIND_PreProcess.R'),
             gid_1 = get_DEMETHOD_gid1,
             gid_2 = get_DEMETHOD_gid2,
             st = '{strand}',
@@ -1957,7 +1957,7 @@ elif (DE_method == "DIFFBIND"):
             post = /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_post_processing.txt
             final = /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/WT_vs_KO_DIFFBIND_final_table.txt
         example
-            Rscript /home/sevillas2/git/iCLIP/workflow/scripts/11_DIFFBIND_Process.R
+            Rscript /home/sevillas2/git/iCLIP/workflow/scripts/07_DIFFBIND_Process.R
             --samplename WT
             --background KO
             --peak_type ALL
@@ -1972,7 +1972,7 @@ elif (DE_method == "DIFFBIND"):
             --gencode_path /hg38/Gencode_V32/fromGencode/gencode.v32.annotation.gtf.txt
             --intron_path /hg38/Gencode_V32/fromUCSC/KnownGene/KnownGene_GencodeV32_GRCh38_introns.bed
             --rmsk_path /hg38/repeatmasker/rmsk_GRCh38.txt
-            --function_script /home/sevillas/git/iCLIP/workflow/scripts/11_DIFFBIND_Process.R
+            --function_script /home/sevillas/git/iCLIP/workflow/scripts/07_DIFFBIND_Process.R
             --out_dir /data/sevillas2/diffbind/05_demethod/02_analysis/WT_vs_KO/
         """
         input:
@@ -1981,8 +1981,8 @@ elif (DE_method == "DIFFBIND"):
             table_n = join(out_dir,'05_demethod','02_analysis', '{group_id}','{group_id}_' + peak_id + 'readPeaks_' + DE_method + '_table_N.txt'),
         params:
             rname = "20c_DIFFBIND_process",
-            script = join(source_dir,'workflow','scripts','11_DIFFBIND_Process.R'),
-            script_func = join(source_dir,'workflow','scripts','09_peak_annotation_functions.R'),
+            script = join(source_dir,'workflow','scripts','07_DIFFBIND_Process.R'),
+            script_func = join(source_dir,'workflow','scripts','05_peak_annotation_functions.R'),
             gid_1 = get_DEMETHOD_gid1,
             gid_2 = get_DEMETHOD_gid2,
             p_type = peak_id,
@@ -2027,7 +2027,7 @@ elif (DE_method == "DIFFBIND"):
             s_manifest = sample_manifest,
         params:
             rname = "20d_DIFFBIND_RMD",
-            R = join(source_dir,'workflow','scripts','12_DIFFBINDAnnotation.Rmd'),
+            R = join(source_dir,'workflow','scripts','08_DIFFBINDAnnotation.Rmd'),
             gid_1 = get_DEMETHOD_gid1,
             gid_2 = get_DEMETHOD_gid2,
             p_id = peak_id,
