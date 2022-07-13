@@ -572,6 +572,7 @@ else
   # snakemake commands, ensures the .snakemake 
   # directory get created in the output directory
   cd "${output_dir}"
+  if [[ ! -d "${output_dir}/log/dryrun" ]]; then mkdir "${output_dir}/log/dryrun"; fi
 
   snakemake -s ${output_dir}/config/Snakefile \
   --configfile ${output_dir}/config/snakemake_config.yaml \
@@ -586,6 +587,6 @@ else
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
     --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} --error=${output_dir}/log/${log_time}/{params.rname}{cluster.error}" \
   --jobs 100 \
-  -npr | tee ${output_dir}/dryrun.${log_time}.log
+  -npr | tee ${output_dir}/log/dryrun/dryrun.${log_time}.log
 fi
 echo
