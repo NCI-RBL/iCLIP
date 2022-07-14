@@ -1,0 +1,450 @@
+---
+title: "Benchmarking STAR Testing - Overhang Testing "
+author: "Samantha Sevilla"
+date: "4//2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+## Background
+
+In this benchmarking experiment, STAR was compared to NOVOAlign, currently utilized in our iCLIP pipeline. STAR version 2.7.8a was used (https://github.com/alexdobin/STAR/releases).
+
+For each read, an alignment was assessed for any gaps, with two possible scenarios:
+
+1) alignment---gap---alignment
+
+2) alignment---gap--insertion/deletion---alignment
+
+For all reads that match outcome #1, reads were counts. For gaps with reads larger than 100, overhang and parent were assigned to the alignments as follows:
+
+3) overhang: the smaller length of the two alignments
+
+4) parent: the larger length of the two alignments
+
+Ratios were calculated for each read that met this criterion. For example #5 would have a ratio of 2/70, #6 would have a ratio of 2/70, and #7 would not be included due to the gap being <100.
+
+5) alignment1(N=2)---gap(N=100)---alignment2(N=70)
+
+6) alignment3(N=70)---gap(N=100)---alignment4(N=2)
+
+7) alignment3(N=70)---gap(N=10)---alignment4(N=2)
+
+For reads with N>2 gaps, each gap was assessed individually. For example #8 would have 2 gaps assessed, example #9 would have 3 gaps assessed and example #10 would have 1 gap assessed as gap2 does not meet the 100 threshold requirement
+
+8) alignment1(N=2)---gap1(N=100)---alignment2(N=70)---gap2(N=100)---alignment4(N=2)
+
+9) alignment3(N=70)---gap1(N=100)---alignment4(N=2)--gap2(N=100)---alignment4(N=2)--gap3(N=100)---alignment4(N=2)
+
+10) alignment3(N=70)---gap1(N=100)---alignment4(N=2)--gap2(N=50)---alignment4(N=2)
+
+Testing for this round included reviewing the annotated junction overhang minimum (17	alignSJDBoverhangMin	minimum overhang for annotated junctions) between 2 and 12. Genes included in this data were a subset of reads for Rnu6, Sptan1, sympk, Gm24204 (10 reads per location) and all genes in GAPDH and ACTB.
+
+```{r echo=FALSE, include=FALSE}
+library(knitr)
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(DT)
+```
+
+```{r setup, include=FALSE}
+parent_dir="~/../../Volumes/RBL_NCI/Wolin/mES_fclip_1_YL_012122/alignment_analysis/star/output/expanded_gene_list/"
+variations_file="~/../../Volumes/RBL_NCI/Wolin/mES_fclip_1_YL_012122/alignment_analysis/star/docs/STAR_variations.txt"
+cigar_dir=paste0(parent_dir,"cigar/")
+align_dir=paste0(parent_dir,"align/")
+
+sample_list=c("clipfinal_2","clipfinal_3","clipfinal_4","clipfinal_5","clipfinal_6","clipfinal_7","clipfinal_8","clipfinal_9","clipfinal_10","clipfinal_11","clipfinal_12")
+```
+
+# Variations Summary
+```{r echo=FALSE}
+#read in variation file
+variations_summary=read.csv(variations_file,sep="\t")
+colnames(variations_summary) = c("Alignment Flag", "Description",
+                                 "Default", 
+                                 "star_1a", "star_1b", "star_1c",
+                                 "star_2a", "star_2b", "star_2c", "star_2d", "star_2e", "star_2f", "star_2g", "star_2h","star_2i","star_2j",
+                                 "star_encode1", "star_encode2",
+                                 "star_clipseqtools_v1","star_clipseqtools_v2",
+                                 "novo_test5", "novo_1", "novo_2", "novo_3",
+                                 "star_2e_git","star_clipseqtoolsv1_git",
+                                 "star_2e_double","star_clipseqtoolsv1_double",
+                                 "star_2e_triple","star_clipseqtoolsv1_triple",
+                                 "star_2e_lowerq","star_clipseqtoolsv1_lowerq",
+                                 "clipfinal_2","clipfinal_3","clipfinal_4","clipfinal_5",
+                                 "clipfinal_6","clipfinal_7","clipfinal_8",
+                                 "clipfinal_9","clipfinal_10","clipfinal_11","clipfinal_12")
+
+#split for definitions only
+kable(variations_summary[c(1:18,30:36),1:2])
+
+#split for variations star
+kable(variations_summary[c(1:18,30:36),c(1,33:43)])
+
+```
+
+# Alignment
+Alignment statistics were generated for each version type, including a comparison between the total number of reads uniquely mapped to those that were unmapped, and the total number of reads unique mapped and those that were multimapped.
+
+```{r echo=FALSE}
+#read in df
+align_df=read.csv(paste0(parent_dir,"align_stats.csv"),sep=",",header=FALSE)
+colnames(align_df)=c("version_id","Started mapping on","Finished on","Number of input reads","Average input read length","Uniquely mapped reads number","Uniquely mapped reads %","Number of splices: Annotated (sjdb)","Number of splices: Non-canonical","Number of reads mapped to multiple loci","% of reads mapped to multiple loci","% of reads mapped to too many loci","% of reads unmapped: too many mismatches","% of reads unmapped: too short","% of reads unmapped: other")
+
+#fix version naming for ordering
+align_df$version_id=c("clipfinal_02","clipfinal_03","clipfinal_04","clipfinal_05",
+                      "clipfinal_06","clipfinal_07","clipfinal_08","clipfinal_09",
+                      "clipfinal_10","clipfinal_11","clipfinal_12")
+
+#mapped:unmapped
+tmp_df=data.frame()
+for (rowid in rownames(align_df)){
+  tmp_df[nrow(tmp_df)+1,"version_id"]=align_df[rowid,"version_id"]
+  tmp_df[nrow(tmp_df),"type"]="mapped"
+  tmp_df[nrow(tmp_df),"value"]=as.numeric(gsub("% ","",align_df[rowid,"Uniquely mapped reads %"])) +
+    as.numeric(gsub("% ","",align_df[rowid,"% of reads mapped to multiple loci"]))
+  
+  tmp_df[nrow(tmp_df)+1,"version_id"]=align_df[rowid,"version_id"]
+  tmp_df[nrow(tmp_df),"type"]="unmapped"
+  tmp_df[nrow(tmp_df),"value"]=as.numeric(gsub("% ","",align_df[rowid,"% of reads unmapped: too many mismatches"]))+
+    as.numeric(gsub("% ","",align_df[rowid,"% of reads unmapped: too short"]))+
+    as.numeric(gsub("%","",align_df[rowid,"% of reads unmapped: other"]))
+
+
+}
+p = ggplot(tmp_df,aes(x=version_id,y=value,fill=type))+
+    geom_bar(position='stack', stat='identity') +
+    geom_text(aes(label = value), fontface = "bold", vjust = 1.5,
+             position = position_dodge(.9), size = 4) +
+    xlab("Version of Testing") +
+    ylab("Percentage of reads") +
+    scale_x_discrete(guide = guide_axis(angle = 90)) +
+    ggtitle("Mapping statistics per STAR variable")
+p = p + theme(legend.position="top")
+print(p)
+
+#unmapped why
+tmp_df=data.frame()
+for (rowid in rownames(align_df)){
+  tmp_df[nrow(tmp_df)+1,"version_id"]=align_df[rowid,"version_id"]
+  tmp_df[nrow(tmp_df),"type"]="too many mismatches"
+  tmp_df[nrow(tmp_df),"value"]=as.numeric(gsub("% ","",align_df[rowid,"% of reads unmapped: too many mismatches"]))
+  
+  tmp_df[nrow(tmp_df)+1,"version_id"]=align_df[rowid,"version_id"]
+  tmp_df[nrow(tmp_df),"type"]="reads too short"
+  tmp_df[nrow(tmp_df),"value"]=as.numeric(gsub("% ","",align_df[rowid,"% of reads unmapped: too short"]))
+  
+  tmp_df[nrow(tmp_df)+1,"version_id"]=align_df[rowid,"version_id"]
+  tmp_df[nrow(tmp_df),"type"]="other"
+  tmp_df[nrow(tmp_df),"value"]=as.numeric(gsub("%","",align_df[rowid,"% of reads unmapped: other"]))
+}
+p = ggplot(tmp_df,aes(x=version_id,y=value,fill=type))+
+    geom_bar(position='stack', stat='identity') +
+    xlab("Version of Testing") +
+    ylab("Percentage of Reads Unmapped") +
+    scale_x_discrete(guide = guide_axis(angle = 90)) +
+    ggtitle("Unmapped read statistics per STAR variable")
+p = p + theme(legend.position="top")
+print(p)
+
+#multi:unique
+tmp_df=data.frame()
+for (rowid in rownames(align_df)){
+  tmp_df[nrow(tmp_df)+1,"version_id"]=align_df[rowid,"version_id"]
+  tmp_df[nrow(tmp_df),"type"]="unique"
+  tmp_df[nrow(tmp_df),"value"]=as.numeric(gsub("% ","",align_df[rowid,"Uniquely mapped reads %"]))
+  
+  tmp_df[nrow(tmp_df)+1,"version_id"]=align_df[rowid,"version_id"]
+  tmp_df[nrow(tmp_df),"type"]="multimapped"
+  tmp_df[nrow(tmp_df),"value"]= as.numeric(gsub("% ","",align_df[rowid,"% of reads mapped to multiple loci"]))
+
+}
+p = ggplot(tmp_df,aes(x=version_id,y=value,fill=type))+
+    geom_bar(stat='identity', position = position_dodge(), alpha = 0.75)  +
+    xlab("Version of Testing") +
+    ylab("Percentage of Reads Mapped") +
+    geom_text(aes(label = value), fontface = "bold", vjust = 1.5,
+             position = position_dodge(.9), size = 4) +
+    scale_x_discrete(guide = guide_axis(angle = 90)) +
+    ggtitle("Mapping statistics per STAR variable")
+p = p + theme(legend.position="top")
+print(p)
+
+
+#splices anno: non-cannonical
+tmp_df=data.frame()
+for (rowid in rownames(align_df)){
+  tmp_df[nrow(tmp_df)+1,"version_id"]=align_df[rowid,"version_id"]
+  tmp_df[nrow(tmp_df),"type"]="non-canonical"
+  tmp_df[nrow(tmp_df),"value"]=as.numeric(gsub("% ","",align_df[rowid,"Number of splices: Non-canonical"]))
+  
+  tmp_df[nrow(tmp_df)+1,"version_id"]=align_df[rowid,"version_id"]
+  tmp_df[nrow(tmp_df),"type"]="annotated"
+  tmp_df[nrow(tmp_df),"value"]=as.numeric(gsub("% ","",align_df[rowid,"Number of splices: Annotated (sjdb)"]))
+
+}
+p = ggplot(tmp_df,aes(x=version_id,y=value,fill=type))+
+    geom_bar(stat='identity', position = position_dodge(), alpha = 0.75)  +
+    xlab("Version of Testing") +
+    ylab("N of Occurances") +
+    geom_text(aes(label = value), fontface = "bold", vjust = 1.5,
+             position = position_dodge(.9), size = 4) +
+    scale_x_discrete(guide = guide_axis(angle = 90)) +
+    ggtitle("Splice Junction Annotation")
+p = p + theme(legend.position="top")
+print(p)
+```
+
+# Number of Gaps
+Reads were found to have a variable number of gaps. A total count of these gaps were recorded regardless of length. Then, these were subset for only reads with any gap greater than 100 bp in length. The graphic below shows each version (X) by the total number of reads (Y), stratified by the N of gaps found (1,2,3). The bars are split by the gap_subcount, which is the number of gaps within the read that is greater than 100 bp. For example, in reads for 2e in which there was 1 gap found, approximately 25% of those reads had no gaps (gap_subcount=0) that were greater than the minimum threshold of 100 (salmon colored) and approxmiately 75% of those reads were greater than 100 (gree colored). The second graphic subsets for only reads that included gaps >100bp.
+
+```{r echo=FALSE}
+counter=1
+for (sample_id in sample_list){
+  #import gap count file
+  tmp_count=read.csv(paste0(cigar_dir,sample_id,"_gap_counts.txt"),sep=",",
+                     col.names=c("read_count","gap_count","gap_subcount","version_id"))
+  
+  tmp_agg=aggregate(read_count~gap_count+gap_subcount, data=tmp_count,FUN=sum)
+  tmp_agg$version_id=sample_id
+  
+  if (counter==1){
+    gap_count_df=tmp_agg
+  } else{
+    gap_count_df=rbind(gap_count_df,tmp_agg)
+  }
+  counter=2
+
+  remove(tmp_count,tmp_agg)
+}
+
+#adj str
+gap_count_df$gap_count=factor(gap_count_df$gap_count)
+gap_count_df$gap_subcount=factor(gap_count_df$gap_subcount)
+gap_count_df$read_count=as.numeric(gap_count_df$read_count)
+
+#rename col variables for order
+gap_count_df$version_id=replace(gap_count_df$version_id, gap_count_df$version_id=="clipfinal_2", "clipfinal_02")
+gap_count_df$version_id=replace(gap_count_df$version_id, gap_count_df$version_id=="clipfinal_3", "clipfinal_03")
+gap_count_df$version_id=replace(gap_count_df$version_id, gap_count_df$version_id=="clipfinal_4", "clipfinal_04")
+gap_count_df$version_id=replace(gap_count_df$version_id, gap_count_df$version_id=="clipfinal_5", "clipfinal_05")
+gap_count_df$version_id=replace(gap_count_df$version_id, gap_count_df$version_id=="clipfinal_6", "clipfinal_06")
+gap_count_df$version_id=replace(gap_count_df$version_id, gap_count_df$version_id=="clipfinal_7", "clipfinal_07")
+gap_count_df$version_id=replace(gap_count_df$version_id, gap_count_df$version_id=="clipfinal_8", "clipfinal_08")
+gap_count_df$version_id=replace(gap_count_df$version_id, gap_count_df$version_id=="clipfinal_9", "clipfinal_09")
+
+#print plot of gaps
+p = ggplot(gap_count_df,aes(x=version_id,y=read_count,fill=gap_subcount))+
+    geom_bar(position='stack', stat='identity') +
+    facet_wrap(~gap_count, scales = "free_y") +
+    xlab("Version of Testing") +
+    ylab("N of Occurances") +
+    scale_x_discrete(guide = guide_axis(angle = 90)) +
+    ggtitle("Number of reads with N gaps per variable,\ncolored by number of gaps (gap_subcount) > 100bp")
+
+p = p + theme(legend.position="top")
+print(p)
+
+
+#print plot of gaps >100
+tmp_df=subset(gap_count_df,gap_subcount!=0)
+
+#print plot of gaps
+p = ggplot(tmp_df,aes(x=version_id,y=read_count,fill=gap_subcount))+
+    geom_bar(position='stack', stat='identity') +
+    facet_wrap(~gap_count, scales = "free_y") +
+    xlab("Version of Testing") +
+    ylab("N of Occurances") +
+    scale_x_discrete(guide = guide_axis(angle = 90)) +
+    ggtitle("Number of reads with N gaps per variable >100bp")
+
+p = p + theme(legend.position="top")
+print(p)
+```
+
+The data table includes counts of all reads with at least one gap > 100 bp.
+
+```{r echo=FALSE}
+#sub for gaps >100 and aggregate df
+tmp_df=subset(gap_count_df,gap_subcount!=0)
+tmp_df=aggregate(read_count~gap_count+version_id,data=tmp_df,FUN=sum)
+
+#add gap_count=2 to missing variables
+tmp_df[nrow(tmp_df)+1,]=c(2,"clipfinal_08",0)
+tmp_df[nrow(tmp_df)+1,]=c(2,"clipfinal_09",0)
+tmp_df[nrow(tmp_df)+1,]=c(2,"clipfinal_10",0)
+tmp_df[nrow(tmp_df)+1,]=c(2,"clipfinal_11",0)
+tmp_df[nrow(tmp_df)+1,]=c(2,"clipfinal_12",0)
+tmp_df=tmp_df[order(tmp_df$version_id),]
+
+#create table
+output_df=data.frame(unique(tmp_df$version_id))
+output_df$gap_1=as.numeric(subset(tmp_df,gap_count==1)$read_count)
+output_df$gap_2=as.numeric(subset(tmp_df,gap_count==2)$read_count)
+rownames(output_df)=output_df$unique.tmp_df.version_id.
+output_df=output_df[,c(2:3)]
+output_df$gap_total=rowSums(output_df)
+
+#formatting
+output_df$gap_1=format(output_df$gap_1, big.mark=",")
+output_df$gap_2=format(output_df$gap_2, big.mark=",")
+output_df$gap_total=format(output_df$gap_total, big.mark=",")
+
+#print table
+DT::datatable(output_df)
+```
+
+# Gap Features
+```{r echo=FALSE}
+counter=1
+for (sample_id in sample_list){
+  #import gap count file
+  tmp_count=read.csv(paste0(cigar_dir,sample_id,"_gap_analysis.txt"),sep=",",
+                     col.names=c("count","ratio","length_of_gap","overhang_length","parent_length", "id"))
+  tmp_count$id=sample_id
+  
+  if (counter==1){
+    counts_df=tmp_count
+  } else{
+    counts_df=rbind(counts_df,tmp_count)
+  }
+  counter=2
+
+  remove(tmp_count)
+}
+
+#convert to numeric
+counts_df$count=as.numeric(counts_df$count)
+counts_df$length_of_gap=as.numeric(counts_df$length_of_gap)
+  
+#sort data by overhang
+counts_df=counts_df[order(counts_df$overhang_length),]
+  
+#fix factor levels, order
+counts_df$overhang_length=factor(counts_df$overhang_length, 
+                                 levels=c(as.character(sort(as.numeric(unique(counts_df$overhang_length))))))
+
+```
+
+```{r include=FALSE}
+# set up cut-off values 
+breaks <- c(0,1000,10000,20000,30000,40000,50000,100000,1000000000)
+    
+# specify interval/bin labels
+tags <- c("[0-1,000)","[1,000-100,00)", "[10,000-20,000)", "[20,000-30,000)", "[30,000-40,000)", "[40,000-50,000)",
+          "[50,000-100,000)","[100,000<)")
+    
+# bucketing values into bins
+counts_df$gap_group <- cut(counts_df$length_of_gap, 
+                    breaks=breaks, 
+                    include.lowest=TRUE, 
+                    right=FALSE, 
+                    labels=tags)
+
+#fix factor levels, order
+counts_df$gap_group=factor(counts_df$gap_group, 
+                                 levels=c(tags))
+```
+
+## Summary Tables
+Summary table of alignment variation by the length of overhang or length of gap. Values indicate the number of times this feature was observed. Only gaps >100bp, with overhang/parent ratios <.50 are considered.
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+#subset for overhangs
+counts_sub_df=subset(counts_df,ratio<0.5)
+
+#counts of overhang length
+summary_df=data.frame()
+for (version_id in unique(counts_sub_df$id)){
+  tmp_df=subset(counts_sub_df,id==version_id)
+  
+  summary_df[nrow(summary_df)+1,"id"]=version_id
+  for (overhang_val in unique(tmp_df$overhang_length)){
+    tmp_df2=subset(tmp_df,overhang_length==overhang_val)
+    summary_df[nrow(summary_df),paste0(overhang_val)]=sum(tmp_df2$count)
+  }
+}
+col_list=as.character(sort(as.numeric(as.character(unique(counts_sub_df$overhang_length)))))
+
+#convert NAs
+summary_df = summary_df %>% 
+  select(c("id",col_list)) %>% 
+  replace(is.na(.), 0)
+
+summary_df$totals=rowSums(summary_df[,2:ncol(summary_df)])
+summary_df <-summary_df[order(summary_df$id),]
+DT::datatable(summary_df)
+
+#counts of gap length
+summary_df=data.frame()
+for (version_id in unique(counts_df$id)){
+  tmp_df=subset(counts_df,id==version_id)
+  
+  summary_df[nrow(summary_df)+1,"id"]=version_id
+  
+  for (gap_id in unique(tmp_df$gap_group)){
+    tmp_df2=subset(tmp_df,gap_group==gap_id)
+    summary_df[nrow(summary_df),paste0(gap_id)]=sum(tmp_df2$count)
+  }
+}
+
+summary_df = summary_df %>% 
+  select(c("id",all_of(unique(counts_sub_df$gap_group)))) %>% 
+  replace(is.na(.), 0)
+summary_df <-summary_df[order(summary_df$id),]
+DT::datatable(summary_df)
+```
+
+## Summary Plots
+### Overhang length
+Summary plot of ratios of overhang/parent alignment (see above for definitions) by the number of times they occur within the alignment variation. Only ratios under 0.5 are shown.
+
+```{r echo=FALSE}
+tmp_df=subset(counts_df,ratio<.5)
+tmp_df$id=replace(tmp_df$id, tmp_df$id=="clipfinal_2", "clipfinal_02")
+tmp_df$id=replace(tmp_df$id, tmp_df$id=="clipfinal_3", "clipfinal_03")
+tmp_df$id=replace(tmp_df$id, tmp_df$id=="clipfinal_4", "clipfinal_04")
+tmp_df$id=replace(tmp_df$id, tmp_df$id=="clipfinal_5", "clipfinal_05")
+tmp_df$id=replace(tmp_df$id, tmp_df$id=="clipfinal_6", "clipfinal_06")
+tmp_df$id=replace(tmp_df$id, tmp_df$id=="clipfinal_7", "clipfinal_07")
+tmp_df$id=replace(tmp_df$id, tmp_df$id=="clipfinal_8", "clipfinal_08")
+tmp_df$id=replace(tmp_df$id, tmp_df$id=="clipfinal_9", "clipfinal_09")
+
+#plot data
+p = ggplot(tmp_df,aes(x=ratio,y=count,fill=overhang_length))+ 
+    geom_bar(position='stack', stat='identity') +
+    facet_wrap(~id) +
+    xlab("Ratio of overhang/parent") +
+    ylab("N of Occurances") 
+
+p = p + theme(legend.position="top")
+print(p)
+```
+
+### Gap length
+Summary plot of ratios of overhang/parent by the number of times they occur within the alignment variation, colored by the length of the gap observed. Only ratios under 0.2 are shown.
+```{r echo=FALSE}
+#plot data
+p = ggplot(subset(tmp_df,gap_group=="[0-1,000)"),aes(x=ratio,y=count,fill=gap_group))+ 
+    geom_bar(position='stack', stat='identity') +
+    facet_wrap(~id, ncol=6) +
+    xlab("Ratio of overhang/parent") +
+    ylab("N of Occurances")
+
+
+p = p + theme(legend.position="top", strip.text.x = element_text(angle = 90), strip.text.y = element_text(angle = 0),
+              axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+print(p)
+
+p = ggplot(subset(tmp_df,gap_group=="[1,000-100,00)"),aes(x=ratio,y=count,fill=gap_group))+ 
+    geom_bar(position='stack', stat='identity') +
+    facet_wrap(~id, ncol=6) +
+    xlab("Ratio of overhang/parent") +
+    ylab("N of Occurances")
+
+
+p = p + theme(legend.position="top", strip.text.x = element_text(angle = 90), strip.text.y = element_text(angle = 0),
+              axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+print(p)
+```

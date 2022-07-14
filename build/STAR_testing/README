@@ -1,0 +1,80 @@
+## Download reference files
+Download all reference files from source
+run_star.sh with flag flag_download="Y"
+
+## Index reference files
+Create indexed reference files to feed during alignment
+run_star.sh with flag flag_index="Y"
+
+## Use file to create STAR params listing
+Update /data/RBL_NCI/Wolin/mES_fclip_1_YL_012122/alignment_analysis/star/docs/Star_variations.txt 
+run_star.sh with flag flag_variables="Y" to create variable_set.txt file which has all of the STAR variables needed
+
+## Run STAR alignment with partial sample
+Using input FLAG_Ro_fclip.dedup.si.Sptan1.unique.fastq run star variables 
+1A  1c	2b  2d	2f  2h	ClipSeqTools_v2   1b  2a	2c  2e	2g  2i	ClipSeqTools_v1  clipv1_double_raiseq  Encode1
+run_star.sh with flag flag_align_partial="Y" - done on an interactive node
+
+Run analysis of gaps in these samples
+run_star.sh with flag flag_gap_partial="Y"
+cigar_plotting_partial.Rmd
+
+## Run STAR alignment with complete sample
+Using input /data/RBL_NCI/Wolin/mES_fclip_1_YL_012122/01_preprocess/FLAG_Ro_fclip_filtered.fastq run star variables
+2e  2i   2j   ClipSeqTools_v1   2h    ClipSeqTools_v2
+run_star.sh with flag flag_align_complete="Y" - sends swarm to cluster
+
+Run analysis of gaps in these samples
+run_star.sh with flag flag_gap_complete="N"
+
+Run analysis of alignment stats in these samples
+run_star.sh with flag flag_align_stats="N"
+cigar_plotting_complete_v1.Rmd
+
+Run iCLIP pipeline in these samples
+save to complete_sample/pipeline dir
+
+## Run STAR alignment with rnu6 sample
+Using input /data/RBL_NCI/Wolin/mES_fclip_1_YL_012122/01_preprocess/FLAG_Ro_fclip_filtered.fastq subset sample for rnu6 reads
+Used IGV session to randomly select geneIDs and saved to text file rnu6_readids.txt
+Remove @ onto readids for subsetting of novo bam file and save to text file rnu6_readids_piccard.txt
+run_star.sh with flag flag_subset_rnu="Y"
+
+Run alignment of rnu6
+run_star.sh with flag flag_align_rnu="Y"
+
+Run analysis of alignment stats in these samples
+run_star.sh with flag flag_align_stats_rnu="N"
+
+## Run STAR alignment with complete sample
+Expand complete sample testing with additional variables
+original: 2e  2i   2j   ClipSeqTools_v1   2h    ClipSeqTools_v2
+added: clipv1_double    2e_double   clipv1_triple
+add new def "expanded" to include additional variables not prev tested
+run_star.sh with flag flag_align_complete="Y" edit for only necessary variables - sends swarm to cluster
+
+Run analysis of gaps in these samples
+run_star.sh with flag flag_gap_complete="Y"
+cigar_plotting_complete_v2.Rmd
+
+Run iCLIP pipeline in these samples
+save to complete_sample/pipeline_v2 dir
+
+Due to cluster being down create subset BAM to transfer files to desktop
+Subsetting for Rnu6, Sptan1, sympk, Gm24204
+run_star.sh with flag flag_subset_bam_multiple_genes="Y"
+
+## Run STAR alignment with partial sample
+Subsetting for Rnu6, Sptan1, sympk, Gm24204, GAPDH, ACTB
+
+Used IGV session to randomly select geneIDs for original subset (Rnu6, Sptan1, sympk, Gm24204) and then gene ranges to select all genes for GAPDH,ACTB as requested by Marco
+run_star.sh with flag flag_subset_fq_multiple_genes="Y" to submit job (930) to cluster to create one FQ with all genes
+
+Run alignment with variables (expanded_gene_list):
+clipfinal_10  clipfinal_12  clipfinal_6  clipfinal_8
+clipfinal_11  clipfinal_5   clipfinal_7  clipfinal_9
+run_star.sh with flag flag_align_overhang="Y" will submit to cluster
+
+Run analysis of gaps in these samples
+run_star.sh with flag flag_gap_overhang="Y"
+cigar_plotting_partial_v2.Rmd

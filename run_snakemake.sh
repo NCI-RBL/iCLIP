@@ -95,7 +95,11 @@ check_writeaccess(){
 # Read in multiplex manifest, sample manifest, contrast manifest.
 # Use python script to check file matching, sample matching, and invalid characters.
 # Will only check contrast manifest if "MANORM" is selected
-# If files are correct, outputs a temp file. If not, outputs error file.
+# If files are correct, outputs: 
+# 1) an empty "no_error" file
+# 2) barcode-to-sample file needed for barcode/adaptor removal
+# If there are errors, outputs:
+# 1) a detailed error file
 check_manifests(){
 
   module load python
@@ -105,24 +109,35 @@ check_manifests(){
   manifest_file_prefix_in="$2"
 
   # if the third argument is missing, it is a standard run
-  # if the third argument is present, but the fifth is missing it's a nonde test run
-  # if the third and fifth arguments are given, then its a DE test run
+  # if the third argument is present, but the fifth is missing it's a test run - NOT for DE
+  # if the third and fifth arguments are given, then its a test run - for DE
   # for manifest testing
   if [[ -z "$3" ]]; then
     multiplexManifest=$config_multiplexManifest
     sampleManifest=$config_sampleManifest
     DEmethod=`echo "${config_DEmethod}" | cut -f1 -d"#"`
     contrastManifest=$config_contrastManifest
+
+    check_existence $multiplexManifest
+    check_existence $sampleManifest
+    check_existence $contrastManifest
   elif [[ -z "$5" ]]; then
     multiplexManifest=$3
     sampleManifest=$4
     DEmethod="NONE"
     contrastManifest=""
+
+    check_existence $multiplexManifest
+    check_existence $sampleManifest
   else
     multiplexManifest=$3
     sampleManifest=$4
     DEmethod=$5
     contrastManifest=$6
+
+    check_existence $multiplexManifest
+    check_existence $sampleManifest
+    check_existence $contrastManifest
   fi
   
   # Run manifest check
@@ -132,6 +147,52 @@ check_manifests(){
     ${sampleManifest} \
     ${DEmethod} \
     ${contrastManifest}
+}
+
+# create ultraplex barcode manifest
+create_barcode_manifest(){
+    # create list of all multiplexed samples
+    mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
+    # for each id create a single barcode manifest
+    for mp_id in ${mp_id_list[@]}; do
+      bc_file="${output_dir}/manifests/${mp_id}_barcode_manifest.txt"
+      
+      # if the file exists, skip
+      if [[ ! -f ${output_dir}/manifests/${mp_id}_barcode_manifest.txt ]]; then
+        cat ${config_sampleManifest} | grep "$mp_id" | awk -F"," '{ print $4":"$2 }' > $bc_file
+      fi
+    done
+}
+
+check_manifest_qc(){
+  #check for errors in manifests (sample,multiplex,contrasts)
+  if [[ ! -f "${manifest_file}no_errors.txt" ]]; then
+    echo "The manifest check FAILED. Check "${output_dir}/qc/" for more information."
+    exit 1
+  else
+    echo "-- user manifest check completed successfully"
+  fi
+
+  # check for errors in barcode manifest, if multiplex flag is turned on
+  mp_flag=`echo "${config_multiplexflag}" | cut -f1 -d" "`
+  if [[ ${mp_flag} == "Y" ]]; then
+    # search for all barcodes
+    mp_id_list=`sed -n '1d;p' ${config_multiplexManifest} | cut -f2 -d"," | cut -f1 -d"." | uniq`
+    
+    for mp_id in ${mp_id_list[@]}; do
+        # check length of file
+        bc_file="${output_dir}/manifests/${mp_id}_barcode_manifest.txt"
+        len_bc=`cat $bc_file | wc -l`
+
+        #if 0 then print error
+        if [[ "$len_bc" -lt 1 ]]; then
+          echo "The barcode manifest check FAILED. Check "${bc_file}" for more information."
+          exit 1
+        else
+          echo "-- barcode check completed successfully (sample $mp_id)"
+        fi
+    done
+  fi
 }
 
 #########################################################  
@@ -299,21 +360,12 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
   check_initialization
   check_output_dir
   check_manifests $py_script $manifest_file
-  
-  # if the manifest file contains error exit pipeline
-  if [[ ! -f "${manifest_file}no_errors.txt" ]]; then
-    echo "The manifest check FAILED. Check "${output_dir}/qc/" for more information."
-    exit 1
-  else
-    echo "-- manifest check completed successfully"
-  fi
+  create_barcode_manifest
+  check_manifest_qc
 
   if [[ $config_reference == "hg38" ]]; then
-    check_readaccess "${yaml_hg38_std}"
-    check_readaccess "${yaml_hg38_spliceawareunmasked_50bp}"
-    check_readaccess "${yaml_hg38_spliceawareunmasked_75bp}"
-    check_readaccess "${yaml_hg38_spliceawaremasked_50bp}"
-    check_readaccess "${yaml_hg38_spliceawaremasked_75bp}"
+    check_readaccess "${yaml_hg38_stargtf}"
+    check_readaccess "${yaml_hg38_stardir}"
     check_readaccess "${yaml_hg38_gencodepath}"
     check_readaccess "${yaml_hg38_refseqpath}"
     check_readaccess "${yaml_hg38_canonicalpath}"
@@ -322,11 +374,8 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     check_readaccess "${yaml_hg38_sypath}"
     check_readaccess "${yaml_hg38_aliaspath}"
   else
-    check_readaccess "${yaml_mm10_std}"
-    check_readaccess "${yaml_mm10_spliceawareunmasked_50bp}"
-    check_readaccess "${yaml_mm10_spliceawareunmasked_75bp}"
-    check_readaccess "${yaml_mm10_spliceawaremasked_50bp}"
-    check_readaccess "${yaml_mm10_spliceawaremasked_75bp}"
+    check_readaccess "${yaml_mm10_stargtf}"
+    check_readaccess "${yaml_mm10_stardir}"
     check_readaccess "${yaml_mm10_gencodepath}"
     check_readaccess "${yaml_mm10_refseqpath}"
     check_readaccess "${yaml_mm10_canonicalpath}"
@@ -516,31 +565,28 @@ else
   check_initialization
   check_output_dir
   check_manifests $py_script $manifest_file
-  
-  # if the manifest file contains error exit pipeline
-  if [[ ! -f "${manifest_file}no_errors.txt" ]]; then
-    echo "The manifest check FAILED. Check "${output_dir}/qc/" for more information."
-    exit 1
-  else
-    echo "-- manifest check completed successfully"
-  fi
-  
+  create_barcode_manifest
+  check_manifest_qc
+
   # Change directories before running any important
   # snakemake commands, ensures the .snakemake 
   # directory get created in the output directory
   cd "${output_dir}"
+  if [[ ! -d "${output_dir}/log/dryrun" ]]; then mkdir "${output_dir}/log/dryrun"; fi
 
   snakemake -s ${output_dir}/config/Snakefile \
   --configfile ${output_dir}/config/snakemake_config.yaml \
   --printshellcmds \
   --verbose \
   --rerun-incomplete \
+  --scheduler greedy  \
+  --rerun-triggers mtime \
   --cluster-config ${output_dir}/config/cluster_config.yaml \
   --cluster \
     "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
     --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} --error=${output_dir}/log/${log_time}/{params.rname}{cluster.error}" \
   --jobs 100 \
-  -npr | tee ${output_dir}/dryrun.${log_time}.log
+  -npr | tee ${output_dir}/log/dryrun/dryrun.${log_time}.log
 fi
 echo
