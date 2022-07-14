@@ -162,3 +162,6 @@ scripts.Rproj
 
 # User history
 .*bash_history
+
+# mkdocs files
+/site/
