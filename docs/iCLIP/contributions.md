@@ -1,5 +1,6 @@
 # Contributions
 The following members contributed to the development of the iCLIP pipeline:
+
 - [Samantha Sevilla](https://github.com/slsevilla)
 - [Phillip Homan](https://github.com/phoman14)
 - [Vishal Koparde](https://github.com/kopardev)
