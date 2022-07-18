@@ -1,5 +1,6 @@
 # Troubleshooting
-Recommended steps to troubleshoot the pipeline
+Recommended steps to troubleshoot the pipeline.
+
 ## 1.1 Email
 Check your email for an email regarding pipeline failure. You will receive an email from slurm@biowulf.nih.gov with the subject: Slurm Job_id=[#] Name=iCLIP Failed, Run time [time], FAILED, ExitCode 1
 
