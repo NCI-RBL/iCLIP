@@ -39,10 +39,6 @@ iCLIP has been exclusively tested on Biowulf HPC. Login to the cluster's head no
 ```
 # ssh into cluster's head node
 ssh -Y $USER@biowulf.nih.gov
-
-# move the iCLIP dir
-cd /data/RBL_NCI/Pipelines/iCLIP/[version number]
-
 ```
 
 ## 1.4 Load an interactive session 
