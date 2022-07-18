@@ -101,7 +101,7 @@ nav:
     - 2. Preparing Files: iCLIP/preparing-files.md
     - 3. Running the Pipeline: iCLIP/run.md
     - 4. Expected Output: iCLIP/output.md
+    - 5. Running Example Data: iCLIP/test.md
   - FAQ:
-    - Running Example Data: iCLIP/test.md
     - Troubleshooting: iCLIP/troubleshooting.md
     - Contributions: iCLIP/contributions.md

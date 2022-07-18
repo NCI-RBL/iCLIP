@@ -1,9 +1,9 @@
-# 2. Troubleshooting
+# Troubleshooting
 Recommended steps to troubleshoot the pipeline
-## 2.1 Email
+## 1.1 Email
 Check your email for an email regarding pipeline failure. You will receive an email from slurm@biowulf.nih.gov with the subject: Slurm Job_id=[#] Name=iCLIP Failed, Run time [time], FAILED, ExitCode 1
 
-## 2.2 Error Report
+## 1.2 Error Report
 Run the error report script
 ```
 cd /[output_dir]/log/[time_of_run]
@@ -29,7 +29,7 @@ The following samples are affected by other error_rules and should be reviewed:
 rule3.[sbatchid].sp=[sample_name].err:[E::hts_open_format] TIMEOUT
 ```
 
-## 2.3 Restart the run
+## 1.3 Restart the run
 After addressing the issue, unlock the output directory, perform another dry-run and check the status of the pipeline, then resubmit to the cluster.
 ```
 #unlock dir

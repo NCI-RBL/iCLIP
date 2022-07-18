@@ -12,7 +12,7 @@ The configuration files control parameters and software of the pipeline. These f
 - multiqc_config.yaml
 - snakemake_config.yaml
 
-### 2.1.1 Annotaiton Config (annotation_config.txt)
+### 2.1.1 Annotation Config
 The annotation config dictates the type and location of annotaiton files to use for each species (hg38 and mm10). The file must include the following headers:
 
 - type
@@ -28,13 +28,13 @@ The annotation config dictates the type and location of annotaiton files to use 
 - notes
 - Status
 
-### 2.1.2 Cluster Config (cluster_config.yml)
+### 2.1.2 Cluster Config
 The cluster configuration file dictates the resouces to be used during submission to Biowulf HPC. There are two differnt ways to control these parameters - first, to control the default settings, and second, to create or edit individual rules. These parameters should be edited with caution, after significant testing.
 
-### 2.1.3 FASTQ Screen Config (fqscreen_rrna_config.conf and fqscreen_species_config.conf)
-The FASTQ sceren configuration files dictates the parameters used for FASTQ Screen.
+### 2.1.3 FASTQ Screen Config
+The FASTQ screen configuration files dictates the parameters used for FASTQ Screen.
 
-### 2.1.4 Index Config (index_config.yaml)
+### 2.1.4 Index Config
 The index config is used to dictate what versions of reference index is used for each species (mm10, hg38). The structure of annotation is as follows:
  - organism:
    - std: '/path/to/index/'
@@ -42,10 +42,10 @@ The index config is used to dictate what versions of reference index is used for
      - valuebp1: '/path/to/index1/'
      - valuebp2: '/path/to/index2/'
 
-### 2.1.5 MultiQC Config (multiqc_config.yaml)
+### 2.1.5 MultiQC Config
 The MultiQC screen configuration files control the parameters used for MultiQC.
 
-### 2.1.6 Snakemake Config (snakemake_config.yaml)
+### 2.1.6 Snakemake Config
 There are several groups of parameters that are editable for the user to control the various aspects of the pipeline. These are :
 
 - Folders and Paths
@@ -94,7 +94,7 @@ test_1,Control_Clip,CNTRL,NNNCGGANN,AGATCGGAAGAGCGGTTCAG
 test_2,Ro_Clip2,CLIP,NNNCGTANN,AGATCGGAAGAGCGGTTCAG
 ```
 
-### 2.2.3 Contrast Manifest (REQUIRED with DE_Method of MANORM or DIFFBIND)
+### 2.2.3 Contrast Manifest (REQUIRED with DE_Method)
 This manifest will  include sample or group information to performed differential expresison comparisons (MANORM or DIFFBIND). The column requirements differ by DE method.
 - if MANORM:
   - sample: the sample name, identified in the samplesManifest [sample] column, of the sample to compare. example: 'Ro_Clip'

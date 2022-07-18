@@ -1,7 +1,7 @@
-# 1. Pipeline Tutorial
+# 5. Pipeline Tutorial
 Welcome to the iCLIP Pipeline Tutorial!
 
-## 1.1 Getting Started
+## 5.1 Getting Started
 Review the information on the [Getting Started](https://rbl-nci.github.io/iCLIP/iCLIP/getting-started/) for a complete overview the pipeline. The tutorial below will use test data available on NIH Biowulf HPC only.
 
 A. Change working directory to the iCLIP repository
@@ -14,9 +14,10 @@ B. Initialize Pipeline
 sh run_snakemake.sh -p initialize -o /path/to/output/dir
 ```
 
-## 1.2 Prepare the test set
+## 5.2 Prepare the test set
 
 A. Four different test data sets are available, depending on the need. These include:
+
 - test_1: Single test (multiplex_flag="N", splice_aware="N", DE_method="none")
 - test_2: Multiplexed test (multiplex_flag="Y", splice_aware="Y", DE_method="none")
 - test_3: MANORM test (multiplex_flag="N", splice_aware="Y", DE_method="MANORM")
@@ -31,7 +32,7 @@ sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh -t TESTNAME -o /path/to/output/di
 sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh -t test_3 -o /path/to/output/dir -s /data/RBL_NCI/Pipelines/iCLIP/[version number]
 ```
 
-## 1.3 Complete dry-run
+## 5.3 Complete dry-run
 
 A. Complete a dry-run and review output
 ```
@@ -69,12 +70,12 @@ star                          4             32             32
 total                        85              1             32
 ```
 
-## 1.4 Run the pipeline
+## 5.4 Run the pipeline
 Execute pipeline on the cluster OR locally
 ```
 #submit to the cluster (recommended)
 sh run_snakemake.sh -p cluster -o /path/to/output/dir/
 ```
 
-## 1.5 Review outputs
+## 5.5 Review outputs
 Review the expected outputs on the [Output](https://rbl-nci.github.io/iCLIP/iCLIP/output/) page. If there are errors, review and performing stesp described on the [Troubleshooting](https://rbl-nci.github.io/iCLIP/iCLIP/troubleshooting/) page as needed.
