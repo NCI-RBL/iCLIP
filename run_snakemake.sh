@@ -10,7 +10,7 @@ helpFunction()
    echo "Usage: bash $0 -p <PIPELINEMODE> -o <OUTPUTDIR>"
    echo "#########################################################" 
    echo "Acceptable inputs:"
-   echo -e "\t<PIPELINEMODE> options: initialize, dry, cluster, local, git, unlock, DAG, report"
+   echo -e "\t<PIPELINEMODE> options: initialize, dry, cluster, local, git, unlock, DAG, report, check"
    echo -e "\t<OUTPUTDIR> : absolute path to output folder required"
    echo "#########################################################" 
    exit 1 # Exit script after printing help
@@ -260,16 +260,16 @@ elif [[ $pipeline = "check" ]]; then
     # Run manifest check 
     ## Test 1-2 expected no errors
     check_manifests $py_script $manifest_file \
-      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv" "MANORM" "${PIPELINE_HOME}/testing/manifests/contrasts_manorm.tsv"
+      "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/multiplex_two.tsv" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/samples_two.tsv" "MANORM" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/contrasts_manorm.tsv"
     if [[ -f $pass_qc ]] && [[ -f $manorm_qc ]]; then rm $pass_qc; rm $manorm_qc; echo "Test1 pass" > $manifest_log; else echo "Test1 fail" > $manifest_log; fi
 
     check_manifests $py_script $manifest_file \
-      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv" "DIFFBIND" "${PIPELINE_HOME}/testing/manifests/contrasts_diffbind.tsv"
+      "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/multiplex_two.tsv" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/samples_two.tsv" "DIFFBIND" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/contrasts_diffbind.tsv"
     if [[ -f $pass_qc ]] && [[ -f $diffbind_qc ]]; then rm $pass_qc; rm $diffbind_qc; echo "Test2 pass" >> $manifest_log; else echo "Test2 fail" > $manifest_log; fi
 
     ## Test 3 - expect error with duplicate values
     check_manifests $py_script $manifest_file \
-      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_sampledups.tsv"
+      "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/multiplex_two.tsv" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/samples_sampledups.tsv"
     if [[ -f "${fail_qc}" ]]; then 
       check=`cat ${fail_qc} | grep "sample names must be unique" | wc -l`
       if [[ $check > 0 ]]; then rm $fail_qc; echo "Test3 pass" >> $manifest_log; else echo "Test3 fail" >> $manifest_log; fi
@@ -279,7 +279,7 @@ elif [[ $pipeline = "check" ]]; then
 
     ## Test 4 - barcode has duplicates
     check_manifests $py_script $manifest_file \
-      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_barcodedups.tsv"
+      "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/multiplex_two.tsv" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/samples_barcodedups.tsv"
     if [[ -f "${fail_qc}" ]]; then 
       check=`cat ${fail_qc} | grep "Barcodes must be unique by sample" | wc -l`
       if [[ $check > 0 ]]; then rm $fail_qc; echo "Test4 pass" >> $manifest_log; else echo "Test4 fail" >> $manifest_log; fi
@@ -289,7 +289,7 @@ elif [[ $pipeline = "check" ]]; then
 
     ## Test 5 - FASTQ files are duplicated
     check_manifests $py_script $manifest_file \
-      "${PIPELINE_HOME}/testing/manifests/multiplex_filedups.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv"
+      "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/multiplex_filedups.tsv" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/samples_two.tsv"
     if [[ -f "${fail_qc}" ]]; then 
       check=`cat ${fail_qc} | grep "File names must be unique" | wc -l`
       if [[ $check > 0 ]]; then rm $fail_qc; echo "Test5 pass" >> $manifest_log; else echo "Test5 fail" >> $manifest_log; fi
@@ -299,7 +299,7 @@ elif [[ $pipeline = "check" ]]; then
 
     ## Test 6 - FASTQ files wrong extension
     check_manifests $py_script $manifest_file \
-      "${PIPELINE_HOME}/testing/manifests/multiplex_fileext.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv"
+      "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/multiplex_fileext.tsv" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/samples_two.tsv"
     if [[ -f "${fail_qc}" ]]; then 
       check=`cat ${fail_qc} | grep "All items in file_name column must end in fastq.gz" | wc -l`
       if [[ $check > 0 ]]; then rm $fail_qc; echo "Test6 pass" >> $manifest_log; else echo "Test6 fail" >> $manifest_log; fi
@@ -309,7 +309,7 @@ elif [[ $pipeline = "check" ]]; then
 
     ## Test 7 - sample names don't match between multiplex and sample
     check_manifests $py_script $manifest_file \
-      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_extrasamples.tsv"
+      "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/multiplex_two.tsv" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/samples_extrasamples.tsv"
     if [[ -f "${fail_qc}" ]]; then 
       check=`cat ${fail_qc} | grep "Multiplex ID's must be consistent between both files." | wc -l`
       if [[ $check > 0 ]]; then rm $fail_qc; echo "Test7 pass" >> $manifest_log; else echo "Test7 fail" >> $manifest_log; fi
@@ -319,7 +319,7 @@ elif [[ $pipeline = "check" ]]; then
 
     ## Test 8-9 - DE method requests do not match sample names / group names
     check_manifests $py_script $manifest_file \
-      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv" "MANORM" "${PIPELINE_HOME}/testing/manifests/contrasts_manormfail.tsv"
+      "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/multiplex_two.tsv" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/samples_two.tsv" "MANORM" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/contrasts_manormfail.tsv"
     if [[ -f "${fail_qc}" ]]; then 
       check=`cat ${fail_qc} | grep "was/were not found in the sample_manifest tsv but were found in the contrasts manifest" | wc -l`
       if [[ $check > 0 ]]; then rm $fail_qc; echo "Test8 pass" >> $manifest_log; else echo "Test8 fail" >> $manifest_log; fi
@@ -328,7 +328,7 @@ elif [[ $pipeline = "check" ]]; then
     fi
 
     check_manifests $py_script $manifest_file \
-      "${PIPELINE_HOME}/testing/manifests/multiplex_two.tsv" "${PIPELINE_HOME}/testing/manifests/samples_two.tsv" "DIFFBIND" "${PIPELINE_HOME}/testing/manifests/contrasts_diffbindfail.tsv"
+      "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/multiplex_two.tsv" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/samples_two.tsv" "DIFFBIND" "/data/CCBR_Pipeliner/iCLIP/test/pipeline_checks/manifests/contrasts_diffbindfail.tsv"
     if [[ -f "${fail_qc}" ]]; then 
       check=`cat ${fail_qc} | grep "was/were not found in the sample_manifest tsv but were found in the contrasts manifest" | wc -l`
       if [[ $check > 0 ]]; then rm $fail_qc; echo "Test9 pass" >> $manifest_log; else echo "Test9 fail" >> $manifest_log; fi
