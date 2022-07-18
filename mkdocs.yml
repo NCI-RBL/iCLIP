@@ -98,8 +98,9 @@ nav:
   - Background : index.md
   - Usage: 
     - 1. Getting Started : iCLIP/getting-started.md
-    - 2. Config Set-up: iCLIP/config-setup.md
+    - 2. Preparing Files: iCLIP/preparing-files.md
     - 3. Running the Pipeline: iCLIP/run.md
     - 4. Expected Output: iCLIP/output.md
   - FAQ:
+    - Running Example Data: iCLIP/test.md
     - Troubleshooting: iCLIP/troubleshooting.md
