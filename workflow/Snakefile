@@ -200,7 +200,7 @@ def nondemux_cmd(wildcards):
 
   for k,v in multiplex_dict.items():
     for k2,v2 in samp_dict[k].items():
-      cmd_line = 'cp ' + fastq_dir + v + ' ' + out_dir + k + '/02_preprocess/' + k2 + '.fastq.gz; ' + cmd_line
+      cmd_line = 'cp ' + fastq_dir + v + ' ' + out_dir + k + '/02_preprocess/ultraplex_demux_' + k2 + '.fastq.gz; ' + cmd_line
   
   return(cmd_line)
 
