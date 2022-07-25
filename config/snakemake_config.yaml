@@ -20,6 +20,7 @@ contrastManifest: "OUTPUT_DIR/manifests/contrasts.tsv"
 #user parameters
 #########################################################################################
 multiplexflag: "N" #whether samples are multiplexed ["Y","N"]
+umiSeparator: "rbc:" #required for nondemultiplexed samples to determiner deliminator for deduplication [":", "_", "rbc:"]
 mismatch: 1 #if multiplexed, number of bp mismatches allowed in demultiplexing [1,2,3]
 reference: "mm10" #reference organism ["hg38","mm10"]
 filterlength: 20 #minimum read length to include in analysis [any int >20]; this is also the novoalign l parameter

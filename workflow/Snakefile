@@ -124,11 +124,11 @@ annotation_config = join(out_dir,'config','annotation_config.txt')
 
 #determine which umi separator to use
 if(multiplex_flag == 'Y' or testing_option == "Y"):
-    #iCount addes rbc: to all demux files;
+    #demultiplexing addes rbc: to all demux files;
     umi_sep="rbc:"
 else:
     # external demux uses an _
-    umi_sep="_"
+    umi_sep=config['umiSeparator']
 
 #convert splice junction selection
 if (sp_junc=="Y"):
@@ -191,7 +191,6 @@ def CreateProjLists(dict_m,dict_s):
 def get_fq_names(wildcards):
     #example: {fastq_dir}/{filename}.fastq.gz
     fq = join(fastq_dir,multiplex_dict[wildcards.mp])
-    print(fq)
     return(fq)
 
 # create command to move each fastq file from source location to pre-processing folder
@@ -912,7 +911,6 @@ rule dedup:
         rname='09_dedup',
         umi = umi_sep,
         base = '{sp}.unmasked',
-        mflag=multiplex_flag,
     envmodules:
         config['umitools'],
         config['samtools']
@@ -927,37 +925,13 @@ rule dedup:
         tmp_dir="/lscratch/${{SLURM_JOB_ID}}"
         export tmp_dir
  
-        # Resets the UMI separator to correct value
-        delimeter="{params.umi}"
-        if [ '{params.mflag}' == 'N' ]; then
-            # Prevents a premature SIGPIPE to samtools,
-            # head -1 will result in a 141 return code
-            delimeter=$(samtools view {input.f1} \\
-                | head -1 \\
-                | cut -f1 \\
-                | awk -F ':' '{{print $NF}}' \\
-                | awk '$0 ~ /_/ {{print}}')
-            # Check for presence of underscore
-            if [[ -n "${{delimeter}}" ]]; then
-                # String contains an underscore,
-                # Split by underscore and grab
-                # the last string as UMI
-                delimeter=$(echo "${{delimeter}}" \\
-                    | awk -F '_' '{{print $NF}}')
-            else
-                # Does not contain an underscore,
-                # reset the delimeter to a colon.
-                delimeter=":"
-            fi
-        fi
-
         # Run UMI Tools Deduplication
-        echo "Using the following UMI seperator: ${{delimeter}}"
+        echo "Using the following UMI seperator: {params.umi}"
         umi_tools dedup \\
             -I {input.f1} \\
             --method unique \\
             --multimapping-detection-method=NH \\
-            --umi-separator=${{delimeter}} \\
+            --umi-separator={params.umi} \\
             -S ${{tmp_dir}}/{params.base}.bam \\
             --log2stderr;
         
