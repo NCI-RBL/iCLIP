@@ -2,11 +2,15 @@
 Welcome to the iCLIP Pipeline Tutorial!
 
 ## 5.1 Getting Started
-Review the information on the [Getting Started](https://rbl-nci.github.io/iCLIP/iCLIP/getting-started/) for a complete overview the pipeline. The tutorial below will use test data available on NIH Biowulf HPC only.
+Review the information on the [Getting Started](https://rbl-nci.github.io/iCLIP/iCLIP/getting-started/) for a complete overview the pipeline. The tutorial below will use test data available on NIH Biowulf HPC only. All example code will assume you are running v2.0 of the pipeline, from the shared RBL_NCI storage directory, using test_1 data.
 
 A. Change working directory to the iCLIP repository
 ```
+# general format
 cd /data/RBL_NCI/Pipelines/iCLIP/[version number]
+
+# example
+cd /data/RBL_NCI/Pipelines/iCLIP/v2.0
 ```
 
 B. Initialize Pipeline
@@ -25,11 +29,11 @@ A. Four different test data sets are available, depending on the need. These inc
 
 B. Pull the test data to your output directory
 ```
-# example
-sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh -t TESTNAME -o /path/to/output/dir
+# general format
+sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh -t test_number -o /path/to/output/dir -s /path/to/source/dir
 
-# example running test_3:
-sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh -t test_3 -o /path/to/output/dir -s /data/RBL_NCI/Pipelines/iCLIP/[version number]
+# example running test_1:
+sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh -t test_1 -o /path/to/output/dir -s /data/RBL_NCI/Pipelines/iCLIP/v2.0
 ```
 
 ## 5.3 Complete dry-run
@@ -39,7 +43,35 @@ A. Complete a dry-run and review output
 sh run_snakemake.sh -p dry -o /path/to/output/dir/
 ```
 
-Ensure that an expected output is displayed. An expected output for test_3 is as follows:
+Ensure that an expected output is displayed. 
+- An expected output for test_1 is as follows:
+```
+job                    count    min threads    max threads
+-------------------  -------  -------------  -------------
+all                        1              1              1
+annotation_report          1              1              1
+bgzip_beds                 1              4              4
+create_beds_safs           1              8              8
+dedup                      1              8              8
+feature_counts             1              8              8
+index_stats                1              8              8
+multiqc                    1              1              1
+nondemux                   1              1              1
+peak_ExonIntron            1             32             32
+peak_RMSK                  2             32             32
+peak_Transcripts           2             32             32
+peak_junctions             1             32             32
+peak_process               1             32             32
+project_annotations        1              1              1
+qc_fastq                   1              1              1
+qc_screen_validator        1             32             32
+qc_troubleshoot            1              1              1
+rename_fastqs              1              1              1
+star                       1             32             32
+total                     22              1             32
+```
+
+- An expected output for test_3 is as follows:
 ```
 job                       count    min threads    max threads
 ----------------------  -------  -------------  -------------
@@ -71,9 +103,9 @@ total                        85              1             32
 ```
 
 ## 5.4 Run the pipeline
-Execute pipeline on the cluster OR locally
+Execute pipeline on the cluster
 ```
-#submit to the cluster (recommended)
+#submit to the cluster
 sh run_snakemake.sh -p cluster -o /path/to/output/dir/
 ```
 
