@@ -1321,7 +1321,8 @@ rule peak_Transcripts:
     '''
     input:
         peaks = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
-        anno = rules.project_annotations.output.anno
+        anno = rules.project_annotations.output.anno,
+        refgen = rules.project_annotations.output.ref_gencode
     params:
         rname = '15_peak_Transcripts',
         script = join(source_dir,'workflow','scripts','05_Anno_Transcript.R'),
@@ -1379,7 +1380,8 @@ rule peak_ExonIntron:
     '''
     input:
         peaks = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
-        anno = rules.project_annotations.output.anno
+        anno = rules.project_annotations.output.anno,
+        refgen = rules.project_annotations.output.ref_gencode
     params:
         rname = '16_peak_ExonIntron',
         script = join(source_dir,'workflow','scripts','05_Anno_ExonIntron.R'),
