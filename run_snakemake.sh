@@ -501,13 +501,11 @@ elif [[ $pipeline = "git" ]]; then
 elif [[ $pipeline = "DAG" ]]; then
   echo "------------------------------------------------------------------------"
 	echo "*** STARTING DAG ***"
-  module load snakemake
+  module load snakemake graphviz
 
   # Change directories before running any important
   # snakemake commands, ensures the .snakemake 
   # directory get created in the output directory
-  cd "${output_dir}"
-
   snakemake \
   -s "${output_dir}/config/Snakefile" \
   --configfile ${output_dir}/config/snakemake_config.yaml \
