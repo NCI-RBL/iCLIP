@@ -28,12 +28,14 @@ A. Four different test data sets are available, depending on the need. These inc
 - test_4: DIFFBIND test (multiplex_flag="N", splice_aware="Y", DE_method="DIFFBIND")
 
 B. Pull the test data to your output directory
+NOTE: Test data is currently available for v1.8 and v2.0 Please contact samantha.sevilla@nih.gov to create other test data.
+
 ```
 # general format
-sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh -t test_number -o /path/to/output/dir -s /path/to/source/dir
+sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh -t test_number -o /path/to/output/dir -v version_id -s /path/to/source/dir
 
 # example running test_1:
-sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh -t test_1 -o /path/to/output/dir -s /data/RBL_NCI/Pipelines/iCLIP/v2.0
+sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh -t test_1 -o /path/to/output/dir -v v2.0 -s /data/RBL_NCI/Pipelines/iCLIP/v2.0
 ```
 
 ## 5.3 Complete dry-run
