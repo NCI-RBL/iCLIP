@@ -1153,9 +1153,9 @@ rule project_annotations:
     envmodules:
         config['R']
     output:
-        anno = temp(join(out_dir,'04_annotation', '01_project','annotations.txt')),
-        nc_anno = temp(join(out_dir,'04_annotation', '01_project','ncRNA_annotations.txt')),
-        ref_gencode = temp(join(out_dir,'04_annotation', '01_project','ref_gencode.txt')),
+        anno = join(out_dir,'04_annotation', '01_project','annotations.txt'),
+        nc_anno = join(out_dir,'04_annotation', '01_project','ncRNA_annotations.txt'),
+        ref_gencode = join(out_dir,'04_annotation', '01_project','ref_gencode.txt'),
     shell:
         """
         Rscript {params.script} \\
