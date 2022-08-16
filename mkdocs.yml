@@ -32,8 +32,6 @@ theme:
       toggle:
         icon: material/toggle-switch
         name: Switch to light mode
-  logo: img/metro_logo.png
-  favicon: img/fred_logo.png
 
 # Plugins
 plugins:
