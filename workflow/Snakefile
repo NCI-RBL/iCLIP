@@ -51,6 +51,8 @@ min_count = config['mincount']
 nt_merge = str(config['ntmerge']) + 'nt'
 peak_id = config['peakid'].upper()
 DE_method = config['DEmethod'].upper()
+manorm_w = config['MANormWidth']
+manorm_d = config['MNormDistance']
 sample_overlap = int(config['sampleoverlap'])
 pval = config['pval']
 fc = config['fc']
@@ -91,10 +93,6 @@ testing_option = config['testing_option']
 ###############################################################
 # set parameters
 ###############################################################
-# manorm parameters
-manorm_w = config['manorm_w'] if 'manorm_w' in config else "50"
-manorm_d = config['manorm_d'] if 'manorm_d' in config else "25"
-
 #define threads
 with open(join(out_dir,'config','cluster_config.yaml')) as file:
     CLUSTER = yaml.load(file, Loader=yaml.FullLoader)

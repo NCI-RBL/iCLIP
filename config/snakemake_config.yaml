@@ -32,6 +32,8 @@ mincount: 3 #minimum number of reads to count as a peak [1,2,3]
 ntmerge: 10 #minimum distance of nucleotides to merge peaks [any integer >: 1, default 10]
 peakid: "ALL" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
 DEmethod: "none" #DE method ["none", "manorm", "diffbind"]
+MANormWidth: 50 #Width of window to calculate read density. [any integer >1; default 50]
+MNormDistance: 25 #Summit-to-summit distance cutoff for common peaks. [ any integer >1; default MANormWidth/2]
 sampleoverlap: 1 #if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted [>1]
 pval: 0.005 #if DEmethod DIFFBIND or MANNORM, pval cutoff for significance
 fc: 1 #if DEmethod DIFFBIND or MANNORM, fold change cut off for significance
