@@ -435,7 +435,7 @@ cd \$SLURM_SUBMIT_DIR
     --cluster \
     "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
-    --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output}  --mail-type=BEGIN,END,FAIL\
+    --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} --mail-type=BEGIN,END,FAIL\
     --error=${output_dir}/log/${log_time}/{params.rname}{cluster.error}" \
     2>&1|tee ${output_dir}/log/${log_time}/snakemake.log
 
