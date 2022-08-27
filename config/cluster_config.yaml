@@ -43,10 +43,6 @@ index_stats:
     mem: 200g
     time: 01-00:00:00
 
-qc_alignment:
-    threads: 4
-    mem: 200g
-
 qc_troubleshoot:
     threads: 4
     mem: 3g
@@ -66,6 +62,10 @@ bgzip_beds:
     mem: 100g
     threads: 4
 
+feature_counts:
+    threads: 8
+    mem: 200g
+
 project_annotations:
     threads: 2
     mem: 10g
@@ -74,7 +74,7 @@ project_annotations:
 peak_junctions:
     threads: 10
     gres: lscratch:128
-    mem: 32g
+    mem: 36g
     time: 04-00:00:00
     
 peak_Transcripts:
@@ -105,15 +105,25 @@ MANORM_beds:
     threads: 4
     mem: 30g
 
-DIFFBIND_beds:
-    threads: 4
-    mem: 30g
-    
 MANORM_analysis:
     threads: 4
     mem: 30g
     time: 04-00:00:00
 
+MANORM_post_processing:
+    threads: 2
+    mem: 30g
+    time: 00-12:00:00
+
+MANORM_RMD:
+    threads: 2
+    mem: 30g
+    time: 00-02:00:00
+
+DIFFBIND_beds:
+    threads: 4
+    mem: 30g
+    
 DIFFBIND_preprocess:
     threads: 4
     mem: 30g
@@ -122,31 +132,7 @@ DIFFBIND_analysis:
     threads: 4
     mem: 30g
 
-MANORM_post_processing:
-    threads: 2
-    mem: 30g
-    time: 00-12:00:00
 
 DIFFBIND_report:
     threads: 4
     mem: 30g
-
-MANORM_RMD:
-    threads: 2
-    mem: 30g
-    time: 00-02:00:00
-
-mapq_recalc:
-    threads: 8
-    mem: 200g
-    gres: lscratch:512
-    time: 00-12:00:00
-
-mapq_stats:
-    threads: 8
-    mem: 200g
-
-feature_counts:
-    threads: 8
-    mem: 200g
-    
