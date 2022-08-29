@@ -41,31 +41,31 @@ fc: 1 #if DEmethod DIFFBIND or MANNORM, fold change cut off for significance
 #########################################################################################
 # STAR parameters
 #########################################################################################
-alignEndsType: "Local"
-alignIntronMax: 50000
+alignEndsType: "Local" #type of read ends alignment ["Local", "EndToEnd", "Extend5pOfRead1", "Extend5pOfReads12"]
+alignIntronMax: 50000 #maximum intron length
 alignSJDBoverhangMin: 3 # minimum overhang value for annotated spliced junctions
 alignSJoverhangMin: 5 # minimum overhang value for non-cannonical splied junctions
-alignTranscriptsPerReadNmax: 10000
-alignWindowsPerReadNmax: 10000
+alignTranscriptsPerReadNmax: 10000 #max number of different alignments per read to consider [int>0]
+alignWindowsPerReadNmax: 10000 #max number of windows per read [int>0]
 outFilterMatchNmin: 15 # alignment will be output only if the number of matched bases is higher than or equal to this value.
-outFilterMatchNminOverLread: 0.9
-outFilterMismatchNmax: 999
-outFilterMismatchNoverReadLmax: 0.04
-outFilterMultimapNmax: 10000
-outFilterMultimapScoreRange: 0
-outFilterScoreMin: 0
-outFilterType: "Normal"
-outSAMattributes: "All"
-outSAMunmapped: "None"
-outSJfilterCountTotalMin: "3 1 1 1"
-outSJfilterOverhangMin: "30 12 12 12"
-outSJfilterReads: "All"
-seedMultimapNmax: 10000
-seedNoneLociPerWindow: 20
-seedPerReadNmax: 10000
-seedPerWindowNmax: 500
-sjdbScore: 2
-winAnchorMultimapNmax: 500
+outFilterMatchNminOverLread: 0.9 #alignment will be output only if the number of matched bases is >= to value; normalized to sum of mates’ lengths for paired-end reads
+outFilterMismatchNmax: 999 #alignment will be output only if it has no more mismatches than this value.
+outFilterMismatchNoverReadLmax: 0.04 #alignment will be output only if its ratio of mismatches to *read* length is less than or equal to this value.
+outFilterMultimapNmax: 10000 #max number of multiple alignments allowed for a read: if exceeded, the read is considered unmapped
+outFilterMultimapScoreRange: 0 #the score range below the maximum score for multimapping alignments
+outFilterScoreMin: 0 #alignment will be output only if its score is higher than or equal to this value.
+outFilterType: "Normal" #type of filtering ["Normal", "BySJout"]
+outSAMattributes: "All" #a string of desired SAM attributes, in the order desired for the output SAM
+outSAMunmapped: "None" #output of unmapped reads in the SAM format ["None", "Within"]
+outSJfilterCountTotalMin: "3 1 1 1" #minimum total (multi-mapping+unique) read count per junction for: (1) non-canonical motifs, (2) GT/AG and CT/AC motif, (3) GC/AG and CT/GC motif, (4) AT/AC and GT/AT motif
+outSJfilterOverhangMin: "30 12 12 12" #minimum overhang length for splice junctions on both sides for: (1) non-canonical motifs, (2) GT/AG and CT/AC motif, (3) GC/AG and CT/GC motif, (4) AT/AC and GT/AT motif
+outSJfilterReads: "All" #which reads to consider for collapsed splice junctions output ["All", "Unique"]
+seedMultimapNmax: 10000 #only pieces that map fewer than this value are utilized in the stitching procedure [int>0]
+seedNoneLociPerWindow: 20 #max number of one seed loci per window [int>0]
+seedPerReadNmax: 10000 #max number of seeds per read
+seedPerWindowNmax: 500 #max number of seeds per window
+sjdbScore: 2 #extra alignment score for alignmets that cross database junctions
+winAnchorMultimapNmax: 500 #max number of loci anchors are allowed to map to
 
 #########################################################################################
 # modules, container parameters
