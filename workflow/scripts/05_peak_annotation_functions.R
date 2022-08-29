@@ -913,90 +913,94 @@ IE_calling <- function(peak_in,Peak_Strand_ref,nmeprfix){
   exoninof$OLper=exoninof$ntOL/exoninof$width
   exoninof=exoninof[(exoninof$OLper_anno>.75 | exoninof$OLper>.51), ]
   
-  #run same strand
-  if (Peak_Strand_ref=='Same') {
-    #Calc distance of 5' peak to 5' intron/exondist
-    exoninof_pos=exoninof[exoninof$strand%in%'+',]
-    exoninof_neg=exoninof[exoninof$strand%in%'-',]
-    
-    #run positive
-    exoninof_pos[,paste0(nmeprfix,'feature_Distance')]=((exoninof_pos$start-exoninof_pos$start_anno)/abs(exoninof_pos$end_anno-exoninof_pos$start_anno))*100
-    exoninof_pos[,paste0(nmeprfix,'feature_5pStart')]=exoninof_pos$start_anno
-    exoninof_pos[,paste0(nmeprfix,'feature_length')]=abs(exoninof_pos$end_anno-exoninof_pos$start_anno)
-    
-    #run negative
-    exoninof_neg[,paste0(nmeprfix,'feature_Distance')]=((exoninof_neg$end_anno-exoninof_neg$end)/abs(exoninof_neg$end_anno-exoninof_neg$start_anno))*100
-    exoninof_neg[,paste0(nmeprfix,'feature_5pStart')]=exoninof_neg$end_anno
-    exoninof_neg[,paste0(nmeprfix,'feature_length')]=abs(exoninof_neg$end_anno-exoninof_neg$start_anno)
-    
-    #bind positive and negative
-    exoninof=rbind(exoninof_pos,exoninof_neg);
-    peak_in[,paste0(nmeprfix,c('Exn_start_dist','Intron_start_dist','Intron_5pStart','Exn_5pStart'))]=NA
-  }
-  
-  print(paste0('Annotated Regions: ', nrow(peak_in)))
-    #for each peak in table
-  for (x in 1:nrow(peak_in)) {
-    
-    #subset ids
-    l=peak_in[x,c('ID','ID')]
-    g=exoninof[exoninof$ID%in%l$ID,]
-    
-    #if there are ids in both lists
-    if (nrow(g)>0) {
-      
-      #split into exon and intron
-      g_e=g[g$feature%in%'exon',]
-      g_i=g[g$feature%in%'intron',]
-      
-      gname=paste(unique(g$feature),collapse = ",")
-      gname=gsub('NA,',"",gname)
-      gname=gsub(',NA',"",gname)
-      peak_in[x,paste0(nmeprfix,'feature')]=gsub('NA,',"",gname)
-      
-      #if there are exons
-      if (nrow(g_e)>0) {
-        gname=paste(unique(g_e$exon_number),collapse = ",")
-        gname=gsub('NA,',"",gname)
-        gname=gsub(',NA',"",gname)
-        peak_in[x,paste0(nmeprfix,'exon_number')]=gsub('NA,',"",gname)
-        peak_in[x,paste0(nmeprfix,'exon_LargeOL')]=max(g_e$ntOL/(g_e$end-g_e$start))
-        
-        #if the Same
-        if (Peak_Strand_ref=='Same') {
-          g_e[g_e[,paste0(nmeprfix,'feature_Distance')]<0,paste0(nmeprfix,'feature_Distance')]=0
-          peak_in[x,paste0(nmeprfix,'Exn_start_dist')]=mean(as.numeric(g_e[,paste0(nmeprfix,'feature_Distance')]))
-        } 
-      } 
-      
-      #if there are introns
-      if (nrow(g_i)>0) {
-        gname=paste(unique(g_i$exon_number),collapse = ",")
-        gname=gsub('NA,',"",gname)
-        gname=gsub(',NA',"",gname)
-        peak_in[x,paste0(nmeprfix,'intron_number')]=gsub('NA,',"",gname)
-        peak_in[x,paste0(nmeprfix,'intron_LargeOL')]=max(g_i$ntOL/(g_i$end-g_i$start))
-        
-        if (Peak_Strand_ref=='Same') {
-          g_i[g_i[,paste0(nmeprfix,'feature_Distance')]<0,paste0(nmeprfix,'feature_Distance')]=0
-          peak_in[x,paste0(nmeprfix,'Intron_start_dist')]=mean(as.numeric(g_i[,paste0(nmeprfix,'feature_Distance')]))
-        }
-      } 
-      
-    } else {
-      if (Peak_Strand_ref=='Same') {
-        peak_in[x,paste0(nmeprfix,c("feature",'exon_number','intron_number','Exn_start_dist','Intron_start_dist'))]=NA
-      } else if (Peak_Strand_ref=='Oppo') {
-        peak_in[x,paste0(nmeprfix,c("feature",'exon_number','intron_number'))]=NA
+print('Annotate Peaks with IE')
+
+# Find list of IDs 
+IDs <- peak_in$ID
+
+# Create empty dataframe
+peak_in_df <- data.frame(matrix(ncol = 15, nrow = length(IDs)))
+peak_in_df[is.na(peak_in_df)] <- 'NA'
+
+rownames(peak_in_df) <- IDs
+colnames(peak_in_df) <- c('chr','start','end','ID','ID.1','strand',
+                          paste0(nmeprfix,'Exn_start_dist'),
+                          paste0(nmeprfix,'Intron_start_dist'),
+                          paste0(nmeprfix,'Intron_5pStart'),
+                          paste0(nmeprfix,'Exn_5pStart'),
+                          paste0(nmeprfix,'feature'),
+                          paste0(nmeprfix,'exon_number'),
+                          paste0(nmeprfix,'intron_number'),
+                          paste0(nmeprfix,'intron_LargeOL'),
+                          paste0(nmeprfix,'exon_LargeOL'))
+
+peak_in_df$chr <- peak_in$chr
+peak_in_df$start <- peak_in$start
+peak_in_df$end <- peak_in$end
+peak_in_df$strand <- peak_in$strand
+peak_in_df$ID <- IDs
+peak_in_df$ID.1 <- IDs
+
+# Report Number of Peaks
+print(paste0('Annotated regions: ', nrow(peak_in)))
+
+# Create the function that will fill up the dataframe
+update_rows <- function(peak_in) {
+
+  # Find ID for row
+  ID = peak_in['ID']
+
+  # Find all rows with ID in intersect file
+  sub_exoninof <- exoninof[which(exoninof$ID == ID),]
+
+  # Make list of unique features
+  peak_in[paste0(nmeprfix,'feature')] <- paste0(unique(sub_exoninof$feature), collapse = ',')
+
+  # Separate following computations for exons and introns
+  for (feature in c('exon','intron')){
+
+  # Make sub df for exons or introns
+  feature_df <- sub_exoninof[which(sub_exoninof$feature == feature),]
+
+
+  # Separate inton + and - strand for distance computations
+  feature_pos_df <- feature_df[which(feature_df$strand == '+'),] # FEATURES ON STRAND +
+  feature_neg_df <- feature_df[which(feature_df$strand == '-'),] # FEATURES ON STRAND -
+
+  # Compute distance 
+  #Same_Feat_start_dist <- min(c(abs(feature_pos_df$start - feature_pos_df$start_anno) / (feature_pos_df$end_anno - feature_pos_df$start_anno) *100,
+   #                             abs(feature_neg_df$end - feature_neg_df$end_anno) / (feature_neg_df$end_anno - feature_neg_df$start_anno) *100))
+
+  # Fill dataframe separately for exons and introns
+  # Distance, unique list of exon/intron number, maximum overlap percentage 
+  if (feature == 'exon') {
+
+  #peak_in[paste0(nmeprfix,'Exn_start_dist')] <- Same_Feat_start_dist
+  peak_in[paste0(nmeprfix,'exon_number')] <- paste0(unique(feature_df$exon_number), collapse = ',')
+  peak_in[paste0(nmeprfix,'exon_LargeOL')] <- max(feature_df$OLper)
+
+      } else if (feature == 'intron'){
+  #peak_in[paste0(nmeprfix,'Intron_start_dist')] <- Same_Feat_start_dist
+  peak_in[paste0(nmeprfix,'intron_number')] <- paste0(unique(feature_df$exon_number), collapse = ',')
+  peak_in[paste0(nmeprfix,'intron_LargeOL')] <- max(feature_df$OLper)
+
       }
     }
-  }
-  
-  ### protein coding peaks with not Correctly assigned exon overlap -- Moved to 09_Anno_Process.R
-  # peak_in[is.na(peak_in[,paste0(nmeprfix,'feature')]) & 
-  #           peak_in[,paste0(nmeprfix,'gene_type')]%in%'protein_coding',paste0(nmeprfix,'feature')]='exon'
   return(peak_in)
-}  
+  }
+
+# Run function on each row/ID 
+peak_in_df <- t(apply(peak_in_df, 1, update_rows)) # Run function on each row / ID
+
+# Substitute Inf and Empty cells
+peak_in_df[peak_in_df == -Inf] <- 'NA'
+peak_in_df[peak_in_df == Inf] <- 'NA'
+peak_in_df[peak_in_df == ''] <- 'NA'
+
+return(peak_in_df)
+}
+
+  ### protein coding peaks with not Correctly assigned exon overlap -- Moved to 09_Anno_Process.R
 
 ##########################################################################################
 ############### IDENTIFY PEAKS IN REPEAT REGIONS   
