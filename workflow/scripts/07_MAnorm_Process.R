@@ -6,6 +6,7 @@ suppressMessages(library(dplyr))
 suppressMessages(library(data.table))
 suppressMessages(library("readxl"))
 suppressMessages(library(argparse))
+suppressMessages(library(stringr))
 
 #set args
 parser <- ArgumentParser()
@@ -43,18 +44,30 @@ background_countsMM=args$background_countsMM
 # background_countsMM="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH/02_analysis/YKO_fclip_vs_FLAG_Ro_fclip/counts/FLAG_Ro_fclip_allFracMMCounts_YKO_fclip_Peaks.txt"
 # background_countsMMall="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH/02_analysis/YKO_fclip_vs_FLAG_Ro_fclip/counts/FLAG_Ro_fclip_allFracMMallCounts_YKO_fclip_Peaks.txt"
 
-# #testing
-# setwd("/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH")
-# samplename = "FLAG_Ro_fclip_wd"
-# background = "YKO_fclip_wd"
-# peak_anno_g1 = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH/04_annotation/FLAG_Ro_fclip_annotation_final_table.txt"
-# peak_anno_g2 =  "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH/04_annotation/YKO_fclip_annotation_final_table.txt"
-# pos_manorm =  "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH/02_analysis/YKO_fclip_vs_FLAG_Ro_fclip/YKO_fclip_vs_FLAG_Ro_fclip_P/FLAG_Ro_fclip_wd_MAvalues.xls"
-# neg_manorm = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH/02_analysis/YKO_fclip_vs_FLAG_Ro_fclip/YKO_fclip_vs_FLAG_Ro_fclip_N/FLAG_Ro_fclip_wd_MAvalues.xls"
-# output_file = "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH/02_analysis/YKO_fclip_vs_FLAG_Ro_fclip/FLAG_Ro_fclip_wd_vs_YKO_fclip_wd_post_processingTest.txt"
-# background_countsUnq="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH/02_analysis/YKO_fclip_vs_FLAG_Ro_fclip/counts/YKO_fclip_allUnique_FLAG_Ro_fclip_Peaks.txt"
-# background_countsMM="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH/02_analysis/YKO_fclip_vs_FLAG_Ro_fclip/counts/YKO_fclip_allFracMMCounts_FLAG_Ro_fclip_Peaks.txt"
-# background_countsMMall="/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mES_fclip_1_YL_012122/05_demethod_PH/02_analysis/YKO_fclip_vs_FLAG_Ro_fclip/counts/FLAG_Ro_fclip_allFracMMallCounts_YKO_fclip_Peaks.txt"
+
+##testing
+#setwd("/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0_2/05_demethod")
+# samplename = "Y5KO_fCLIP"
+# background = "WT_fCLIP"
+# peak_anno_g1 = "/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0_2/04_annotation/Y5KO_fCLIP_annotation_ALLreadPeaks_final_table.txt"
+# peak_anno_g2 =  "/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0_2/04_annotation/WT_fCLIP_annotation_ALLreadPeaks_final_table.txt"
+# pos_manorm =  "/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/WT_fCLIP_vs_Y5KO_fCLIP/WT_fCLIP_vs_Y5KO_fCLIP_P/WT_fCLIP_MAvalues.xls"
+# neg_manorm = "/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/WT_fCLIP_vs_Y5KO_fCLIP/WT_fCLIP_vs_Y5KO_fCLIP_N/WT_fCLIP_MAvalues.xls"
+# output_file = "/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/WT_fCLIP_vs_Y5KO_fCLIP/WT_fCLIP_vs_Y5KO_fCLIP_post_processing.txt"
+# background_countsUnq="/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/WT_fCLIP_vs_Y5KO_fCLIP/counts/Y5KO_fCLIP_allUnique_WT_fCLIP_Peaks.txt"
+# background_countsMM="/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/WT_fCLIP_vs_Y5KO_fCLIP/counts/counts/Y5KO_fCLIP_allFracMMCounts_WT_fCLIP_Peaks.txt"
+# background_countsMMall="/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/WT_fCLIP_vs_Y5KO_fCLIP/counts/Y5KO_fCLIP_allFracMMallCounts_WT_fCLIP_Peaks.txt"
+
+# samplename = "Y5KO_fCLIP"
+# background = "KO_fCLIP"
+# peak_anno_g1 = "/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0_2/04_annotation/Y5KO_fCLIP_annotation_ALLreadPeaks_final_table.txt"
+# peak_anno_g2 =  "/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0_2/04_annotation/KO_fCLIP_annotation_ALLreadPeaks_final_table.txt"
+# pos_manorm =  "/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/Y5KO_fCLIP_vs_KO_fCLIP/Y5KO_fCLIP_vs_KO_fCLIP_P/KO_fCLIP_MAvalues.xls"
+# neg_manorm = "/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/Y5KO_fCLIP_vs_KO_fCLIP/Y5KO_fCLIP_vs_KO_fCLIP_N/KO_fCLIP_MAvalues.xls"
+# output_file = "/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/Y5KO_fCLIP_vs_KO_fCLIP/Y5KO_fCLIP_vs_KO_fCLIP_post_processing.txt"
+# background_countsUnq="/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/Y5KO_fCLIP_vs_KO_fCLIP/counts/Y5KO_fCLIP_allUnique_KO_fCLIP_Peaks.txt"
+# background_countsMM="/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/Y5KO_fCLIP_vs_KO_fCLIP/counts/counts/Y5KO_fCLIP_allFracMMCounts_KO_fCLIP_Peaks.txt"
+# background_countsMMall="/Volumes/RBL_NCI/Wolin/8-09-21-HaCaT_fCLIP_v2.0/05_demethod/02_analysis/Y5KO_fCLIP_vs_KO_fCLIP/counts/Y5KO_fCLIP_allFracMMallCounts_KO_fCLIP_Peaks.txt"
 
 ############################################################################################################
 # Sample1 Processing
@@ -95,6 +108,10 @@ SmplB_Peaks.GR <- GRanges(seqnames = as.character(SmplB_Peaks$chr), ranges=IRang
 
 ############################################################################################################
 #Input positive and negative
+if(file.exists(neg_manorm)&file.exists(pos_manorm)){
+ 
+
+
 Neg_MAval=fread(neg_manorm, header=T, sep="\t",stringsAsFactors = F,data.table=F)
 colnames(Neg_MAval)=gsub("_Neg","",colnames(Neg_MAval))
 Neg_MAval$strand="-"
@@ -113,6 +130,51 @@ MAval$Peak_Group=gsub("_Neg","",MAval$Peak_Group)
 MAval$Peak_Group=gsub("_Pos","",MAval$Peak_Group)
 colnames(MAval)=gsub('_50nt_peakDepth5',"",colnames(MAval))
 
+
+}else{
+
+
+inPATH=str_split(neg_manorm,'02_analysis')[[1]][1]
+outPATH=str_split(neg_manorm,'/')[[1]]%>%grep(pattern=".xls$",value = T,invert = T)%>%paste(collapse = '/')%>%gsub(pattern = '.{2}$', replacement = '')
+writePATH=str_split(neg_manorm,'/')[[1]]%>%grep(pattern=".xls$",value = T,invert = T)
+  writePATH=writePATH[1:(length(writePATH)-1)]%>%paste(collapse = '/')
+errPATH=str_split(outPATH,'/')[[1]]
+  errPATH=paste(errPATH[grep('05_demethod',errPATH):length(errPATH)],collapse = '/')
+  
+background_Negfile=list.files(paste0(inPATH,'01_input'))%>%grep(pattern=paste0('^',background,'_'),value=T)%>%grep(pattern = 'Peaks_forMANORM',value=T)%>%grep(pattern = '_N',value=T)
+background_Posfile=list.files(paste0(inPATH,'01_input'))%>%grep(pattern=paste0('^',background,'_'),value=T)%>%grep(pattern = 'Peaks_forMANORM',value=T)%>%grep(pattern = '_P',value=T)
+samplename_Negfile=list.files(paste0(inPATH,'01_input'))%>%grep(pattern=paste0('^',samplename,'_'),value=T)%>%grep(pattern = 'Peaks_forMANORM',value=T)%>%grep(pattern = '_N',value=T)
+samplename_Posfile=list.files(paste0(inPATH,'01_input'))%>%grep(pattern=paste0('^',samplename,'_'),value=T)%>%grep(pattern = 'Peaks_forMANORM',value=T)%>%grep(pattern = '_P',value=T)
+
+
+
+system(paste0('bedtools intersect -a ',inPATH,'01_input/',samplename_Negfile,' -b ',inPATH,'01_input/',background_Negfile,' -wo > ',outPATH,'_N/PeakOverlap_MAnormERR.txt'))
+system(paste0('bedtools intersect -a ',inPATH,'01_input/',samplename_Posfile,' -b ',inPATH,'01_input/',background_Posfile,' -wo > ',outPATH,'_P/PeakOverlap_MAnormERR.txt'))
+
+OL_P=fread(paste0(outPATH,'_P/PeakOverlap_MAnormERR.txt'), header=T, sep="\t",stringsAsFactors = F,data.table=F)
+OL_P=nrow(OL_P)
+OL_N=fread(paste0(outPATH,'_N/PeakOverlap_MAnormERR.txt'), header=T, sep="\t",stringsAsFactors = F,data.table=F)
+OL_N=nrow(OL_N)
+
+if(OL_P>0|OL_N>0){
+
+  error=paste0("MAnorm did not generate output table. ","\n","MAnorm Normalization Error","\n","Overlapping Peaks found in ","\n",errPATH,"_P/PeakOverlap_MAnormERR.txt","\n",errPATH,"_N/PeakOverlap_MAnormERR.txt")
+  
+  write.table(error,file=paste0(writePATH,'/MAnorm_Norm_ERR.txt'), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
+  
+
+}else{
+  
+  error=paste0("MAnorm did not generate output table. ","\n","Overlaps not found between","\n",samplename," and ",background," Peaks.","\n"," ","\n"," ")
+  
+  write.table(error,file=paste0(writePATH,'/MAnorm_noOL_ERR.txt'), sep = "\t", row.names = FALSE, col.names = T, append = F, quote= FALSE,na = "")
+  
+}                                
+               
+               # cat(error)
+
+
+}
 ############################################################################################################
 ## for spliced peaks select stats from peak with greatest read density
 SmplA_Peaks=merge(SmplA_Peaks,MAval[,c("ID",'P_value',paste0('normalized_read_density_in_',samplename), paste0('normalized_read_density_in_',background))],by='ID',all.x=T)
