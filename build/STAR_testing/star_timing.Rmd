@@ -1,0 +1,229 @@
+---
+title: "Run Statistics Report"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+params:
+  log_dir: "~/../../Volumes/Wolin/"
+---
+
+```{r include=FALSE}
+library("rjson")
+library(ggplot2)
+library(ggpubr)
+
+#global func
+`%notin%` <- Negate(`%in%`)
+
+```
+
+<!-- # Set params, output   -->
+```{r setup, echo=F, message=FALSE, warning=FALSE, eval=T, include=F,results=F,}
+#set log dir
+log_dir_v1=paste0(params$log_dir,"mES_fclip_2_YL_020922/log/")
+log_dir_v2=paste0(params$log_dir,"mES_fclip_2_YL_020922_v2.0/log/")
+
+# gather stats 
+# there may be more than one stats file
+stats_df=data.frame()
+tmp_df=data.frame()
+for (f in dir(log_dir_v1)){
+  if (grepl("202", f, fixed = TRUE)){
+    full_path=paste0(log_dir_v1,f)
+    files_in_path=dir(full_path)
+    tmp_df[nrow(stats_df)+1,"run_id"]=f
+    if ("snakemake.stats" %in% files_in_path){
+      tmp_df[nrow(tmp_df),"stats"]="Y"
+    } else{
+      tmp_df[nrow(tmp_df),"stats"]="N"
+    }
+  }
+}
+tmp_df$version="v1"
+stats_df=rbind(stats_df,tmp_df)
+stats_df
+
+tmp_df=data.frame()
+for (f in dir(log_dir_v2)){
+  if (grepl("202", f, fixed = TRUE)){
+    full_path=paste0(log_dir_v2,f)
+    files_in_path=dir(full_path)
+    tmp_df[nrow(tmp_df)+1,"run_id"]=f
+    if ("snakemake.stats" %in% files_in_path){
+      tmp_df[nrow(tmp_df),"stats"]="Y"
+    } else{
+      tmp_df[nrow(tmp_df),"stats"]="N"
+    }
+  }
+}
+tmp_df$version="v2"
+stats_df=rbind(stats_df,tmp_df)
+stats_df
+```
+
+```{r rule_parse, include=FALSE}
+#gather rule level data
+rules_df = data.frame()
+
+for (rowid in rownames(subset(stats_df,stats=="Y"))){
+  
+  #read in stats file
+  if (stats_df[rowid,"version"]=="v1"){
+    stats_file <- fromJSON(file = paste0(log_dir_v1,stats_df[rowid,"run_id"],"/snakemake.stats"))
+  } else{
+    stats_file <- fromJSON(file = paste0(log_dir_v2,stats_df[rowid,"run_id"],"/snakemake.stats"))
+  }
+
+  #Process Rules
+  rule_list = names(stats_file$rules)
+  
+  for (i in 1:length(rule_list)){
+    rules_df[nrow(rules_df)+1,"run_id"] = stats_df[rowid,"run_id"]
+    rules_df[nrow(rules_df),"rule_name"] = rule_list[i]
+    rules_df[nrow(rules_df),"version"] = stats_df[rowid,"version"]
+    rules_df[nrow(rules_df),"mean"] = stats_file$rules[rule_list[i]][[1]][[1]]
+    rules_df[nrow(rules_df),"min"] = stats_file$rules[rule_list[i]][[1]][[2]]
+    rules_df[nrow(rules_df),"max"] = stats_file$rules[rule_list[i]][[1]][[3]]
+  }
+
+}
+
+```
+
+```{r include=FALSE}
+#gather file level data
+files_df = data.frame()
+
+for (rowid in rownames(subset(stats_df,stats=="Y"))){
+  
+  #read in stats file
+  if (stats_df[rowid,"version"]=="v1"){
+    stats_file <- fromJSON(file = paste0(log_dir_v1,stats_df[rowid,"run_id"],"/snakemake.stats"))
+  } else{
+    stats_file <- fromJSON(file = paste0(log_dir_v2,stats_df[rowid,"run_id"],"/snakemake.stats"))
+  }
+
+  #Process Rules
+  files_complete = names(stats_file$files)
+
+  for (i in 1:length(files_complete)){
+    files_df[nrow(files_df)+1,"run_id"] = stats_df[rowid,"run_id"]
+    files_df[nrow(files_df),"file_name"] = strsplit(files_complete[i],"/")[[1]][length(strsplit(files_complete[i],"/")[[1]])]
+    files_df[nrow(files_df),"dir"] = strsplit(files_complete[i],"/")[[1]][length(strsplit(files_complete[i],"/")[[1]])-1]
+    files_df[nrow(files_df),"duration"] = stats_file$files[files_complete[i]][[1]][[3]]
+    files_df[nrow(files_df),"version"] = stats_df[rowid,"version"]
+    files_df[nrow(files_df),"cores"] = stats_file$files[files_complete[i]][[1]][[5]][[1]]
+    files_df[nrow(files_df),"nodes"] = stats_file$files[files_complete[i]][[1]][[5]][[2]]
+
+  }
+
+}
+
+#fix numeric
+files_df$duration=as.numeric(files_df$duration)
+
+#get sample and type
+for (i in rownames(files_df)){
+  files_df[i,"sampleid"] = strsplit(files_df[i,"file_name"],"[.]")[[1]][1]
+  files_df[i,"type"] = strsplit(gsub(".gz","",files_df[i,"file_name"]),"[.]")[[1]][2]
+}
+files_df$sampleid = gsub("_all|_unique|_annotation_final_report|_ALLreadPeaks|_UNIQUEreadPeaks|_barcode|_barcode_counts",
+                         "",files_df$sampleid)
+files_df$type = gsub("dedup|mapq_recalculated|SAF","",files_df$type)
+
+```
+
+The following provides boxplots for each rule, with min, mean, and maximum values provided. 
+- Quicker rules (A,B) are shown first, followed by slower rules (C).
+
+```{r echo=FALSE}
+plotting_rules<-function(rules_in,col_select){
+  # split df into long and short
+  long_df=subset(rules_in,get(col_select)>5000)
+  short_df=subset(rules_in,get(col_select)<5000)
+  
+  if (nrow(long_df)>1){
+    p1 = ggplot(long_df, aes(x = rule_name, ymin = min, lower=min, middle = mean, upper = max, ymax = max)) + 
+      geom_boxplot(stat="identity") + 
+      theme(axis.text.x = element_text(angle=90, hjust=1),
+            axis.title.x = element_blank())
+  }
+  
+  if (nrow(short_df)>1){
+    p2 = ggplot(short_df, aes(x = rule_name, ymin = min, lower=min, middle = mean, upper = max, ymax = max)) + 
+      geom_boxplot(stat="identity") + 
+      theme(axis.text.x = element_text(angle=90, hjust=1),
+            axis.title.x = element_blank())
+  }
+  
+  
+  if (nrow(long_df)>1 & nrow(short_df >1)){
+    pf = ggarrange(p1, p2,
+                labels = c("A", "B"),
+                ncol = 1, nrow = 2)
+  } else if (nrow(long_df)>1){
+    pf = ggarrange(p1,
+                labels = c("A"),
+                ncol = 1, nrow = 2)
+  } else if (nrow(short_df>1)){
+    pf = ggarrange(p2,
+                labels = c("A"),
+                ncol = 1, nrow = 2)
+  }
+    
+  pf = annotate_figure(pf, top = text_grob("Rule Times (seconds)", 
+                    face = "bold", size = 14))
+
+  return(pf)
+}
+
+plotting_rules(rules_df,"max")
+```
+
+The following provides boxplots for each rule by sample, with total duration per rule provided. 
+- Quicker rules (A) are shown first, followed by slower rules (B).
+
+```{r echo=FALSE}
+plotting_files<-function(rules_in,col_select,y_select,title_in){
+  # split df into long and short
+  long_df=subset(files_df,get(col_select)>5000)
+  short_df=subset(files_df,get(col_select)<5000)
+  
+  if (nrow(long_df)>1){
+    p1 = ggplot(long_df, aes(x=sampleid,y=get(y_select), fill=type)) +
+    geom_col(position = position_dodge()) + 
+    theme(axis.title.x = element_blank())
+  }
+  
+  if (nrow(short_df)>1){
+    p2 = ggplot(short_df, aes(x=sampleid,y=get(y_select), fill=type)) +
+    geom_col(position = position_dodge()) + 
+    theme(axis.title.x = element_blank())
+  }
+  
+  
+  if (nrow(long_df)>1 & nrow(short_df >1)){
+    pf = ggarrange(p1, p2,
+                labels = c("A", "B"),
+                ncol = 1, nrow = 2)
+  } else if (nrow(long_df)>1){
+    pf = ggarrange(p1,
+                labels = c("A"),
+                ncol = 1, nrow = 2)
+  } else if (nrow(short_df>1)){
+    pf = ggarrange(p2,
+                labels = c("A"),
+                ncol = 1, nrow = 2)
+  }
+    
+  pf = annotate_figure(pf, top = text_grob(title_in, 
+                    face = "bold", size = 14))
+
+  return(pf)
+}
+
+plotting_files(files_df,"duration","duration","File Time (seconds)")
+plotting_files(files_df,"nodes","nodes","Number of nodes")
+plotting_files(files_df,"cores","cores","Number of cores")
+
+```

@@ -1,0 +1,105 @@
+# Project Information
+site_name: iCLIP
+site_author: Samantha Sevilla, Ph.D.
+site_description: >-
+  iCLIP Pipeline
+# Repository
+repo_name: slsevilla/ODH-COVID19
+repo_url: https://github.com/RBL-NCI/iCLIP
+edit_uri: https://github.com/RBL-NCI/iCLIP/edit/main/docs/
+
+# Copyright
+copyright: Copyright &copy; 2022 CCBR
+
+# Configuration
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.top
+    - navigation.indexes
+    - toc.integrate 
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+    - scheme: slate
+      primary: red
+      accent: red
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+
+# Plugins
+plugins:
+  - search
+  - git-revision-date
+  - minify:
+      minify_html: true
+
+
+# Customization
+extra:
+  social:
+    - icon: fontawesome/solid/users
+      link: http://bioinformatics.cancer.gov
+    - icon: fontawesome/brands/github
+      link: https://github.com/CCBR
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/orgs/nciccbr/repositories
+  version:
+    provider: mike
+
+
+# Extensions
+markdown_extensions:
+  - markdown.extensions.admonition
+  - markdown.extensions.attr_list
+  - markdown.extensions.md_in_html
+  - markdown.extensions.def_list
+  - markdown.extensions.footnotes
+  - markdown.extensions.meta
+  - markdown.extensions.toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: squidfunk
+      repo: mkdocs-material
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Page Tree
+nav:
+  - Background : index.md
+  - Usage: 
+    - 1. Getting Started : iCLIP/getting-started.md
+    - 2. Preparing Files: iCLIP/preparing-files.md
+    - 3. Running the Pipeline: iCLIP/run.md
+    - 4. Expected Output: iCLIP/output.md
+    - 5. Running Example Data: iCLIP/test.md
+  - FAQ:
+    - Troubleshooting: iCLIP/troubleshooting.md
+    - Contributions: iCLIP/contributions.md

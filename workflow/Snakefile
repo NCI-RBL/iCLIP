@@ -51,6 +51,8 @@ min_count = config['mincount']
 nt_merge = str(config['ntmerge']) + 'nt'
 peak_id = config['peakid'].upper()
 DE_method = config['DEmethod'].upper()
+manorm_w = config['MANormWidth']
+manorm_d = config['MNormDistance']
 sample_overlap = int(config['sampleoverlap'])
 pval = config['pval']
 fc = config['fc']
@@ -91,10 +93,6 @@ testing_option = config['testing_option']
 ###############################################################
 # set parameters
 ###############################################################
-# manorm parameters
-manorm_w = config['manorm_w'] if 'manorm_w' in config else "50"
-manorm_d = config['manorm_d'] if 'manorm_d' in config else "25"
-
 #define threads
 with open(join(out_dir,'config','cluster_config.yaml')) as file:
     CLUSTER = yaml.load(file, Loader=yaml.FullLoader)
@@ -124,11 +122,11 @@ annotation_config = join(out_dir,'config','annotation_config.txt')
 
 #determine which umi separator to use
 if(multiplex_flag == 'Y' or testing_option == "Y"):
-    #iCount addes rbc: to all demux files;
+    #demultiplexing addes rbc: to all demux files;
     umi_sep="rbc:"
 else:
     # external demux uses an _
-    umi_sep="_"
+    umi_sep=config['umiSeparator']
 
 #convert splice junction selection
 if (sp_junc=="Y"):
@@ -191,7 +189,6 @@ def CreateProjLists(dict_m,dict_s):
 def get_fq_names(wildcards):
     #example: {fastq_dir}/{filename}.fastq.gz
     fq = join(fastq_dir,multiplex_dict[wildcards.mp])
-    print(fq)
     return(fq)
 
 # create command to move each fastq file from source location to pre-processing folder
@@ -200,7 +197,7 @@ def nondemux_cmd(wildcards):
 
   for k,v in multiplex_dict.items():
     for k2,v2 in samp_dict[k].items():
-      cmd_line = 'cp ' + fastq_dir + v + ' ' + out_dir + k + '/02_preprocess/' + k2 + '.fastq.gz; ' + cmd_line
+      cmd_line = 'cp ' + fastq_dir + v + ' ' + out_dir + k + '/02_preprocess/ultraplex_demux_' + k2 + '.fastq.gz; ' + cmd_line
   
   return(cmd_line)
 
@@ -912,7 +909,6 @@ rule dedup:
         rname='09_dedup',
         umi = umi_sep,
         base = '{sp}.unmasked',
-        mflag=multiplex_flag,
     envmodules:
         config['umitools'],
         config['samtools']
@@ -927,37 +923,13 @@ rule dedup:
         tmp_dir="/lscratch/${{SLURM_JOB_ID}}"
         export tmp_dir
  
-        # Resets the UMI separator to correct value
-        delimeter="{params.umi}"
-        if [ '{params.mflag}' == 'N' ]; then
-            # Prevents a premature SIGPIPE to samtools,
-            # head -1 will result in a 141 return code
-            delimeter=$(samtools view {input.f1} \\
-                | head -1 \\
-                | cut -f1 \\
-                | awk -F ':' '{{print $NF}}' \\
-                | awk '$0 ~ /_/ {{print}}')
-            # Check for presence of underscore
-            if [[ -n "${{delimeter}}" ]]; then
-                # String contains an underscore,
-                # Split by underscore and grab
-                # the last string as UMI
-                delimeter=$(echo "${{delimeter}}" \\
-                    | awk -F '_' '{{print $NF}}')
-            else
-                # Does not contain an underscore,
-                # reset the delimeter to a colon.
-                delimeter=":"
-            fi
-        fi
-
         # Run UMI Tools Deduplication
-        echo "Using the following UMI seperator: ${{delimeter}}"
+        echo "Using the following UMI seperator: {params.umi}"
         umi_tools dedup \\
             -I {input.f1} \\
             --method unique \\
             --multimapping-detection-method=NH \\
-            --umi-separator=${{delimeter}} \\
+            --umi-separator={params.umi} \\
             -S ${{tmp_dir}}/{params.base}.bam \\
             --log2stderr;
         
@@ -1179,9 +1151,9 @@ rule project_annotations:
     envmodules:
         config['R']
     output:
-        anno = temp(join(out_dir,'04_annotation', '01_project','annotations.txt')),
-        nc_anno = temp(join(out_dir,'04_annotation', '01_project','ncRNA_annotations.txt')),
-        ref_gencode = temp(join(out_dir,'04_annotation', '01_project','ref_gencode.txt')),
+        anno = join(out_dir,'04_annotation', '01_project','annotations.txt'),
+        nc_anno = join(out_dir,'04_annotation', '01_project','ncRNA_annotations.txt'),
+        ref_gencode = join(out_dir,'04_annotation', '01_project','ref_gencode.txt'),
     shell:
         """
         Rscript {params.script} \\
@@ -1283,7 +1255,7 @@ else:
             total = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_totalCounts.txt'),
             anno = rules.project_annotations.output.anno
         params:
-            rname = '14_peak_annotations',
+            rname = '14_peak_junctions,
             script = join(source_dir,'workflow','scripts','05_Anno_junctions.R'),
             functions = join(source_dir,'workflow','scripts','05_peak_annotation_functions.R'),
             bashscript = join(source_dir,'workflow','scripts','05_get_site2peak_lookup.sh'),
@@ -1347,7 +1319,8 @@ rule peak_Transcripts:
     '''
     input:
         peaks = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
-        anno = rules.project_annotations.output.anno
+        anno = rules.project_annotations.output.anno,
+        refgen = rules.project_annotations.output.ref_gencode
     params:
         rname = '15_peak_Transcripts',
         script = join(source_dir,'workflow','scripts','05_Anno_Transcript.R'),
@@ -1405,7 +1378,8 @@ rule peak_ExonIntron:
     '''
     input:
         peaks = join(out_dir,'04_annotation', '02_peaks', '{sp}_' + peak_id + 'readPeaks_AllRegions.txt'),
-        anno = rules.project_annotations.output.anno
+        anno = rules.project_annotations.output.anno,
+        refgen = rules.project_annotations.output.ref_gencode
     params:
         rname = '16_peak_ExonIntron',
         script = join(source_dir,'workflow','scripts','05_Anno_ExonIntron.R'),
@@ -1597,7 +1571,7 @@ rule annotation_report:
         peak_in = join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),
     params:
         rname = "19_annotation_output",
-        R = join(source_dir,'workflow','scripts','10_annotation.Rmd'),
+        R = join(source_dir,'workflow','scripts','06_annotation.Rmd'),
         sp = "{sp}",
         ref_sp = species_ref,
         r_depth= min_count,

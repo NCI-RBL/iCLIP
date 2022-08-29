@@ -19,21 +19,24 @@ contrastManifest: "OUTPUT_DIR/manifests/contrasts.tsv"
 ########################################################################################
 #user parameters
 #########################################################################################
-multiplexflag: "N" #whether samples are multiplexed ["Y","N"]
-mismatch: 1 #if multiplexed, number of bp mismatches allowed in demultiplexing [1,2,3]
+multiplexflag: "Y" #whether samples are multiplexed ["Y","N"]
+umiSeparator: "rbc:" #required for nondemultiplexed samples to determine delimiter for deduplication [":", "_", "rbc:"]
+mismatch: 1 #required for multiplexed samples, number of bp mismatches allowed in demultiplexing [1,2,3]
 reference: "mm10" #reference organism ["hg38","mm10"]
-filterlength: 20 #minimum read length to include in analysis [any int >20]; this is also the novoalign l parameter
-phredQuality: 20 #The minimum quality score for 3’ end trimming
-includerRNA: "Y" #if spliceaware, include refseq rRNA's in annotations ["Y", "N"]
-splicejunction: "Y" #if spliceaware Y, include splice junctions in peak calls for DE_METHOD MANORM or DIFFBIND ["Y", "N"]
-AnnoAnchor: "max_total" #Annotations for spliced peaks will be based on either 5' most region or region with max reads ["max","5prime"]
+filterlength: 20 #minimum read length to include in analysis [any int >20]
+phredQuality: 20 #minimum quality score for 3’ end trimming
+includerRNA: "Y" #whether to include refseq rRNA's in annotations ["Y", "N"]
+splicejunction: "Y" #whether to include splice junctions in peak calls for DE_METHOD MANORM or DIFFBIND ["Y", "N"]
+AnnoAnchor: "max_total" #whether annotations for spliced peaks will be based on either 5' most region or region with max reads ["max","5prime"]
 mincount: 3 #minimum number of reads to count as a peak [1,2,3]
 ntmerge: 10 #minimum distance of nucleotides to merge peaks [any integer >: 1, default 10]
 peakid: "ALL" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
-DEmethod: "none" #choose DE method ["none", "manorm", "diffbind"]
+DEmethod: "none" #DE method ["none", "manorm", "diffbind"]
+MANormWidth: 50 #Width of window to calculate read density. [any integer >1; default 50]
+MNormDistance: 25 #Summit-to-summit distance cutoff for common peaks. [ any integer >1; default MANormWidth/2]
 sampleoverlap: 1 #if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted [>1]
-pval: 0.005 #if DEmethod, pval cutoff for significance
-fc: 1 #if DEmethod, fold change cut off for significance
+pval: 0.005 #if DEmethod DIFFBIND or MANNORM, pval cutoff for significance
+fc: 1 #if DEmethod DIFFBIND or MANNORM, fold change cut off for significance
 
 #########################################################################################
 # STAR parameters
