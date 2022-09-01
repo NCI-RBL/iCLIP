@@ -409,7 +409,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     
   cat > ${output_dir}/submit_script.sbatch << EOF
 #!/bin/bash
-#SBATCH --job-name="iCLIP_%j"
+#SBATCH --job-name=iCLIP_%j
 #SBATCH --mem=40g
 #SBATCH --gres=lscratch:200
 #SBATCH --time=10-00:00:00
