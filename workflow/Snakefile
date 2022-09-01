@@ -58,6 +58,7 @@ pval = config['pval']
 fc = config['fc']
 
 # STAR parameters
+star_bam_limit = "50297600554"
 star_align_type = config['alignEndsType']
 star_align_intron = config['alignIntronMax']
 star_align_sjdb = config['alignSJDBoverhangMin']
@@ -707,6 +708,7 @@ rule star:
         s_asj = star_align_sj,
         s_transc = star_align_transc,
         s_windows = star_align_windows,
+        s_bam_limit = star_bam_limit,
         s_match = star_filt_match,
         s_readmatch = star_filt_readmatch,
         s_mismatch = star_filt_mismatch,
@@ -757,6 +759,7 @@ rule star:
         --alignSJoverhangMin {params.s_asj} \
         --alignTranscriptsPerReadNmax {params.s_transc} \
         --alignWindowsPerReadNmax {params.s_windows} \
+        --limitBAMsortRAM {params.s_bam_limit} \
         --outFilterMatchNmin {params.s_match} \
         --outFilterMatchNminOverLread {params.s_readmatch} \
         --outFilterMismatchNmax {params.s_mismatch} \
