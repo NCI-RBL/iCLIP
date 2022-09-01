@@ -1258,7 +1258,7 @@ else:
             total = join(out_dir,'03_peaks','03_counts','{sp}_' + peak_id + 'readpeaks_totalCounts.txt'),
             anno = rules.project_annotations.output.anno
         params:
-            rname = '14_peak_junctions,
+            rname = '14_peak_junctions',
             script = join(source_dir,'workflow','scripts','05_Anno_junctions.R'),
             functions = join(source_dir,'workflow','scripts','05_peak_annotation_functions.R'),
             bashscript = join(source_dir,'workflow','scripts','05_get_site2peak_lookup.sh'),
