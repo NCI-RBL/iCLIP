@@ -409,7 +409,7 @@ elif [[ $pipeline = "cluster" ]] || [[ $pipeline = "local" ]]; then
     
   cat > ${output_dir}/submit_script.sbatch << EOF
 #!/bin/bash
-#SBATCH --job-name="RBLiCLIP"
+#SBATCH --job-name="iCLIP_%j"
 #SBATCH --mem=40g
 #SBATCH --gres=lscratch:200
 #SBATCH --time=10-00:00:00
@@ -435,7 +435,7 @@ cd \$SLURM_SUBMIT_DIR
     --cluster \
     "sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} \
     -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} \
-    --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} --mail-type=BEGIN,END,FAIL\
+    --job-name={params.rname} --output=${output_dir}/log/${log_time}/{params.rname}{cluster.output} \
     --error=${output_dir}/log/${log_time}/{params.rname}{cluster.error}" \
     2>&1|tee ${output_dir}/log/${log_time}/snakemake.log
 
