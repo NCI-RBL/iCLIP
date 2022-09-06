@@ -22,7 +22,7 @@ contrastManifest: "OUTPUT_DIR/manifests/contrasts.tsv"
 multiplexflag: "Y" #whether samples are multiplexed ["Y","N"]
 umiSeparator: "rbc:" #required for nondemultiplexed samples to determine delimiter for deduplication [":", "_", "rbc:"]
 mismatch: 1 #required for multiplexed samples, number of bp mismatches allowed in demultiplexing [1,2,3]
-reference: "mm10" #reference organism ["hg38","mm10"]
+reference: "" #reference organism ["hg38","mm10"]
 filterlength: 20 #minimum read length to include in analysis [any int >20]
 phredQuality: 20 #minimum quality score for 3’ end trimming
 includerRNA: "Y" #whether to include refseq rRNA's in annotations ["Y", "N"]
