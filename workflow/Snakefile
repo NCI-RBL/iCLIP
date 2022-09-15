@@ -730,7 +730,8 @@ rule star:
         s_anchor = star_win_anchor,
         out_prefix = '{sp}_'
     envmodules:
-        config['star']
+        config['star'],
+        config['samtools']
     threads: getthreads("star")
     output:
         unmapped = join(out_dir,'01_preprocess','02_alignment','01_unmapped','{sp}.unmapped.out'),
