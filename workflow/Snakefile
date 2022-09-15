@@ -744,6 +744,7 @@ rule star:
         tmp_dir="/lscratch/${{SLURM_JOB_ID}}"
         export tmp_dir
 
+        # STAR cannot handle sorting large files - allow samtools to sort output files
         STAR \
         --runMode alignReads \
         --genomeDir {params.s_index} \
@@ -752,7 +753,7 @@ rule star:
         --readFilesIn {input.f1} \
         --outFileNamePrefix $tmp_dir/{params.out_prefix} \
         --outReadsUnmapped Fastx \
-        --outSAMtype BAM SortedByCoordinate \
+        --outSAMtype BAM Unsorted \
         --alignEndsType {params.s_atype} \
         --alignIntronMax {params.s_intron} \
         --alignSJDBoverhangMin {params.s_sjdb} \
@@ -779,6 +780,9 @@ rule star:
         --seedPerWindowNmax {params.s_wind} \
         --sjdbScore {params.s_sj} \
         --winAnchorMultimapNmax {params.s_anchor}
+
+        # sort file
+        samtools sort -m 80G -T $tmp_dir $tmp_dir/${params.out_prefix}Aligned.out.bam -o $tmp_dir/${params.out_prefix}Aligned.sortedByCoord.out.bam
 
         # move STAR files and final log file to output
         mv $tmp_dir/{params.out_prefix}Aligned.sortedByCoord.out.bam {output.bam}
