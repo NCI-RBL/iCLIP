@@ -37,6 +37,8 @@ MNormDistance: 25 #Summit-to-summit distance cutoff for common peaks. [ any inte
 sampleoverlap: 1 #if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted [>1]
 pval: 0.005 #if DEmethod DIFFBIND or MANNORM, pval cutoff for significance
 fc: 1 #if DEmethod DIFFBIND or MANNORM, fold change cut off for significance
+single_qc: 95 #maximum threshold for unmampped reads in any single sample
+proj_qc: 50 #maximum threshold for unmapped reads across average of all project samples
 
 #########################################################################################
 # STAR parameters
