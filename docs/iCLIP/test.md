@@ -2,7 +2,7 @@
 Welcome to the iCLIP Pipeline Tutorial!
 
 ## 5.1 Getting Started
-Review the information on the [Getting Started](https://rbl-nci.github.io/iCLIP/iCLIP/getting-started/) for a complete overview the pipeline. The tutorial below will use test data available on NIH Biowulf HPC only. All example code will assume you are running v2.1 of the pipeline, from the shared RBL_NCI storage directory, using test_1 data.
+Review the information on the [Getting Started](https://rbl-nci.github.io/iCLIP/iCLIP/getting-started/) for a complete overview the pipeline. The tutorial below will use test data available on NIH Biowulf HPC only. All example code will assume you are running v2.2 of the pipeline, from the shared RBL_NCI storage directory, using test_1 data.
 
 A. Change working directory to the iCLIP repository
 ```
@@ -10,7 +10,7 @@ A. Change working directory to the iCLIP repository
 cd /data/RBL_NCI/Pipelines/iCLIP/[version number]
 
 # example
-cd /data/RBL_NCI/Pipelines/iCLIP/v2.1
+cd /data/RBL_NCI/Pipelines/iCLIP/v2.2
 ```
 
 B. Initialize Pipeline
@@ -28,7 +28,7 @@ A. Four different test data sets are available, depending on the need. These inc
 - test_4: DIFFBIND test (multiplex_flag="N", splice_aware="Y", DE_method="DIFFBIND")
 
 B. Pull the test data to your output directory
-NOTE: Test data is currently available for v1.8, v2.0, v2.1. Please contact samantha.sevilla@nih.gov to create other test data.
+NOTE: Test data is currently available for v1.8, v2.0, v2.1, v2.2. Please contact samantha.sevilla@nih.gov to create other test data.
 
 ```
 # general format
@@ -38,11 +38,11 @@ sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh \
     -s /path/to/source/dir
     -o /path/to/output/dir
 
-# example running test_1, v2.1:
+# example running test_1, v2.2:
 sh /data/CCBR_Pipeliner/iCLIP/test/run_test.sh \
     -t test_1 \
-    -v v2.1 \
-    -s /data/RBL_NCI/Pipelines/iCLIP/v2.1 \
+    -v v2.2 \
+    -s /data/RBL_NCI/Pipelines/iCLIP/v2.2 \
     -o /path/to/output/dir 
 ```
 
