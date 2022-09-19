@@ -56,8 +56,8 @@ manorm_d = config['MNormDistance']
 sample_overlap = int(config['sampleoverlap'])
 pval = config['pval']
 fc = config['fc']
-single_qc = config['single_qc_threshold'],
-proj_qc = config['project_qc_threshold']
+single_qc_threshold = config['single_qc_threshold'],
+project_qc_threshold = config['project_qc_threshold']
 
 # STAR parameters
 star_bam_limit = "50297600554"
@@ -874,7 +874,7 @@ if (multiplex_flag == 'Y'):
             rname = "08_qc_troubleshoot",
             R = join(source_dir,'workflow','scripts','03_qc_report.Rmd'),
             qc = join(source_dir,'workflow','scripts','03_qc_unmapped_check.sh'),
-            log_dir = join(out_dir,'log','STAR')
+            log_dir = join(out_dir,'log','STAR'),
             single_qc = single_qc_threshold,
             proj_qc = project_qc_threshold
         envmodules:
@@ -886,7 +886,7 @@ if (multiplex_flag == 'Y'):
             """
             Rscript -e 'library(rmarkdown); \
             rmarkdown::render("{params.R}",
-                output_file = "{output.o1}", \
+                output_file = "{output.html}", \
                 params= list(log_list = "{input.log_list}", \
                     b_txt = "{input.txt_bc}"))'
 
@@ -915,7 +915,7 @@ else:
             """
             Rscript -e 'library(rmarkdown); \
             rmarkdown::render("{params.R}",
-                output_file = "{output.o1}", \
+                output_file = "{output.html}", \
                 params= list(log_list = "{input.log_list}"))'
             
             sh {params.qc} {params.log_dir} {params.single_qc} {params.proj_qc}
