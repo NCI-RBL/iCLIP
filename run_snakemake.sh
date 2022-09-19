@@ -511,6 +511,8 @@ elif [[ $pipeline = "DAG" ]]; then
   -s "${output_dir}/config/Snakefile" \
   --configfile ${output_dir}/config/snakemake_config.yaml \
   --rulegraph | dot -Tpdf > ${output_dir}/log/dag.pdf
+
+  echo "DAG is available at ${output_dir}/log/dag.pdf"
 ######################## Report #######################
 elif [[ $pipeline = "report" ]]; then
   echo "------------------------------------------------------------------------"
