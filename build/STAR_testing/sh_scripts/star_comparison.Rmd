@@ -1,0 +1,37 @@
+---
+title: "Untitled"
+author: "Samantha Sevilla"
+date: '2022-06-23'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+stats_df=read.csv("~/../../Volumes/data/star/logs/stats.csv")
+```
+
+```{r}
+for (sid in unique(stats_df$sample_id)){
+  for (did in unique(stats_df$descrip)){
+    p = subset(stats_df, sample_id==sid & descrip==did) %>%
+      ggplot(aes(x=descrip, y=val)) +
+      facet_grid(~seed)+
+      geom_bar(stat="identity", fill="steelblue")+
+      geom_text(aes(label=val), vjust=1.6, color="white", size=3.5)+
+      xlab(did)+
+      theme_minimal() + 
+      theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank() 
+        )
+    print(p)
+  }
+}
+
+```
