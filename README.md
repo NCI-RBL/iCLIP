@@ -4,7 +4,10 @@
 
 An RNA Biology pipeline to characterize protein-RNA interactions.
 
-### 1. Getting Started
+![iCLIPv2 2](https://user-images.githubusercontent.com/20726305/191592126-7fc6f339-657c-43bf-806d-ba5aa2a082a0.png)
+
+
+### 1. Getting Started!
 
 If you use this workflow in a paper, don't forget to give credits to the authors by citing the URL of this (original) repository and, if available, its DOI (tba later!).
 
