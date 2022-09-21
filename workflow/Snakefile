@@ -785,7 +785,7 @@ rule star:
         --winAnchorMultimapNmax {params.s_anchor}
 
         # sort file
-        samtools sort -m 80G -T $tmp_dir $tmp_dir/${params.out_prefix}Aligned.out.bam -o $tmp_dir/${params.out_prefix}Aligned.sortedByCoord.out.bam
+        samtools sort -m 80G -T $tmp_dir $tmp_dir/{params.out_prefix}Aligned.out.bam -o $tmp_dir/{params.out_prefix}Aligned.sortedByCoord.out.bam
 
         # move STAR files and final log file to output
         mv $tmp_dir/{params.out_prefix}Aligned.sortedByCoord.out.bam {output.bam}
