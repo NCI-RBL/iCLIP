@@ -59,8 +59,8 @@ outFilterScoreMin: 0 #alignment will be output only if its score is higher than 
 outFilterType: "Normal" #type of filtering ["Normal", "BySJout"]
 outSAMattributes: "All" #a string of desired SAM attributes, in the order desired for the output SAM
 outSAMunmapped: "None" #output of unmapped reads in the SAM format ["None", "Within"]
-outSJfilterCountTotalMin: "3 1 1 1" #minimum total (multi-mapping+unique) read count per junction for: (1) non-canonical motifs, (2) GT/AG and CT/AC motif, (3) GC/AG and CT/GC motif, (4) AT/AC and GT/AT motif
-outSJfilterOverhangMin: "30 12 12 12" #minimum overhang length for splice junctions on both sides for: (1) non-canonical motifs, (2) GT/AG and CT/AC motif, (3) GC/AG and CT/GC motif, (4) AT/AC and GT/AT motif
+outSJfilterCountTotalMin: "3,1,1,1" #minimum total (multi-mapping+unique) read count per junction for: (1) non-canonical motifs, (2) GT/AG and CT/AC motif, (3) GC/AG and CT/GC motif, (4) AT/AC and GT/AT motif
+outSJfilterOverhangMin: "30,12,12,12" #minimum overhang length for splice junctions on both sides for: (1) non-canonical motifs, (2) GT/AG and CT/AC motif, (3) GC/AG and CT/GC motif, (4) AT/AC and GT/AT motif
 outSJfilterReads: "All" #which reads to consider for collapsed splice junctions output ["All", "Unique"]
 seedMultimapNmax: 10000 #only pieces that map fewer than this value are utilized in the stitching procedure [int>0]
 seedNoneLociPerWindow: 20 #max number of one seed loci per window [int>0]

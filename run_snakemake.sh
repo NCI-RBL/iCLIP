@@ -34,6 +34,11 @@ fi
 #########################################################
 # functions
 #########################################################
+load_modules(){
+  if [[ $1 =~ "python" ]]; then module load python/3.8; fi
+  if [[ $1 =~ "snakemake" ]]; then module load snakemake/7.19.1; fi
+  if [[ $1 =~ "graphviz" ]]; then module load graphviz/2.40; fi
+}
 
 #handle yaml file
 parse_yaml() {
@@ -102,7 +107,7 @@ check_writeaccess(){
 # 1) a detailed error file
 check_manifests(){
 
-  module load python
+  load_modules "python"
   
   # set args
   py_script_in="$1"
@@ -457,7 +462,8 @@ sbatch ${output_dir}/submit_script.sbatch
   else
     #remove iCount dir if it already exist - will cause error in demux
     if [ -d "/tmp/iCount" ]; then rm -r "/tmp/iCount/"; fi
-    module load snakemake
+    
+    load_modules "snakemake"
 
     snakemake \
     -s ${output_dir}/log/${log_time}/00_Snakefile \
@@ -473,7 +479,7 @@ sbatch ${output_dir}/submit_script.sbatch
 elif [[ $pipeline = "unlock" ]]; then
   echo "------------------------------------------------------------------------"
 	echo "*** STARTING Unlock ***"
-  module load snakemake
+  load_modules "snakemake"
 
   # Change directories before running any important
   # snakemake commands, ensures the .snakemake 
@@ -502,7 +508,7 @@ elif [[ $pipeline = "git" ]]; then
 elif [[ $pipeline = "DAG" ]]; then
   echo "------------------------------------------------------------------------"
 	echo "*** STARTING DAG ***"
-  module load snakemake graphviz
+  load_modules "snakemake graphviz"
 
   # Change directories before running any important
   # snakemake commands, ensures the .snakemake 
@@ -534,7 +540,7 @@ elif [[ $pipeline = "cleanup" ]]; then
   echo "------------------------------------------------------------------------"
 	echo "*** STARTING Cleanup ***"
   
-  module load snakemake
+  load_modules "snakemake"
 
   # Change directories before running any important
   # snakemake commands, ensures the .snakemake 
@@ -552,7 +558,8 @@ elif [[ $pipeline = "cleanup" ]]; then
 else
   echo "------------------------------------------------------------------------"
 	echo "*** STARTING DryRun ***"
-  module load snakemake
+  
+  load_modules "snakemake"
 
   ####################### Preparation
   #parse config
