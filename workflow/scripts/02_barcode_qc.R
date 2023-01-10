@@ -49,6 +49,15 @@ colnames(df_counts)=c("counts","barcode")
 #create list of expected barcodes
 bc_exp=gsub("N","",subset(df_samples,multiplex==mpid)$barcode)
 
+# determine the length of the barcodes expected and set number of barcodes observed
+if (length(bc_exp)<10){
+  number_of_barcodes_observed=10
+} else if (length(bc_exp)<20) {
+  number_of_barcodes_observed=20
+} else{
+  number_of_barcodes_observed=as.numeric(length(bc_exp))+10
+}
+
 #Determine if the variance between any two barcodes are above the threshold of mismatches
 string.diff.ex<-function(a="ATTCGAN",b="attTGTT",exclude=c("n","N","?"),ignore.case=TRUE){
   if(nchar(a)!=nchar(b)) stop("Lengths of input strings differ. Please check your input.")
@@ -135,13 +144,13 @@ for (rowid in 1:nrow(df_counts)){
 df_counts_merged = aggregate(counts~barcode_id, df_counts, sum)
 
 #sort and subset
-df_counts_merged = df_counts_merged[order(df_counts_merged$counts,decreasing = TRUE),][1:10,]
+df_counts_merged = df_counts_merged[order(df_counts_merged$counts,decreasing = TRUE),][1:number_of_barcodes_observed,]
 
 #compare observed bc list with expected bc list, write output to text
 diff_lis=setdiff(paste0("*",bc_exp),df_counts_merged$barcode_id)
 
-# if the expected list matches with top 10, print text, otherwise print error messages
-# if the expected list matches with top 10, print plot
+# if the expected list matches with top number_of_barcodes_observed, print text, otherwise print error messages
+# if the expected list matches with top number_of_barcodes_observed, print plot
 if(length(diff_lis)==0){
   print("Barcodes observed pass QC")
   #print text file
