@@ -514,6 +514,7 @@ if (multiplex_flag == 'Y'):
         SIM_iCLIP_S1    Control_Clip    CNTRL       NNNCGGANN   AGATCGGAAGAGCGGTTCAG
         """
         input:
+            barcode_qc = rules.qc_barcode.output.txt,
             f1 = get_fq_names,
             barcodes = join(out_dir,'manifests','{mp}_barcode_manifest.txt')
         params:
@@ -784,7 +785,7 @@ rule star:
         --sjdbScore {params.s_sj} \
         --winAnchorMultimapNmax {params.s_anchor}
 
-        # sort file
+        # sort file\
         samtools sort -m 80G -T $tmp_dir $tmp_dir/{params.out_prefix}Aligned.out.bam -o $tmp_dir/{params.out_prefix}Aligned.sortedByCoord.out.bam
 
         # move STAR files and final log file to output
