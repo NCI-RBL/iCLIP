@@ -194,7 +194,7 @@ check_manifest_qc(){
           echo "The barcode manifest check FAILED. Check "${bc_file}" for more information."
           exit 1
         else
-          echo "-- barcode check completed successfully (sample $mp_id)"
+          echo "-- barcode manifest check completed successfully (sample $mp_id)"
         fi
     done
   fi
