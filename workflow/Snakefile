@@ -41,6 +41,7 @@ contrast_manifest = config['contrastManifest']
 # user parameters
 multiplex_flag = config['multiplexflag'].capitalize()
 mismatch = config['mismatch']
+barcode_qc_flag = config['barcode_qc_flag']
 species_ref = config['reference']
 filter_length = config['filterlength']
 phredQuality = config['phredQuality']
@@ -408,7 +409,7 @@ rule all:
         # # qc barcode
         # expand(join(out_dir,'{mp}','01_qc_post','{mp}_barcode_counts.txt'),mp=mp_list),
         # expand(join(out_dir,'{mp}','01_qc_post','{mp}_barcode.png'),mp=mp_list),
-        # expand(join(out_dir,'{mp}','01_qc_post','{mp}_barcode.txt'),mp=mp_list),
+        # expand(join(out_dir,'{mp}','01_qc_post','{mp}_barcode_passed.txt'),mp=mp_list),
 
         # # demux OR nondemux
         # expand(join(out_dir,'{mp}', '02_preprocess','ultraplex_demux_5bc_no_match.fastq.gz'), mp=samp_dict.keys()),
@@ -462,9 +463,11 @@ else:
 if (multiplex_flag == 'Y'):
     rule qc_barcode:
         """
-        generate counts of barcodes and output to text file
-        will run python script that determines barcode expected and generates mismatches based on input
-        output barplot with top barcode counts
+        if the flag in the  config file is set to process, barcodes will be reviewed to ensure uniformtiy amongst samples.
+        - generate counts of barcodes and output to text file
+        - will run python script that determines barcode expected and generates mismatches based on input
+        - output barplot with top barcode counts
+        If it's set to IGNORE, then it will skip this processing and create the needed QC file
         """
         input:
             fq = get_fq_names,
@@ -473,30 +476,38 @@ if (multiplex_flag == 'Y'):
             memG = getmemG_80perc("qc_barcode"),
             R = join(source_dir,'workflow', 'scripts', '02_barcode_qc.R'),
             base = join(out_dir,'{mp}','01_qc_post'),
+            qc_dir=join(out_dir,'qc')
             mm = mismatch,
             bc_len = barcode_length,
             start_pos = 6 if barcode_length==6 else 4
+            b_qc_flag=barcode_qc_flag
         threads: getthreads("qc_barcode")
         envmodules:
             config['R'],
         output:
             counts = temp(join(out_dir,'{mp}','01_qc_post','{mp}_barcode_counts.txt')),
             png = temp(join(out_dir,'{mp}','01_qc_post','{mp}_barcode.png')),
-            txt = temp(join(out_dir,'{mp}','01_qc_post','{mp}_barcode.txt'))
+            txt = join(out_dir,'{mp}','01_qc_post','{mp}_barcode_passed.txt')
         shell:
             """
             set -exo pipefail
-            gunzip -c  {input.fq} \\
-                | awk 'NR%4==2 {{print substr($0, {params.start_pos}, {params.bc_len});}}' \\
-                | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=/lscratch/${{SLURM_JOB_ID}} -n \\
-                | uniq -c > {output.counts};
-            
-            Rscript {params.R} --sample_manifest {sample_manifest} \\
-                --multiplex_manifest {multiplex_manifest} \\
-                --barcode_input {output.counts} \\
-                --mismatch {params.mm} \\
-                --mpid {wildcards.mp} \\
-                --output_dir {params.base}
+
+            if [[ {params.b_qc_flag == "PROCESS" ]]; then
+                gunzip -c  {input.fq} \\
+                    | awk 'NR%4==2 {{print substr($0, {params.start_pos}, {params.bc_len});}}' \\
+                    | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=/lscratch/${{SLURM_JOB_ID}} -n \\
+                    | uniq -c > {output.counts};
+                
+                Rscript {params.R} --sample_manifest {sample_manifest} \\
+                    --multiplex_manifest {multiplex_manifest} \\
+                    --barcode_input {output.counts} \\
+                    --mismatch {params.mm} \\
+                    --mpid {wildcards.mp} \\
+                    --output_dir {params.base} \\
+                    --qc_dir {params.base}
+            else
+                echo "Barcode QC checking was skipped for this run" > {output.txt}
+            fi
             """
 
     rule demultiplex:
@@ -869,7 +880,7 @@ if (multiplex_flag == 'Y'):
         """
         input:
             log_list = expand(join(out_dir,'log','STAR','{sp}.log'),sp=sp_list),
-            txt_bc = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode.txt'),mp=samp_dict.keys()),
+            txt_bc = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode_passed.txt'),mp=samp_dict.keys()),
             png_bc = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())
         params:
             rname = "08_qc_troubleshoot",
