@@ -32,12 +32,12 @@ mpid = args$mpid
 #test input
 testing="N"
 if(testing=="Y"){
-  sample_manifest  = "~/../../Volumes/CCBR_Pipeliner/iCLIP/test/sample_manifests/sample_mm10_one.tsv"
-  multiplex_manifest = "~/../../Volumes/CCBR_Pipeliner/iCLIP/test/multiplex_manifests/multiplex_mm10_one.tsv"
-  barcode_input = "~/../../Volumes/sevillas2-1/test.barcode_counts.txt"
-  output_dir = "~/../../Volumes/sevillas2-1"
+  sample_manifest  = "~/../../Volumes/RBL_NCI/Wolin/mov10_par_Y_r2_01062023/manifests/samples.tsv"
+  multiplex_manifest = "~/../../Volumes/RBL_NCI/Wolin/mov10_par_Y_r2_01062023/manifests/multiplex.tsv"
+  barcode_input = "~/../../Volumes/RBL_NCI/Wolin/mov10_par_Y_r2_01062023/sam_testing/barcode_counts.txt"
+  output_dir = "~/../../Volumes/RBL_NCI/Wolin/mov10_par_Y_r2_01062023/sam_testing"
   mismatch = 1
-  mpid="test_1"
+  mpid="CLIP"
 }
 
 #Read sample/multiplex manifests
@@ -90,9 +90,7 @@ for (rowid in rownames(barcode_combo)){
 
 #if there were errors, print message and exit
 if(error_message!=""){
-  cat(paste0("The number of differences between barocdes is less than, or equal to, the number of mismatches
-in the following barcodes:\n",error_message))
-  #exit()
+  cat(paste0("The number of differences between barocdes is less than, or equal to, the number of mismatches in the following barcodes:\n",error_message))
 } else{
   print("Barcode schema passes QC")
 }
