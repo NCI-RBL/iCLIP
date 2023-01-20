@@ -220,6 +220,28 @@ def rename_cmd(wildcards):
         cmd = 'mv ' + source + ' ' + destination + '; ' + cmd
     return(cmd)
 
+def get_input_qc_troubleshoot(wildcards):
+    print("HERE")
+    d=dict()
+
+    l = "log_list"
+    t = "txt_bc"
+    p = "png_bc"
+
+    if (multiplex_flag == 'Y'):
+        print("m flag on")
+        d[l] = expand(join(out_dir,'log','STAR','{sp}.log'),sp=sp_list),
+        d[t] = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode_passed.txt'),mp=samp_dict.keys())
+        if (barcode_qc_flag == "PROCESS"):
+            print("b flag on")
+            d[p] = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())
+    else:
+        print("m flag off")
+        d[l] = expand(join(out_dir,'log','STAR','{sp}.log'),sp=sp_list),
+    print(d)
+    d="YO"
+    return (d)
+
 #read in contrast list for manorm
 def get_de_list():
     
@@ -382,7 +404,7 @@ rule all:
         # multiqc
         join(out_dir,'qc','multiqc_report.html'),
 
-        # qc_troubleshoot
+        # # qc_troubleshoot
         join(out_dir,'qc','qc_report_troubleshooting.html'),
 
         # dedup
@@ -476,10 +498,10 @@ if (multiplex_flag == 'Y'):
             memG = getmemG_80perc("qc_barcode"),
             R = join(source_dir,'workflow', 'scripts', '02_barcode_qc.R'),
             base = join(out_dir,'{mp}','01_qc_post'),
-            qc_dir=join(out_dir,'qc')
+            qc_dir=join(out_dir,'qc'),
             mm = mismatch,
             bc_len = barcode_length,
-            start_pos = 6 if barcode_length==6 else 4
+            start_pos = 6 if barcode_length==6 else 4,
             b_qc_flag=barcode_qc_flag
         threads: getthreads("qc_barcode")
         envmodules:
@@ -492,7 +514,7 @@ if (multiplex_flag == 'Y'):
             """
             set -exo pipefail
 
-            if [[ {params.b_qc_flag == "PROCESS" ]]; then
+            if [[ {params.b_qc_flag} == "PROCESS" ]]; then
                 gunzip -c  {input.fq} \\
                     | awk 'NR%4==2 {{print substr($0, {params.start_pos}, {params.bc_len});}}' \\
                     | LC_ALL=C sort --buffer-size={params.memG} --parallel={threads} --temporary-directory=/lscratch/${{SLURM_JOB_ID}} -n \\
@@ -507,6 +529,8 @@ if (multiplex_flag == 'Y'):
                     --qc_dir {params.base}
             else
                 echo "Barcode QC checking was skipped for this run" > {output.txt}
+                touch {output.png}
+                touch {output.counts}
             fi
             """
 
@@ -796,7 +820,7 @@ rule star:
         --sjdbScore {params.s_sj} \
         --winAnchorMultimapNmax {params.s_anchor}
 
-        # sort file\
+        # sort file
         samtools sort -m 80G -T $tmp_dir $tmp_dir/{params.out_prefix}Aligned.out.bam -o $tmp_dir/{params.out_prefix}Aligned.sortedByCoord.out.bam
 
         # move STAR files and final log file to output
@@ -872,66 +896,44 @@ rule multiqc:
             -o {params.out_dir}
         """
 
-# Pipeline splits to handle multiplexed QC vs non-multiplexed QC
-if (multiplex_flag == 'Y'):
-    rule qc_troubleshoot:
+rule qc_troubleshoot:
+    """
+    generates a PDF of barcode plots and alignment plots for qc troubleshooting
+    """
+    input:
+        log_list=expand(join(out_dir,'log','STAR','{sp}.log'),sp=sp_list),
+    params:
+        rname = "08_qc_troubleshoot",
+        R = join(source_dir,'workflow','scripts','03_qc_report.Rmd'),
+        qc = join(source_dir,'workflow','scripts','03_qc_unmapped_check.sh'),
+        log_dir = join(out_dir,'log','STAR'),
+        single_qc = single_qc_threshold,
+        proj_qc = project_qc_threshold,
+        m_flag=multiplex_flag,
+        b_flag=barcode_qc_flag,
+        txt_bc=expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode_passed.txt'),mp=samp_dict.keys())
+    envmodules:
+        config['R']
+    output:
+        html = join(out_dir,'qc','qc_report_troubleshooting.html'),
+        qc = join(out_dir, 'log','STAR','qc_pass.txt')
+    shell:
         """
-        generates a PDF of barcode plots and alignment plots for qc troubleshooting
-        """
-        input:
-            log_list = expand(join(out_dir,'log','STAR','{sp}.log'),sp=sp_list),
-            txt_bc = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode_passed.txt'),mp=samp_dict.keys()),
-            png_bc = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())
-        params:
-            rname = "08_qc_troubleshoot",
-            R = join(source_dir,'workflow','scripts','03_qc_report.Rmd'),
-            qc = join(source_dir,'workflow','scripts','03_qc_unmapped_check.sh'),
-            log_dir = join(out_dir,'log','STAR'),
-            single_qc = single_qc_threshold,
-            proj_qc = project_qc_threshold
-        envmodules:
-            config['R']
-        output:
-            html = join(out_dir,'qc','qc_report_troubleshooting.html'),
-            qc = join(out_dir, 'log','STAR','qc_pass.txt')
-        shell:
-            """
+        if [[ {params.m_flag} == "Y" ]] && [[ {params.b_flag} == "PROCESS" ]] ; then
             Rscript -e 'library(rmarkdown); \
             rmarkdown::render("{params.R}",
                 output_file = "{output.html}", \
-                params= list(log_list = "{input.log_list}", \
-                    b_txt = "{input.txt_bc}"))'
+                    params= list(log_list = "{input.log_list}", \
+                        b_txt = "{params.txt_bc}"))'
+        else
+            Rscript -e 'library(rmarkdown); \
+                rmarkdown::render("{params.R}",
+                output_file = "{output.html}", \
+                    params= list(log_list = "{input.log_list}"))'
+        fi
 
-            sh {params.qc} {params.log_dir} {params.single_qc} {params.proj_qc}
-            """
-else:
-    rule qc_troubleshoot:
+        sh {params.qc} {params.log_dir} {params.single_qc} {params.proj_qc}
         """
-        generates a PDF of barcode plots and alignment plots for qc troubleshooting
-        """
-        input:
-            log_list = expand(join(out_dir,'log','STAR','{sp}.log'),sp=sp_list),
-        params:
-            rname = "08_qc_troubleshoot",
-            R = join(source_dir,'workflow','scripts','03_qc_report.Rmd'),
-            qc = join(source_dir,'workflow','scripts','03_qc_unmapped_check.sh'),
-            log_dir = join(out_dir,'log','STAR'),
-            single_qc = single_qc_threshold,
-            proj_qc = project_qc_threshold
-        envmodules:
-            config['R']
-        output:
-            html = join(out_dir,'qc','qc_report_troubleshooting.html'),
-            qc = join(out_dir, 'log','STAR','qc_pass.txt')
-        shell:
-            """
-            Rscript -e 'library(rmarkdown); \
-            rmarkdown::render("{params.R}",
-                output_file = "{output.html}", \
-                params= list(log_list = "{input.log_list}"))'
-            
-            sh {params.qc} {params.log_dir} {params.single_qc} {params.proj_qc}
-            """
 
 rule dedup:
     """
