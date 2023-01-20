@@ -9,8 +9,8 @@ __default__:
     error: .%j.{wildcards}.err
 
 qc_barcode:
-    threads: 4
-    mem: 100g
+    threads: 8
+    mem: 75g
     time: 00-04:00:00
 
 demultiplex:
@@ -35,7 +35,7 @@ star:
     time: 04-00:00:00
     gres: lscratch:800
     threads: 16
-    mem: 100g
+    mem: 120g
 
 index_stats:
     threads: 8
