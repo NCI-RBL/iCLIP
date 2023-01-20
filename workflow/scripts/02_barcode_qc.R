@@ -20,6 +20,7 @@ parser$add_argument("-bu","--barcode_input", dest="barcode_input", required=TRUE
 parser$add_argument("-o","--output_dir", dest="output_dir", required=TRUE, help="dir for barcode plots and summary")
 parser$add_argument("-m","--mismatch", dest="mismatch", required=TRUE, help="number of mismatches allowed")
 parser$add_argument("-i","--mpid", dest="mpid", required=TRUE, help="sampleid")
+parser$add_argument("-q","--qc_dir", dest="qc_dir", required=TRUE, help="dir for failed QC manifests")
 
 args <- parser$parse_args()
 sample_manifest = args$sample_manifest
@@ -32,12 +33,12 @@ mpid = args$mpid
 #test input
 testing="N"
 if(testing=="Y"){
-  sample_manifest  = "~/../../Volumes/CCBR_Pipeliner/iCLIP/test/sample_manifests/sample_mm10_one.tsv"
-  multiplex_manifest = "~/../../Volumes/CCBR_Pipeliner/iCLIP/test/multiplex_manifests/multiplex_mm10_one.tsv"
-  barcode_input = "~/../../Volumes/sevillas2-1/test.barcode_counts.txt"
-  output_dir = "~/../../Volumes/sevillas2-1"
+  sample_manifest  = "~/../../Volumes/RBL_NCI/Wolin/mov10_par_Y_r2_01062023/manifests/samples.tsv"
+  multiplex_manifest = "~/../../Volumes/RBL_NCI/Wolin/mov10_par_Y_r2_01062023/manifests/multiplex.tsv"
+  barcode_input = "~/../../Volumes/RBL_NCI/Wolin/mov10_par_Y_r2_01062023/sam_testing/barcode_counts.txt"
+  output_dir = "~/../../Volumes/RBL_NCI/Wolin/mov10_par_Y_r2_01062023/sam_testing"
   mismatch = 1
-  mpid="test_1"
+  mpid="CLIP"
 }
 
 #Read sample/multiplex manifests
@@ -90,9 +91,7 @@ for (rowid in rownames(barcode_combo)){
 
 #if there were errors, print message and exit
 if(error_message!=""){
-  cat(paste0("The number of differences between barocdes is less than, or equal to, the number of mismatches
-in the following barcodes:\n",error_message))
-  #exit()
+  cat(paste0("The number of differences between barocdes is less than, or equal to, the number of mismatches in the following barcodes:\n",error_message))
 } else{
   print("Barcode schema passes QC")
 }
@@ -154,7 +153,7 @@ diff_lis=setdiff(paste0("*",bc_exp),df_counts_merged$barcode_id)
 if(length(diff_lis)==0){
   print("Barcodes observed pass QC")
   #print text file
-  file_save = paste0(output_dir,'/',mpid,'_barcode.txt')
+  file_save = paste0(output_dir,'/',mpid,'_barcode_passed.txt')
   fileConn<-file(file_save)
   line1 = paste0("\n* SampleID ",mpid, " \n")
   line2 = paste0("\t + Number of mismatches allowed ", mismatch, " \n")
@@ -179,7 +178,7 @@ if(length(diff_lis)==0){
   ggsave(file_save,p)
   
 } else{
-  file_save = paste0(output_dir,'/',mpid,'_barcode_errors.txt')
+  file_save = paste0(qc_dir,'/',mpid,'_barcode_errors.txt')
   fileConn<-file(file_save)
   line1 = paste0("\n* SampleID ",mpid, " \n")
   line2 = paste0("\t + Number of mismatches allowed ", mismatch, " \n")
@@ -194,4 +193,8 @@ if(length(diff_lis)==0){
   
   writeLines(paste(line1,line2,line3,line4,line5,sep=""), fileConn)
   close(fileConn)
+
+  print(paste0("Barcodes failed QC check. Review file located here:",file_save,"."))
+  print(paste0("To check the reads go to the /project/01_preprocess/01_fastq/ dir and run `zcat {name_of_sample} | wc -l. Divide this number by 4 to get the total number of reads"))
+  print(paste0("If satisfied with this read count change the config/snakemake_config file barcode_qc_flag to IGNORE"))
 }

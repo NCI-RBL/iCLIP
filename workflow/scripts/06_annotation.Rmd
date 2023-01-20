@@ -2,9 +2,9 @@
 title: ""
 output: html_document
 params:
-  samplename: "Ro_Clip_u"
-  peak_in: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mESC_clip_3_clip3_u/04_annotation/02_peaks/Ro_Clip_u_ALLreadPeaks_annotation_complete.txt"
-  output_table: "/Users/homanpj/OneDrive - National Institutes of Health/Loaner/Wolin/CLIP/mESC_clip_3_clip3_u/04_annotation/Ro_Clip_u_peakannotation_finalx.txt"
+  samplename: "YDKO_IgG_500"
+  peak_in: "~/../../Volumes/RBL_NCI/Wolin/mov10_par_Y_r2_01062023/04_annotation/02_peaks/YDKO_IgG_500_ALLreadPeaks_annotation_complete.txt"
+  output_table: "~/../../Volumes/RBL_NCI/Wolin/mov10_par_Y_r2_01062023/04_annotation/YDKO_IgG_500_annotation_ALLreadPeaks_final_table.txt"
   readdepth: 3
   PeakIdnt: "ALL" #MultiMap, Unique, all
 # params:
@@ -20,7 +20,7 @@ params:
 #   readdepth: 5
 #   PeakIdnt: "ALL" #MultiMap, Unique, all
 ---
- 
+
  <!-- # Load libraries, set theme -->
 ```{r envirment, include=F ,echo=F,warning=F,message=FALSE}
 rm(list=setdiff(ls(), "params"))

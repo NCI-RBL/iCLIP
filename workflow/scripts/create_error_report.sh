@@ -11,12 +11,12 @@ touch other.txt
 #cehck if errros are in snakmemake config or in the rules
 #do not include errors in rules: error in, error executing, error message
 #do not include error parameters: printableError
-error_snakefile="$(cat *iCLIP.out | grep -v "output_file_error" | grep -v "Error in" | \
+error_snakefile="$(cat *iCLIP_* | grep -v "output_file_error" | grep -v "Error in" | \
 grep -v "Error executing" | grep -v "error message" | grep -v "printableError" | grep -i "error\|Error" | wc -l)"
 
 #do not include output_file_error
 #do not include error parameters: printableError
-error_rules="$(cat *iCLIP.out | grep -v "output_file_error" | grep -v "printableError" | grep -i "error in" | wc -l)"
+error_rules="$(cat *iCLIP_* | grep -v "output_file_error" | grep -v "printableError" | grep -i "error in" | wc -l)"
 
 #if there are no snakemake errors or rul errors
 if [ $error_snakefile == "0" ] && [ $error_rules == "0" ]; then
@@ -28,7 +28,7 @@ elif [ $error_snakefile != "0" ] && [ $error_rules == "0" ]; then
     echo "- Errors were found in snakemake"
     echo "The following error(s) were found in the snakemake file." >> error_log.txt
     echo "*********************************************" >> error_log.txt
-    cat *iCLIP.out | grep -v "output_file_error" | grep -v "Error in" | grep -v "Error executing" | grep -v "error message" | \
+    cat *iCLIP_* | grep -v "output_file_error" | grep -v "Error in" | grep -v "Error executing" | grep -v "error message" | \
     grep -v "printableError" | grep -i "error\|Error" | sort --unique >> error_log.txt
     echo >> error_log.txt
     echo "view error log to determine which rules failed by running: cat error_log.txt"
@@ -39,15 +39,15 @@ else
     echo "- Errors were found in 1 or more snakemake rules"
     echo "The following error(s) were found in rules:" >> error_log.txt
     echo "*********************************************" >> error_log.txt
-    grep -i "error in" *iCLIP.out | sort --unique >> error_log.txt
+    grep -i "error in" *iCLIP_* | sort --unique >> error_log.txt
     echo >> error_log.txt
 
     echo "--- Processing individual rule errors..."
-    max=($(grep -oP "Error in rule \K\w+" *iCLIP.out | sort --unique | wc -l))
+    max=($(grep -oP "Error in rule \K\w+" *iCLIP_* | sort --unique | wc -l))
     count=1
 
     #for each of the rule error_rules, determine if it's a memory error, file missing error, or other error
-    grep -oP "Error in rule \K\w+" *iCLIP.out | sort --unique | \
+    grep -oP "Error in rule \K\w+" *iCLIP_* | sort --unique | \
     while read -r result; do
         #if it's a memory issue
         if grep -q "Disk quota exceeded" *$result*; then
