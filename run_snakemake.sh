@@ -35,7 +35,7 @@ fi
 # functions
 #########################################################
 load_modules(){
-  if [[ $1 =~ "python" ]]; then module load python/3.8; fi
+  if [[ $1 =~ "python" ]]; then module load python/3.7; fi
   if [[ $1 =~ "snakemake" ]]; then module load snakemake/7.19.1; fi
   if [[ $1 =~ "graphviz" ]]; then module load graphviz/2.40; fi
 }
