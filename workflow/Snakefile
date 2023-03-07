@@ -42,6 +42,7 @@ contrast_manifest = config['contrastManifest']
 multiplex_flag = config['multiplexflag'].capitalize()
 mismatch = config['mismatch']
 barcode_qc_flag = config['barcode_qc_flag']
+count_threshold = config['min_reads_mapped']
 species_ref = config['reference']
 filter_length = config['filterlength']
 phredQuality = config['phredQuality']
@@ -147,6 +148,10 @@ else:
 #set strand ids
 strand_list=['P','N']
 
+# check mapped threshold is a percentage
+if (count_threshold > 1):
+    print("Count_threshold must be a decimal value, representing a percentage")
+
 ###############################################################
 # create sample lists
 ###############################################################
@@ -221,7 +226,6 @@ def rename_cmd(wildcards):
     return(cmd)
 
 def get_input_qc_troubleshoot(wildcards):
-    print("HERE")
     d=dict()
 
     l = "log_list"
@@ -229,17 +233,12 @@ def get_input_qc_troubleshoot(wildcards):
     p = "png_bc"
 
     if (multiplex_flag == 'Y'):
-        print("m flag on")
         d[l] = expand(join(out_dir,'log','STAR','{sp}.log'),sp=sp_list),
         d[t] = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode_passed.txt'),mp=samp_dict.keys())
         if (barcode_qc_flag == "PROCESS"):
-            print("b flag on")
             d[p] = expand(join(out_dir,'{mp}', '01_qc_post','{mp}_barcode.png'),mp=samp_dict.keys())
     else:
-        print("m flag off")
         d[l] = expand(join(out_dir,'log','STAR','{sp}.log'),sp=sp_list),
-    print(d)
-    d="YO"
     return (d)
 
 #read in contrast list for manorm
@@ -358,7 +357,7 @@ else:
     input_demethod_reports = [expand(join(out_dir,'04_annotation', '02_peaks','{sp}_' + peak_id + 'readPeaks_annotation_complete.txt'),sp=sp_list)]
 
 #local rules
-localrules: nondemux, rename_fastqs, multiqc
+localrules: nondemux, rename_fastqs, check_read_counts, multiqc
 
 #structure
 #mp
@@ -400,7 +399,8 @@ rule all:
          
         # index_stats
         expand(join(out_dir,'02_bam','01_merged','{sp}.si.bam'), sp=sp_list),
-
+        join(out_dir,'qc', '01_qc_post','qc_read_count_check_pass.txt'),
+        
         # multiqc
         join(out_dir,'qc','multiqc_report.html'),
 
@@ -445,6 +445,9 @@ rule all:
 
         # # star
         # expand(join(out_dir,'01_preprocess','02_alignment','{sp}_Aligned.sortedByCoord.out.bam'),sp=sp_list),
+        
+        # index_stats
+        # expand(join(out_dir, 'qc', '01_qc_post','{sp}_samstats.txt')),sp=sp_list),
 
         # create_beds_safs
         # expand(join(out_dir,'03_peaks','01_bed','{sp}_ALLreadPeaks.bed'),sp=sp_list),
@@ -863,6 +866,60 @@ rule index_stats:
         samtools stats --threads {threads} {output.bam} > {output.samstat}
         """
 
+rule check_read_counts:
+    """
+    In a recent project the incorrect species was selected and nearly 80% of all reads in all samples (N=6) were not mapped. 
+    Rather than continuing with this type of potential low-quality sample, the pipeline should stop.
+
+    http://www.htslib.org/doc/samtools-stats.html
+    """
+    input:
+        stats=expand(join(out_dir, 'qc', '01_qc_post','{sp}_samstats.txt'),sp=sp_list),
+    envmodules:
+        config['samtools']
+    params:
+        count_threshold=count_threshold,
+        qc_base=join(out_dir,'qc', '01_qc_post','qc_read_count_check')
+    output:
+        qc_counts_pass=join(out_dir,'qc', '01_qc_post','qc_read_count_check_pass.txt'),
+        qc_raw_counts=join(out_dir,'qc', '01_qc_post','qc_read_count_raw_values.txt')
+    shell:
+        """
+        # set fail count
+        fail=0
+
+        # create output file
+        if [[ -f {output.qc_raw_counts} ]]; then rm {output.qc_raw_counts}; fi 
+        touch {output.qc_raw_counts}
+
+        for f in {input.stats}; do
+            # check samstats file to determine number of reads and reads mapped
+            raw_count=`cat $f | grep "raw total sequences" | awk -F"\t" '{{print $3}}'`
+            mapped_count=`cat $f | grep "reads mapped:" | awk -F"\t" '{{print $3}}'`
+            found_percentage=$(($mapped_count / $raw_count))
+
+            # check the count against the set count_threshold, if counts found are lower than expected, fail
+            fail=0
+            if [ 1 -eq "$(echo "${{found_percentage}} < {params.count_threshold}" | bc)" ]; then
+                flag="sample failed"
+                fail=$((fail + 1))
+            else
+                flag="sample passed"
+            fi
+            
+            # put data into output
+            echo "$f\t$found_percentage\t$flag" >> {output.qc_raw_counts}
+        done
+
+        # create output file
+if [ 1 -eq "$(echo "${{fail}} > 0" | bc)" ]; then
+            echo "Check sample log {output.qc_raw_counts} to review what sample(s) failed" > {params.qc_base}_fail.txt
+        else
+            touch {params.qc_base}_pass.txt
+        fi
+        """
+
+
 rule multiqc:
     """
     merges FastQC reports for pre/post trimmed fastq files into MultiQC report
@@ -901,6 +958,7 @@ rule qc_troubleshoot:
     generates a PDF of barcode plots and alignment plots for qc troubleshooting
     """
     input:
+        qc_counts_pass=rules.check_read_counts.output.qc_counts_pass,
         log_list=expand(join(out_dir,'log','STAR','{sp}.log'),sp=sp_list),
     params:
         rname = "08_qc_troubleshoot",
@@ -1842,13 +1900,13 @@ if (DE_method=="MANORM"):
         envmodules:
             config['R']
         output:
-            report = join(out_dir,'05_demethod','02_analysis','{group_id}','{gid_1}_vs_{gid_2}_' + peak_id + 'readPeaks_manorm_report.html'),
+            reportOut = join(out_dir,'05_demethod','02_analysis','{group_id}','{gid_1}_vs_{gid_2}_' + peak_id + 'readPeaks_manorm_report.html'),
             reportRev = join(out_dir,'05_demethod','02_analysis','{group_id}','{gid_2}_vs_{gid_1}_' + peak_id + 'readPeaks_manorm_report.html')
         shell:
             """
             Rscript -e 'library(rmarkdown); \
             rmarkdown::render("{params.R}", \
-                output_file = "{output.report}", \
+                output_file = "{output.reportOut}", \
                 params= list(peak_in="{input.post_proc}", \
                     PeakIdnt="{params.p_id}",\
                     samplename="{params.gid_1}", \

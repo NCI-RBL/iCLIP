@@ -22,7 +22,8 @@ contrastManifest: "OUTPUT_DIR/manifests/contrasts.tsv"
 multiplexflag: "Y" #whether samples are multiplexed ["Y","N"]
 umiSeparator: "rbc:" #required for nondemultiplexed samples to determine delimiter for deduplication [":", "_", "rbc:"]
 mismatch: 1 #required for multiplexed samples, number of bp mismatches allowed in demultiplexing [1,2,3]
-barcode_qc_flag: "PROCESS" #barcodes will undergo QC to ensure uniformity within samples; if set to IGNORE this qc step will be skipped
+barcode_qc_flag: "PROCESS" #barcodes will undergo QC to ensure uniformity within samples; ["PROCESS", "IGNORE"]
+min_reads_mapped: 0.5 #minimum percent of reads that should be mapped; IE .5 for 50% of all reads must be mapped [0.5]
 reference: "" #reference organism ["hg38","mm10"]
 filterlength: 20 #minimum read length to include in analysis [any int >20]
 phredQuality: 20 #minimum quality score for 3’ end trimming
