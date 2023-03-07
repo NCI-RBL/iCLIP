@@ -79,6 +79,7 @@ star_filt_score = config['outFilterScoreMin']
 star_filt_type = config['outFilterType']
 star_sam_att = config['outSAMattributes']
 star_sam_unmap = config['outSAMunmapped']
+star_SJcollapsed = config['limitOutSJcollapsed']
 star_filt_sjmin = config['outSJfilterCountTotalMin'].replace(",", " ")
 star_filt_overhang = config['outSJfilterOverhangMin'].replace(",", " ")
 star_filt_sjreads = config['outSJfilterReads']
@@ -760,6 +761,7 @@ rule star:
         s_ftype = star_filt_type,
         s_att = star_sam_att,
         s_unmap = star_sam_unmap,
+        s_sjcol = star_SJcollapsed,
         s_sjmin = star_filt_sjmin,
         s_overhang = star_filt_overhang,
         s_sjreads = star_filt_sjreads,
@@ -803,6 +805,7 @@ rule star:
         --alignTranscriptsPerReadNmax {params.s_transc} \
         --alignWindowsPerReadNmax {params.s_windows} \
         --limitBAMsortRAM {params.s_bam_limit} \
+        --limitOutSJcollapsed {params.s_sjcol} \
         --outFilterMatchNmin {params.s_match} \
         --outFilterMatchNminOverLread {params.s_readmatch} \
         --outFilterMismatchNmax {params.s_mismatch} \

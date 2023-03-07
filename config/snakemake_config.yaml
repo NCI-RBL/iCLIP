@@ -51,6 +51,7 @@ alignSJDBoverhangMin: 3 # minimum overhang value for annotated spliced junctions
 alignSJoverhangMin: 5 # minimum overhang value for non-cannonical splied junctions
 alignTranscriptsPerReadNmax: 10000 #max number of different alignments per read to consider [int>0]
 alignWindowsPerReadNmax: 10000 #max number of windows per read [int>0]
+limitOutSJcollapsed: 1000000 # max number of collapsed junctions [int>0]
 outFilterMatchNmin: 15 # alignment will be output only if the number of matched bases is higher than or equal to this value.
 outFilterMatchNminOverLread: 0.9 #alignment will be output only if the number of matched bases is >= to value; normalized to sum of mates’ lengths for paired-end reads
 outFilterMismatchNmax: 999 #alignment will be output only if it has no more mismatches than this value.
