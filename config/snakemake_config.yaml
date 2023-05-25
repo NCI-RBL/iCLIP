@@ -71,6 +71,7 @@ seedPerReadNmax: 10000 #max number of seeds per read
 seedPerWindowNmax: 500 #max number of seeds per window
 sjdbScore: 2 #extra alignment score for alignmets that cross database junctions
 winAnchorMultimapNmax: 500 #max number of loci anchors are allowed to map to
+quantmod: 'TranscriptomeSAM' #additionnal alignment on transcriptome
 
 #########################################################################################
 # modules, container parameters

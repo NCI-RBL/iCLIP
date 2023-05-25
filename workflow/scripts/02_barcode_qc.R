@@ -29,6 +29,7 @@ barcode_input = args$barcode_input
 output_dir = args$output_dir
 mismatch = as.integer(args$mismatch)
 mpid = args$mpid
+qc_dir = args$qc_dir
 
 #test input
 testing="N"
