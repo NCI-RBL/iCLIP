@@ -89,6 +89,7 @@ star_seed_read = config['seedPerReadNmax']
 star_seed_wind = config['seedPerWindowNmax']
 star_sj = config['sjdbScore']
 star_win_anchor = config['winAnchorMultimapNmax']
+star_quantmod = config['quantmod']
 
 # modules, container
 cont_dir = config['containerDir']
@@ -771,6 +772,7 @@ rule star:
         s_wind = star_seed_wind,
         s_sj = star_sj,
         s_anchor = star_win_anchor,
+        s_quantmod = star_quantmod,
         out_prefix = '{sp}_'
     envmodules:
         config['star'],
@@ -824,7 +826,8 @@ rule star:
         --seedPerReadNmax {params.s_read} \
         --seedPerWindowNmax {params.s_wind} \
         --sjdbScore {params.s_sj} \
-        --winAnchorMultimapNmax {params.s_anchor}
+        --winAnchorMultimapNmax {params.s_anchor} \
+        --quantMode {params.s_quantmod}
 
         # sort file
         samtools sort -m 80G -T $tmp_dir $tmp_dir/{params.out_prefix}Aligned.out.bam -o $tmp_dir/{params.out_prefix}Aligned.sortedByCoord.out.bam
