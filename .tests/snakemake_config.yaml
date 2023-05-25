@@ -1,52 +1,102 @@
+#########################################################################################
 # Global configuration file for the pipeline
+#########################################################################################
+
+#########################################################################################
+#Folders and Paths
+#########################################################################################
 #path to snakemake file
 sourceDir: ""
-
 #path to output directory
 outputDir: "hg38_full/"
-
+#path to fastq files
+fastqDir: ".tests/"
 #path to manifest files
 sampleManifest: ".tests/sample_hg38_full.tsv"
 multiplexManifest: ".tests/multiplex_hg38_full.tsv"
 contrastManifest: ".test/contrasts_example.tsv"
 
-#path to fastq files
-fastqDir: ".tests/"
-
+########################################################################################
 #user parameters
-filterlength: 20 #minimum read length to include in analysis [any int >20]
+#########################################################################################
 multiplexflag: "Y" #flag that samples are multiplexed ["Y","N"]
+umiSeparator: "rbc:" #required for nondemultiplexed samples to determine delimiter for deduplication [":", "_", "rbc:"]
 mismatch: 1 #number of bp mismatches allowed in demultiplexing [1,2,3]
+barcode_qc_flag: "PROCESS" #barcodes will undergo QC to ensure uniformity within samples; ["PROCESS", "IGNORE"]
+min_reads_mapped: 0.5 #minimum percent of reads that should be mapped; IE .5 for 50% of all reads must be mapped [0.5]
 reference: "hg38" #reference organism ["mm10", "hg38"]
-spliceaware: "N" #whether to run splice_aware part of the pipeline ['y', 'n']
+filterlength: 20 #minimum read length to include in analysis [any int >20]
+phredQuality: 20 #minimum quality score for 3’ end trimming
 includerRNA: "N" #include refseq rRNA's in annotations ["Y", "N"]
-spliceBPlength: 75 #length of splice index to use [50, 75, 150]
 splicejunction: "N" #include splice junctions in peak calls: "manorm"
-condenseexon: "N" #whether to collapse exons
+AnnoAnchor: "max_total" #whether annotations for spliced peaks will be based on either 5' most region or region with max reads ["max","5prime"]
 mincount: 3 #minimum number of matches to count as a peak [1,2,3]
 ntmerge: 50 #minimum distance of nucleotides to merge peaks [10,20,30,40,50,60]
 peakid: "ALL" #report peaks for unique peaks only or unique and fractional mm ["unique","all"]
 DEmethod: "none" #choose DE method ["manorm","none"]
+MANormWidth: 50 #Width of window to calculate read density. [any integer >1; default 50]
+MNormDistance: 25 #Summit-to-summit distance cutoff for common peaks. [ any integer >1; default MANormWidth/2]
 sampleoverlap: 1 #if DEmethod DIFFBIND, minimum number of samples a peak must be found in to be counted [>1]
 pval: 0.005 #if DEmethod, pval cutoff for significance
 fc: 1 #if DEmethod, fold change cut off for significance
+single_qc_threshold: 95 #maximum threshold for unmampped reads in any single sample
+project_qc_threshold: 50 #maximum threshold for unmapped reads across average of all project samples
 
+#########################################################################################
+# STAR parameters
+#########################################################################################
+alignEndsType: "Local" #type of read ends alignment ["Local", "EndToEnd", "Extend5pOfRead1", "Extend5pOfReads12"]
+alignIntronMax: 50000 #maximum intron length
+alignSJDBoverhangMin: 3 # minimum overhang value for annotated spliced junctions
+alignSJoverhangMin: 5 # minimum overhang value for non-cannonical splied junctions
+alignTranscriptsPerReadNmax: 10000 #max number of different alignments per read to consider [int>0]
+alignWindowsPerReadNmax: 10000 #max number of windows per read [int>0]
+limitOutSJcollapsed: 1000000 # max number of collapsed junctions [int>0]
+outFilterMatchNmin: 15 # alignment will be output only if the number of matched bases is higher than or equal to this value.
+outFilterMatchNminOverLread: 0.9 #alignment will be output only if the number of matched bases is >= to value; normalized to sum of mates’ lengths for paired-end reads
+outFilterMismatchNmax: 999 #alignment will be output only if it has no more mismatches than this value.
+outFilterMismatchNoverReadLmax: 0.04 #alignment will be output only if its ratio of mismatches to *read* length is less than or equal to this value.
+outFilterMultimapNmax: 10000 #max number of multiple alignments allowed for a read: if exceeded, the read is considered unmapped
+outFilterMultimapScoreRange: 0 #the score range below the maximum score for multimapping alignments
+outFilterScoreMin: 0 #alignment will be output only if its score is higher than or equal to this value.
+outFilterType: "Normal" #type of filtering ["Normal", "BySJout"]
+outSAMattributes: "All" #a string of desired SAM attributes, in the order desired for the output SAM
+outSAMunmapped: "None" #output of unmapped reads in the SAM format ["None", "Within"]
+outSJfilterCountTotalMin: "3,1,1,1" #minimum total (multi-mapping+unique) read count per junction for: (1) non-canonical motifs, (2) GT/AG and CT/AC motif, (3) GC/AG and CT/GC motif, (4) AT/AC and GT/AT motif
+outSJfilterOverhangMin: "30,12,12,12" #minimum overhang length for splice junctions on both sides for: (1) non-canonical motifs, (2) GT/AG and CT/AC motif, (3) GC/AG and CT/GC motif, (4) AT/AC and GT/AT motif
+outSJfilterReads: "All" #which reads to consider for collapsed splice junctions output ["All", "Unique"]
+seedMultimapNmax: 10000 #only pieces that map fewer than this value are utilized in the stitching procedure [int>0]
+seedNoneLociPerWindow: 20 #max number of one seed loci per window [int>0]
+seedPerReadNmax: 10000 #max number of seeds per read
+seedPerWindowNmax: 500 #max number of seeds per window
+sjdbScore: 2 #extra alignment score for alignmets that cross database junctions
+winAnchorMultimapNmax: 500 #max number of loci anchors are allowed to map to
+
+
+#########################################################################################
+# modules, container parameters
+#########################################################################################
 #modules, container parameters
 containerDir: "/data/CCBR_Pipeliner/iCLIP/container"
 fastq_val: "/data/CCBR_Pipeliner/db/PipeDB/bin/fastQValidator"
+
 bedtools: "bedtools/2.29.2"
 bowtie2: "bowtie/2-2.3.4"
 fastq_screen: "fastq_screen/0.14.0"
 fastqc: "fastqc/0.11.9"
-java: "java/12.0.1"
 manorm: "manorm/1.1.4"
 multiqc: "multiqc/1.9"
-novocraft: "novocraft/4.03.01"
 perl: "perl/5.24.3"
-python: "python/3.7"
-Qt: "Qt/5.13.2"
-singularity: "singularity"
-samtools: "samtools/1.11"
-umitools: "umitools/1.1.1"
-subread: "subread/2.0.1"
+python: "python/3.8"
 R: "R/4.0"
+samtools: "samtools/1.11"
+star: "STAR/2.7.8a"
+subread: "subread/2.0.1"
+ultraplex: "ultraplex/1.2.5"
+umitools: "umitools/1.1.1"
+
+#########################################################################################
+# dev
+#########################################################################################
+#testing parameter
+testing_option: "N"
